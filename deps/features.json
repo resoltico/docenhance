@@ -100,6 +100,7 @@
       "PARALLEL_ENABLE_PLUGINS": false,
       "WITH_HPX": false,
       "WITH_OPENMP": false,
+      "WITH_PTHREADS_PF": false,
       "WITH_TIFF": false,
       "WITH_V4L": false,
       "WITH_DSHOW": false,
