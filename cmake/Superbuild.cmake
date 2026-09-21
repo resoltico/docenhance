@@ -85,6 +85,12 @@ foreach(name IN LISTS de_names)
     # This remains a configuration-private path to the zlib ExternalProject, never a host lookup.
     list(APPEND de_options "-DZLIB_LIBRARY:FILEPATH=${DE_DEPENDENCY_PREFIX}/lib/zs.lib")
   endif()
+  if(WIN32 AND name STREQUAL "opencv")
+    # OpenCV 5's MinGW compatibility path otherwise exports a bare pthread.lib when CMake
+    # configures it with the current MSVC-compatible runner. There is no pinned pthread
+    # runtime in this source-only build, so explicitly use OpenCV's serial Windows path.
+    list(APPEND de_options "-DOPENCV_DISABLE_THREAD_SUPPORT:BOOL=ON")
+  endif()
   if(name STREQUAL "tiff")
     list(APPEND de_options "-DJPEG_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
   endif()
