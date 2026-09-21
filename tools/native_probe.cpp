@@ -207,8 +207,15 @@ int probe() {
 }
 } // namespace
 
+#ifdef _WIN32
 // Leptonica uses these only in the Windows build, where its upstream MSVC path otherwise ignores
 // setPixMemoryManager(). They deliberately retain the C ABI requested by LEPTONICA_INTERCEPT_ALLOC.
+extern "C" {
+void* leptonica_malloc(std::size_t bytes);
+void* leptonica_calloc(std::size_t count, std::size_t bytes);
+void* leptonica_realloc(void* data, std::size_t bytes);
+void leptonica_free(void* data);
+}
 // NOLINTBEGIN(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc): C allocator ABI.
 extern "C" void* leptonica_malloc(std::size_t bytes) {
     ++leptonica_allocations();
@@ -226,6 +233,7 @@ extern "C" void leptonica_free(void* const data) {
     std::free(data);
 }
 // NOLINTEND(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
+#endif
 
 int main() { // NOLINT(bugprone-exception-escape): MSVC STL stream failures are caught below.
     try {
