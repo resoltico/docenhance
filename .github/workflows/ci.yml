@@ -46,8 +46,6 @@ jobs:
             os: ubuntu-24.04-arm
           - platform: macos-arm64
             os: macos-26
-          - platform: macos-x86_64
-            os: macos-26-intel
           - platform: windows-x86_64
             os: windows-2025-vs2026
     runs-on: ${{ matrix.os }}

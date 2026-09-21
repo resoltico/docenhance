@@ -184,8 +184,9 @@ from about 2018, including the Intel machines this project builds for.
 
 Raising the floor further would drop users for nothing this code needs — floating-point
 `std::from_chars`, for instance, requires macOS 26, and the decimal parser does not use it. GitHub
-retires its macOS 14 runners on 2026-11-02, so CI executes the binary on macOS 15 and 26 while the
-compiler enforces the floor.
+retires its macOS 14 runners on 2026-11-02, so CI executes the ARM64 binary on macOS 26 while the
+compiler enforces the floor. Intel macOS validation remains a release requirement until a pinned
+LLVM 23 distribution is available on a hosted Intel runner.
 
 ## Documentation describes the present
 
