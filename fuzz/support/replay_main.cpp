@@ -63,6 +63,7 @@ int replay(std::span<char* const> arguments) {
     return inputs.empty() ? 1 : 0;
 }
 } // namespace
+// NOLINTNEXTLINE(bugprone-exception-escape): all replay failures are caught and rendered below.
 int main(int argc, char** const argv) { // NOLINT(misc-const-correctness)
     try {
         return replay(std::span<char* const>(argv, static_cast<std::size_t>(argc)).subspan(1));
