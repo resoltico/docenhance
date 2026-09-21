@@ -92,6 +92,52 @@ def install_macos(pin: dict[str, Any]) -> Path:
     return Path(prefix) / "bin"
 
 
+def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) -> Path:
+    """Build only the pinned analysis tools when Homebrew lacks the required Intel formula."""
+    target = Path.home() / ".cache" / "docenhance" / f"llvm-{version}-macos-x86_64"
+    tools = target / "build" / "bin"
+    if (tools / "clang-tidy").is_file() and (tools / "clang-query").is_file():
+        return tools
+    archive = work / "llvm.tar.xz"
+    download(pin["source_url"], archive)
+    if hashlib.sha256(archive.read_bytes()).hexdigest() != pin["source_sha256"]:
+        msg = "LLVM source archive digest mismatch"
+        raise InstallError(msg)
+    source = work / "source"
+    source.mkdir()
+    subprocess.run(
+        [tool("tar"), "-xJf", str(archive), "-C", str(source), "--strip-components=1"], check=True
+    )
+    build = target / "build"
+    build.parent.mkdir(parents=True, exist_ok=True)
+    cmake = tool("cmake")
+    subprocess.run(
+        [
+            cmake,
+            "-S",
+            str(source / "llvm"),
+            "-B",
+            str(build),
+            "-G",
+            "Ninja",
+            "-DCMAKE_BUILD_TYPE=Release",
+            "-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra",
+            "-DLLVM_TARGETS_TO_BUILD=X86",
+            "-DLLVM_ENABLE_TERMINFO=OFF",
+            "-DLLVM_ENABLE_ZLIB=OFF",
+            "-DLLVM_INCLUDE_TESTS=OFF",
+            "-DLLVM_INCLUDE_EXAMPLES=OFF",
+            "-DLLVM_ENABLE_BINDINGS=OFF",
+        ],
+        check=True,
+    )
+    subprocess.run(
+        [cmake, "--build", str(build), "--target", "clang-tidy", "clang-query", "--parallel", "2"],
+        check=True,
+    )
+    return tools
+
+
 def install_windows(pin: dict[str, Any], work: Path) -> Path:
     """Verify the official MSI and extract it with an administrative (unregistered) install."""
     msi = work / "llvm.msi"
@@ -130,7 +176,11 @@ def main() -> int:
                 pins["linux"], work, compiler=args.compiler, fuzzing=args.fuzzing
             )
         elif system == "Darwin":
-            directory = install_macos(pins["macos"])
+            directory = (
+                install_macos_intel_source(pins["macos"], tidy["version"], work)
+                if platform.machine() == "x86_64"
+                else install_macos(pins["macos"])
+            )
         elif system == "Windows":
             directory = install_windows(pins["windows_x86_64"], work)
         else:
