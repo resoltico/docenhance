@@ -96,6 +96,11 @@ if(DE_ENABLE_CLANG_TIDY)
     "--warnings-as-errors=*"
     "--extra-arg=-Wno-unknown-warning-option"
     "--use-color")
+  if(MSVC)
+    # clang-tidy parses the compilation database through clang-cl, whose default exception mode
+    # differs from cl.exe even when the real command has /EHsc. The CLI adapter owns one catch.
+    list(APPEND DE_CLANG_TIDY_COMMAND "--extra-arg-before=/EHsc")
+  endif()
 endif()
 function(de_apply_options target)
   target_link_libraries(${target} PRIVATE DocEnhance::options)
