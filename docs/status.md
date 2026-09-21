@@ -58,10 +58,9 @@ Linux CI jobs from the packaged source archive.
 - **GitHub source-archive validation passed** for the `v0.1.0` tag: its source checks, deterministic
   package, provenance attestation and artifact upload completed successfully. The downloaded archive
   passed both checksum and GitHub attestation verification.
-- **macOS Intel remains unverified.** The hosted Intel Homebrew channel provides LLVM 22 while the
-  project pins clang-tidy 23, and LLVM 23 publishes no Intel macOS release archive. The required
-  GitHub matrix therefore validates macOS ARM64 and Linux x86-64; Intel macOS validation remains an
-  explicit release requirement rather than a silently weakened check.
+- **macOS Intel uses a source-pinned LLVM 23 tool build.** The hosted Intel Homebrew channel provides
+  LLVM 22 and LLVM 23 publishes no Intel macOS release archive, so CI SHA-verifies the LLVM 23 source
+  archive, builds only clang-tidy and clang-query, and caches that build by version and architecture.
 - **Windows and MSVC have never been executed**: not the replay harnesses, not `tools/ci_windows.ps1`,
   not the verified-installer path for clang-tidy. Portability there rests on review alone.
 - **x86-64 has never been executed**: every container run was aarch64.
