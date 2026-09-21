@@ -19,7 +19,11 @@
 #include <lcms2.h>
 #include <new>
 #include <opencv2/core.hpp>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/types.hpp>
+#include <opencv2/core/utility.hpp>
 #include <opencv2/core/utils/logger.hpp>
+#include <opencv2/core/version.hpp>
 #include <opencv2/photo.hpp>
 #include <picosha2.h>
 #include <pix_internal.h>
@@ -198,7 +202,7 @@ int probe() {
     return 0;
 }
 } // namespace
-int main() {
+int main() { // NOLINT(bugprone-exception-escape): MSVC STL stream failures are caught below.
     try {
         silence_libraries();
         return probe();

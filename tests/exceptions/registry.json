@@ -12,11 +12,17 @@
     "src/cli/main.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
       "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>."
     },
+    "src/cli/run.cpp:clang-tidy/bugprone-exception-escape@d9bf508d": {
+      "explanation": "CLI11 parsing allocates standard containers, and parse_and_dispatch is called inside the adapter's sole exception boundary; MSVC's STL model otherwise attributes those caught allocation failures to this local record declaration."
+    },
     "tests/cli/test_cli.py:ruff/ANN401@6209a09a": {
       "explanation": "The schema validator walks arbitrary decoded JSON, whose values are genuinely of any type; narrowing the parameter would defeat the recursion over objects, arrays and scalars."
     },
     "tools/dep_acquire.py:ruff/S310@3c54bc32": {
       "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written."
+    },
+    "tools/native_probe.cpp:clang-tidy/bugprone-exception-escape@a9d02f7a": {
+      "explanation": "The test-only main catches every standard and non-standard exception before returning its distinct failure code; MSVC's throwing iostream implementation otherwise looks like an uncaught path to clang-tidy."
     },
     "tools/dep_verify.py:ruff/PTH115@ff530aff": {
       "explanation": "os.readlink returns the symlink target byte-for-byte; Path.readlink normalizes it, which would change recorded receipt hashes and invalidate verified caches."
