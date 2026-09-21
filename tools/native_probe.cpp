@@ -197,6 +197,7 @@ int probe() {
     };
     for (const auto policy : policies) {
         if (const int failed = policy(); failed != 0) {
+            std::cerr << "Native policy contract failed with exit code " << failed << '\n';
             return failed;
         }
     }

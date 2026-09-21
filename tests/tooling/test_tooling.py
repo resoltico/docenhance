@@ -20,6 +20,7 @@ import check_gates
 import deps
 import generate_spec
 import package_source
+import repo_hygiene
 
 EXECUTABLE_MODE = 0o755
 LOCKED_DEPENDENCY_COUNT = 11
@@ -120,10 +121,14 @@ class ArchiveTests(unittest.TestCase):
         self.assertEqual(package_source.file_mode(b"# SPDX-License-Identifier: MIT\n"), 0o644)
 
     def test_repository_modes_match_the_archive(self) -> None:
-        """Checked-out files already carry the modes the archive would record."""
+        """Git's recorded modes agree with the deterministic archive's modes."""
+        indexed = repo_hygiene.indexed_executable_paths(ROOT)
         for path, _, _ in check_gates.code_files(ROOT):
             data = path.read_bytes()
-            executable = bool(path.stat().st_mode & 0o111)
+            rel = path.relative_to(ROOT).as_posix()
+            executable = (
+                rel in indexed if indexed is not None else bool(path.stat().st_mode & 0o111)
+            )
             self.assertEqual(executable, package_source.file_mode(data) == EXECUTABLE_MODE, path)
 
     def test_machine_metadata_is_not_a_source_file(self) -> None:
