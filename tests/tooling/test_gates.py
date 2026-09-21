@@ -22,7 +22,8 @@ def write(root: Path, rel: str, text: str) -> Path:
     """Create a file (and its parents) below root."""
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text, encoding="utf-8")
+    with path.open("w", encoding="utf-8", newline="\n") as stream:
+        stream.write(text)
     return path
 
 
@@ -258,8 +259,7 @@ class HygieneTests(GateTestCase):
     def test_executable_bit_matches_shebang(self) -> None:
         """A script without a shebang must not be executable, and vice versa."""
         self.prepare()
-        script = write(self.root, "tools/a.py", "# SPDX\n")
-        script.chmod(0o755)
+        write(self.root, "tools/a.py", "#!/usr/bin/env python3\n")
         self.assertTrue(any("shebang" in e for e in self.errors()))
 
     def test_binary_trees_and_documents_are_declared(self) -> None:

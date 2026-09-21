@@ -30,6 +30,12 @@
     "tools/native_probe.cpp:clang-tidy/bugprone-exception-escape@a9d02f7a": {
       "explanation": "The test-only main catches every standard and non-standard exception before returning its distinct failure code; MSVC's throwing iostream implementation otherwise looks like an uncaught path to clang-tidy."
     },
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-no-malloc@cd0cdb09": {
+      "explanation": "The Windows-only Leptonica interception ABI requires C malloc-family callbacks to prove the library's raster allocations are accounted for; RAII cannot express this external C allocator boundary."
+    },
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@cd0cdb09": {
+      "explanation": "The Windows-only Leptonica interception ABI returns and receives raw C allocator pointers, which are owned by Leptonica and released through the matching callback rather than by C++ code."
+    },
     "tools/dep_verify.py:ruff/PTH115@ff530aff": {
       "explanation": "os.readlink returns the symlink target byte-for-byte; Path.readlink normalizes it, which would change recorded receipt hashes and invalidate verified caches."
     },

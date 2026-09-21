@@ -12,6 +12,7 @@
 #include <cstdarg>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <environ.h>
 #include <exception>
 #include <iostream>
@@ -205,6 +206,27 @@ int probe() {
     return 0;
 }
 } // namespace
+
+// Leptonica uses these only in the Windows build, where its upstream MSVC path otherwise ignores
+// setPixMemoryManager(). They deliberately retain the C ABI requested by LEPTONICA_INTERCEPT_ALLOC.
+// NOLINTBEGIN(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc): C allocator ABI.
+extern "C" void* leptonica_malloc(std::size_t bytes) {
+    ++leptonica_allocations();
+    return std::malloc(bytes);
+}
+extern "C" void* leptonica_calloc(std::size_t count, std::size_t bytes) {
+    ++leptonica_allocations();
+    return std::calloc(count, bytes);
+}
+extern "C" void* leptonica_realloc(void* const data, std::size_t bytes) {
+    ++leptonica_allocations();
+    return std::realloc(data, bytes);
+}
+extern "C" void leptonica_free(void* const data) {
+    std::free(data);
+}
+// NOLINTEND(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
+
 int main() { // NOLINT(bugprone-exception-escape): MSVC STL stream failures are caught below.
     try {
         silence_libraries();

@@ -91,6 +91,11 @@ foreach(name IN LISTS de_names)
     # runtime in this source-only build, so explicitly use OpenCV's serial Windows path.
     list(APPEND de_options "-DOPENCV_DISABLE_THREAD_SUPPORT:BOOL=ON")
   endif()
+  if(WIN32 AND name STREQUAL "leptonica")
+    # Leptonica's setPixMemoryManager() is compiled out under MSVC unless all allocation calls
+    # are intercepted. The native probe provides the reviewed allocator symbols explicitly.
+    list(APPEND de_options "-DCMAKE_C_FLAGS:STRING=/DLEPTONICA_INTERCEPT_ALLOC")
+  endif()
   if(name STREQUAL "tiff")
     list(APPEND de_options "-DJPEG_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
   endif()
