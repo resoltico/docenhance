@@ -4,7 +4,7 @@ The work packages below are ordered by dependency. Each one needs its own specif
 
 | Order | Work package | Exit condition |
 |---|---|---|
-| 0 | Verify this native foundation on GitHub CI | Done locally on macOS arm64 and Linux arm64, including the package smoke test ([verification](status.md)); still required: a real GitHub Actions run covering Windows/MSVC and x86-64, with retained logs, fixing integration failures rather than weakening checks |
+| 0 | Verify this native foundation on GitHub CI | Native GitHub validation runs on Windows/MSVC, Linux ARM64/x86-64 and macOS ARM64 with retained logs. macOS Intel remains required for release once a pinned LLVM 23 tool distribution is available on a hosted runner; do not substitute a different lint release. |
 | 1 | Finish typed request/configuration core | Complete method-option variants; immutable effective configuration; strict RecipeV1 schema and duplicate-key rules; presets and precedence; every cross-option contradiction tested |
 | 2 | Resource, cancellation and publication primitives | Checked allocation model, ownership-safe cancellation, exclusive platform publication and outcome reconciliation; adversarial filesystem tests |
 | 3 | JPEG/PNG/TIFF and color pipeline | All accepted/rejected encodings and precision/profile/orientation contracts; C longjmp boundaries; malformed-image tests; codec fuzzing; no implicit 8-bit downgrade |

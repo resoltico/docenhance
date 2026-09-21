@@ -58,10 +58,10 @@ Linux CI jobs from the packaged source archive.
 - **GitHub source-archive validation passed** for the `v0.1.0` tag: its source checks, deterministic
   package, provenance attestation and artifact upload completed successfully. The downloaded archive
   passed both checksum and GitHub attestation verification.
-- **The first native GitHub quality run exposed two cross-platform integration defects**: Homebrew
-  no longer provides the `llvm@23` formula used on macOS Intel, and CMake's generic ZLIB finder does
-  not consider zlib's `zs.lib` static Windows name. Fixes are committed with the next run as the
-  required validation; no native GitHub success is claimed until it completes.
+- **macOS Intel remains unverified.** The hosted Intel Homebrew channel provides LLVM 22 while the
+  project pins clang-tidy 23, and LLVM 23 publishes no Intel macOS release archive. The required
+  GitHub matrix therefore validates macOS ARM64 and Linux x86-64; Intel macOS validation remains an
+  explicit release requirement rather than a silently weakened check.
 - **Windows and MSVC have never been executed**: not the replay harnesses, not `tools/ci_windows.ps1`,
   not the verified-installer path for clang-tidy. Portability there rests on review alone.
 - **x86-64 has never been executed**: every container run was aarch64.
