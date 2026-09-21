@@ -37,7 +37,8 @@ std::optional<std::uint32_t> reference_number(std::string_view text) {
             return std::nullopt;
         }
     }
-    return value == 0 ? std::nullopt : std::optional<std::uint32_t>(value);
+    return value == 0 ? std::nullopt
+                      : std::optional<std::uint32_t>(static_cast<std::uint32_t>(value));
 }
 
 // Returns the sorted pages, or nullopt when the reference grammar rejects the input.
