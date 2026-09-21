@@ -6,6 +6,7 @@
 
 #include <exception>
 #include <iostream>
+// NOLINTNEXTLINE(bugprone-exception-escape): test failures are caught and rendered below.
 int main() {
     try {
         docenhance::tests::parser_cases();
