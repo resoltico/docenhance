@@ -1,0 +1,36 @@
+{
+  "version": 12,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/${presetName}",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": true,
+        "DE_SUPERBUILD": true,
+        "DE_BUILD_TESTS": true,
+        "DE_WARNINGS_AS_ERRORS": true,
+        "DE_ENABLE_CLANG_TIDY": true,
+        "DE_BUILD_JOBS": "2"
+      },
+      "warnings": {
+        "author": true,
+        "deprecated": true,
+        "uninitialized": true,
+        "unusedCli": true
+      },
+      "errors": {
+        "author": true,
+        "deprecated": true,
+        "uninitialized": true,
+        "unusedCli": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Text files are normalized to LF in the repository and on checkout.
+* text=auto eol=lf
+*.c text eol=lf
+*.cmake text eol=lf
+*.cpp text eol=lf
+*.dict text eol=lf
+*.h text eol=lf
+*.hpp text eol=lf
+*.in text eol=lf
+*.ini text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+*.ps1 text eol=lf
+*.py text eol=lf
+*.sh text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+CMakeLists.txt text eol=lf
+# Fuzz inputs are exact byte sequences: any normalization would change what they reproduce.
+fuzz/corpus/** binary
+fuzz/regressions/** binary
+*.gz binary
+*.jpg binary
+*.png binary
+*.tif binary
+*.tiff binary

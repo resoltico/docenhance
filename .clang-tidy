@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: MIT
+# LLVM clang-tidy 23.x, strict profile. WarningsAsErrors: * is zero-tolerance for enabled checks.
+# No grandfathering and no NOLINT without an entry in tests/exceptions/registry.json.
+#
+# Every disabled check below is disabled for a stated reason:
+#   modernize-use-trailing-return-type   Style-only; conflicts with the project's declaration style.
+#   readability-identifier-length        Numerical code mirrors the specification's notation
+#                                        (x, y, p, c); names are enforced by identifier-naming.
+#   portability-avoid-pragma-once        #pragma once is supported by every targeted compiler.
+#   performance-enum-size                Enums are not stored in bulk; ExitCode mirrors process int.
+#   hicpp-*/google-* (rest)              Aliases of enabled checks or Google-specific style rules.
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  cert-*,
+  concurrency-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  google-build-explicit-make-pair,
+  google-build-namespaces,
+  google-build-using-namespace,
+  google-default-arguments,
+  google-explicit-constructor,
+  google-global-names-in-headers,
+  google-runtime-int,
+  google-runtime-operator,
+  hicpp-exception-baseclass,
+  hicpp-multiway-paths-covered,
+  hicpp-no-assembler,
+  hicpp-signed-bitwise,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -portability-avoid-pragma-once,
+  -performance-enum-size
+WarningsAsErrors: '*'
+HeaderFilterRegex: '.*[/\\](include[/\\]docenhance|src|tests|fuzz|tools)[/\\].*'
+SystemHeaders: false
+FormatStyle: file
+CheckOptions:
+  # Naming mirrors the existing code base: snake_case everywhere, CamelCase for types.
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-identifier-naming.ClassCase: CamelCase
+  readability-identifier-naming.StructCase: CamelCase
+  readability-identifier-naming.UnionCase: CamelCase
+  readability-identifier-naming.EnumCase: CamelCase
+  readability-identifier-naming.EnumConstantCase: lower_case
+  readability-identifier-naming.TypeAliasCase: CamelCase
+  readability-identifier-naming.TypedefCase: CamelCase
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.ConceptCase: CamelCase
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.MethodCase: lower_case
+  readability-identifier-naming.VariableCase: lower_case
+  readability-identifier-naming.ParameterCase: lower_case
+  readability-identifier-naming.MemberCase: lower_case
+  readability-identifier-naming.PrivateMemberCase: lower_case
+  readability-identifier-naming.PrivateMemberSuffix: _
+  readability-identifier-naming.ProtectedMemberCase: lower_case
+  readability-identifier-naming.ProtectedMemberSuffix: _
+  readability-identifier-naming.ConstexprVariableCase: lower_case
+  readability-identifier-naming.GlobalConstantCase: lower_case
+  readability-identifier-naming.StaticConstantCase: lower_case
+  readability-identifier-naming.MacroDefinitionCase: UPPER_CASE
+  # LLVMFuzzerTestOneInput and main are fixed external entry points.
+  readability-identifier-naming.FunctionIgnoredRegexp: '^LLVMFuzzerTestOneInput$'
+  # Size and complexity budgets: the function-level counterpart of tools/check_gates.py.
+  readability-function-cognitive-complexity.Threshold: '20'
+  readability-function-cognitive-complexity.IgnoreMacros: 'true'
+  readability-function-size.LineThreshold: '80'
+  readability-function-size.StatementThreshold: '60'
+  readability-function-size.BranchThreshold: '15'
+  readability-function-size.ParameterThreshold: '5'
+  readability-function-size.NestingThreshold: '4'
+  readability-function-size.VariableThreshold: '20'
+  # Stricter than the defaults.
+  bugprone-easily-swappable-parameters.MinimumLength: '3'
+  bugprone-narrowing-conversions.PedanticMode: 'true'
+  misc-const-correctness.WarnPointersAsValues: 'true'
+  readability-implicit-bool-conversion.AllowIntegerConditions: 'false'
+  readability-implicit-bool-conversion.AllowPointerConditions: 'false'
+  readability-magic-numbers.IgnoredIntegerValues: '1;2'
+  readability-magic-numbers.IgnorePowersOf2IntegerValues: 'false'
+  cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues: '1;2'
+  misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: 'true'
+  misc-include-cleaner.IgnoreHeaders: 'nlohmann/.*;CLI/.*;catch2/.*;opencv2/.*;allheaders\.h;lcms2\.h;jpeglib\.h;png\.h;tiffio\.h;zlib\.h;picosha2\.h;docenhance/version\.hpp'

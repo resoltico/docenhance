@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocEnhance foundation command response (not the v1 processing-result schema)",
+  "description": "Every JSON response of the foundation executable. Enforced by tests/cli/test_cli.py against the real binary; new fields must be declared here first.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "command",
+    "development_stage",
+    "version",
+    "exit_code"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "command": {
+      "enum": [
+        "root",
+        "process",
+        "plan",
+        "inspect",
+        "presets",
+        "methods",
+        "version"
+      ]
+    },
+    "development_stage": {
+      "const": "foundation"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "exit_code": {
+      "type": "integer"
+    },
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "enum": [
+            "E_ARGUMENT",
+            "E_NOT_IMPLEMENTED",
+            "E_INVARIANT"
+          ]
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "publication": {
+      "const": "not_started"
+    },
+    "usage": {
+      "type": "string"
+    },
+    "contract_status": {
+      "type": "string"
+    },
+    "options": {
+      "type": "array"
+    },
+    "methods": {
+      "type": "array"
+    },
+    "supported_formats": {
+      "type": "array"
+    },
+    "platform": {
+      "type": "string"
+    },
+    "compiler": {
+      "type": "string"
+    },
+    "dependency_lock_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

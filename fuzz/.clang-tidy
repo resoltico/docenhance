@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: MIT
+# Fuzz-harness relaxations; every disabled check is named with its reason:
+#   cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers
+#       Harness properties compare against literal bounds and tolerances from the specification
+#       and the reference tests; naming each literal would obscure the property it states.
+#   cppcoreguidelines-pro-bounds-avoid-unchecked-container-access
+#       A harness compares two planes sample by sample, so a coordinate is the property being
+#       stated; routing each comparison through iterators would hide what is being checked. Fuzz
+#       builds run with AddressSanitizer, UndefinedBehaviorSanitizer and a hardened standard
+#       library, all of which check exactly these accesses.
+InheritParentConfig: true
+Checks: >
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access

@@ -1,0 +1,328 @@
+{
+  "version": 12,
+  "cmakeMinimumRequired": {
+    "major": 4,
+    "minor": 4,
+    "patch": 0
+  },
+  "$comment": "Explicit acquisition precedes these offline workflows. One build tree and private dependency prefix per preset.",
+  "include": [
+    "cmake/presets/base.json"
+  ],
+  "configurePresets": [
+    {
+      "name": "dev",
+      "inherits": "base",
+      "displayName": "Development + tests",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "inherits": "base",
+      "displayName": "Release + tests + package",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "sanitize",
+      "inherits": "base",
+      "displayName": "ASan + UBSan (first-party code)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "DE_ENABLE_ASAN": true,
+        "DE_ENABLE_UBSAN": true
+      },
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "fuzz",
+      "inherits": "base",
+      "displayName": "Strict fuzzing (libFuzzer + ASan + UBSan); set CC/CXX to LLVM clang 23",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "DE_BUILD_TESTS": false,
+        "DE_BUILD_TOOLS": false,
+        "DE_ENABLE_FUZZING": true,
+        "DE_FUZZ_ONLY": true,
+        "DE_ENABLE_ASAN": true,
+        "DE_ENABLE_UBSAN": true
+      },
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "fuzz-afl",
+      "inherits": "fuzz",
+      "displayName": "Strict fuzzing with AFL++; set CC/CXX to afl-clang-fast/afl-clang-fast++",
+      "cacheVariables": {
+        "DE_FUZZ_ENGINE": "afl"
+      }
+    },
+    {
+      "name": "tsan",
+      "inherits": "base",
+      "displayName": "ThreadSanitizer (the schedule)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "DE_ENABLE_TSAN": true,
+        "DE_ENABLE_UBSAN": true
+      },
+      "condition": {
+        "type": "notEquals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "jobs": 2
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "jobs": 2
+    },
+    {
+      "name": "sanitize",
+      "configurePreset": "sanitize",
+      "jobs": 2
+    },
+    {
+      "name": "fuzz",
+      "configurePreset": "fuzz",
+      "jobs": 2
+    },
+    {
+      "name": "fuzz-afl",
+      "configurePreset": "fuzz-afl",
+      "jobs": 2
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "jobs": 2
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      }
+    },
+    {
+      "name": "sanitize",
+      "configurePreset": "sanitize",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      },
+      "environment": {
+        "ASAN_OPTIONS": "abort_on_error=1:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:strict_init_order=1:allocator_may_return_null=0",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:report_error_type=1",
+        "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
+      }
+    },
+    {
+      "name": "fuzz",
+      "configurePreset": "fuzz",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "environment": {
+        "ASAN_OPTIONS": "abort_on_error=1:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:strict_init_order=1:allocator_may_return_null=0",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:report_error_type=1",
+        "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
+      }
+    },
+    {
+      "name": "fuzz-afl",
+      "configurePreset": "fuzz-afl",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": false
+      },
+      "environment": {
+        "ASAN_OPTIONS": "abort_on_error=1:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:strict_init_order=1:allocator_may_return_null=0",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:report_error_type=1",
+        "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
+      }
+    },
+    {
+      "name": "tsan",
+      "configurePreset": "tsan",
+      "output": {
+        "outputOnFailure": true
+      },
+      "execution": {
+        "noTestsAction": "error",
+        "stopOnFailure": true
+      },
+      "environment": {
+        "ASAN_OPTIONS": "abort_on_error=1:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:strict_init_order=1:allocator_may_return_null=0",
+        "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:report_error_type=1",
+        "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
+      }
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "release",
+      "configurePreset": "release",
+      "generators": [
+        "TGZ"
+      ],
+      "output": {
+        "verbose": true
+      },
+      "packageDirectory": "${sourceDir}/dist"
+    }
+  ],
+  "workflowPresets": [
+    {
+      "name": "dev",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "dev"
+        },
+        {
+          "type": "build",
+          "name": "dev"
+        },
+        {
+          "type": "test",
+          "name": "dev"
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "release"
+        },
+        {
+          "type": "build",
+          "name": "release"
+        },
+        {
+          "type": "test",
+          "name": "release"
+        },
+        {
+          "type": "package",
+          "name": "release"
+        }
+      ]
+    },
+    {
+      "name": "sanitize",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "sanitize"
+        },
+        {
+          "type": "build",
+          "name": "sanitize"
+        },
+        {
+          "type": "test",
+          "name": "sanitize"
+        }
+      ]
+    },
+    {
+      "name": "fuzz",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "fuzz"
+        },
+        {
+          "type": "build",
+          "name": "fuzz"
+        },
+        {
+          "type": "test",
+          "name": "fuzz"
+        }
+      ]
+    },
+    {
+      "name": "fuzz-afl",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "fuzz-afl"
+        },
+        {
+          "type": "build",
+          "name": "fuzz-afl"
+        },
+        {
+          "type": "test",
+          "name": "fuzz-afl"
+        }
+      ]
+    },
+    {
+      "name": "tsan",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "tsan"
+        },
+        {
+          "type": "build",
+          "name": "tsan"
+        },
+        {
+          "type": "test",
+          "name": "tsan"
+        }
+      ]
+    }
+  ]
+}

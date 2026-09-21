@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: MIT
+# Test-only relaxations; every disabled check is named with its reason:
+#   cert-err58-cpp, cppcoreguidelines-avoid-non-const-global-variables
+#       Catch2 registers test cases through static constructors; that is not first-party state.
+#   cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers
+#       Reference tests compare against literal expected values from the specification;
+#       naming each literal would obscure the expectation it documents.
+#   cppcoreguidelines-pro-bounds-avoid-unchecked-container-access
+#       Image tests assert on named samples of a plane, so a coordinate is the expectation being
+#       stated; expressing each one through iterators would hide what is being checked. Every one
+#       of these accesses is bounds-checked where it matters: the sanitize, tsan and fuzz presets
+#       run this suite with a hardened standard library.
+InheritParentConfig: true
+Checks: >
+  -cert-err58-cpp,
+  -cppcoreguidelines-avoid-non-const-global-variables,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -cppcoreguidelines-pro-bounds-avoid-unchecked-container-access

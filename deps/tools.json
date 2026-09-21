@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-09-19",
+  "cmake": {
+    "version": "4.4.3",
+    "minimum": "4.4",
+    "source": "https://github.com/Kitware/CMake/releases/tag/v4.4.3"
+  },
+  "ninja": {
+    "version": "1.13.2",
+    "minimum": "1.13",
+    "source": "https://github.com/ninja-build/ninja/releases/tag/v1.13.2"
+  },
+  "python": {
+    "minimum": "3.12",
+    "runtime_dependency": false
+  },
+  "clang_tidy": {
+    "version": "23.1.1",
+    "minimum": "23",
+    "source": "https://github.com/llvm/llvm-project/releases/tag/llvmorg-23.1.1",
+    "runtime_dependency": false,
+    "install": {
+      "linux": {
+        "apt_repository": "https://apt.llvm.org/noble/ llvm-toolchain-noble-23 main",
+        "key_url": "https://apt.llvm.org/llvm-snapshot.gpg.key",
+        "key_fingerprint": "6084F3CF814B57C1CF12EFD515CF4D18AF4F7421",
+        "fuzzing_packages": [
+          "llvm-23-dev",
+          "lld-23"
+        ],
+        "packages": [
+          "clang-tidy-23",
+          "clang-tools-23"
+        ],
+        "compiler_packages": [
+          "clang-23",
+          "libclang-rt-23-dev"
+        ]
+      },
+      "macos": {
+        "homebrew_formula": "llvm@23"
+      },
+      "windows_x86_64": {
+        "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/LLVM-23.1.1-win64.msi",
+        "sha256": "11af43ba261a1158090dd6f0da40d7a34f32dbfb4a76b43240bffa1ebb140984"
+      }
+    }
+  },
+  "clang_format": {
+    "version": "23.1.1",
+    "minimum": "23",
+    "package": "clang-format",
+    "source": "https://pypi.org/project/clang-format/23.1.1/",
+    "runtime_dependency": false
+  },
+  "ruff": {
+    "version": "0.16.8",
+    "package": "ruff",
+    "source": "https://pypi.org/project/ruff/0.16.8/",
+    "runtime_dependency": false
+  },
+  "mypy": {
+    "version": "2.3.1",
+    "package": "mypy",
+    "source": "https://pypi.org/project/mypy/2.3.1/",
+    "runtime_dependency": false
+  },
+  "pre_commit": {
+    "version": "4.6.2",
+    "package": "pre-commit",
+    "source": "https://pypi.org/project/pre-commit/4.6.2/",
+    "runtime_dependency": false
+  },
+  "fuzzing": {
+    "llvm_major": "23",
+    "engines": "libFuzzer from the pinned LLVM for CI; AFL++ for scheduled campaigns",
+    "afl_plus_plus": {
+      "version": "5.03c",
+      "repository": "https://github.com/AFLplusplus/AFLplusplus.git",
+      "ref": "refs/tags/v5.03c",
+      "object": "dbaf11913c1b2702dee5b4d3dcfffd52f1defe50",
+      "object_type": "commit"
+    },
+    "decision": "docs/decisions.md"
+  },
+  "macos": {
+    "deployment_target": "14.0",
+    "decision": "docs/decisions.md"
+  },
+  "cxx": {
+    "standard": 23,
+    "extensions": false
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "exceptions": {
+    "cmake/ProjectOptions.cmake:compiler/-Wno-unknown-warning-option@7fb1d038": {
+      "explanation": "Applies to clang-tidy's own parse of GCC compile commands, where the GCC-only warning flags would otherwise be hard errors under -Werror. The compilers themselves still reject unknown options."
+    },
+    "fuzz/support/replay_main.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
+      "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>."
+    },
+    "include/docenhance/contract/cli_contract.hpp:clang-format/off@6435d9d3": {
+      "explanation": "Generated table: tools/generate_spec.py emits one option per line with long description literals; clang-format would split the literals and break byte-exact regeneration checks."
+    },
+    "src/cli/main.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
+      "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>."
+    },
+    "tests/cli/test_cli.py:ruff/ANN401@6209a09a": {
+      "explanation": "The schema validator walks arbitrary decoded JSON, whose values are genuinely of any type; narrowing the parameter would defeat the recursion over objects, arrays and scalars."
+    },
+    "tools/dep_acquire.py:ruff/S310@3c54bc32": {
+      "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written."
+    },
+    "tools/dep_verify.py:ruff/PTH115@ff530aff": {
+      "explanation": "os.readlink returns the symlink target byte-for-byte; Path.readlink normalizes it, which would change recorded receipt hashes and invalidate verified caches."
+    },
+    "include/docenhance/image/plane.hpp:clang-tidy/*-reinterpret-cast@180d663e": {
+      "explanation": "The one boundary where a plane's raw storage becomes samples, in a single private function. core::Buffer is over-aligned for every supported sample type, those types are implicit-lifetime, and the span covers whole rows, so no other cast is needed anywhere else in the project."
+    },
+    "src/methods/box_mean.cpp:clang-tidy/*-unchecked-container-access@550d11ea": {
+      "explanation": "The kernel's innermost read, reached by a coordinate that image::reflect101_folded has already folded into the plane, so it is in range by construction. A checked access here is on the hot path of every filtered sample; the sanitize, tsan and fuzz presets run the whole suite with a hardened standard library, which checks exactly this access."
+    }
+  }
+}

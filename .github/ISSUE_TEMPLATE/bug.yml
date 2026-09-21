@@ -1,0 +1,29 @@
+name: Defect report
+description: Report a reproducible build, CLI, numerical or security-adjacent defect.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: "Do not upload private documents or credentials. Use private reporting for security vulnerabilities."
+  - type: input
+    id: revision
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: OS, architecture, compiler and build-tool versions
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Exact commands and expected versus actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Sanitized logs and relevant preset/configuration

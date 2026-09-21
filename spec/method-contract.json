@@ -1,0 +1,196 @@
+{
+  "schema_version": 1,
+  "methods": [
+    {
+      "id": "I01",
+      "name": "Quantile log-surface illumination",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--illumination",
+        "--background-strength",
+        "--background-max-gain",
+        "--background-target",
+        "--background-cell",
+        "--background-quantile",
+        "--background-smooth"
+      ]
+    },
+    {
+      "id": "I02",
+      "name": "Morphological illumination",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--illumination",
+        "--background-strength",
+        "--background-max-gain",
+        "--background-target",
+        "--background-radius"
+      ]
+    },
+    {
+      "id": "D01",
+      "name": "16-bit NLM-L1",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--denoise",
+        "--denoise-blend",
+        "--nlm-h",
+        "--nlm-patch",
+        "--nlm-search"
+      ]
+    },
+    {
+      "id": "D02",
+      "name": "Floating-point TV-L1",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--denoise",
+        "--denoise-blend",
+        "--tv-lambda",
+        "--tv-iterations",
+        "--tv-tolerance"
+      ]
+    },
+    {
+      "id": "R01",
+      "name": "Known-PSF regularized Fourier restoration",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--deblur",
+        "--psf",
+        "--wiener-k",
+        "--deblur-blend"
+      ]
+    },
+    {
+      "id": "C01",
+      "name": "Percentile levels",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--contrast",
+        "--contrast-blend",
+        "--levels-low",
+        "--levels-high"
+      ]
+    },
+    {
+      "id": "C02",
+      "name": "Gamma",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--contrast",
+        "--contrast-blend",
+        "--gamma"
+      ]
+    },
+    {
+      "id": "C03",
+      "name": "Masked floating-point CLAHE",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--contrast",
+        "--contrast-blend",
+        "--clahe-grid",
+        "--clahe-clip"
+      ]
+    },
+    {
+      "id": "S01",
+      "name": "Thresholded unsharp masking",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--sharpen",
+        "--sharpen-sigma",
+        "--sharpen-amount",
+        "--sharpen-threshold"
+      ]
+    },
+    {
+      "id": "B01",
+      "name": "Otsu",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--binarize"
+      ]
+    },
+    {
+      "id": "B02",
+      "name": "Sauvola",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--binarize",
+        "--sauvola-window",
+        "--sauvola-k",
+        "--sauvola-r"
+      ]
+    },
+    {
+      "id": "B03",
+      "name": "Fixed threshold",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--binarize",
+        "--fixed-threshold"
+      ]
+    },
+    {
+      "id": "G01",
+      "name": "Metadata orientation",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": []
+    },
+    {
+      "id": "G02",
+      "name": "Exact quarter-turn",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--rotate"
+      ]
+    },
+    {
+      "id": "G03",
+      "name": "Manual perspective",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--quad",
+        "--page-size"
+      ]
+    },
+    {
+      "id": "G04",
+      "name": "Deskew",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--deskew",
+        "--deskew-limit"
+      ]
+    },
+    {
+      "id": "G05",
+      "name": "Vertical text-line dewarp",
+      "method_version": 1,
+      "status": "not-implemented",
+      "arguments": [
+        "--dewarp",
+        "--dewarp-min-lines",
+        "--dewarp-max-displacement"
+      ]
+    }
+  ]
+}

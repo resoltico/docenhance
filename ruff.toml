@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: MIT
+# Ruff (lint + format) for the development-only Python tooling. Strict profile: every rule is
+# enabled and each ignored code carries its reason on the same line; tools/check_gates.py rejects
+# ignores without one. Version pinned in deps/tools.json.
+target-version = "py312"
+line-length = 100
+# Tool modules import each other by name from tools/; they are the first-party code.
+src = ["tools"]
+# Only build products and caches; tools/check_gates.py keeps this identical to its skip list.
+extend-exclude = [".cache", "out", "dist"]
+
+[format]
+quote-style = "double"
+docstring-code-format = true
+
+[lint]
+select = ["ALL"]
+ignore = [
+    "COM812", # Conflicts with the formatter's trailing-comma handling (documented by Ruff).
+    "CPY001", # SPDX headers are enforced by tools/check_project.py instead.
+    "D203",   # Incompatible with D211 (no blank line before class docstring), which is kept.
+    "D213",   # Incompatible with D212 (summary on the first docstring line), which is kept.
+    "S603",   # Every subprocess call uses an argument list and never a shell.
+    "T201",   # These are command-line tools; print is their user interface.
+]
+
+[lint.per-file-ignores]
+"tools/*.py" = [
+    "INP001", # tools/ is a script directory on sys.path, deliberately not an importable package.
+]
+"tests/**/*.py" = [
+    "INP001", # Test scripts are discovered by path (unittest, CTest), not imported as a package.
+    "PT009",  # The suites deliberately use stdlib unittest, not pytest.
+    "PT027",  # The suites deliberately use stdlib unittest, not pytest.
+]
+
+[lint.isort]
+# tools_path must run before the tool modules it makes importable.
+section-order = ["future", "standard-library", "tools-path", "third-party", "first-party", "local-folder"]
+
+[lint.isort.sections]
+"tools-path" = ["tools_path"]
+
+[lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[lint.pydocstyle]
+convention = "google"
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pylint]
+max-args = 5
+max-branches = 12
+max-returns = 6
+max-statements = 50

@@ -1,0 +1,25 @@
+/out/
+/.cache/
+/.venv/
+/dist/
+# Generated into each source archive by tools/package_source.py, never committed.
+/SOURCE_MANIFEST.sha256
+/CMakeUserPresets.json
+/compile_commands.json
+.env
+.env.*
+!.env.example
+__pycache__/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.py[cod]
+.DS_Store
+Thumbs.db
+.idea/
+.fleet/
+/.vscode/*.log
+*.profraw
+*.profdata

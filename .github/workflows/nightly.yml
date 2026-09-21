@@ -1,0 +1,94 @@
+name: Nightly deep checks
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+    inputs:
+      seconds:
+        description: Fuzzing time per target, in seconds
+        default: '1800'
+permissions:
+  contents: read
+concurrency:
+  group: fuzz-campaign
+  cancel-in-progress: false
+jobs:
+  sanitize:
+    name: Sanitized test suites
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python tools/install_build_tools.py
+      - run: python tools/install_llvm.py --fuzzing
+      - run: cmake -P cmake/AcquireDependencies.cmake
+      - name: Build and test with ASan and UBSan
+        env:
+          CC: clang-23
+          CXX: clang++-23
+        run: cmake --workflow --preset sanitize
+      - name: Build and test with ThreadSanitizer
+        env:
+          CC: clang-23
+          CXX: clang++-23
+        run: cmake --workflow --preset tsan
+  campaign:
+    name: Campaign / ${{ matrix.engine }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: libfuzzer
+            preset: fuzz
+            cc: clang-23
+            cxx: clang++-23
+          - engine: afl
+            preset: fuzz-afl
+            cc: afl-clang-fast
+            cxx: afl-clang-fast++
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      SECONDS_PER_TARGET: ${{ github.event.inputs.seconds || '1800' }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python tools/install_build_tools.py
+      - run: python tools/install_llvm.py --fuzzing
+      - name: Build pinned AFL++
+        if: matrix.engine == 'afl'
+        run: |
+          python tools/install_aflplusplus.py
+          echo core | sudo tee /proc/sys/kernel/core_pattern
+      - run: |
+          python tools/deps.py fetch --dependency cli11
+          python tools/deps.py fetch --dependency json
+      - name: Build fuzzers
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake --preset ${{ matrix.preset }}
+          cmake --build --preset ${{ matrix.preset }}
+      - name: Fuzz every target in parallel
+        shell: bash
+        run: |
+          set -uo pipefail
+          status=0
+          for target in pages decimal numeric cli; do
+            python tools/run_fuzzers.py --engine ${{ matrix.engine }} --target "$target" \
+              --binary "out/${{ matrix.preset }}/app/fuzz/de_fuzz_$target" \
+              --work out/campaign --seconds "$SECONDS_PER_TARGET" > "out/campaign-$target.log" 2>&1 &
+          done
+          for job in $(jobs -p); do wait "$job" || status=1; done
+          tail -n 5 out/campaign-*.log
+          exit $status

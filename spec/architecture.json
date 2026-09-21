@@ -1,0 +1,409 @@
+{
+  "$comment": "The reviewed source of the layer graph. CMake enforces link edges from it at configure time, tools/check_architecture.py enforces includes, calls and documentation against it, and docs/architecture.md must agree with it. Editing this file is a design change. may_allocate marks the single layer that may write a new-expression: everything else receives memory that a core::Budget already accounted for.",
+  "packages": {
+    "CLI11": {
+      "targets": [
+        "CLI11::CLI11"
+      ],
+      "headers": [
+        "CLI/"
+      ]
+    },
+    "nlohmann_json": {
+      "targets": [
+        "nlohmann_json::nlohmann_json"
+      ],
+      "headers": [
+        "nlohmann/"
+      ]
+    },
+    "opencv": {
+      "targets": [
+        "opencv_core",
+        "opencv_flann",
+        "opencv_geometry",
+        "opencv_imgproc",
+        "opencv_photo"
+      ],
+      "headers": [
+        "opencv2/"
+      ]
+    },
+    "leptonica": {
+      "targets": [
+        "DE::leptonica"
+      ],
+      "headers": [
+        "leptonica/",
+        "allheaders.h"
+      ]
+    },
+    "lcms": {
+      "targets": [
+        "DE::lcms"
+      ],
+      "headers": [
+        "lcms2.h"
+      ]
+    },
+    "jpeg": {
+      "targets": [
+        "DE::jpeg"
+      ],
+      "headers": [
+        "jpeglib.h"
+      ]
+    },
+    "png": {
+      "targets": [
+        "DE::png"
+      ],
+      "headers": [
+        "png.h"
+      ]
+    },
+    "tiff": {
+      "targets": [
+        "DE::tiff"
+      ],
+      "headers": [
+        "tiffio.h"
+      ]
+    },
+    "picosha2": {
+      "targets": [
+        "DE::picosha2"
+      ],
+      "headers": [
+        "picosha2.h"
+      ]
+    },
+    "catch2": {
+      "targets": [
+        "Catch2::Catch2WithMain",
+        "Catch2::Catch2"
+      ],
+      "headers": [
+        "catch2/"
+      ]
+    }
+  },
+  "layers": {
+    "core": {
+      "target": "de_core",
+      "summary": "Errors, exit codes and the `Result` vocabulary",
+      "uses": [],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "exit",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ],
+      "may_allocate": true
+    },
+    "contract": {
+      "target": "de_contract",
+      "summary": "The command vocabulary, generated option descriptors and strict value parsers",
+      "uses": [
+        "core"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "exit",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ]
+    },
+    "exec": {
+      "target": "de_exec",
+      "summary": "The schedule: how many workers run a page's independent work items",
+      "uses": [
+        "core"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "filesystem",
+        "fstream",
+        "iostream"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "exit",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ],
+      "may_thread": true
+    },
+    "image": {
+      "target": "de_image",
+      "summary": "Numerical and colour primitives; later, the owning image representation",
+      "uses": [
+        "core"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "exit",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ]
+    },
+    "methods": {
+      "target": "de_methods",
+      "summary": "Pure image operations; later, the catalog of complete methods",
+      "uses": [
+        "core",
+        "exec",
+        "image"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "imread",
+        "imwrite",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ]
+    },
+    "io": {
+      "target": "de_io",
+      "summary": "Later: codecs, metadata, hashing and exclusive publication",
+      "uses": [
+        "image"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ]
+    },
+    "app": {
+      "target": "de_app",
+      "summary": "Use cases: what an invocation means, decided in types",
+      "uses": [
+        "contract",
+        "core",
+        "exec",
+        "io",
+        "methods"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ]
+    },
+    "report": {
+      "target": "de_report",
+      "summary": "Renders an outcome as the documented JSON response or as human text",
+      "uses": [
+        "core",
+        "contract",
+        "app"
+      ],
+      "external": [
+        "nlohmann_json"
+      ],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ]
+    },
+    "cli": {
+      "target": "de_cli",
+      "summary": "CLI11 syntax adapter, process streams and exit status",
+      "uses": [
+        "core",
+        "contract",
+        "app",
+        "report"
+      ],
+      "external": [
+        "CLI11"
+      ],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ],
+      "may_catch": true
+    }
+  }
+}

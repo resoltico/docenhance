@@ -1,0 +1,49 @@
+name: Package source archive
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: read
+  attestations: write
+  id-token: write
+jobs:
+  source:
+    name: Deterministic source archive
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - name: Install pinned source-quality tools
+        run: python tools/install_build_tools.py --lint
+      - name: Source integrity and structural checks
+        run: python tools/check_project.py
+      - name: Quality-policy checks
+        run: python tools/check_gates.py
+      - name: Formatting checks
+        run: |
+          python tools/check_format.py
+          python -m ruff format --check
+      - name: Lint and type checks
+        run: |
+          python -m ruff check --output-format github
+          python -m mypy
+      - name: Tooling tests
+        run: python -m unittest discover -s tests/tooling -v
+      - name: Package deterministic source archive
+        run: python tools/package_source.py
+      - name: Attest source-archive provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: dist/docenhance-*-source.tar.gz
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: docenhance-source
+          path: dist/*
+          if-no-files-found: error

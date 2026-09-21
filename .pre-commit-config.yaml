@@ -1,0 +1,12 @@
+# Local hooks only: no downloaded hook repositories, and no second list of checks to keep in step.
+# tools/check_all.py is the authoritative set; tools/check_project.py fails if CI stops running it.
+# Install the pinned runner with: python tools/install_build_tools.py --lint && pre-commit install
+repos:
+  - repo: local
+    hooks:
+      - id: docenhance-checks
+        name: Structure, gates, formatting, linting, typing and tooling tests
+        entry: python tools/check_all.py
+        language: system
+        pass_filenames: false
+        always_run: true

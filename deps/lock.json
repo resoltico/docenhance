@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "verified_on": "2026-09-17",
+  "pin_policy": "immutable Git object or upstream-archive digest; see docs/decisions.md",
+  "dependencies": [
+    {
+      "name": "zlib",
+      "version": "1.3.2",
+      "transport": "git",
+      "repository": "https://github.com/madler/zlib.git",
+      "ref": "refs/tags/v1.3.2",
+      "object": "216c70c020aa53f0c40920d155f808b6b59c9acb",
+      "object_type": "tag",
+      "license": "Zlib",
+      "license_files": [
+        "LICENSE"
+      ],
+      "verification_url": "https://api.github.com/repos/madler/zlib/git/ref/tags/v1.3.2",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "jpeg",
+      "version": "3.2.0",
+      "transport": "git",
+      "repository": "https://github.com/libjpeg-turbo/libjpeg-turbo.git",
+      "ref": "refs/tags/3.2.0",
+      "object": "c85e6b905bf237038faa936dab160ebfc5da0344",
+      "object_type": "commit",
+      "license": "BSD-3-Clause AND IJG AND Zlib",
+      "license_files": [
+        "LICENSE.md",
+        "README.ijg"
+      ],
+      "verification_url": "https://api.github.com/repos/libjpeg-turbo/libjpeg-turbo/git/ref/tags/3.2.0",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "png",
+      "version": "1.6.58",
+      "transport": "git",
+      "repository": "https://github.com/pnggroup/libpng.git",
+      "ref": "refs/tags/v1.6.58",
+      "object": "fdc7185dfedbddce8c2487bc171f66af4fca24ab",
+      "object_type": "tag",
+      "license": "libpng-2.0",
+      "license_files": [
+        "LICENSE"
+      ],
+      "verification_url": "https://api.github.com/repos/pnggroup/libpng/git/ref/tags/v1.6.58",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "tiff",
+      "version": "4.7.2",
+      "transport": "archive",
+      "url": "https://gitlab.com/libtiff/libtiff/-/archive/v4.7.2/libtiff-v4.7.2.tar.gz",
+      "digest_algorithm": "sha512",
+      "digest": "c4dcde3c79e5d69c7231f8862e2e5a83d90d9cce694fb2a4804800b2f8f1bc9db504b9252d81dce872eec8358b33a3a1dbdddcbb6181f6fb8d1d7fc0e9a9fc6a",
+      "license": "libtiff",
+      "license_files": [
+        "LICENSE.md"
+      ],
+      "scope": "runtime-candidate",
+      "verification_url": "https://github.com/microsoft/vcpkg/blob/master/ports/tiff/portfile.cmake",
+      "verification_blob_sha": "50e0db0e7f271ae49f562652584d808fc1868100"
+    },
+    {
+      "name": "opencv",
+      "version": "5.0.0",
+      "transport": "git",
+      "repository": "https://github.com/opencv/opencv.git",
+      "ref": "refs/tags/5.0.0",
+      "object": "9e2ede9628a55ec2742a1b180d3e69b0322281b9",
+      "object_type": "tag",
+      "license": "Apache-2.0",
+      "license_files": [
+        "LICENSE"
+      ],
+      "verification_url": "https://api.github.com/repos/opencv/opencv/git/ref/tags/5.0.0",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "leptonica",
+      "version": "1.87.0",
+      "transport": "git",
+      "repository": "https://github.com/DanBloomberg/leptonica.git",
+      "ref": "refs/tags/1.87.0",
+      "object": "13275a278eb55b5746e33f95fbf5a2c8f604b3ab",
+      "object_type": "commit",
+      "license": "BSD-2-Clause",
+      "license_files": [
+        "leptonica-license.txt"
+      ],
+      "verification_url": "https://api.github.com/repos/DanBloomberg/leptonica/git/ref/tags/1.87.0",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "lcms",
+      "version": "lcms2.19.1",
+      "transport": "git",
+      "repository": "https://github.com/mm2/Little-CMS.git",
+      "ref": "refs/tags/lcms2.19.1",
+      "object": "21c582a594fe5279f90c0b93437c398f93bf62b0",
+      "object_type": "commit",
+      "license": "MIT",
+      "license_files": [
+        "LICENSE"
+      ],
+      "verification_url": "https://api.github.com/repos/mm2/Little-CMS/git/ref/tags/lcms2.19.1",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "cli11",
+      "version": "2.7.2",
+      "transport": "git",
+      "repository": "https://github.com/CLIUtils/CLI11.git",
+      "ref": "refs/tags/v2.7.2",
+      "object": "919ce47dad39520a6e9a695d3e2d222c6920a445",
+      "object_type": "tag",
+      "license": "BSD-3-Clause",
+      "license_files": [
+        "LICENSE"
+      ],
+      "verification_url": "https://api.github.com/repos/CLIUtils/CLI11/git/ref/tags/v2.7.2",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "json",
+      "version": "3.12.0",
+      "transport": "git",
+      "repository": "https://github.com/nlohmann/json.git",
+      "ref": "refs/tags/v3.12.0",
+      "object": "65ee68451d8eb2b5f3a30b410476ab83deb3289b",
+      "object_type": "tag",
+      "license": "MIT",
+      "license_files": [
+        "LICENSE.MIT"
+      ],
+      "verification_url": "https://api.github.com/repos/nlohmann/json/git/ref/tags/v3.12.0",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "picosha2",
+      "version": "1.0.1",
+      "transport": "git",
+      "repository": "https://github.com/okdshin/PicoSHA2.git",
+      "ref": "refs/tags/v1.0.1",
+      "object": "161cb3fc4170fa7a3eca9e582cebd27cc4d1fe29",
+      "object_type": "commit",
+      "license": "MIT",
+      "license_files": [
+        "LICENSE"
+      ],
+      "verification_url": "https://api.github.com/repos/okdshin/PicoSHA2/git/ref/tags/v1.0.1",
+      "scope": "runtime-candidate"
+    },
+    {
+      "name": "catch2",
+      "version": "3.16.0",
+      "transport": "git",
+      "repository": "https://github.com/catchorg/Catch2.git",
+      "ref": "refs/tags/v3.16.0",
+      "object": "fd79eadb5bc1760e7cbae12fd45b0d0040d1bb73",
+      "object_type": "tag",
+      "license": "BSL-1.0",
+      "license_files": [
+        "LICENSE.txt"
+      ],
+      "verification_url": "https://api.github.com/repos/catchorg/Catch2/git/ref/tags/v3.16.0",
+      "scope": "test"
+    }
+  ]
+}

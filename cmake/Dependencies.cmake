@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+# SPDX-License-Identifier: MIT
+include_guard(GLOBAL)
+if(NOT IS_DIRECTORY "${DE_DEPENDENCY_PREFIX}")
+  message(FATAL_ERROR "Build via the superbuild; no system dependency fallback is supported")
+endif()
+if(DE_FUZZ_ONLY)
+  # The fuzz targets compile first-party sources directly and need only header-only libraries.
+  foreach(de_dependency IN ITEMS cli11 json)
+    execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/deps.py" verify
+      --cache "${DE_SOURCE_CACHE}" --dependency ${de_dependency} COMMAND_ERROR_IS_FATAL ANY)
+  endforeach()
+  find_package(CLI11 2.7.2 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
+  find_package(nlohmann_json 3.12.0 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
+  return()
+endif()
+execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/deps.py" verify
+  --cache "${DE_SOURCE_CACHE}" COMMAND_ERROR_IS_FATAL ANY)
+# Upstream CMake packages are used where their installed target contract is reliable.
+find_package(OpenCV 5.0.0 EXACT CONFIG REQUIRED COMPONENTS core flann geometry imgproc photo
+  PATHS "${DE_DEPENDENCY_PREFIX}" "${DE_DEPENDENCY_PREFIX}/lib/cmake/opencv5" "${DE_DEPENDENCY_PREFIX}/lib/cmake/opencv4" NO_DEFAULT_PATH)
+find_package(CLI11 2.7.2 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
+find_package(nlohmann_json 3.12.0 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
+if(DE_BUILD_TESTS)
+  find_package(Catch2 3.16.0 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
+endif()
+# Codec packages are imported from *only* our own prefix, never host libraries.
+function(de_import_static target)
+  cmake_parse_arguments(PARSE_ARGV 1 arg "" "HEADER" "NAMES;LINKS")
+  find_library(de_library NAMES ${arg_NAMES} PATHS "${DE_DEPENDENCY_PREFIX}/lib" NO_DEFAULT_PATH NO_CACHE REQUIRED)
+  find_path(de_include NAMES "${arg_HEADER}" PATHS "${DE_DEPENDENCY_PREFIX}/include"
+    "${DE_DEPENDENCY_PREFIX}/include/leptonica" NO_DEFAULT_PATH NO_CACHE REQUIRED)
+  add_library(${target} STATIC IMPORTED GLOBAL)
+  set_target_properties(${target} PROPERTIES IMPORTED_LOCATION "${de_library}"
+    INTERFACE_INCLUDE_DIRECTORIES "${de_include}" INTERFACE_LINK_LIBRARIES "${arg_LINKS}")
+endfunction()
+if(WIN32)
+  # Use configuration-specific names before generic ones, in a configuration-private prefix.
+  set(de_zlib_names zs zlibstaticd zlibstatic zlibstat zd z)
+  set(de_jpeg_names jpeg-staticd jpeg-static jpeg)
+  set(de_png_names libpng16_staticd libpng16_static png16_static png16d png16 png)
+  set(de_tiff_names tiffd tiff)
+  set(de_lept_names leptonica-1.87.0d leptonica-1.87.0 leptd lept leptonica)
+else()
+  set(de_zlib_names z zlibstatic)
+  set(de_jpeg_names jpeg)
+  set(de_png_names png16 png)
+  set(de_tiff_names tiff)
+  set(de_lept_names lept leptonica)
+endif()
+de_import_static(DE::zlib NAMES ${de_zlib_names} HEADER zlib.h)
+de_import_static(DE::jpeg NAMES ${de_jpeg_names} HEADER jpeglib.h)
+de_import_static(DE::png NAMES ${de_png_names} HEADER png.h LINKS DE::zlib)
+de_import_static(DE::tiff NAMES ${de_tiff_names} HEADER tiffio.h LINKS DE::jpeg DE::zlib)
+de_import_static(DE::leptonica NAMES ${de_lept_names} HEADER allheaders.h)
+de_import_static(DE::lcms NAMES lcms2_staticd lcms2_static lcms2d lcms2 HEADER lcms2.h)
+find_path(DE_PICOSHA2_INCLUDE NAMES picosha2.h PATHS "${DE_DEPENDENCY_PREFIX}/include" NO_DEFAULT_PATH REQUIRED)
+add_library(DE::picosha2 INTERFACE IMPORTED GLOBAL)
+set_target_properties(DE::picosha2 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${DE_PICOSHA2_INCLUDE}")
+if(UNIX)
+  # C math linkage is explicit for the C libraries. Compiler runtimes remain system-owned.
+  find_library(DE_MATH_LIBRARY NAMES m REQUIRED)
+  add_library(DE::math UNKNOWN IMPORTED GLOBAL)
+  set_target_properties(DE::math PROPERTIES IMPORTED_LOCATION "${DE_MATH_LIBRARY}")
+  foreach(dep IN ITEMS DE::lcms DE::leptonica DE::jpeg DE::png DE::tiff)
+    set_property(TARGET ${dep} APPEND PROPERTY INTERFACE_LINK_LIBRARIES DE::math)
+  endforeach()
+endif()
+
+if(MSVC)
+  set_property(TARGET DE::leptonica APPEND PROPERTY INTERFACE_LINK_LIBRARIES user32.lib gdi32.lib)
+endif()

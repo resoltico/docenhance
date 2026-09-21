@@ -1,0 +1,117 @@
+name: Quality gates
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  structural:
+    name: Structural and reference gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python tools/install_build_tools.py --lint
+      - run: python tools/install_llvm.py --compiler
+      - run: python tools/check_project.py
+      - run: python tools/check_gates.py
+      - run: python tools/check_architecture.py
+      - run: python -m ruff format --check
+      - run: python -m ruff check --output-format github
+      - run: python -m mypy
+      - run: python tools/check_format.py
+      - run: python -m unittest discover -s tests/tooling -v
+      - run: python tools/check_foundation.py --compiler g++
+      - run: python tools/check_foundation.py --compiler clang++-23 --sanitize
+  native:
+    name: Native / ${{ matrix.platform }}
+    needs: structural
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x86_64
+            os: ubuntu-24.04
+          - platform: linux-arm64
+            os: ubuntu-24.04-arm
+          - platform: macos-arm64
+            os: macos-26
+          - platform: macos-x86_64
+            os: macos-26-intel
+          - platform: windows-x86_64
+            os: windows-2025-vs2026
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python tools/install_build_tools.py
+      - run: python tools/install_llvm.py
+      - run: cmake -P cmake/AcquireDependencies.cmake
+      - name: Build, test and package
+        if: runner.os != 'Windows'
+        run: cmake --workflow --preset release
+      - name: Smoke-test the package without publishing it
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          packages=(dist/*.tar.gz)
+          test "${#packages[@]}" = 1
+          python tools/package_smoke.py "${packages[0]}"
+      - name: Build, test and package with MSVC
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./tools/ci_windows.ps1
+  fuzz:
+    name: Strict fuzzing (libFuzzer + ASan + UBSan)
+    needs: structural
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.13'
+      - run: python tools/install_build_tools.py
+      - run: python tools/install_llvm.py --fuzzing
+      - run: |
+          python tools/deps.py fetch --dependency cli11
+          python tools/deps.py fetch --dependency json
+      - name: Build and fuzz every target (60 s each)
+        env:
+          CC: clang-23
+          CXX: clang++-23
+        run: cmake --workflow --preset fuzz
+  gate:
+    name: Required quality gate
+    if: always()
+    needs: [structural, native, fuzz]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every build and test job
+        env:
+          STRUCTURAL_RESULT: ${{ needs.structural.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+          FUZZ_RESULT: ${{ needs.fuzz.result }}
+        run: |
+          test "$STRUCTURAL_RESULT" = success
+          test "$NATIVE_RESULT" = success
+          test "$FUZZ_RESULT" = success
