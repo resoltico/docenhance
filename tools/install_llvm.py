@@ -132,7 +132,7 @@ def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) ->
         check=True,
     )
     subprocess.run(
-        [cmake, "--build", str(build), "--target", "clang-tidy", "clang-query", "--parallel", "2"],
+        [cmake, "--build", str(build), "--target", "clang-tidy", "clang-query", "--parallel", "3"],
         check=True,
     )
     return tools
