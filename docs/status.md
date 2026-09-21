@@ -55,9 +55,13 @@ Linux CI jobs from the packaged source archive.
 
 ## What has not been verified
 
-- **No GitHub Actions run has ever happened.** The workflows were reproduced locally, command by
-  command; runner images, artifact handling, the schedule trigger and the required-gate job are
-  untested, and the YAML is only known to parse.
+- **GitHub source-archive validation passed** for the `v0.1.0` tag: its source checks, deterministic
+  package, provenance attestation and artifact upload completed successfully. The downloaded archive
+  passed both checksum and GitHub attestation verification.
+- **The first native GitHub quality run exposed two cross-platform integration defects**: Homebrew
+  no longer provides the `llvm@23` formula used on macOS Intel, and CMake's generic ZLIB finder does
+  not consider zlib's `zs.lib` static Windows name. Fixes are committed with the next run as the
+  required validation; no native GitHub success is claimed until it completes.
 - **Windows and MSVC have never been executed**: not the replay harnesses, not `tools/ci_windows.ps1`,
   not the verified-installer path for clang-tidy. Portability there rests on review alone.
 - **x86-64 has never been executed**: every container run was aarch64.

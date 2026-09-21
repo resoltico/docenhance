@@ -88,7 +88,7 @@ docs/                 Status, architecture, decisions, build, quality, CLI and r
 
 ## Verification status
 
-The locked dependency build, the real binary, its tests, the package and its relocated smoke test run on macOS arm64 and, in containers, on Linux arm64, with strict linting, sanitizers and fuzzing. **No GitHub Actions run has happened yet**, and Windows, MSVC and x86-64 have never been executed anywhere. The workflows package only for validation; no binary release is published. [Status](docs/status.md) lists exactly what was run and what was not.
+The locked dependency build, the real binary, its tests, the package and its relocated smoke test run on macOS arm64 and, in containers, on Linux arm64, with strict linting, sanitizers and fuzzing. GitHub Actions also runs the source-archive workflow; native runner results are tracked in [status](docs/status.md). The workflows package only for validation; no binary release is published.
 
 ## Publishing this foundation
 

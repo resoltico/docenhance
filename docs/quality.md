@@ -41,7 +41,7 @@ Every linter is pinned in `deps/tools.json`:
 | mypy (strict) | Every Python file | `mypy.ini` | `python -m mypy` |
 | Quality gates | Everything above | `tools/check_gates.py` | `python tools/check_gates.py` |
 
-Install the pinned Python-distributed tools into the project virtual environment with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the pinned build (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm@23` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm@23` is equivalent. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
+Install the pinned Python-distributed tools into the project virtual environment with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the pinned build (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm` is equivalent. Homebrew does not preserve every historical formula name, so the major-version gate remains the authority. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
 
 The gates allow nothing to be grandfathered:
 
@@ -55,13 +55,13 @@ The gates allow nothing to be grandfathered:
 Fuzzing is strict and engine-agnostic; see [design decisions](decisions.md) and [fuzz/README.md](../fuzz/README.md). Each harness checks correctness properties against independent references, not only for crashes. Fuzz and sanitizer builds make every ASan and UBSan report fatal, add implicit-conversion and bounds checks, and harden the standard library.
 
 ```sh
-python tools/install_llvm.py --fuzzing          # or: brew install llvm@23 (macOS)
+python tools/install_llvm.py --fuzzing          # or: brew install llvm (macOS)
 python tools/deps.py fetch --dependency cli11
 python tools/deps.py fetch --dependency json
 CC=clang-23 CXX=clang++-23 cmake --workflow --preset fuzz
 ```
 
-On macOS, use `CC=$(brew --prefix llvm@23)/bin/clang CXX=$(brew --prefix llvm@23)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds only the fuzz targets and their two header-only dependencies, then fuzzes every target for `DE_FUZZ_SECONDS` (default 60). For longer runs, or to merge new coverage into the committed corpus after review:
+On macOS, use `CC=$(brew --prefix llvm)/bin/clang CXX=$(brew --prefix llvm)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds only the fuzz targets and their two header-only dependencies, then fuzzes every target for `DE_FUZZ_SECONDS` (default 60). For longer runs, or to merge new coverage into the committed corpus after review:
 
 ```sh
 python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 1800

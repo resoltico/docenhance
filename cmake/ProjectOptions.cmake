@@ -69,6 +69,11 @@ if(DE_ENABLE_CLANG_TIDY)
   file(READ "${PROJECT_SOURCE_DIR}/deps/tools.json" de_tools_json)
   string(JSON de_tidy_pin GET "${de_tools_json}" clang_tidy version)
   string(REGEX MATCH "^[0-9]+" de_tidy_major "${de_tidy_pin}")
+  # A Homebrew formula rename can leave a configured build tree with an executable path that no
+  # longer exists. Re-resolve it instead of reporting an opaque process-launch error.
+  if(DE_CLANG_TIDY AND NOT EXISTS "${DE_CLANG_TIDY}")
+    unset(DE_CLANG_TIDY CACHE)
+  endif()
   find_program(DE_CLANG_TIDY NAMES clang-tidy-${de_tidy_major} clang-tidy
     HINTS ENV DE_CLANG_TIDY_DIR
           /opt/homebrew/opt/llvm@${de_tidy_major}/bin /usr/local/opt/llvm@${de_tidy_major}/bin

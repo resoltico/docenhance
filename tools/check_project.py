@@ -25,8 +25,7 @@ COPYRIGHT = "SPDX-FileCopyrightText: 2026 Ervins Strauhmanis"
 LICENSE_TAG = "SPDX-License-Identifier: MIT"
 REQUIRED_TIDY_SETS = ("bugprone-*", "clang-analyzer-*", "cppcoreguidelines-*", "misc-*")
 PINNED_LINTERS = ("clang_tidy", "clang_format", "ruff", "mypy")
-# GitHub currently packages source only. Native validation remains a local contributor gate until
-# a supported cross-platform CI policy is explicitly reintroduced.
+# GitHub runs the full native quality workflow and a lighter source-archive preflight.
 SOURCE_WORKFLOW = ".github/workflows/source.yml"
 REQUIRED_SOURCE_COMMANDS = (
     "python tools/check_project.py",

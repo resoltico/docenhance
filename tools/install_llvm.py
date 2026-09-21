@@ -8,7 +8,7 @@ clang and its sanitizer runtime, and with --fuzzing also what building AFL++ nee
 Homebrew formula and the Windows installer contain everything). Every source and digest comes from
 deps/tools.json:
   Linux    apt.llvm.org packages, repository key checked against the pinned fingerprint
-  macOS    the versioned Homebrew formula
+  macOS    the current Homebrew llvm formula, followed by the pinned-major check in CMake
   Windows  the official LLVM installer, SHA-256 verified, extracted without registration
 The directory holding them is printed and, under GitHub Actions, exported as DE_CLANG_TIDY_DIR,
 which cmake/ProjectOptions.cmake and tools/architecture_build.py search before PATH.
@@ -83,7 +83,7 @@ def install_linux(pin: dict[str, Any], work: Path, *, compiler: bool, fuzzing: b
 
 
 def install_macos(pin: dict[str, Any]) -> Path:
-    """Install the versioned Homebrew formula."""
+    """Install the Homebrew formula selected by the reviewed tool policy."""
     brew = tool("brew")
     subprocess.run([brew, "install", pin["homebrew_formula"]], check=True)
     prefix = subprocess.run(

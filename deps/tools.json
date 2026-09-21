@@ -38,8 +38,8 @@
           "libclang-rt-23-dev"
         ]
       },
-      "macos": {
-        "homebrew_formula": "llvm@23"
+    "macos": {
+      "homebrew_formula": "llvm"
       },
       "windows_x86_64": {
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/LLVM-23.1.1-win64.msi",

@@ -80,6 +80,11 @@ foreach(name IN LISTS de_names)
   if(name STREQUAL "png" OR name STREQUAL "tiff")
     list(APPEND de_options "-DZLIB_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
   endif()
+  if(WIN32 AND (name STREQUAL "opencv" OR name STREQUAL "png" OR name STREQUAL "tiff"))
+    # zlib names its static Windows archive zs.lib; CMake's FindZLIB does not probe that name.
+    # This remains a configuration-private path to the zlib ExternalProject, never a host lookup.
+    list(APPEND de_options "-DZLIB_LIBRARY:FILEPATH=${DE_DEPENDENCY_PREFIX}/lib/zs.lib")
+  endif()
   if(name STREQUAL "tiff")
     list(APPEND de_options "-DJPEG_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
   endif()
