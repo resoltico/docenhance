@@ -13,7 +13,10 @@ at paths which no longer exist.
 from __future__ import annotations
 
 import fnmatch
+import os
 import re
+import shutil
+import subprocess
 from pathlib import Path, PurePosixPath
 
 import package_source
@@ -135,13 +138,36 @@ def content_errors(path: Path, rel: str) -> list[str]:
     return errors
 
 
-def mode_errors(files: list[tuple[Path, str]]) -> list[str]:
+def indexed_executable_paths(root: Path) -> set[str] | None:
+    """Read Git's executable modes when the Windows worktree cannot represent them."""
+    if os.name != "nt":
+        return None
+    git = shutil.which("git")
+    if git is None:
+        return None
+    result = subprocess.run(
+        [git, "-C", str(root), "ls-files", "--stage"],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    return {
+        line.partition("\t")[2]
+        for line in result.stdout.splitlines()
+        if line.startswith("100755 ") and "\t" in line
+    }
+
+
+def mode_errors(root: Path, files: list[tuple[Path, str]]) -> list[str]:
     """A file is executable exactly when it starts with a shebang."""
     errors = []
+    indexed = indexed_executable_paths(root)
     for path, rel in files:
         if is_binary_input(rel):
             continue
-        executable = bool(path.stat().st_mode & 0o111)
+        executable = rel in indexed if indexed is not None else bool(path.stat().st_mode & 0o111)
         expected = package_source.file_mode(path.read_bytes()) == package_source.EXECUTABLE_MODE
         if executable != expected:
             state = "executable" if executable else "not executable"
@@ -198,7 +224,7 @@ def check(root: Path, files: list[tuple[Path, str]]) -> list[str]:
     errors = [
         *stray_errors(root, files),
         *name_errors(files),
-        *mode_errors(files),
+        *mode_errors(root, files),
         *attribute_errors(root),
         *document_errors(root),
         *reference_errors(root, files),
