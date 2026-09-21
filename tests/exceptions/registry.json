@@ -18,6 +18,9 @@
     "tests/cli/test_cli.py:ruff/ANN401@6209a09a": {
       "explanation": "The schema validator walks arbitrary decoded JSON, whose values are genuinely of any type; narrowing the parameter would defeat the recursion over objects, arrays and scalars."
     },
+    "tests/support/standalone_main.cpp:clang-tidy/bugprone-exception-escape@bdbb580c": {
+      "explanation": "The standalone reference-test main catches failures and reports its exit status; MSVC's throwing expected accessors otherwise look like an escaping path to clang-tidy."
+    },
     "tools/dep_acquire.py:ruff/S310@3c54bc32": {
       "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written."
     },
