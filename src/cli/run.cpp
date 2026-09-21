@@ -26,6 +26,7 @@ using docenhance::app::Outcome;
 using docenhance::contract::Command;
 using docenhance::contract::Invocation;
 using docenhance::core::ErrorCode;
+// NOLINTNEXTLINE(bugprone-exception-escape): parse_and_dispatch is caught at the adapter boundary.
 struct ParsedCommand {
     ParsedCommand(Command value, CLI::App* app) : command(value), parser(app) {}
     Command command;
