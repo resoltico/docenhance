@@ -33,10 +33,13 @@ struct Version {
 struct Methods {
     Capabilities capabilities;
 };
+struct Processed {
+    std::string output;
+};
 struct Failure {
     core::Error error;
 };
-using Payload = std::variant<Help, Version, Methods, Failure>;
+using Payload = std::variant<Help, Version, Methods, Processed, Failure>;
 struct Outcome {
     contract::Command command = contract::Command::root;
     core::ExitCode exit_code = core::ExitCode::success;

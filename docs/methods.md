@@ -1,6 +1,6 @@
-# Planned methods
+# Methods
 
-> Generated from `spec/method-contract.json` by `tools/generate_spec.py`. Every method below is **planned and unimplemented**: `docenhance methods` reports an empty list, and the scalar numeric primitives that do exist are building blocks, not algorithms. Each method needs its own specification, tests and fixtures before implementation; see [roadmap](roadmap.md).
+> Generated from `spec/method-contract.json` by `tools/generate_spec.py`. Only methods marked **implemented** appear in `docenhance methods`; every other entry remains a reviewed design target until its contract, tests, and fixtures exist.
 
 ## I01 — Quantile log-surface illumination
 
@@ -70,7 +70,7 @@ Method-specific argument references: `--binarize`, `--sauvola-window`, `--sauvol
 
 ## B03 — Fixed threshold
 
-Status: **not-implemented**.
+Status: **implemented**.
 
 Method-specific argument references: `--binarize`, `--fixed-threshold`.
 

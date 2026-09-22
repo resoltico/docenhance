@@ -87,6 +87,8 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const R
         invocation.subject = std::move(command.subject);
         if (command.command == Command::process) {
             invocation.output_directory = command.options["--out-dir"];
+            invocation.binarize = command.options["--binarize"];
+            invocation.fixed_threshold = command.options["--fixed-threshold"];
         }
         if (root.help || root.json || root.version) {
             return argument_error(invocation, "Root flags cannot be combined with a subcommand; "
@@ -123,9 +125,6 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
     // Braced-list elements are evaluated in order, so subcommands register in this order.
     auto commands = std::to_array<ParsedCommand>({
         {Command::process, cli.add_subcommand("process")},
-        {Command::plan, cli.add_subcommand("plan")},
-        {Command::inspect, cli.add_subcommand("inspect")},
-        {Command::presets, cli.add_subcommand("presets")},
         {Command::methods, cli.add_subcommand("methods")},
         {Command::version, cli.add_subcommand("version")},
     });
@@ -137,8 +136,6 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
         }
     }
     add_target_options(commands.at(0));
-    add_target_options(commands.at(1));
-    add_target_options(commands.at(2));
     cli.parse(static_cast<int>(args.size()), args.data());
     if (auto rejected = select_command(commands, root, invocation)) {
         return std::move(*rejected);

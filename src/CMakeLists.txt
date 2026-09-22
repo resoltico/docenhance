@@ -31,14 +31,16 @@ de_library(de_image LAYER image
   HEADERS "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
   LINKS de_core)
 de_library(de_methods LAYER methods
-  SOURCES methods/box_mean.cpp methods/catalog.cpp
+  SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
+          "${DE_INCLUDE}/methods/fixed_threshold.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_io LAYER io
-  SOURCES io/capabilities.cpp HEADERS "${DE_INCLUDE}/io/capabilities.hpp")
+  SOURCES io/capabilities.cpp HEADERS "${DE_INCLUDE}/io/capabilities.hpp"
+  LINKS de_core de_image DE::png)
 de_library(de_app LAYER app
   SOURCES app/dispatch.cpp HEADERS "${DE_INCLUDE}/app/dispatch.hpp"
-  LINKS de_core de_contract de_methods de_io)
+  LINKS de_core de_contract de_image de_methods de_io)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_report LAYER report
   SOURCES report/render.cpp HEADERS "${DE_INCLUDE}/report/render.hpp"

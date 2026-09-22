@@ -65,11 +65,11 @@ Json option_fields(contract::Command command) {
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
-    text += "Implemented: help, version, honest capability discovery.\n";
-    text +=
-        "Not implemented: image I/O, planning, presets and processing. No files are modified.\n\n";
+    text += "Implemented: 8-bit grayscale PNG B03 fixed-threshold processing.\n";
+    text += "Not implemented: other image formats, color handling, batching, presets, and other "
+            "methods.\n\n";
     if (help.list_commands) {
-        text += "Commands: process, plan, inspect, presets, methods, version\n\n";
+        text += "Commands: process, methods, version\n\n";
     }
     for (const auto& option : contract::option_catalog) {
         if (!option.scope.contains(outcome.command)) {
@@ -95,15 +95,16 @@ Output text_form(const app::Outcome& outcome) {
             } else if constexpr (std::is_same_v<Payload, app::Version>) {
                 return {
                     .out = "DocEnhance " + std::string(outcome.build.version) +
-                           " (image processing unavailable)\n",
+                           " (PNG B03 fixed-threshold processing)\n",
                     .err = {},
                 };
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {
                 return {
-                    .out = "No complete image-processing methods are implemented in this "
-                           "application.\n",
+                    .out = "Implemented methods: B03 fixed-threshold binarization.\n",
                     .err = {},
                 };
+            } else if constexpr (std::is_same_v<Payload, app::Processed>) {
+                return {.out = "Wrote " + payload.output + "\n", .err = {}};
             } else {
                 return {
                     .out = {},
@@ -134,6 +135,13 @@ Output json_form(const app::Outcome& outcome) {
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {
                 const auto fields = capability_fields(payload.capabilities);
+                return {.out = dump(envelope(outcome, fields)), .err = {}};
+            } else if constexpr (std::is_same_v<Payload, app::Processed>) {
+                const Json fields = {
+                    {"method", "B03"},
+                    {"output", payload.output},
+                    {"publication", "completed"},
+                };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else {
                 const Json error = {

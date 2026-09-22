@@ -1,35 +1,33 @@
 # Current CLI behavior
 
-This document describes the executable as it behaves today. The [argument contract](cli-contract.md) lists every argument it parses, and the [roadmap](roadmap.md) covers the processing that does not exist yet.
+## Implemented operation
 
-## Working commands
-
-`docenhance --help` and `docenhance COMMAND --help` render core-owned help. Adding `--json` returns machine-readable help using the command-response schema. Command-specific help includes the future argument descriptions and explicitly states that processing is unavailable.
-
-`docenhance version [--json]` reports the version generated from the top-level `project(... VERSION ...)` command, build compiler/platform and source-lock hash. `docenhance --version` is a text-only alias; combining it with `--json` is an invocation error. Use `version --json` instead.
-
-`docenhance methods [--json]` returns an empty implemented-method list. `methods ID` fails because no complete algorithm is available. The planned 17-method catalog is documentation, not a runtime promise.
-
-## Commands that intentionally fail
-
-`process`, `plan`, `inspect` and `presets` recognize their documented syntax but have no implementation. They return `E_NOT_IMPLEMENTED`, exit status **4**, and `publication: not_started` in JSON. They do not read source documents, validate codec content, write recipes or create output bundles. Required input syntax and the required `process --out-dir` are checked first; their absence returns exit status 2.
-
-Example intended for observing the refusal, not enhancing an image:
+`docenhance process` performs one complete, explicit operation:
 
 ```sh
-docenhance process input.jpg --out-dir result --json
+docenhance process INPUT.png --out-dir RESULT --binarize fixed [--fixed-threshold T]
 ```
 
-The result is an explicit error, not a successful no-op copy. Existing files are not touched.
+It accepts only a non-empty grayscale PNG without alpha, at 1, 2, 4, or 8 bits per sample, and
+decodes it to 8-bit grayscale. `T` is a finite normalized threshold in `[0,1]` and defaults to
+`0.50`; B03 writes black when `sample / 255 <= T`, otherwise white. The result is an 8-bit
+grayscale PNG at `RESULT/result.png`.
 
-## Parsing and streams
+`RESULT` must not exist and its parent must already be a directory. The writer first creates a
+sibling staging directory and publishes it only after a complete PNG has been written. Failed
+input, threshold, or output operations leave no result directory behind.
 
-Arguments are case-sensitive and unknown arguments are rejected. Repeated options are rejected. No abbreviation, response-file, environment-variable or automatic user/system configuration loader is installed. Root flags are not mixed with subcommands; place `--json` and `--help` after the selected command. Literal `--json` is recognized for presentation of parser failures.
+`docenhance methods` reports only B03 and `docenhance version --json` reports only `png` in
+`supported_formats`. No other method, image format, alpha behavior, colour conversion, batching,
+recipe, or preset is accepted.
 
-JSON responses go only to stdout, and ordinary text errors go to stderr. Exit codes keep their defined meanings: in particular **7 means publication state unknown**, never “feature not implemented.” `E_NOT_IMPLEMENTED` uses processing failure class 4. Stream failures return 5. Unexpected internal exceptions return 8.
+## Responses and failures
 
-The command-response JSON schema is [command-response.schema.json](../schemas/command-response.schema.json). Every JSON response of the real executable is validated against it by the CLI contract test, so an undeclared or malformed field fails the build. Numeric method options are captured as syntax for help/parsing only; full semantic compatibility and range validation is not implemented or claimed. Future processing may not bypass a typed core validator.
+With `--json`, processing success returns `method: "B03"`, the final output path, and
+`publication: "completed"`. Invalid syntax is `E_ARGUMENT` with exit 2; invalid or unsupported
+input is `E_INPUT` with exit 3; resource limits are `E_RESOURCE` with exit 4; and publication
+errors are `E_OUTPUT` with exit 5. A failed operation reports `publication: "not_started"`.
 
-## Contract regression tests
-
-`tests/cli/test_cli.py` exercises a **real built binary**, JSON streams, help, unknown/repeated arguments, required parameters, false capability prevention and the no-write behavior of unavailable processing commands. These native CLI tests are configured in CTest/CI but were not executed in the authoring environment; see [verification](status.md).
+JSON responses go only to stdout and text errors go only to stderr. The complete machine response
+shape is [command-response.schema.json](../schemas/command-response.schema.json), and the real
+binary is exercised by [CLI contract tests](../tests/cli/test_cli.py).

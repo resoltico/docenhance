@@ -55,8 +55,11 @@ de_fuzz_library(de_fuzzlib_methods
 de_fuzz_library(de_fuzzlib_cli
   SOURCES "${PROJECT_SOURCE_DIR}/src/cli/run.cpp" "${PROJECT_SOURCE_DIR}/src/report/render.cpp"
     "${PROJECT_SOURCE_DIR}/src/app/dispatch.cpp"
-    "${PROJECT_SOURCE_DIR}/src/methods/catalog.cpp" "${PROJECT_SOURCE_DIR}/src/io/capabilities.cpp"
-  LINKS CLI11::CLI11 nlohmann_json::nlohmann_json)
+    "${PROJECT_SOURCE_DIR}/src/methods/catalog.cpp"
+    "${PROJECT_SOURCE_DIR}/src/methods/fixed_threshold.cpp"
+    "${PROJECT_SOURCE_DIR}/src/io/capabilities.cpp" "${PROJECT_SOURCE_DIR}/src/image/plane.cpp"
+    "${PROJECT_SOURCE_DIR}/src/core/memory.cpp"
+  LINKS CLI11::CLI11 nlohmann_json::nlohmann_json DE::png)
 target_include_directories(de_fuzzlib_cli PRIVATE "${PROJECT_BINARY_DIR}/generated")
 
 # One engine binary and one time-boxed CTest run (tools/run_fuzzers.py) per harness.
@@ -79,4 +82,5 @@ de_fuzz_target(pages SOURCE "${PROJECT_SOURCE_DIR}/fuzz/pages.cpp" LINKS de_fuzz
 de_fuzz_target(decimal SOURCE "${PROJECT_SOURCE_DIR}/fuzz/decimal.cpp" LINKS de_fuzzlib_contract)
 de_fuzz_target(numeric SOURCE "${PROJECT_SOURCE_DIR}/fuzz/numeric.cpp" LINKS de_fuzzlib_image)
 de_fuzz_target(box_mean SOURCE "${PROJECT_SOURCE_DIR}/fuzz/box_mean.cpp" LINKS de_fuzzlib_methods)
-de_fuzz_target(cli SOURCE "${PROJECT_SOURCE_DIR}/fuzz/cli.cpp" LINKS de_fuzzlib_cli nlohmann_json::nlohmann_json)
+de_fuzz_target(cli SOURCE "${PROJECT_SOURCE_DIR}/fuzz/cli.cpp"
+  LINKS de_fuzzlib_cli de_fuzzlib_contract nlohmann_json::nlohmann_json)

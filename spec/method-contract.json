@@ -139,7 +139,7 @@
       "id": "B03",
       "name": "Fixed threshold",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--binarize",
         "--fixed-threshold"

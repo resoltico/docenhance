@@ -5,6 +5,7 @@
 #include "docenhance/core/result.hpp"
 
 #include <catch2/catch_test_macros.hpp>
+#include <string>
 #include <variant>
 
 namespace docenhance::tests {
@@ -34,7 +35,9 @@ TEST_CASE("Application owns capability discovery", "[app]") {
     const auto outcome = app::dispatch(version);
     const auto* payload = std::get_if<app::Version>(&outcome.payload);
     REQUIRE(payload != nullptr);
-    CHECK(payload->capabilities.methods.empty());
-    CHECK(payload->capabilities.input_formats.empty());
+    CHECK(payload->capabilities.methods.size() == 1);
+    CHECK(std::string{payload->capabilities.methods.front().id} == "B03");
+    CHECK(payload->capabilities.input_formats.size() == 1);
+    CHECK(std::string{payload->capabilities.input_formats.front()} == "png");
 }
 } // namespace docenhance::tests

@@ -4,8 +4,10 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
 
-> **Capability boundary: image processing is not available.**
-> The build graph, dependency acquisition, CLI shell, contracts, architectural boundaries, numerical reference primitives, test infrastructure and packaging are present. Complete image decoders, processing methods and output-bundle publication are **not implemented**. Processing commands fail explicitly without opening input images or writing results. Do not use this version for document processing.
+> **Capability boundary: one strict image operation is available.**
+> `process` accepts grayscale PNG input without alpha (1, 2, 4, or 8 bits) and performs B03
+> fixed-threshold binarization to a staged 8-bit PNG result directory. Other PNG forms, image formats, methods, batching, presets, and
+> document-restoration workflows are not supported.
 
 ## Start here
 
@@ -69,7 +71,9 @@ out/dev/app/bin/docenhance methods --json
 out/dev/app/bin/docenhance process --help --json
 ```
 
-`methods` intentionally reports no completed methods. The target interface is fully cataloged in the [CLI reference](docs/cli-contract.md); the distinction between accepted syntax and implemented behavior is documented in [current CLI behavior](docs/cli.md).
+`methods` reports B03 fixed-threshold binarization and `version --json` reports PNG as the only
+accepted format. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
+strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout
 
