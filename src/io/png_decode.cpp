@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <csetjmp>
 #include <cstdint>
+#include <cstdio>
 #include <expected>
 #include <filesystem>
 #include <png.h>
@@ -68,17 +69,22 @@ core::Result<image::Plane<std::uint8_t>> load_grayscale_png(const std::string& i
         return core::failure(core::ErrorCode::input,
                              "The PNG input must be a readable regular file");
     }
-    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
-    const auto size = std::filesystem::file_size(path, error);
-    if (error) {
+    PngContext context{budget, false};
+    if (!context.open(path)) {
+        return std::unexpected(context.error(core::ErrorCode::input));
+    }
+    if (std::fseek(context.file.get(), 0, SEEK_END) != 0) {
         return core::failure(core::ErrorCode::input, "Cannot inspect the PNG input");
     }
-    if (size > max_file_bytes) {
+    const auto size = static_cast<std::int64_t>(std::ftell(context.file.get()));
+    if (size < 0 || std::fseek(context.file.get(), 0, SEEK_SET) != 0) {
+        return core::failure(core::ErrorCode::input, "Cannot inspect the PNG input");
+    }
+    if (std::cmp_greater(size, max_file_bytes)) {
         return core::failure(core::ErrorCode::resource,
                              "The PNG input exceeds the 128 MiB file limit");
     }
-    PngContext context{budget, false};
-    if (!context.open(path) || !read_header(context)) {
+    if (!read_header(context)) {
         return std::unexpected(context.error(core::ErrorCode::input));
     }
     const auto depth = png_get_bit_depth(context.png, context.info);
