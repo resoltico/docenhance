@@ -98,8 +98,12 @@ bool PngContext::open(const std::filesystem::path& path) {
         return false;
     }
 #ifdef _WIN32
-    // NOLINTNEXTLINE(misc-include-cleaner): MSVC exposes _wfopen through its C runtime internals.
-    file.reset(_wfopen(path.c_str(), writing ? L"wbx" : L"rb"));
+    std::FILE* opened = nullptr;
+    // NOLINTNEXTLINE(misc-include-cleaner): MSVC exposes _wfopen_s through C runtime internals.
+    if (_wfopen_s(&opened, path.c_str(), writing ? L"wbx" : L"rb") != 0) {
+        return false;
+    }
+    file.reset(opened);
 #else
     // The unique_ptr immediately takes ownership of the C stream.
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
