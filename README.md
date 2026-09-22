@@ -92,11 +92,11 @@ The locked dependency build, the real binary, its tests, the package and its rel
 
 ## Publishing this foundation
 
-This repository supports source releases only. The `Package source archive` workflow validates and
-builds a deterministic source tarball with a GitHub provenance attestation for a `v*` tag; it does
-not create a binary release. Follow [publishing guidance](docs/publishing.md) to initialize Git,
-set repository protections and attach a reviewed source archive to a manual GitHub release. Do not
-represent this foundation as a usable image enhancer.
+This repository supports source releases only. For a `v*` tag, the `Package source archive`
+workflow validates and builds a deterministic source tarball, attests it, and publishes the source
+release. Its GitHub release body is the exact dated section of [CHANGELOG.md](CHANGELOG.md), not a
+separate notes file or generated summary. The publisher never edits an existing release; it rejects
+different prose or source assets. Do not represent this foundation as a usable image enhancer.
 
 ## Contributing and security
 
