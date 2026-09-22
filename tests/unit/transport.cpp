@@ -48,7 +48,9 @@ TEST_CASE("Output stream failure cannot repeat processing or render another outc
     CountingProcessor processor;
     RefusingBuffer buffer;
     std::ostream out{&buffer};
-    out.exceptions(std::ios::badbit | std::ios::failbit);
+    auto failure_mask = std::ios::badbit;
+    failure_mask |= std::ios::failbit;
+    out.exceptions(failure_mask);
     std::ostringstream err;
     const auto args = std::to_array<const char*>({
         "docenhance",
