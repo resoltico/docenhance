@@ -11,6 +11,7 @@
 #include "require.hpp"
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstddef>
@@ -193,6 +194,15 @@ inline void box_mean_border_cases() {
             require(std::abs(row[x] - 0.25F) < 1e-6F, "a flat page stays flat, edges included");
         }
     }
+
+    // Periodic reflected initialization must not iterate a huge requested radius.
+    auto singleton = filled_plane(budget, 1, 1, 0.25F);
+    auto singleton_out = image::Plane<float>::allocate(budget, 1, 1);
+    require(methods::box_mean(singleton->view().as_const(), singleton_out->view(),
+                              std::numeric_limits<std::uint32_t>::max(), one, budget)
+                .has_value(),
+            "a maximal radius on a singleton finishes");
+    require(singleton_out->view().row(0).front() == 0.25F, "a singleton remains unchanged");
 }
 
 // Every sample of a plane, against the definition. The reference costs the window squared per
@@ -274,6 +284,14 @@ inline void box_mean_refusal_cases() {
     require(methods::box_mean(source, page->view(), 3, one, budget).error().code ==
                 core::ErrorCode::argument,
             "blurring a plane onto itself is refused");
+    std::array<float, 12> shared{};
+    const image::PlaneShape shape{.width = 4, .height = 2, .stride = 4 * sizeof(float)};
+    const image::PlaneView<const float> offset_source{std::span<const float>(shared).first(8),
+                                                      shape};
+    const image::PlaneView<float> offset_destination{std::span<float>(shared).subspan(1, 8), shape};
+    require(methods::box_mean(offset_source, offset_destination, 3, one, budget).error().code ==
+                core::ErrorCode::argument,
+            "partially overlapping views are refused");
     core::Budget tiny{1024};
     require(methods::box_mean(source, blurred->view(), 3, one, tiny).error().code ==
                 core::ErrorCode::resource,

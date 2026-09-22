@@ -68,6 +68,11 @@ template <typename Sample> class PlaneView {
     [[nodiscard]] bool empty() const noexcept {
         return samples_.empty();
     }
+    // Complete backing storage, including row padding. Algorithms use this only for ownership and
+    // overlap checks; sample access remains row-based so padding is never interpreted as pixels.
+    [[nodiscard]] std::span<Sample> storage() const noexcept {
+        return samples_;
+    }
     // Samples between the starts of consecutive rows. The stride is a multiple of the buffer
     // alignment, which is a multiple of every supported sample size, so this division is exact.
     [[nodiscard]] std::size_t row_pitch() const noexcept {

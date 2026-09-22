@@ -23,6 +23,8 @@ namespace docenhance::methods {
 //   same answers    The work is divided into tiles of a fixed size, never into one piece per
 //                   worker, so the order the sums accumulate in — and therefore every rounded
 //                   result — is identical whatever --threads says. Runs are bitwise reproducible.
+//   bounded work    Initialization is at most one reflected extent per pass, never proportional
+//                   to the radius. The running passes are linear in the plane size.
 //   bounded memory  The only allocation is the intermediate plane, charged to the budget. The
 //                   column sums live on the stack, so more workers cost no more memory.
 //   no exceptions   A plane too large for the budget, a mismatched destination or a window of
@@ -30,7 +32,7 @@ namespace docenhance::methods {
 //
 // Preconditions the caller owns: the samples are finite, and the source and destination are
 // different planes. A running sum carries a NaN across the rest of its row, so a decoder validates
-// once rather than every kernel paying for it; overlapping planes are rejected here.
+// once rather than every kernel paying for it; overlapping storage is rejected here.
 
 // Tiles are this size whatever the machine is: the partition decides the arithmetic, so it may not
 // depend on the worker count. Sixty-four columns of sums are 512 bytes, which is stack-sized.

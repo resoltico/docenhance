@@ -38,6 +38,46 @@ static_assert(std::numeric_limits<std::uint32_t>::max() <= image::max_reflect_ex
     return image::reflect101_folded(coordinate, extent);
 }
 
+[[nodiscard]] std::uint64_t window_length(std::int64_t radius) noexcept {
+    return (static_cast<std::uint64_t>(radius) * 2U) + 1U;
+}
+
+[[nodiscard]] std::uint64_t reflection_period(std::uint32_t extent) noexcept {
+    return static_cast<std::uint64_t>(extent - 1U) * 2U;
+}
+
+// A reflected window is periodic. Summing full periods first changes initialization from O(radius)
+// to O(extent) when a requested radius reaches beyond the input many times.
+template <typename Sample>
+[[nodiscard]] double reflected_window_sum(Sample sample, std::int64_t center, std::uint32_t extent,
+                                          std::int64_t radius) {
+    const auto length = window_length(radius);
+    if (extent == 1U) {
+        return static_cast<double>(length) * sample(0);
+    }
+    const auto period = reflection_period(extent);
+    const auto begin = center - radius;
+    if (length <= period) {
+        double sum = 0.0;
+        for (std::uint64_t offset = 0; offset < length; ++offset) {
+            sum += sample(static_cast<std::int64_t>(offset) + begin);
+        }
+        return sum;
+    }
+    double period_sum = 0.0;
+    for (std::uint32_t index = 0; index < extent; ++index) {
+        const double multiplicity = index == 0U || index + 1U == extent ? 1.0 : 2.0;
+        period_sum += multiplicity * sample(static_cast<std::int64_t>(index));
+    }
+    const auto complete_periods = length / period;
+    const auto full_periods = static_cast<double>(complete_periods);
+    double sum = full_periods * period_sum;
+    for (std::uint64_t offset = 0; offset < length % period; ++offset) {
+        sum += sample(static_cast<std::int64_t>(offset) + begin);
+    }
+    return sum;
+}
+
 // One row of the horizontal pass: the window slides by adding the sample that enters it and
 // subtracting the one that leaves, which is why the cost does not grow with the radius.
 void mean_along_row(std::span<const float> source, std::span<float> destination, Window window) {
@@ -47,14 +87,14 @@ void mean_along_row(std::span<const float> source, std::span<float> destination,
     const auto sample = [source, width](std::int64_t at) {
         return static_cast<double>(source[fold(at, width)]); // NOLINT(*-unchecked-container-access)
     };
-    double sum = 0.0;
-    for (std::int64_t offset = -window.radius; offset <= window.radius; ++offset) {
-        sum += sample(offset);
-    }
-    std::int64_t x = 0;
+    double sum = reflected_window_sum(sample, 0, width, window.radius);
+    std::uint32_t x = 0;
     for (float& mean : destination) {
         mean = static_cast<float>(sum * window.scale);
-        sum += sample(x + window.radius + 1) - sample(x - window.radius);
+        if (x + 1U < width) {
+            sum += sample(static_cast<std::int64_t>(x) + window.radius + 1) -
+                   sample(static_cast<std::int64_t>(x) - window.radius);
+        }
         ++x;
     }
 }
@@ -74,10 +114,23 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
             sum += sign * static_cast<double>(value);
         }
     };
-    // Every tile rebuilds its own window from the rows around its first row, which is what makes
-    // the tiles independent of each other and of how many workers there are.
-    for (std::int64_t offset = -window.radius; offset <= window.radius; ++offset) {
-        accumulate(static_cast<std::int64_t>(first_row) + offset, 1.0);
+    // Every tile rebuilds its own window, which keeps tiles independent of worker count. A large
+    // radius uses one reflected period per column instead of iterating the radius itself.
+    if (window_length(window.radius) <= reflection_period(height)) {
+        for (std::int64_t offset = -window.radius; offset <= window.radius; ++offset) {
+            accumulate(static_cast<std::int64_t>(first_row) + offset, 1.0);
+        }
+    } else {
+        auto sum = block.begin();
+        for (std::uint32_t offset = 0; offset < columns; ++offset, ++sum) {
+            const auto column = first_column + offset;
+            *sum = reflected_window_sum(
+                [&](std::int64_t row) {
+                    const auto samples = source.row(static_cast<std::uint32_t>(fold(row, height)));
+                    return static_cast<double>(samples.subspan(column, 1).front());
+                },
+                static_cast<std::int64_t>(first_row), height, window.radius);
+        }
     }
     for (std::uint32_t y = first_row; y < last_row; ++y) {
         const auto out = destination.row(y).subspan(first_column, columns);
@@ -90,7 +143,7 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
 }
 
 [[nodiscard]] std::uint32_t tiles_of(std::uint32_t extent, std::uint32_t tile) noexcept {
-    return (extent + tile - 1) / tile;
+    return (extent / tile) + static_cast<std::uint32_t>(extent % tile != 0U);
 }
 
 // Two planes share memory when their byte ranges intersect. Compared as addresses rather than as
@@ -98,8 +151,8 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
 [[nodiscard]] bool overlapping(std::span<const float> left, std::span<const float> right) noexcept {
     const auto left_begin = std::bit_cast<std::uintptr_t>(left.data());
     const auto right_begin = std::bit_cast<std::uintptr_t>(right.data());
-    return left_begin < right_begin + right.size_bytes() &&
-           right_begin < left_begin + left.size_bytes();
+    return left_begin <= right_begin ? right_begin - left_begin < left.size_bytes()
+                                     : left_begin - right_begin < right.size_bytes();
 }
 
 [[nodiscard]] core::Result<void> usable(image::PlaneView<const float> source,
@@ -114,7 +167,7 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
         return core::failure(core::ErrorCode::argument,
                              "A box mean needs a radius of at least one sample");
     }
-    if (overlapping(source.row(0), destination.row(0))) {
+    if (overlapping(source.storage(), destination.storage())) {
         return core::failure(core::ErrorCode::argument,
                              "A box mean reads its source after writing its destination, so the "
                              "two must be different planes");
