@@ -145,7 +145,7 @@ inline void admission_cases() {
     invocation.output_directory = std::string{"output\0hidden", 13};
     require(!app::prepare_process(invocation), "paths cannot be silently truncated by C APIs");
 }
-inline void foundation_cases() {
+inline void architecture_cases() {
     ownership_cases();
     view_cases();
     threshold_cases();

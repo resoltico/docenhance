@@ -18,7 +18,7 @@
 #include <fcntl.h>
 #include <stdio.h> // NOLINT(modernize-deprecated-headers)
 #elifdef __APPLE__
-#include <stdio.h> // NOLINT(modernize-deprecated-headers)
+#include <sys/stdio.h>
 #else
 #error "Exclusive publication requires a supported native no-replace rename"
 #endif

@@ -10,6 +10,7 @@
 #include <filesystem>
 #include <png.h>
 #include <pngconf.h>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -54,8 +55,8 @@ void free_png(png_structp png, png_voidp pointer) noexcept {
 void fail_png(png_structp png, png_const_charp message) noexcept {
     auto& memory = *static_cast<PngMemory*>(png_get_error_ptr(png));
     const std::string_view text{message};
-    std::ranges::copy(text.substr(0, std::min(text.size(), memory.message.size() - 1)),
-                      memory.message.begin());
+    const auto count = std::min(text.size(), memory.message.size() - 1);
+    std::ranges::copy(std::views::take(text, count), memory.message.begin());
     png_longjmp(png, 1);
 }
 void warn_png(png_structp png, png_const_charp message) noexcept {

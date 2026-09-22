@@ -148,6 +148,5 @@ by the real Draft 2020-12 implementation against executable output and negative 
 Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,
 and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target
 registration, including box-mean, rather than a second shell list. Sanitizers currently instrument
-first-party code, not every third-party implementation. Actual evidence and limitations belong in
-[the foundation audit](audits/foundation-2026-09-22.md) and the current PR, not evergreen claims that
-all platforms or future methods already passed.
+first-party code, not every third-party implementation. Documentation records current guarantees
+and limits, rather than claiming that every platform or future method already passed.
