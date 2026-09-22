@@ -48,6 +48,7 @@ TEST_CASE("Output stream failure cannot repeat processing or render another outc
     CountingProcessor processor;
     RefusingBuffer buffer;
     std::ostream out{&buffer};
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     const auto failure_mask = static_cast<std::ios::iostate>(
         static_cast<unsigned>(std::ios::badbit) | static_cast<unsigned>(std::ios::failbit));
     out.exceptions(failure_mask);
