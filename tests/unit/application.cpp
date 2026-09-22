@@ -18,11 +18,13 @@ const app::Failure& failure_for(const app::Outcome& outcome) {
 } // namespace
 
 TEST_CASE("Application owns invocation requirements", "[app]") {
-    contract::Invocation process{.command = contract::Command::process};
+    contract::Invocation process{};
+    process.command = contract::Command::process;
     CHECK(failure_for(app::dispatch(process)).error.code == core::ErrorCode::argument);
 
     process.subject = "input.jpg";
-    const auto& output_required = failure_for(app::dispatch(process));
+    const auto output = app::dispatch(process);
+    const auto& output_required = failure_for(output);
     CHECK(output_required.error.code == core::ErrorCode::argument);
     CHECK(output_required.error.message == "--out-dir is required");
 
@@ -31,7 +33,8 @@ TEST_CASE("Application owns invocation requirements", "[app]") {
 }
 
 TEST_CASE("Application owns capability discovery", "[app]") {
-    const contract::Invocation version{.command = contract::Command::version};
+    contract::Invocation version{};
+    version.command = contract::Command::version;
     const auto outcome = app::dispatch(version);
     const auto* payload = std::get_if<app::Version>(&outcome.payload);
     REQUIRE(payload != nullptr);
