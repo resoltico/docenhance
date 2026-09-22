@@ -6,7 +6,7 @@
 #include <string>
 namespace docenhance::report {
 // How an outcome is presented. The wire format is owned here and nowhere else:
-// schemas/foundation-result.schema.json declares every field the JSON form emits.
+// schemas/command-response.schema.json declares every field the JSON form emits.
 enum class Format : unsigned char { text, json };
 struct Output {
     std::string out;

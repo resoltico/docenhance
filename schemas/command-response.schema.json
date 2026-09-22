@@ -1,12 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "DocEnhance foundation command response (not the v1 processing-result schema)",
-  "description": "Every JSON response of the foundation executable. Enforced by tests/cli/test_cli.py against the real binary; new fields must be declared here first.",
+  "title": "DocEnhance command response",
+  "description": "Every JSON response emitted by the executable. Enforced by tests/cli/test_cli.py against the real binary; new fields must be declared here first.",
   "type": "object",
   "required": [
     "schema_version",
     "command",
-    "development_stage",
     "version",
     "exit_code"
   ],
@@ -25,9 +24,6 @@
         "methods",
         "version"
       ]
-    },
-    "development_stage": {
-      "const": "foundation"
     },
     "version": {
       "type": "string",

@@ -15,7 +15,6 @@ namespace docenhance::app {
 // The identity of this build, as the build system recorded it.
 struct BuildFacts {
     std::string_view version;
-    std::string_view development_stage;
     std::string_view platform;
     std::string_view compiler;
     std::string_view dependency_lock_sha256;

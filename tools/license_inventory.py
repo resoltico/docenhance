@@ -156,7 +156,6 @@ def main() -> int:
     info = {
         "schema_version": 1,
         "version": version,
-        "development_stage": "foundation",
         "platform": args.platform,
         "compiler": args.compiler,
         "dependency_lock_sha256": lock_hash,

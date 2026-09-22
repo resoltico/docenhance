@@ -4,14 +4,14 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
 
-> **Development status: foundation scaffold, not a usable image enhancer.**
+> **Development status: capability-limited preview, not a usable image enhancer.**
 > The build graph, dependency acquisition, CLI shell, contracts, architectural boundaries, numerical reference primitives, test infrastructure and packaging are present. Complete image decoders, processing methods and output-bundle publication are **not implemented**. Processing commands fail explicitly without opening input images or writing results. Do not use this version for document processing.
 
 ## Start here
 
 Read [status](docs/status.md) for what exists and what has been verified, [build instructions](docs/build.md), [quality gates](docs/quality.md), and the [roadmap](docs/roadmap.md) for what comes next. [Design decisions](docs/decisions.md) explains why the project is built this way.
 
-## Modern native foundation
+## Modern native architecture
 
 CMake **4.4.3** and Ninja **1.13.2** are the recommended build tools. The project uses CMake preset schema **12**, configure/build/test/package workflows, target-scoped settings, explicit source lists, header file sets, strict first-party diagnostics, optional sanitizers and IPO, and an isolated dependency superbuild. There are no handwritten Makefiles, global include/link-directory settings, implicit system-library fallbacks, or downloads during normal configure/build commands.
 
@@ -36,7 +36,7 @@ cmake --workflow --preset dev
 cmake --workflow --preset release
 ```
 
-The foundation executable is written to `out/dev/app/bin/docenhance` (`docenhance.exe` on Windows). Use a Visual Studio C++ developer shell on Windows. The complete [build guide](docs/build.md) covers tool installation, compiler selection, sanitizers, package smoke tests and failure recovery.
+The executable is written to `out/dev/app/bin/docenhance` (`docenhance.exe` on Windows). Use a Visual Studio C++ developer shell on Windows. The complete [build guide](docs/build.md) covers tool installation, compiler selection, sanitizers, package smoke tests and failure recovery.
 
 ## Quality gates
 
@@ -74,7 +74,7 @@ out/dev/app/bin/docenhance process --help --json
 src/<layer>/          One directory per layer, with its public headers under
 include/docenhance/   Layers and their allowed edges: spec/architecture.json, docs/architecture.md
 spec/                 Reviewed authoring contracts: the CLI, the planned methods, the layer graph
-schemas/              JSON schema of the foundation's responses, enforced by the CLI tests
+schemas/              JSON schema of command responses, enforced by the CLI tests
 cmake/                Modern native build, isolation, policies, packaging
 cmake/opencv-hooks/   Reject nested OpenCV downloads
 cmake/presets/        Shared schema-12 preset definitions
@@ -90,13 +90,13 @@ docs/                 Status, architecture, decisions, build, quality, CLI and r
 
 The locked dependency build, the real binary, its tests, the package and its relocated smoke test run on macOS arm64 and, in containers, on Linux arm64, with strict linting, sanitizers and fuzzing. GitHub Actions also runs the source-archive workflow; native runner results are tracked in [status](docs/status.md). The workflows package only for validation; no binary release is published.
 
-## Publishing this foundation
+## Publishing source
 
 This repository supports source releases only. For a `v*` tag, the `Package source archive`
 workflow validates and builds a deterministic source tarball, attests it, and publishes the source
 release. Its GitHub release body is the exact dated section of [CHANGELOG.md](CHANGELOG.md), not a
 separate notes file or generated summary. The publisher never edits an existing release; it rejects
-different prose or source assets. Do not represent this foundation as a usable image enhancer.
+different prose or source assets. Do not represent this preview as a usable image enhancer.
 
 ## Contributing and security
 

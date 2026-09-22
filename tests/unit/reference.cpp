@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
-#include "foundation_cases.hpp"
 #include "pipeline_cases.hpp"
+#include "reference_cases.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 TEST_CASE("Strict parsers and checked arithmetic", "[spec]") {

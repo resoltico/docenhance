@@ -1,6 +1,6 @@
 # Contributing
 
-DocEnhance is an early native C++ foundation. Read [status](docs/status.md), [architecture](docs/architecture.md), [design decisions](docs/decisions.md), [build instructions](docs/build.md) and [quality gates](docs/quality.md) before adding features.
+DocEnhance is an early native C++ project. Read [status](docs/status.md), [architecture](docs/architecture.md), [design decisions](docs/decisions.md), [build instructions](docs/build.md) and [quality gates](docs/quality.md) before adding features.
 
 ## Development agreement
 

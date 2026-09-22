@@ -31,8 +31,8 @@ jobs:
       - run: python -m mypy
       - run: python tools/check_format.py
       - run: python -m unittest discover -s tests/tooling -v
-      - run: python tools/check_foundation.py --compiler g++
-      - run: python tools/check_foundation.py --compiler clang++-23 --sanitize
+      - run: python tools/check_reference_suite.py --compiler g++
+      - run: python tools/check_reference_suite.py --compiler clang++-23 --sanitize
   native:
     name: Native / ${{ matrix.platform }}
     needs: structural

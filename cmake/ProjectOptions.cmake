@@ -10,7 +10,7 @@ if(MSVC)
     target_compile_options(de_project_options INTERFACE /WX)
   endif()
 else()
-  # Keep DE_STRICT_WARNINGS in sync with tools/check_foundation.py (checked by check_project.py).
+  # Keep DE_STRICT_WARNINGS in sync with tools/check_reference_suite.py (checked by check_project.py).
   set(DE_STRICT_WARNINGS -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow -Wformat=2
     -Wold-style-cast -Wcast-align -Wcast-qual -Wnon-virtual-dtor -Woverloaded-virtual -Wdouble-promotion
     -Wimplicit-fallthrough -Wmissing-declarations -Wundef -Wextra-semi)

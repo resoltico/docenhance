@@ -14,7 +14,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-SCHEMA = Path(__file__).resolve().parents[2] / "schemas/foundation-result.schema.json"
+SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
 SHA256_HEX_LENGTH = 64
 PROCESS_OPTION_COUNT = 68
 EXIT_INVOCATION = 2
@@ -61,7 +61,7 @@ def call(exe: Path, args: list[str], code: int = 0) -> str:
 
 
 def validate(value: Any, schema: dict[str, Any], where: str) -> None:  # noqa: ANN401
-    """Check a value against the JSON Schema subset the foundation contract uses."""
+    """Check a value against the JSON Schema subset the command contract uses."""
     if "const" in schema:
         expect(value == schema["const"], f"{where}: expected {schema['const']!r}, got {value!r}")
     if "enum" in schema:
@@ -92,9 +92,8 @@ def call_json(exe: Path, args: list[str], code: int = 0) -> dict[str, Any]:
 
 
 def discovery_cases(exe: Path) -> None:
-    """Version, method and help discovery report the foundation honestly."""
+    """Version, method and help discovery report capabilities honestly."""
     version = call_json(exe, ["version", "--json"])
-    expect(version["development_stage"] == "foundation", "development stage")
     expect(version["methods"] == [], "no methods advertised")
     expect(version["supported_formats"] == [], "no formats advertised")
     expect(len(version["dependency_lock_sha256"]) == SHA256_HEX_LENGTH, "lock digest")

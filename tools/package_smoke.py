@@ -52,7 +52,7 @@ def smoke(root: Path) -> list[str]:
         return ["Package must contain exactly one runtime executable"]
     failures = macos_minimum_errors(candidates[0])
     version = run_json(candidates[0], "version", "--json")
-    if version["development_stage"] != "foundation" or version["exit_code"] != 0:
+    if version["exit_code"] != 0:
         failures.append(f"Unexpected version report: {version}")
     if not list(root.rglob("sbom.spdx.json")) or not list(root.rglob("THIRD_PARTY_NOTICES.md")):
         failures.append("Package lacks its SBOM or third-party notices")
