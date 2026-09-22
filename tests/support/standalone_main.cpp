@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 // Independent first-party reference test runner; not an alternative application build.
-#include "foundation_cases.hpp"
+#include "architecture_cases.hpp"
 #include "pipeline_cases.hpp"
 #include "reference_cases.hpp"
 
@@ -15,7 +15,7 @@ int main() {
         docenhance::tests::numerical_cases();
         docenhance::tests::capabilities_cases();
         docenhance::tests::memory_cases();
-        docenhance::tests::foundation_cases();
+        docenhance::tests::architecture_cases();
         docenhance::tests::schedule_cases();
         docenhance::tests::box_mean_cases();
         std::cout << "PASS: parser, numerical and capability reference suites\n";

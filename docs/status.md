@@ -17,7 +17,7 @@ layers own transport and presentation. Buffer lifetime, borrowed views, schedule
 codec allocations and exclusive publication have explicit contracts and regression tests.
 See [architecture](architecture.md) for exact limits and the publication trust/durability boundary.
 
-## Reusable foundations
+## Reusable components
 
 C++23/CMake target boundaries, a verified offline source lock and isolated native dependency builds;
 strict warnings and linters; generated method/argument contracts; deterministic scalar primitives;
@@ -30,10 +30,8 @@ and exercised by a development probe, not silently advertised as complete proces
 
 ## Verification is commit-specific
 
-The September 22 foundation audit starts at `4f65f823b52ac84dac320461bc392b1bda4fd70d`.
-Its [audit, design and design-QA record](audits/foundation-2026-09-22.md) distinguishes baseline
-failures, remediations and actual verification. A local build or successful reference suite is not
-certification of all platforms. A created PR is not evidence that its CI passed.
+A local build or successful reference suite is not certification of all platforms. A created PR is
+not evidence that its CI passed.
 
 Required CI includes Linux x86-64/ARM64, macOS Intel/ARM64 and Windows x86-64 native builds,
 real-executable contracts, structural/tooling checks, fuzzing, and independent ASan/UBSan and

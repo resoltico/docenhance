@@ -4,7 +4,7 @@
 
 The build is CMake + Ninja. Python scripts are **development tools**, never runtime workers. Git is used only during explicit acquisition and local source-integrity checks. There is no package-manager dependency at runtime.
 
-Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including floating-point `std::from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. Verification is commit-specific; see the foundation audit and the PR checks rather than inferring support from a compiler version.
+Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including floating-point `std::from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. Verification is commit-specific; use the relevant CI checks rather than inferring support from a compiler version.
 
 An optional developer installation route uses an isolated Python environment:
 

@@ -51,10 +51,10 @@
     "src/methods/box_mean.cpp:clang-tidy/*-unchecked-container-access@550d11ea": {
       "explanation": "The kernel's innermost read, reached by a coordinate that image::reflect101_folded has already folded into the plane, so it is in range by construction. A checked access here is on the hot path of every filtered sample; the sanitize, tsan and fuzz presets run the whole suite with a hardened standard library, which checks exactly this access."
     },
-    "tests/support/foundation_cases.hpp:clang-tidy/bugprone-use-after-move@91525f20": {
+    "tests/support/architecture_cases.hpp:clang-tidy/bugprone-use-after-move@91525f20": {
       "explanation": "Plane has an explicit post-move contract: empty dimensions and empty owned storage. This test deliberately inspects that specified empty state and checks kernel rejection. Generic move checkers treat calls other than empty() as invalid without modeling the custom contract; sanitizer/reference suites verify the actual lifetime and shape behavior."
     },
-    "tests/support/foundation_cases.hpp:clang-tidy/clang-analyzer-cplusplus.Move@91525f20": {
+    "tests/support/architecture_cases.hpp:clang-tidy/clang-analyzer-cplusplus.Move@91525f20": {
       "explanation": "Plane has an explicit post-move contract: empty dimensions and empty owned storage. This test deliberately inspects that specified empty state and checks kernel rejection. Generic move checkers treat calls other than empty() as invalid without modeling the custom contract; sanitizer/reference suites verify the actual lifetime and shape behavior."
     },
     "tests/support/standalone_main.cpp:clang-tidy/bugprone-exception-escape@6b355d85": {
