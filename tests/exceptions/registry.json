@@ -30,7 +30,7 @@
     "src/entry/main.cpp:clang-tidy/misc-include-cleaner@ee70c5ba": {
       "explanation": "The Windows SDK umbrella header supplies the wide-character conversion ABI, but clang's include cleaner cannot attribute it through the SDK's header layering. The executable entry adapter is the only consumer."
     },
-    "src/entry/main.cpp:clang-tidy/misc-include-cleaner@692d1dee": {
+    "src/entry/main.cpp:clang-tidy/misc-include-cleaner@25fb7e39": {
       "explanation": "WC_ERR_INVALID_CHARS is a Windows SDK conversion flag that clang's include cleaner cannot map through the required Windows umbrella header. The entry adapter uses it only to reject malformed CRT arguments."
     },
     "src/entry/main.cpp:clang-tidy/misc-include-cleaner@916152d7": {

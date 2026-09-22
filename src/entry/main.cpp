@@ -16,6 +16,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#include <cstdint>
 #include <string>
 #include <utility>
 #include <windows.h> // NOLINT(misc-include-cleaner)
@@ -24,7 +25,7 @@ namespace docenhance::entry {
 namespace {
 core::Result<std::string> utf8_argument(const wchar_t* const value) {
     constexpr unsigned int code_page = CP_UTF8;                      // NOLINT(misc-include-cleaner)
-    constexpr unsigned long conversion_flags = WC_ERR_INVALID_CHARS; // NOLINT(misc-include-cleaner)
+    constexpr std::uint32_t conversion_flags = WC_ERR_INVALID_CHARS; // NOLINT(misc-include-cleaner)
     const auto convert = &WideCharToMultiByte;                       // NOLINT(misc-include-cleaner)
     const int count = convert(code_page, conversion_flags, value, -1, nullptr, 0, nullptr, nullptr);
     if (count <= 0) {
