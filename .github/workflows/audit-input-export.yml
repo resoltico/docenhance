@@ -1,0 +1,46 @@
+# Temporary verification-input acquisition; removed before review.
+name: Audit input export
+on:
+  push:
+    branches: [audit/architecture-foundations]
+    paths: [.github/workflows/audit-input-export.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    if: github.repository == 'resoltico/docenhance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 4f65f823b52ac84dac320461bc392b1bda4fd70d
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Verify source identity and acquire public pinned inputs
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = 4f65f823b52ac84dac320461bc392b1bda4fd70d
+          mkdir -p export/wheels
+          python - <<'PY'
+          import json, pathlib, subprocess, sys
+          tools = json.loads(pathlib.Path('deps/tools.json').read_text())
+          names = ('cmake', 'ninja', 'clang_format', 'ruff', 'mypy', 'pre_commit')
+          requirements = [f"{tools[n].get('package', n)}=={tools[n]['version']}" for n in names]
+          requirements.append('jsonschema==4.26.0')
+          subprocess.run([sys.executable, '-m', 'pip', 'download', '--only-binary=:all:', '-d', 'export/wheels', *requirements], check=True)
+          PY
+          python tools/deps.py fetch
+          python tools/deps.py verify
+          tar -czf export/verified-dependencies.tar.gz -C .cache deps
+          cp deps/lock.json deps/tools.json export/
+          printf '%s\n' 4f65f823b52ac84dac320461bc392b1bda4fd70d > export/SOURCE_COMMIT
+          (cd export && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: docenhance-audit-inputs
+          path: export/
+          if-no-files-found: error
+          retention-days: 1
