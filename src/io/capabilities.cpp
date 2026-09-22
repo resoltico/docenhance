@@ -95,12 +95,13 @@ core::Result<std::string> publish_grayscale_png(const std::string& output_direct
     }
     const auto target = std::filesystem::path{output_directory};
     const auto output = *stage / result_name;
+    const auto output_name = output.generic_string();
     png_image encoded{};
     encoded.version = PNG_IMAGE_VERSION;
     encoded.width = image.width();
     encoded.height = image.height();
     encoded.format = PNG_FORMAT_GRAY;
-    if (png_image_write_to_file(&encoded, output.c_str(), 0, image.storage().data(),
+    if (png_image_write_to_file(&encoded, output_name.c_str(), 0, image.storage().data(),
                                 static_cast<int>(image.row_pitch()), nullptr) == 0) {
         const auto failure = png_error(core::ErrorCode::output, encoded);
         std::error_code ignored;
