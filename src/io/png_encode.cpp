@@ -17,12 +17,16 @@ namespace {
                                 image::PlaneView<const std::uint8_t> view) {
     // libpng requires a C jump frame; all C++ owners are in the caller.
 #ifdef _MSC_VER
-#pragma warning(suppress : 4611)
+#pragma warning(push)
+#pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
     if (setjmp(png_jmpbuf(context.png)) != 0) {
         return false;
     }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
     png_init_io(context.png, context.file.get());
     png_set_IHDR(context.png, context.info, view.width(), view.height(), byte_depth,
                  PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
