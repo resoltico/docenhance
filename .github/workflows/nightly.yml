@@ -14,7 +14,11 @@ concurrency:
   cancel-in-progress: false
 jobs:
   sanitize:
-    name: Sanitized test suites
+    name: Sanitized / ${{ matrix.preset }}
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [sanitize, tsan]
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -27,16 +31,11 @@ jobs:
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
       - run: cmake -P cmake/AcquireDependencies.cmake
-      - name: Build and test with ASan and UBSan
+      - name: Build and test every suite with the selected sanitizer
         env:
           CC: clang-23
           CXX: clang++-23
-        run: cmake --workflow --preset sanitize
-      - name: Build and test with ThreadSanitizer
-        env:
-          CC: clang-23
-          CXX: clang++-23
-        run: cmake --workflow --preset tsan
+        run: cmake --workflow --preset ${{ matrix.preset }}
   campaign:
     name: Campaign / ${{ matrix.engine }}
     strategy:
@@ -77,18 +76,7 @@ jobs:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
         run: |
-          cmake --preset ${{ matrix.preset }}
+          cmake --preset ${{ matrix.preset }} -DDE_FUZZ_SECONDS="$SECONDS_PER_TARGET"
           cmake --build --preset ${{ matrix.preset }}
-      - name: Fuzz every target in parallel
-        shell: bash
-        run: |
-          set -uo pipefail
-          status=0
-          for target in pages decimal numeric cli; do
-            python tools/run_fuzzers.py --engine ${{ matrix.engine }} --target "$target" \
-              --binary "out/${{ matrix.preset }}/app/fuzz/de_fuzz_$target" \
-              --work out/campaign --seconds "$SECONDS_PER_TARGET" > "out/campaign-$target.log" 2>&1 &
-          done
-          for job in $(jobs -p); do wait "$job" || status=1; done
-          tail -n 5 out/campaign-*.log
-          exit $status
+      - name: Fuzz every CTest-registered target
+        run: ctest --preset ${{ matrix.preset }} --parallel 2 --output-on-failure

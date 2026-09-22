@@ -114,8 +114,6 @@ jobs:
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
       - run: |
-          python tools/deps.py fetch --dependency zlib
-          python tools/deps.py fetch --dependency png
           python tools/deps.py fetch --dependency cli11
           python tools/deps.py fetch --dependency json
       - name: Build and fuzz every target (60 s each)
@@ -123,10 +121,34 @@ jobs:
           CC: clang-23
           CXX: clang++-23
         run: cmake --workflow --preset fuzz
+  sanitize:
+    name: Sanitized / ${{ matrix.preset }}
+    needs: structural
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [sanitize, tsan]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - run: python tools/install_build_tools.py
+      - run: python tools/install_llvm.py --fuzzing
+      - run: cmake -P cmake/AcquireDependencies.cmake
+      - name: Build and test every suite with the selected sanitizer
+        env:
+          CC: clang-23
+          CXX: clang++-23
+        run: cmake --workflow --preset ${{ matrix.preset }}
   gate:
     name: Required quality gate
     if: always()
-    needs: [structural, native, fuzz]
+    needs: [structural, native, fuzz, sanitize]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -135,7 +157,9 @@ jobs:
           STRUCTURAL_RESULT: ${{ needs.structural.result }}
           NATIVE_RESULT: ${{ needs.native.result }}
           FUZZ_RESULT: ${{ needs.fuzz.result }}
+          SANITIZE_RESULT: ${{ needs.sanitize.result }}
         run: |
           test "$STRUCTURAL_RESULT" = success
           test "$NATIVE_RESULT" = success
           test "$FUZZ_RESULT" = success
+          test "$SANITIZE_RESULT" = success
