@@ -71,7 +71,9 @@ itself, but changing build systems is a much larger break than this project need
 ## Use cases decide in types; one layer spells them
 
 `de_app` returns an `app::Outcome` — a command, an exit code, the build identity and a typed
-payload — and `de_report` turns that into the documented JSON response or into human text. The
+payload — and `de_report` turns that into the documented JSON response or into human text. Required
+input and output-target rules, and the capability set itself, are decided in `de_app`; the CLI only
+translates argument syntax into the typed invocation. The
 application layer previously composed both forms itself, which made it half a command line: the
 wire format, the help layout and the use-case rules lived in one file, and any second front end
 would have had to parse strings or repeat the logic.

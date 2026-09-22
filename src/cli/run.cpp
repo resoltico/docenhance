@@ -85,6 +85,9 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const R
         // Keep a --json seen by the pre-scan: errors below must still be reported as JSON.
         invocation.json = invocation.json || command.json;
         invocation.subject = std::move(command.subject);
+        if (command.command == Command::process) {
+            invocation.output_directory = command.options["--out-dir"];
+        }
         if (root.help || root.json || root.version) {
             return argument_error(invocation, "Root flags cannot be combined with a subcommand; "
                                               "place --help/--json after the command");
@@ -106,24 +109,6 @@ std::optional<Outcome> apply_root_flags(const CLI::App& cli, const RootFlags& ro
     if (root.version && (root.help || root.json)) {
         return argument_error(
             invocation, "Use 'version --json'; --version cannot be combined with other flags");
-    }
-    return std::nullopt;
-}
-std::optional<Outcome> require_target_arguments(const Invocation& invocation,
-                                                const ParsedCommand& process) {
-    const bool targets_input = invocation.command == Command::process ||
-                               invocation.command == Command::plan ||
-                               invocation.command == Command::inspect;
-    if (invocation.help || !targets_input) {
-        return std::nullopt;
-    }
-    if (invocation.subject.empty()) {
-        return argument_error(invocation, "INPUT is required");
-    }
-    const auto out_dir = process.options.find("--out-dir");
-    if (invocation.command == Command::process &&
-        (out_dir == process.options.end() || out_dir->second.empty())) {
-        return argument_error(invocation, "--out-dir is required");
     }
     return std::nullopt;
 }
@@ -151,8 +136,7 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
                 ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
         }
     }
-    auto& process = commands.at(0);
-    add_target_options(process);
+    add_target_options(commands.at(0));
     add_target_options(commands.at(1));
     add_target_options(commands.at(2));
     cli.parse(static_cast<int>(args.size()), args.data());
@@ -163,9 +147,6 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
         if (auto rejected = apply_root_flags(cli, root, invocation)) {
             return std::move(*rejected);
         }
-    }
-    if (auto rejected = require_target_arguments(invocation, process)) {
-        return std::move(*rejected);
     }
     return docenhance::app::dispatch(invocation);
 }

@@ -35,6 +35,7 @@ struct Invocation {
     bool help = false;
     bool root_version = false;
     std::string subject;
+    std::string output_directory;
 };
 [[nodiscard]] constexpr std::string_view command_name(Command command) noexcept {
     switch (command) {

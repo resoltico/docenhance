@@ -56,6 +56,17 @@ Outcome dispatch(const contract::Invocation& invocation) {
         return succeeded(invocation,
                          Help{.list_commands = invocation.command == contract::Command::root});
     }
+    const bool targets_input = invocation.command == contract::Command::process ||
+                               invocation.command == contract::Command::plan ||
+                               invocation.command == contract::Command::inspect;
+    if (targets_input && invocation.subject.empty()) {
+        return failure(invocation,
+                       {.code = core::ErrorCode::argument, .message = "INPUT is required"});
+    }
+    if (invocation.command == contract::Command::process && invocation.output_directory.empty()) {
+        return failure(invocation,
+                       {.code = core::ErrorCode::argument, .message = "--out-dir is required"});
+    }
     if (invocation.command == contract::Command::version || invocation.root_version) {
         return succeeded(invocation, Version{.capabilities = capabilities()});
     }

@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
-add_executable(de_tests unit/reference.cpp)
+add_executable(de_tests unit/reference.cpp unit/application.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support")
-target_link_libraries(de_tests PRIVATE de_core de_contract de_exec de_image de_methods de_io Catch2::Catch2WithMain)
+target_link_libraries(de_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods de_io Catch2::Catch2WithMain)
 de_apply_options(de_tests)
 # The dependency-free reference runner used by tools/check_reference_suite.py, built, linted and run here too.
 add_executable(de_reference_tests support/standalone_main.cpp)
