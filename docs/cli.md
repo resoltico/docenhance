@@ -12,7 +12,7 @@ This document describes the executable as it behaves today. The [argument contra
 
 ## Commands that intentionally fail
 
-`process`, `plan`, `inspect` and `presets` have syntax scaffolding but no implementation. They return `E_NOT_IMPLEMENTED`, exit status **4**, and `publication: not_started` in JSON. They do not read source documents, validate codec content, write recipes or create output bundles. Required input syntax and the required `process --out-dir` are checked first; their absence returns exit status 2.
+`process`, `plan`, `inspect` and `presets` recognize their documented syntax but have no implementation. They return `E_NOT_IMPLEMENTED`, exit status **4**, and `publication: not_started` in JSON. They do not read source documents, validate codec content, write recipes or create output bundles. Required input syntax and the required `process --out-dir` are checked first; their absence returns exit status 2.
 
 Example intended for observing the refusal, not enhancing an image:
 
@@ -26,7 +26,7 @@ The result is an explicit error, not a successful no-op copy. Existing files are
 
 Arguments are case-sensitive and unknown arguments are rejected. Repeated options are rejected. No abbreviation, response-file, environment-variable or automatic user/system configuration loader is installed. Root flags are not mixed with subcommands; place `--json` and `--help` after the selected command. Literal `--json` is recognized for presentation of parser failures.
 
-JSON responses go only to stdout, and ordinary text errors go to stderr. Exit codes keep their defined meanings: in particular **7 means publication state unknown**, never “feature not implemented.” The scaffold-only `E_NOT_IMPLEMENTED` uses processing failure class 4. Stream failures return 5. Unexpected internal exceptions return 8.
+JSON responses go only to stdout, and ordinary text errors go to stderr. Exit codes keep their defined meanings: in particular **7 means publication state unknown**, never “feature not implemented.” `E_NOT_IMPLEMENTED` uses processing failure class 4. Stream failures return 5. Unexpected internal exceptions return 8.
 
 The command-response JSON schema is [command-response.schema.json](../schemas/command-response.schema.json). Every JSON response of the real executable is validated against it by the CLI contract test, so an undeclared or malformed field fails the build. Numeric method options are captured as syntax for help/parsing only; full semantic compatibility and range validation is not implemented or claimed. Future processing may not bypass a typed core validator.
 

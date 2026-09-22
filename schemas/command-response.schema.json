@@ -58,9 +58,6 @@
     "usage": {
       "type": "string"
     },
-    "contract_status": {
-      "type": "string"
-    },
     "options": {
       "type": "array"
     },

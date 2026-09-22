@@ -73,7 +73,7 @@ Do not modify shared presets to accommodate one machine. Create ignored `CMakeUs
 }
 ```
 
-Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --test-dir out/my-clang --output-on-failure`. Never switch compilers, architecture, build type or CRT inside an existing build directory. The x86-64 baseline does not use `-march=native`; ARM64 builds use their corresponding baseline. Cross-compilation is not part of the validated scaffold workflow. Native-per-architecture builds are intended.
+Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --test-dir out/my-clang --output-on-failure`. Never switch compilers, architecture, build type or CRT inside an existing build directory. The x86-64 baseline does not use `-march=native`; ARM64 builds use their corresponding baseline. Cross-compilation is not part of the validated workflow. Native-per-architecture builds are intended.
 
 ## Optimization options
 
@@ -88,7 +88,7 @@ python tools/package_smoke.py dist/docenhance-0.1.0-Linux-x86_64.tar.gz
 
 Use the actual platform-specific filename written by CPack. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates only the application and its metadata; upstream command-line tools, tests, compilers and Python are not included. A separate relocated-package smoke test is mandatory in CI.
 
-The version comes from the top-level `project(... VERSION ...)` command; `0.1.0` filenames above are examples for this delivered scaffold. Do not copy the entire dependency prefix into a release. Static third-party linkage does not mean a fully static libc/OS runtime. macOS signing/notarization, Windows signing, minimum-OS execution and Linux glibc-baseline checks remain later release gates. CI artifacts are development artifacts, not signed final application releases.
+The version comes from the top-level `project(... VERSION ...)` command; `0.1.0` filenames above are examples only. Do not copy the entire dependency prefix into a release. Static third-party linkage does not mean a fully static libc/OS runtime. macOS signing/notarization, Windows signing, minimum-OS execution and Linux glibc-baseline checks remain later release gates. CI artifacts are validation artifacts, not signed final application releases.
 
 ## Source packaging
 

@@ -1,6 +1,5 @@
 {
   "schema_version": 1,
-  "contract_status": "target-1.0; processing not implemented",
   "contract_edition": "1.0",
   "value_grammar": {
     "decimal": "Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. 1e2, 1e+2 and 1E+2 denote the same value. No leading '+', no surrounding or embedded whitespace, no hexadecimal, infinity or NaN spelling, and no trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale.",

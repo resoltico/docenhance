@@ -121,7 +121,6 @@ Output json_form(const app::Outcome& outcome) {
             if constexpr (std::is_same_v<Payload, app::Help>) {
                 const Json fields = {
                     {"usage", contract::command_usage(outcome.command)},
-                    {"contract_status", contract::contract_status},
                     {"options", option_fields(outcome.command)},
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};

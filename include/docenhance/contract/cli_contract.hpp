@@ -7,7 +7,6 @@
 #include <array>
 #include <string_view>
 namespace docenhance::contract {
-inline constexpr std::string_view contract_status = "target-1.0; processing not implemented";
 // The usage line of every command, as the reviewed contract states it.
 [[nodiscard]] constexpr std::string_view command_usage(Command command) noexcept {
     switch (command) {
