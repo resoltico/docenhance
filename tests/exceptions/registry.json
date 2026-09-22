@@ -39,6 +39,9 @@
     "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
     },
+    "src/io/png_decode.cpp:msvc/4611@eab8232f": {
+      "explanation": "MSVC warns for each libpng setjmp frame despite both decoder frames containing no automatic C++ object with a destructor. The warning state is restored immediately after each expression; malformed-input and allocation-failure tests exercise both jump paths."
+    },
     "src/io/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
     },

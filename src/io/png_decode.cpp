@@ -27,10 +27,17 @@ constexpr int nibble_depth = 4;
 // The jump target contains only trivial automatic state. All owning C++ objects are in its caller.
 [[nodiscard]] bool read_header(const PngContext& context) {
     // libpng requires a C jump frame; all C++ owners are in the caller.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4611)
+#endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
     if (setjmp(png_jmpbuf(context.png)) != 0) {
         return false;
     }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
     png_init_io(context.png, context.file.get());
     png_set_crc_action(context.png, PNG_CRC_ERROR_QUIT, PNG_CRC_ERROR_QUIT);
     png_set_chunk_malloc_max(context.png, mebibyte);
@@ -40,10 +47,17 @@ constexpr int nibble_depth = 4;
 }
 [[nodiscard]] bool read_pixels(PngContext& context, image::PlaneView<std::uint8_t> view) {
     // libpng requires a C jump frame; all C++ owners are in the caller.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4611)
+#endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
     if (setjmp(png_jmpbuf(context.png)) != 0) {
         return false;
     }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
     // Preserve stored samples: do not apply a gamma transfer or color conversion.
     png_set_expand_gray_1_2_4_to_8(context.png);
     context.passes = png_set_interlace_handling(context.png);
