@@ -47,6 +47,6 @@ Verify the downloaded archive against both its checksum and the GitHub provenanc
 or attaching it:
 
 ```sh
-shasum -a 256 -c docenhance-0.1.0-source.tar.gz.sha256
-gh attestation verify docenhance-0.1.0-source.tar.gz -R OWNER/docenhance
+shasum -a 256 -c docenhance-<project-version>-source.tar.gz.sha256
+gh attestation verify docenhance-<project-version>-source.tar.gz -R OWNER/docenhance
 ```

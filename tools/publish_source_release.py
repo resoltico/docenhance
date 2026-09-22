@@ -13,9 +13,9 @@ import sys
 from pathlib import Path
 from typing import cast
 
-from changelog import VERSION, ReleaseError, extract_release, require
+from changelog import ReleaseError, extract_release, require
 from github_release_api import COMMIT, GitHubAPI, run
-from project_version import project_version
+from project_version import SEMVER, project_version
 from release_publication import Artifact, Release, publish_release
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +70,7 @@ def _context() -> tuple[str, str, str]:
         "Invalid tag",
         condition=isinstance(tag, str)
         and tag.startswith("v")
-        and VERSION.fullmatch(tag[1:]) is not None,
+        and SEMVER.fullmatch(tag[1:]) is not None,
     )
     require(
         "Invalid event commit",

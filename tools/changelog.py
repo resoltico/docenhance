@@ -10,10 +10,11 @@ from dataclasses import dataclass
 from datetime import date
 from typing import TYPE_CHECKING
 
+from project_version import SEMVER
+
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-VERSION = re.compile(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)")
 HEADING = re.compile(r"## \[([^\]]+)\](?: - ([0-9]{4}-[0-9]{2}-[0-9]{2}))?")
 FENCE = re.compile(r" {0,3}(`{3,}|~{3,})(.*)")
 REFERENCE = re.compile(r" {0,3}\[([^\]]+)\]:[ \t]+\S.*")
@@ -76,7 +77,7 @@ def _section(line: str, index: int) -> Section:
     if version == "Unreleased":
         require("Unreleased must not have a date", condition=released is None)
     else:
-        require("Invalid stable version", condition=VERSION.fullmatch(version) is not None)
+        require("Invalid stable version", condition=SEMVER.fullmatch(version) is not None)
         require("Release heading must have an ISO date", condition=released is not None)
         try:
             date.fromisoformat(released or "")
@@ -109,7 +110,7 @@ def _structure(lines: list[str]) -> tuple[list[Section], int]:
 
 def extract_release(changelog: str, version: str) -> str:
     """Return exact Markdown beneath the current version's dated heading."""
-    require("Expected a stable version", condition=VERSION.fullmatch(version) is not None)
+    require("Expected a stable version", condition=SEMVER.fullmatch(version) is not None)
     text = changelog.replace("\r\n", "\n")
     require("Invalid changelog encoding", condition="\r" not in text and "\x00" not in text)
     lines = text.split("\n")

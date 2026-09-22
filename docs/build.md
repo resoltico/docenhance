@@ -83,12 +83,17 @@ Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --t
 
 ```sh
 cmake --workflow --preset release
-python tools/package_smoke.py dist/docenhance-0.1.0-Linux-x86_64.tar.gz
+python tools/package_smoke.py dist/docenhance-<project-version>-Linux-x86_64.tar.gz
 ```
 
 Use the actual platform-specific filename written by CPack. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates only the application and its metadata; upstream command-line tools, tests, compilers and Python are not included. A separate relocated-package smoke test is mandatory in CI.
 
-The version comes from the top-level `project(... VERSION ...)` command; `0.1.0` filenames above are examples only. Do not copy the entire dependency prefix into a release. Static third-party linkage does not mean a fully static libc/OS runtime. macOS signing/notarization, Windows signing, minimum-OS execution and Linux glibc-baseline checks remain later release gates. CI artifacts are validation artifacts, not signed final application releases.
+The version comes only from the top-level `project(... VERSION ...)` command. Substitute the value
+shown by `docenhance version` for `<project-version>` above; do not maintain it separately in this
+document. Do not copy the entire dependency prefix into a release. Static third-party linkage does
+not mean a fully static libc/OS runtime. macOS signing/notarization, Windows signing, minimum-OS
+execution and Linux glibc-baseline checks remain later release gates. CI artifacts are validation
+artifacts, not signed final application releases.
 
 ## Source packaging
 
