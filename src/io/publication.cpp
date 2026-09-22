@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 #include "publication.hpp"
 
-#include <cerrno>
 #include <filesystem>
 #include <system_error>
 
@@ -13,8 +12,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
-#include <windows.h>
+#include <windows.h> // NOLINT(misc-include-cleaner): Windows API umbrella header.
 #elifdef __linux__
+#include <cerrno>
 #include <fcntl.h>
 #include <stdio.h> // NOLINT(modernize-deprecated-headers)
 #elifdef __APPLE__
@@ -27,9 +27,11 @@ namespace docenhance::io {
 std::error_code rename_exclusive(const std::filesystem::path& source,
                                  const std::filesystem::path& target) noexcept {
 #ifdef _WIN32
+    // NOLINTNEXTLINE(misc-include-cleaner): MoveFileExW is a Windows SDK ABI entry point.
     if (MoveFileExW(source.c_str(), target.c_str(), 0) != 0) {
         return {};
     }
+    // NOLINTNEXTLINE(misc-include-cleaner): GetLastError pairs with the Windows ABI call above.
     return {static_cast<int>(GetLastError()), std::system_category()};
 #elifdef __linux__
     if (renameat2(AT_FDCWD, source.c_str(), AT_FDCWD, target.c_str(), RENAME_NOREPLACE) == 0) {
