@@ -21,6 +21,7 @@ import check_project
 import deps
 import generate_spec
 import package_source
+import project_version
 import repo_hygiene
 
 EXECUTABLE_MODE = 0o755
@@ -115,6 +116,17 @@ class LocalCheckTests(unittest.TestCase):
     def test_project_terminology_is_not_a_lifecycle_label(self) -> None:
         """Published interfaces do not identify the project by its development age."""
         self.assertEqual(check_project.terminology_errors(), [])
+
+    def test_project_version_is_strict_semver_from_cmake(self) -> None:
+        """Only a stable semantic version in project() can name an application release."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            path = root / "CMakeLists.txt"
+            path.write_text("project(DocEnhance VERSION 1.2.3)\n", encoding="utf-8")
+            self.assertEqual(project_version.project_version(root), "1.2.3")
+            path.write_text("project(DocEnhance VERSION 01.2.3)\n", encoding="utf-8")
+            with self.assertRaises(project_version.VersionError):
+                project_version.project_version(root)
 
 
 class ArchiveTests(unittest.TestCase):

@@ -12,6 +12,8 @@ Notable changes to this project are documented in this file. The format is based
   interfaces; lifecycle metadata is removed from command responses.
 - Moved command input and output-target requirements from the CLI adapter into the application
   layer, where capability and invocation policy are decided.
+- Centralized stable semantic-version validation on the CMake project version used by builds,
+  packages, source archives, metadata, tags, and release notes.
 - Enforced the terminology policy in structural checks; the upstream OpenCV `WITH_AVFOUNDATION`
   feature spelling is the sole exemption.
 
