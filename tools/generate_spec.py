@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import textwrap
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-OPTION_COUNT = 69
 # The option fields, in the order the generated descriptor declares them. "scope" is typed and is
 # therefore rendered separately from the string fields.
 FIELDS = ("name", "metavar", "scope", "group", "domain", "methods", "description")
@@ -28,16 +28,15 @@ HEADER_PREAMBLE = (
 REFERENCE_PREAMBLE = (
     "# Argument contract\n\n"
     "> Generated from `spec/cli-contract.json` by `tools/generate_spec.py`. These are the arguments"
-    " the command line parses and documents today. Accepting an argument is not a claim that the"
-    " processing behind it exists; see [current CLI behavior](cli.md) and [status](status.md).\n\n"
-    "P = process; L = plan; I = inspect.\n\n"
+    " the command line parses and documents today. See [current CLI behavior](cli.md) and"
+    " [status](status.md) for supported behavior.\n\n"
+    "P = process.\n\n"
 )
 METHODS_PREAMBLE = (
-    "# Planned methods\n\n"
-    "> Generated from `spec/method-contract.json` by `tools/generate_spec.py`. Every method below"
-    " is **planned and unimplemented**: `docenhance methods` reports an empty list, and the scalar"
-    " numeric primitives that do exist are building blocks, not algorithms. Each method needs its"
-    " own specification, tests and fixtures before implementation; see [roadmap](roadmap.md).\n\n"
+    "# Methods\n\n"
+    "> Generated from `spec/method-contract.json` by `tools/generate_spec.py`. Only methods marked"
+    " **implemented** appear in `docenhance methods`; every other entry remains a reviewed design"
+    " target until its contract, tests, and fixtures exist.\n\n"
 )
 
 
@@ -63,6 +62,15 @@ def scope_expression(scope: str, symbols: dict[str, str]) -> str:
     return "CommandSet{" + ", ".join(f"Command::{name}" for name in names) + "}"
 
 
+def cxx_string(value: str) -> str:
+    """Render one C++ string literal, splitting long word-boundary-safe usages."""
+    parts = textwrap.wrap(value, width=60, break_long_words=False, break_on_hyphens=False)
+    return "\n               ".join(
+        json.dumps(part + (" " if index + 1 < len(parts) else ""))
+        for index, part in enumerate(parts)
+    )
+
+
 def render_header(contract: dict[str, Any]) -> str:
     """Render the C++ contract: the command usage lines and the typed option catalog."""
     commands: dict[str, dict[str, str]] = contract["commands"]
@@ -76,7 +84,7 @@ def render_header(contract: dict[str, Any]) -> str:
     text += "[[nodiscard]] constexpr std::string_view command_usage(Command command) noexcept {\n"
     text += "    switch (command) {\n"
     for name, command in commands.items():
-        usage = json.dumps(command["usage"], ensure_ascii=True)
+        usage = cxx_string(command["usage"])
         text += f"    case Command::{name}:\n        return {usage};\n"
     text += "    }\n    return {};\n}\n"
     text += "struct OptionDescriptor {\n"
@@ -142,8 +150,8 @@ def outputs() -> dict[Path, str]:
     options = contract["options"]
     methods = json.loads((ROOT / "spec/method-contract.json").read_text(encoding="utf-8"))
     names = [option["name"] for option in options]
-    if len(names) != len(set(names)) or len(names) != OPTION_COUNT:
-        msg = f"The reviewed target contract must contain {OPTION_COUNT} unique options"
+    if not names or len(names) != len(set(names)):
+        msg = "The reviewed command contract must contain unique options"
         raise ContractError(msg)
     return {
         ROOT / "include/docenhance/contract/cli_contract.hpp": render_header(contract),

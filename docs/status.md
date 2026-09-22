@@ -13,7 +13,8 @@ log of past sessions.
 | Isolated superbuild, presets and packaging | Working: full locked dependency build, tests and relocatable package |
 | Pinned dependency acquisition and verification | Working: every source acquired, digest-inventoried and re-verified before each build |
 | CLI shell: help, version, capability discovery | Working: the adapter parses, `de_app` decides in types, `de_report` renders, and responses are validated against `schemas/command-response.schema.json` |
-| Argument contract: 69 arguments, 17 planned methods | Parsed and documented; generated into help, reference docs and the fuzzing dictionary |
+| B03 fixed-threshold processing | Working: grayscale PNG input without alpha (1/2/4/8-bit), deterministic B03 thresholding, staged 8-bit `result.png` publication, and truthful B03/PNG capability reporting |
+| Argument contract: 6 options, 17 reviewed methods | Generated into help, reference docs and the fuzzing dictionary; only B03 is implemented |
 | Numeric and parser reference primitives | Working and property-fuzzed against independent references |
 | First image kernel (`methods::box_mean`) | Working: separable moving average with reflected borders, checked against the summed definition and bitwise-stable across worker counts. A shared primitive, not an advertised method |
 | Schedule for page-internal parallelism | Working: `--threads` resolved against machine and budget, deterministic indexed work, earliest-failure reporting; no kernel uses it yet |
@@ -22,13 +23,13 @@ log of past sessions.
 | Architectural boundaries | One manifest (`spec/architecture.json`), enforced on link edges, the real include graph, the real syntax tree, public interfaces and header self-containment |
 | Strict linting, quality gates, sanitizers, fuzzing | Enforced in the build and local hooks; configured for GitHub CI ([quality gates](quality.md)) |
 | Typed configuration, presets, recipes | Not implemented |
-| JPEG/PNG/TIFF codecs and the colour pipeline | Not implemented |
-| Enhancement, restoration and geometry methods | Not implemented |
+| JPEG/TIFF codecs and colour pipeline | Not implemented |
+| Other enhancement, restoration and geometry methods | Not implemented |
 | Batch scheduling, provenance, result publication | Not implemented |
 | Signed, minimum-OS-tested distribution | Not available |
 
-Nothing advertises a capability it lacks: `methods` and `supported_formats` are empty, and no
-placeholder returns success by copying its input.
+Nothing advertises a capability it lacks: `methods` reports B03, `supported_formats` reports PNG,
+and no unsupported operation returns success by copying its input.
 
 ## What has been verified
 
@@ -68,7 +69,7 @@ Last local run: 2026-09-22 on macOS arm64. The protected GitHub quality gate als
   `de_exec` instead; the scheduler and its guarantees are implemented and tested, but no kernel
   uses it yet, and it has never run real image work.
 - Memory behaviour under real page sizes — peak usage, fragmentation, tiling for pages larger than
-  the budget — has not been measured, because no page is ever decoded yet.
+  the budget — has not been measured beyond the bounded grayscale-PNG B03 path.
 - Signing, notarization, performance, package size and document-quality results: none measured.
 
 Reproducing a Linux job needs only Docker and `python tools/package_source.py`; each job's steps are

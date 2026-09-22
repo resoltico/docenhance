@@ -43,6 +43,9 @@
         "code": {
           "enum": [
             "E_ARGUMENT",
+            "E_INPUT",
+            "E_RESOURCE",
+            "E_OUTPUT",
             "E_NOT_IMPLEMENTED",
             "E_INVARIANT"
           ]
@@ -53,7 +56,10 @@
       }
     },
     "publication": {
-      "const": "not_started"
+      "enum": [
+        "not_started",
+        "completed"
+      ]
     },
     "usage": {
       "type": "string"
@@ -66,6 +72,12 @@
     },
     "supported_formats": {
       "type": "array"
+    },
+    "method": {
+      "const": "B03"
+    },
+    "output": {
+      "type": "string"
     },
     "platform": {
       "type": "string"

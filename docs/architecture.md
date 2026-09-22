@@ -39,8 +39,8 @@ against it.
 | `de_exec` | `de_core` | The schedule: how many workers run a page's independent work items |
 | `de_image` | `de_core` | Numerical and colour primitives; later, the owning image representation |
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations; later, the catalog of complete methods |
-| `de_io` | `de_image` | Later: codecs, metadata, hashing and exclusive publication |
-| `de_app` | `de_contract`, `de_core`, `de_exec`, `de_io`, `de_methods` | Use cases: what an invocation means, decided in types |
+| `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
+| `de_app` | `de_contract`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods` | Use cases: what an invocation means, decided in types |
 | `de_report` | `de_core`, `de_contract`, `de_app` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
 | `docenhance` | `de_cli`, `de_core` | The executable: `main`, and nothing else |
@@ -124,8 +124,8 @@ function of the samples it is given: it takes `PlaneView`s, owns nothing, alloca
 the budget it was handed, returns `Result`, and never learns where its input came from or where
 the answer is going.
 
-It is a *primitive*, not a method. `methods` reports an empty catalog and will keep doing so until
-a complete, specified method exists; a box mean is the substrate that several of them share — the
+It is a *primitive*, not a method. `methods` reports only complete, specified methods; a box mean
+is the substrate that several of them share — the
 blurred term of unsharp masking (S01), the local mean of Sauvola thresholding (B02), the
 illumination surfaces of the shadow methods (I01, I02) — and sharing it is the reason to write it
 first.
@@ -222,9 +222,9 @@ reason presentation is not part of the use case.
 
 ## What the executable does today
 
-It dispatches help, version and capability discovery, and refuses every processing command with
-`E_NOT_IMPLEMENTED` before opening an input. `de_methods` and `de_io` return empty capability
-lists rather than plausible-looking names. The numeric primitives implement exact scalar formulas
+It dispatches help, version, capability discovery, and one processing command: B03 fixed-threshold
+processing of 8-bit grayscale PNG input. `de_methods` and `de_io` report only B03 and PNG; every
+other method or image format remains unavailable. The numeric primitives implement exact scalar formulas
 with stated boundary conventions: sRGB encode and decode, relative luminance, neutral-axis luminance
 transport, nearest-rank percentiles and `REFLECT_101`. They are building blocks, not a colour-managed
 codec and not an enhancement algorithm.

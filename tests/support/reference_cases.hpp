@@ -180,14 +180,13 @@ inline void numerical_cases() {
     require(!image::reflect101(0, 0).has_value(), "empty reflection rejected");
 }
 inline void capabilities_cases() {
-    require(contract::option_catalog.size() == 69, "compiled target contract size");
+    require(contract::option_catalog.size() == 6, "compiled target contract size");
     // The reviewed scope of an option is typed, so no layer has to interpret a scope string.
     const auto& out_dir = contract::option_catalog.front();
     require(out_dir.name == "--out-dir", "the catalog keeps the reviewed order");
     require(out_dir.scope.contains(contract::Command::process), "--out-dir belongs to process");
-    require(out_dir.scope.contains(contract::Command::plan), "--out-dir belongs to plan");
-    require(!out_dir.scope.contains(contract::Command::inspect),
-            "--out-dir is not an inspect option");
+    require(!out_dir.scope.contains(contract::Command::methods),
+            "--out-dir is not a methods option");
     require(!out_dir.scope.contains(contract::Command::root), "--out-dir is not a root option");
     require(contract::CommandSet::all().contains(contract::Command::version),
             "every command is in all");
@@ -195,8 +194,12 @@ inline void capabilities_cases() {
             "an empty scope holds nothing");
     require(!contract::command_usage(contract::Command::process).empty(),
             "every command has a usage line");
-    require(methods::implemented_methods().empty(), "do not advertise unimplemented algorithms");
-    require(io::supported_input_formats().empty(), "do not advertise unimplemented codecs");
+    require(methods::implemented_methods().size() == 1 &&
+                methods::implemented_methods().front().id == "B03",
+            "B03 is the only advertised method");
+    require(io::supported_input_formats().size() == 1 &&
+                io::supported_input_formats().front() == "png",
+            "PNG is the only advertised input format");
     const core::Error unavailable{.code = core::ErrorCode::unavailable, .message = "not ready"};
     require(unavailable.exit_code() == core::ExitCode::processing,
             "unavailable is not publication-unknown");

@@ -3,7 +3,7 @@
 include(ExternalProject)
 # Explicit source order; serial projects avoid N libraries each starting N workers.
 if(DE_FUZZ_ONLY)
-  set(de_names cli11 json)
+  set(de_names zlib png cli11 json)
 else()
   set(de_names zlib jpeg png tiff opencv leptonica lcms cli11 json picosha2)
   if(DE_BUILD_TESTS)
@@ -156,8 +156,8 @@ if(DE_BUILD_TESTS)
 endif()
 if(DE_ENABLE_FUZZING)
   add_test(NAME fuzz-suite COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${de_inner}" --output-on-failure --no-tests=error -R "^fuzz-")
-  # Four targets, each fuzzed for DE_FUZZ_SECONDS, plus build-independent margin.
-  math(EXPR de_fuzz_timeout "4 * ${DE_FUZZ_SECONDS} + 300")
+  # Five targets, each fuzzed for DE_FUZZ_SECONDS, plus build-independent margin.
+  math(EXPR de_fuzz_timeout "5 * ${DE_FUZZ_SECONDS} + 300")
   set_tests_properties(fuzz-suite PROPERTIES TIMEOUT ${de_fuzz_timeout})
 endif()
 foreach(gate IN ITEMS check-project check-spec check-architecture check-gates check-format)

@@ -25,7 +25,9 @@ constexpr std::size_t max_arguments = 12;
 constexpr std::size_t max_argument_length = 96;
 constexpr int exit_success = 0;
 constexpr int exit_invocation = 2;
+constexpr int exit_input = 3;
 constexpr int exit_processing = 4;
+constexpr int exit_output = 5;
 
 struct Outcome {
     int code;
@@ -97,7 +99,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     const auto args = arguments(input);
     const auto outcome = invoke(args);
     require(outcome.code == exit_success || outcome.code == exit_invocation ||
-                outcome.code == exit_processing,
+                outcome.code == exit_input || outcome.code == exit_processing ||
+                outcome.code == exit_output,
             "only contract exit codes occur (invariant failures are defects)");
     const bool json_mode = outcome.out.starts_with('{');
     if (json_mode) {

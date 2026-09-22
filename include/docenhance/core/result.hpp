@@ -19,7 +19,7 @@ enum class ExitCode : int {
     cancelled = 130,
 };
 // resource: a legitimate request the machine or the budget cannot satisfy.
-enum class ErrorCode { argument, resource, unavailable, invariant };
+enum class ErrorCode { argument, input, resource, output, unavailable, invariant };
 struct Error {
     ErrorCode code;
     std::string message;
@@ -27,9 +27,13 @@ struct Error {
         switch (code) {
         case ErrorCode::argument:
             return ExitCode::invocation;
+        case ErrorCode::input:
+            return ExitCode::input;
         case ErrorCode::resource:
         case ErrorCode::unavailable:
             return ExitCode::processing;
+        case ErrorCode::output:
+            return ExitCode::output;
         case ErrorCode::invariant:
             return ExitCode::invariant;
         }
@@ -39,8 +43,12 @@ struct Error {
         switch (code) {
         case ErrorCode::argument:
             return "E_ARGUMENT";
+        case ErrorCode::input:
+            return "E_INPUT";
         case ErrorCode::resource:
             return "E_RESOURCE";
+        case ErrorCode::output:
+            return "E_OUTPUT";
         case ErrorCode::unavailable:
             return "E_NOT_IMPLEMENTED";
         case ErrorCode::invariant:

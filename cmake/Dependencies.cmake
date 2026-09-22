@@ -6,12 +6,20 @@ if(NOT IS_DIRECTORY "${DE_DEPENDENCY_PREFIX}")
 endif()
 if(DE_FUZZ_ONLY)
   # The fuzz targets compile first-party sources directly and need only header-only libraries.
-  foreach(de_dependency IN ITEMS cli11 json)
+  foreach(de_dependency IN ITEMS cli11 json png zlib)
     execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/deps.py" verify
       --cache "${DE_SOURCE_CACHE}" --dependency ${de_dependency} COMMAND_ERROR_IS_FATAL ANY)
   endforeach()
   find_package(CLI11 2.7.2 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
   find_package(nlohmann_json 3.12.0 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
+  find_library(DE_FUZZ_ZLIB NAMES z zlibstatic PATHS "${DE_DEPENDENCY_PREFIX}/lib" NO_DEFAULT_PATH REQUIRED)
+  find_library(DE_FUZZ_PNG NAMES png16 png PATHS "${DE_DEPENDENCY_PREFIX}/lib" NO_DEFAULT_PATH REQUIRED)
+  find_path(DE_FUZZ_PNG_INCLUDE NAMES png.h PATHS "${DE_DEPENDENCY_PREFIX}/include" NO_DEFAULT_PATH REQUIRED)
+  add_library(DE::zlib UNKNOWN IMPORTED GLOBAL)
+  set_target_properties(DE::zlib PROPERTIES IMPORTED_LOCATION "${DE_FUZZ_ZLIB}")
+  add_library(DE::png STATIC IMPORTED GLOBAL)
+  set_target_properties(DE::png PROPERTIES IMPORTED_LOCATION "${DE_FUZZ_PNG}"
+    INTERFACE_INCLUDE_DIRECTORIES "${DE_FUZZ_PNG_INCLUDE}" INTERFACE_LINK_LIBRARIES DE::zlib)
   return()
 endif()
 execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/deps.py" verify

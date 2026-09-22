@@ -59,7 +59,9 @@
         "DE::png"
       ],
       "headers": [
-        "png.h"
+        "png.h",
+        "pngconf.h",
+        "pnglibconf.h"
       ]
     },
     "tiff": {
@@ -261,11 +263,14 @@
     },
     "io": {
       "target": "de_io",
-      "summary": "Later: codecs, metadata, hashing and exclusive publication",
+      "summary": "Codecs, metadata, hashing and exclusive publication",
       "uses": [
+        "core",
         "image"
       ],
-      "external": [],
+      "external": [
+        "png"
+      ],
       "forbidden_headers": [
         "condition_variable",
         "execution",
@@ -297,6 +302,7 @@
         "contract",
         "core",
         "exec",
+        "image",
         "io",
         "methods"
       ],
