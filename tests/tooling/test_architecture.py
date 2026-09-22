@@ -10,6 +10,7 @@ and the documentation, and that each rule rejects what it claims to reject.
 from __future__ import annotations
 
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -145,10 +146,13 @@ class ManifestBoundaryTests(unittest.TestCase):
                 "int* q = new int; delete q; }\n}\n",
                 encoding="utf-8",
             )
+            compiler = "clang++"
+            if os.name == "nt":
+                compiler = str(Path(clang_query).with_name("clang++.exe"))
             entry = {
                 "directory": directory,
                 "file": str(source),
-                "command": f'clang++ -std=c++23 -c "{source}"',
+                "command": f'{compiler} -std=c++23 -c "{source}"',
             }
             (root / "compile_commands.json").write_text(json.dumps([entry]), encoding="utf-8")
             rules = architecture_build.matchers(architecture.load_manifest(), {"image"})
