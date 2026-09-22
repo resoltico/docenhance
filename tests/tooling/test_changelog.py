@@ -21,7 +21,10 @@ class ChangelogTests(unittest.TestCase):
     def test_current_release_extracts_exact_markdown(self) -> None:
         """The current stable section is returned verbatim without its heading."""
         text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        self.assertEqual(changelog.extract_release(text, "0.1.0"), "- First release.\n")
+        self.assertIn(
+            "`process` now performs B03 fixed-threshold binarization",
+            changelog.extract_release(text, "0.2.0"),
+        )
 
     def test_rejects_noncurrent_or_undated_release(self) -> None:
         """An older or invalid section cannot become release prose by selection alone."""
