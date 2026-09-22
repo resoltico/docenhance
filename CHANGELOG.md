@@ -4,6 +4,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-09-22
+
 ### Added
 
 - `process` now performs B03 fixed-threshold binarization for grayscale PNG input without alpha (1, 2, 4, or 8 bits), producing an 8-bit grayscale `result.png` in a newly published output directory.
@@ -19,8 +21,6 @@ Notable changes to this project are documented in this file. The format is based
 
 - The shared box-mean primitive now rejects overlapping storage and initializes large reflected windows by period, preserving deterministic output while avoiding radius-proportional setup work.
 - The quality workflow includes Linux x86-64/ARM64, macOS ARM64/Intel, and Windows x86-64; source releases retain source-only provenance rather than publishing binaries.
-
-**Versioning note:** This candidate has not been tagged or published and still declares `0.1.0` in `CMakeLists.txt`; the intended release version and date remain undecided.
 
 ## [0.1.0] - 2026-09-21
 

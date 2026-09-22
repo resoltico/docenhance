@@ -7,7 +7,7 @@ if(CMAKE_HOST_APPLE AND NOT CMAKE_OSX_SYSROOT)
   set(CMAKE_OSX_SYSROOT "macosx" CACHE STRING "macOS SDK used by compilers and clang-tidy" FORCE)
 endif()
 # The single source of the application version; tools/project_version.py reads it from here.
-project(DocEnhance VERSION 0.1.0 DESCRIPTION "Local, CPU-only document image restoration" LANGUAGES C CXX)
+project(DocEnhance VERSION 0.2.0 DESCRIPTION "Local, CPU-only document image restoration" LANGUAGES C CXX)
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(FATAL_ERROR "In-source builds are prohibited. Use cmake --preset dev")
 endif()
