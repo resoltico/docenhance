@@ -48,8 +48,8 @@ TEST_CASE("Output stream failure cannot repeat processing or render another outc
     CountingProcessor processor;
     RefusingBuffer buffer;
     std::ostream out{&buffer};
-    auto failure_mask = std::ios::badbit;
-    failure_mask |= std::ios::failbit;
+    const auto failure_mask = static_cast<std::ios::iostate>(
+        static_cast<unsigned>(std::ios::badbit) | static_cast<unsigned>(std::ios::failbit));
     out.exceptions(failure_mask);
     std::ostringstream err;
     const auto args = std::to_array<const char*>({
