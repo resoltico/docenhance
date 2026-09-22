@@ -139,8 +139,10 @@ Three properties are checked rather than asserted:
 - **It is bitwise reproducible.** The same input gives the same bits at one worker and at eight,
   which the tests and the fuzzer both assert. That is a property of the partition, not of luck:
   tiles are a fixed size, so the order the sums accumulate in cannot change with `--threads`.
-- **Its failures are values.** A radius of zero, a destination of the wrong size, a plane blurred
-  onto itself and a budget with no room for the intermediate plane are all returned, not thrown.
+- **Its failures are values.** A radius of zero, a destination of the wrong size, overlapping
+  source/destination storage and a budget with no room for the intermediate plane are all returned,
+  not thrown. A large radius is reduced through the reflected period during initialization, so it
+  cannot turn setup into radius-proportional work.
 
 ## The schedule is separate from the algorithm
 

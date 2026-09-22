@@ -14,6 +14,8 @@ Notable changes to this project are documented in this file. The format is based
   layer, where capability and invocation policy are decided.
 - Centralized stable semantic-version validation on the CMake project version used by builds,
   packages, source archives, metadata, tags, and release notes.
+- Hardened the shared box-mean kernel against partially overlapping views and pathological large
+  radii while preserving reflected-border behavior and deterministic output.
 - Enforced the terminology policy in structural checks; the upstream OpenCV `WITH_AVFOUNDATION`
   feature spelling is the sole exemption.
 
