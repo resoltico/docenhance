@@ -1,87 +1,51 @@
 # Status
 
-What exists, what does not, and what has actually been run. This page is kept current; it is not a
-log of past sessions.
+The executable implements **B03 fixed-threshold binarization of a single grayscale PNG**.
+It is a deliberately limited document-image processor, not a complete restoration suite.
+Unsupported formats and methods fail explicitly; linked dependencies do not count as capabilities.
 
-**The product is capability-limited, not a usable image enhancer.** Every processing command fails with
-`E_NOT_IMPLEMENTED` before opening an input or writing a result.
+## Implemented product path
 
-## What exists
+`process INPUT --out-dir DIRECTORY --binarize fixed [--fixed-threshold T] [--json]` accepts
+1/2/4/8-bit grayscale PNG without transparency. It preserves stored grayscale sample semantics,
+expands low bit depths, and publishes one 8-bit `result.png` into a new directory without replacing
+an existing destination. The default threshold is 0.5. Input dimensions, file size and shared
+image/codec allocations are bounded. Help, version and method discovery perform no file I/O.
 
-| Area | State |
-|---|---|
-| Isolated superbuild, presets and packaging | Working: full locked dependency build, tests and relocatable package |
-| Pinned dependency acquisition and verification | Working: every source acquired, digest-inventoried and re-verified before each build |
-| CLI shell: help, version, capability discovery | Working: the adapter parses, `de_app` decides in types, `de_report` renders, and responses are validated against `schemas/command-response.schema.json` |
-| B03 fixed-threshold processing | Working: grayscale PNG input without alpha (1/2/4/8-bit), deterministic B03 thresholding, staged 8-bit `result.png` publication, and truthful B03/PNG capability reporting |
-| Argument contract: 6 options, 17 reviewed methods | Generated into help, reference docs and the fuzzing dictionary; only B03 is implemented |
-| Numeric and parser reference primitives | Working and property-fuzzed against independent references |
-| First image kernel (`methods::box_mean`) | Working: separable moving average with reflected borders, checked against the summed definition and bitwise-stable across worker counts. A shared primitive, not an advertised method |
-| Schedule for page-internal parallelism | Working: `--threads` resolved against machine and budget, deterministic indexed work, earliest-failure reporting; no kernel uses it yet |
-| Memory model for large pages | Working: budgeted, aligned, move-only buffers and planes; allocation failure is `E_RESOURCE`, and only `de_core` may allocate |
-| Imaging-library memory and threading policy | Hooks proven by `dependency-native-link`: OpenCV computes into memory we own, Leptonica allocates through us, the codecs take explicit limits, and no library writes to stdout |
-| Architectural boundaries | One manifest (`spec/architecture.json`), enforced on link edges, the real include graph, the real syntax tree, public interfaces and header self-containment |
-| Strict linting, quality gates, sanitizers, fuzzing | Enforced in the build and local hooks; configured for GitHub CI ([quality gates](quality.md)) |
-| Typed configuration, presets, recipes | Not implemented |
-| JPEG/TIFF codecs and colour pipeline | Not implemented |
-| Other enhancement, restoration and geometry methods | Not implemented |
-| Batch scheduling, provenance, result publication | Not implemented |
-| Signed, minimum-OS-tested distribution | Not available |
+The application validates a typed request; the production host owns execution; the CLI and report
+layers own transport and presentation. Buffer lifetime, borrowed views, scheduler failure handling,
+codec allocations and exclusive publication have explicit contracts and regression tests.
+See [architecture](architecture.md) for exact limits and the publication trust/durability boundary.
 
-Nothing advertises a capability it lacks: `methods` reports B03, `supported_formats` reports PNG,
-and no unsupported operation returns success by copying its input.
+## Reusable foundations
 
-## What has been verified
+C++23/CMake target boundaries, a verified offline source lock and isolated native dependency builds;
+strict warnings and linters; generated method/argument contracts; deterministic scalar primitives;
+checked aligned planes; budget accounting; bounded indexed scheduling; a box-mean primitive;
+reference/property tests and five engine-independent fuzz harnesses.
 
-Last local run: 2026-09-22 on macOS arm64. The protected GitHub quality gate also passed on
-2026-09-22 across Linux x86-64/ARM64, macOS ARM64/Intel, and Windows x86-64.
+The box-mean primitive uses the internal scheduler, but the current public CLI does not expose
+`--threads`, batching or arbitrary recipes. OpenCV, Leptonica, JPEG, TIFF and Little CMS are linked
+and exercised by a development probe, not silently advertised as complete processing support.
 
-| Check | Result |
-|---|---|
-| `dev` workflow | 16 tests pass, with clang-tidy on every first-party target |
-| `sanitize` workflow | Whole suite passes with ASan and UBSan fatal on first report |
-| `tsan` workflow | Whole suite passes under ThreadSanitizer, which was proven active: a deliberate race in the schedule test produced four reports and failed the run |
-| `release` workflow and relocated package smoke test | Package runs from a fresh directory and declares minimum macOS 14.0 |
-| `fuzz` workflow (libFuzzer) | Five targets, 60 s each; a 10-minute-per-target campaign ran ~54 million inputs with no findings |
-| AFL++ 5.03c | Built from its pinned commit; four targets, 60 s each, no findings |
-| Linux structural job | Ruff, mypy, clang-format, the gates, the source architecture rules, tooling tests, and the GCC and sanitized-clang reference suites, the latter with the pinned clang 23 |
-| Linux native job | Full superbuild, 16 tests, packaging and the relocated smoke test; the architecture rules pass there under GCC 13 with the pinned `clang-query` |
-| GitHub native matrix | Full superbuild, tests, package and relocated-package smoke test passed on Linux x86-64/ARM64, macOS ARM64/Intel and Windows x86-64 under the protected quality gate |
-| Linux leak detection | Confirmed active: a deliberately leaking binary aborted with a LeakSanitizer report |
-| Kernel property fuzzing | 50,349 inputs over planes, radii and worker counts with no finding: every sample matched the summed definition, and more workers never changed a bit |
-| GCC 16 strict warnings | Every harness and first-party source compiles with the full warning set as errors |
-| Imaging dependency policy | Probed on macOS arm64: OpenCV wraps owned memory with no allocation, Leptonica's memory manager is used, Little CMS contexts work, libjpeg and libpng accept limits, and stdout stays free of library diagnostics |
-| Architecture rules | Pass, and were checked in both directions: a forbidden link, a forbidden package, a cross-layer include, a fictional link, a missing link, a `throw`, a `catch`, a foreign namespace and a header that needs its includer were each introduced and each was rejected |
-| Pinned `clang-query` on Linux | `clang-tidy-23` and `clang-tools-23` install from the fingerprint-checked apt.llvm.org repository and provide `clang-query-23` (23.1.2) |
+## Verification is commit-specific
 
-## Remaining verification
+The September 22 foundation audit starts at `4f65f823b52ac84dac320461bc392b1bda4fd70d`.
+Its [audit, design and design-QA record](audits/foundation-2026-09-22.md) distinguishes baseline
+failures, remediations and actual verification. A local build or successful reference suite is not
+certification of all platforms. A created PR is not evidence that its CI passed.
 
-- **GitHub source-archive validation passed** for the `v0.1.0` tag: its source checks, deterministic
-  package, provenance attestation and artifact upload completed successfully. The downloaded archive
-  passed both checksum and GitHub attestation verification.
-- **macOS Intel uses a source-pinned LLVM 23 tool build.** The hosted Intel Homebrew channel provides
-  LLVM 22 and LLVM 23 publishes no Intel macOS release archive, so CI SHA-verifies the LLVM 23 source
-  archive, builds only clang-tidy and clang-query, and caches that build by version and architecture.
-- **macOS 14 and 15 were never run**: the binary is built for 14.0 and asserts it, but has only run
-  on the hosted macOS 26 runners.
-- **Thread control on macOS is not available through OpenCV**: its `parallel_for_` uses Grand
-  Central Dispatch, which ignores a requested thread count. `--threads` is therefore honoured by
-  `de_exec` instead; the scheduler and its guarantees are implemented and tested, but no kernel
-  uses it yet, and it has never run real image work.
-- Memory behaviour under real page sizes — peak usage, fragmentation, tiling for pages larger than
-  the budget — has not been measured beyond the bounded grayscale-PNG B03 path.
-- Signing, notarization, performance, package size and document-quality results: none measured.
+Required CI includes Linux x86-64/ARM64, macOS Intel/ARM64 and Windows x86-64 native builds,
+real-executable contracts, structural/tooling checks, fuzzing, and independent ASan/UBSan and
+TSan suites. Native sanitizer coverage is first-party coverage, not full codec instrumentation.
+The macOS deployment target is 14.0; actual execution on every older supported OS, signing,
+notarization, performance/peak-RSS measurement and document-quality benchmarks remain release
+validation work, not capabilities or results claimed by this source tree.
 
-Reproducing a Linux job needs only Docker and `python tools/package_source.py`; each job's steps are
-the commands in `.github/workflows/`. For example, the fuzz job:
+## Not implemented
 
-```sh
-docker run --rm -v "$PWD/dist:/src:ro" -w /work ubuntu:24.04 bash -euxc '
-  apt-get update -q && apt-get install -y -q --no-install-recommends \
-    python3 python3-venv git ca-certificates curl gpg sudo make build-essential
-  tar -xzf /src/*.tar.gz --strip-components=1
-  python3 -m venv /venv && . /venv/bin/activate
-  python tools/install_build_tools.py && python tools/install_llvm.py --fuzzing
-  python tools/deps.py fetch --dependency cli11 && python tools/deps.py fetch --dependency json
-  CC=clang-23 CXX=clang++-23 cmake --workflow --preset fuzz'
-```
+Other complete methods, color/alpha/16-bit handling, multipage processing, JPEG/TIFF input,
+dewarping, deskewing, automatic method selection, OCR, batching, presets and streaming/tiling
+for arbitrarily large pages. No neural inference, GPU requirement, network service, GUI,
+database or plugin framework is introduced. Planned numerical definitions remain in the method
+reference and must earn capability admission through implementation and executable tests.

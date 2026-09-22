@@ -3,8 +3,10 @@
 #include "docenhance/report/render.hpp"
 
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/process.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
+#include "docenhance/core/result.hpp"
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -19,13 +21,27 @@ constexpr int json_indent = 2;
 // validates every response against.
 constexpr int schema_version = 1;
 
+std::string_view publication_name(core::Publication publication) noexcept {
+    switch (publication) {
+    case core::Publication::not_started:
+        return "not_started";
+    case core::Publication::not_published:
+        return "not_published";
+    case core::Publication::completed:
+        return "completed";
+    case core::Publication::unknown:
+        return "unknown";
+    }
+    return "unknown";
+}
+
 // Common fields first, then the payload's own fields in their given order.
 Json envelope(const app::Outcome& outcome, const Json& fields) {
     Json json = {
         {"schema_version", schema_version},
         {"command", contract::command_name(outcome.command)},
         {"version", outcome.build.version},
-        {"exit_code", static_cast<int>(outcome.exit_code)},
+        {"exit_code", static_cast<int>(outcome.exit_code())},
     };
     json.update(fields);
     return json;
@@ -65,7 +81,7 @@ Json option_fields(contract::Command command) {
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
-    text += "Implemented: 8-bit grayscale PNG B03 fixed-threshold processing.\n";
+    text += "Implemented: 1/2/4/8-bit grayscale PNG input and 8-bit B03 fixed-threshold output.\n";
     text += "Not implemented: other image formats, color handling, batching, presets, and other "
             "methods.\n\n";
     if (help.list_commands) {
@@ -150,7 +166,7 @@ Output json_form(const app::Outcome& outcome) {
                 };
                 const Json fields = {
                     {"error", error},
-                    {"publication", "not_started"},
+                    {"publication", publication_name(payload.error.publication)},
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             }

@@ -10,7 +10,6 @@
 
 #include <algorithm>
 #include <array>
-#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -105,7 +104,7 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
                     Window window, std::uint32_t first_column, std::uint32_t first_row) {
     const auto height = source.height();
     const auto columns = std::min(tile_columns, source.width() - first_column);
-    const auto last_row = std::min(first_row + tile_rows, height);
+    const auto last_row = first_row + std::min(tile_rows, height - first_row);
     ColumnSums sums{};
     const auto block = std::span{sums}.first(columns);
     const auto accumulate = [&](std::int64_t row, double sign) {
@@ -146,18 +145,9 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
     return (extent / tile) + static_cast<std::uint32_t>(extent % tile != 0U);
 }
 
-// Two planes share memory when their byte ranges intersect. Compared as addresses rather than as
-// pointers, so the comparison itself stays inside the rules.
-[[nodiscard]] bool overlapping(std::span<const float> left, std::span<const float> right) noexcept {
-    const auto left_begin = std::bit_cast<std::uintptr_t>(left.data());
-    const auto right_begin = std::bit_cast<std::uintptr_t>(right.data());
-    return left_begin <= right_begin ? right_begin - left_begin < left.size_bytes()
-                                     : left_begin - right_begin < right.size_bytes();
-}
-
 [[nodiscard]] core::Result<void> usable(image::PlaneView<const float> source,
                                         image::PlaneView<float> destination, std::uint32_t radius) {
-    if (source.empty() || source.width() != destination.width() ||
+    if (source.empty() || destination.empty() || source.width() != destination.width() ||
         source.height() != destination.height()) {
         return core::failure(core::ErrorCode::argument,
                              "A box mean needs a non-empty source and a destination of the same "
@@ -167,7 +157,7 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
         return core::failure(core::ErrorCode::argument,
                              "A box mean needs a radius of at least one sample");
     }
-    if (overlapping(source.storage(), destination.storage())) {
+    if (image::overlaps(source, destination)) {
         return core::failure(core::ErrorCode::argument,
                              "A box mean reads its source after writing its destination, so the "
                              "two must be different planes");
@@ -195,7 +185,8 @@ core::Result<void> box_mean(image::PlaneView<const float> source,
     const auto across =
         scheduler.for_each(row_tiles, exec::WorkRef{[&](std::size_t tile) {
                                const auto first = static_cast<std::uint32_t>(tile) * tile_rows;
-                               const auto last = std::min(first + tile_rows, source.height());
+                               const auto last =
+                                   first + std::min(tile_rows, source.height() - first);
                                for (std::uint32_t y = first; y < last; ++y) {
                                    mean_along_row(source.row(y), rows.row(y), window);
                                }

@@ -38,10 +38,10 @@
           "libclang-rt-23-dev"
         ]
       },
-    "macos": {
-      "homebrew_formula": "llvm",
-      "source_url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/llvm-project-23.1.1.src.tar.xz",
-      "source_sha256": "ebe9be46fe8756d58c5b198ffad0fa2a766257add81a4dc52179bfacc7888ee6"
+      "macos": {
+        "homebrew_formula": "llvm",
+        "source_url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/llvm-project-23.1.1.src.tar.xz",
+        "source_sha256": "ebe9be46fe8756d58c5b198ffad0fa2a766257add81a4dc52179bfacc7888ee6"
       },
       "windows_x86_64": {
         "url": "https://github.com/llvm/llvm-project/releases/download/llvmorg-23.1.1/LLVM-23.1.1-win64.msi",
@@ -93,5 +93,17 @@
   "cxx": {
     "standard": 23,
     "extensions": false
+  },
+  "jsonschema": {
+    "version": "4.26.0",
+    "package": "jsonschema",
+    "source": "https://pypi.org/project/jsonschema/4.26.0/",
+    "runtime_dependency": false
+  },
+  "types_jsonschema": {
+    "version": "4.26.0.20260518",
+    "package": "types-jsonschema",
+    "source": "https://pypi.org/project/types-jsonschema/4.26.0.20260518/",
+    "runtime_dependency": false
   }
 }

@@ -5,82 +5,131 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstddef>
+#include <expected>
+#include <new>
 #include <optional>
+#include <system_error>
 #include <thread>
 #include <utility>
 
 namespace docenhance::exec {
 namespace {
-// What one worker took away: the lowest index it failed on, and why.
+// Failure metadata is bounded. Exception handlers do not allocate diagnostic strings: those
+// are constructed on the caller only after every started worker has joined.
 struct Outcome {
     std::size_t index = 0;
     std::optional<core::Error> error;
+    std::optional<core::ErrorCode> exception;
 };
 
-// Items are handed out one at a time from a shared counter. For tiles of roughly equal cost this
-// balances as well as stealing does, and it keeps the scheduler small enough to reason about.
-void work_through(std::atomic<std::size_t>& next, std::size_t count, std::atomic<bool>& stop,
-                  const WorkRef& work, Outcome& outcome) {
-    while (!stop.load(std::memory_order_relaxed)) {
-        const std::size_t index = next.fetch_add(1, std::memory_order_relaxed);
-        if (index >= count) {
-            return;
-        }
+void perform(const WorkRef& work, std::size_t index, Outcome& outcome) noexcept {
+    outcome.index = index;
+    try {
         auto result = work(index);
         if (!result) {
-            outcome = {.index = index, .error = std::move(result.error())};
-            // The rest of the page is pointless once one item has failed.
+            outcome.error = std::move(result.error());
+        }
+    } catch (const std::bad_alloc&) {
+        outcome.exception = core::ErrorCode::resource;
+    } catch (...) {
+        outcome.exception = core::ErrorCode::invariant;
+    }
+}
+
+[[nodiscard]] bool failed(const Outcome& outcome) noexcept {
+    return outcome.error.has_value() || outcome.exception.has_value();
+}
+
+// A bounded compare/exchange counter cannot wrap even when count is SIZE_MAX.
+[[nodiscard]] std::optional<std::size_t> claim(std::atomic<std::size_t>& next,
+                                               std::size_t count) noexcept {
+    std::size_t index = next.load(std::memory_order_relaxed);
+    while (index != count) {
+        if (next.compare_exchange_weak(index, index + 1, std::memory_order_relaxed)) {
+            return index;
+        }
+    }
+    return std::nullopt;
+}
+void work_through(std::atomic<std::size_t>& next, std::size_t count, std::atomic<bool>& stop,
+                  const WorkRef& work, Outcome& outcome) noexcept {
+    while (!stop.load(std::memory_order_relaxed)) {
+        const auto index = claim(next, count);
+        if (!index) {
+            return;
+        }
+        perform(work, *index, outcome);
+        if (failed(outcome)) {
             stop.store(true, std::memory_order_relaxed);
             return;
         }
     }
 }
 
-// The failure a sequential run would have reported: the one with the lowest index.
-[[nodiscard]] core::Result<void> earliest(const std::array<Outcome, max_workers>& outcomes,
+[[nodiscard]] core::Result<void> result_of(Outcome& outcome) {
+    if (outcome.error) {
+        return std::unexpected(std::move(*outcome.error));
+    }
+    if (outcome.exception) {
+        return core::failure(*outcome.exception,
+                             *outcome.exception == core::ErrorCode::resource
+                                 ? "A worker exhausted a system resource"
+                                 : "A worker violated the non-throwing task contract");
+    }
+    return {};
+}
+
+[[nodiscard]] core::Result<void> earliest(std::array<Outcome, max_workers>& outcomes,
                                           unsigned workers) {
-    const Outcome* first = nullptr;
+    Outcome* first = nullptr;
     for (unsigned worker = 0; worker < workers; ++worker) {
-        const Outcome& outcome = outcomes.at(worker);
-        if (outcome.error.has_value() && (first == nullptr || outcome.index < first->index)) {
+        Outcome& outcome = outcomes.at(worker);
+        if (failed(outcome) && (first == nullptr || outcome.index < first->index)) {
             first = &outcome;
         }
     }
-    if (first == nullptr || !first->error.has_value()) {
-        return {};
-    }
-    const core::Error& error = *first->error;
-    return core::failure(error.code, error.message);
+    return first == nullptr ? core::Result<void>{} : result_of(*first);
 }
 
-// One worker means no worker: the work runs where it was asked for, which is what the fuzzers,
-// the sanitizers and a reproduction run all want.
 core::Result<void> run_here(std::size_t count, const WorkRef& work) {
+    Outcome outcome;
     for (std::size_t index = 0; index < count; ++index) {
-        auto result = work(index);
-        if (!result) {
-            return result;
+        perform(work, index, outcome);
+        if (failed(outcome)) {
+            return result_of(outcome);
         }
     }
     return {};
 }
 
-// Workers and their result slots are fixed-size and live here, so a schedule allocates nothing
-// and cannot compete with the page for the memory budget.
-core::Result<void> run_on_workers(std::size_t count, const WorkRef& work, unsigned workers) {
+[[nodiscard]] bool launch(std::size_t count, const WorkRef& work, unsigned workers,
+                          std::array<Outcome, max_workers>& outcomes) {
     std::atomic<std::size_t> next{0};
     std::atomic<bool> stop{false};
-    std::array<Outcome, max_workers> outcomes{};
-    {
-        // Threads join where they are declared, so no path leaves a worker running.
-        std::array<std::jthread, max_workers> threads{};
+    // Constructed outside try; partial launch failures stop and join every started worker.
+    std::array<std::jthread, max_workers> threads{};
+    try {
         for (unsigned worker = 0; worker < workers; ++worker) {
             threads.at(worker) = std::jthread{
                 [&, worker] { work_through(next, count, stop, work, outcomes.at(worker)); }};
         }
+    } catch (const std::bad_alloc&) {
+        stop.store(true, std::memory_order_relaxed);
+        return false;
+    } catch (const std::system_error&) {
+        stop.store(true, std::memory_order_relaxed);
+        return false;
+    }
+    return true; // threads are joined before the caller inspects any Outcome.
+}
+core::Result<void> run_on_workers(std::size_t count, const WorkRef& work, unsigned workers) {
+    std::array<Outcome, max_workers> outcomes{};
+    if (!launch(count, work, workers, outcomes)) {
+        return core::failure(core::ErrorCode::resource, "The system refused a worker thread");
     }
     return earliest(outcomes, workers);
 }
@@ -90,7 +139,8 @@ core::Result<void> Scheduler::for_each(std::size_t count, WorkRef work) const {
     if (count == 0) {
         return {};
     }
-    const unsigned workers = concurrency_.workers();
-    return concurrency_.sequential() ? run_here(count, work) : run_on_workers(count, work, workers);
+    const auto workers =
+        static_cast<unsigned>(std::min(count, static_cast<std::size_t>(concurrency_.workers())));
+    return workers == 1 ? run_here(count, work) : run_on_workers(count, work, workers);
 }
 } // namespace docenhance::exec

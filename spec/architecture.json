@@ -1,5 +1,5 @@
 {
-  "$comment": "The reviewed source of the layer graph. CMake enforces link edges from it at configure time, tools/check_architecture.py enforces includes, calls and documentation against it, and docs/architecture.md must agree with it. Editing this file is a design change. may_allocate marks the single layer that may write a new-expression: everything else receives memory that a core::Budget already accounted for.",
+  "$comment": "The reviewed source of the layer graph. CMake enforces link edges from it at configure time, tools/check_architecture.py enforces includes, calls and documentation against it, and docs/architecture.md must agree with it. Editing this file is a design change. may_allocate marks the single layer that may write a new-expression or call operator new/delete: everything else receives memory that a core::Budget already accounted for.",
   "packages": {
     "CLI11": {
       "targets": [
@@ -93,7 +93,7 @@
   "layers": {
     "core": {
       "target": "de_core",
-      "summary": "Errors, exit codes and the `Result` vocabulary",
+      "summary": "Errors, owned allocation budgets and the Result vocabulary",
       "uses": [],
       "external": [],
       "forbidden_headers": [
@@ -186,11 +186,12 @@
         "strdup",
         "system"
       ],
-      "may_thread": true
+      "may_thread": true,
+      "may_catch": true
     },
     "image": {
       "target": "de_image",
-      "summary": "Numerical and colour primitives; later, the owning image representation",
+      "summary": "Checked owning planes, borrowed views and numerical primitives",
       "uses": [
         "core"
       ],
@@ -293,17 +294,15 @@
         "secure_getenv",
         "strdup",
         "system"
-      ]
+      ],
+      "may_catch": true
     },
     "app": {
       "target": "de_app",
-      "summary": "Use cases: what an invocation means, decided in types",
+      "summary": "Validated use cases and the explicit processing port",
       "uses": [
         "contract",
         "core",
-        "exec",
-        "image",
-        "io",
         "methods"
       ],
       "external": [],
@@ -410,6 +409,81 @@
         "system"
       ],
       "may_catch": true
+    },
+    "host": {
+      "target": "de_host",
+      "summary": "Executes admitted requests using codecs, kernels and publication",
+      "uses": [
+        "app",
+        "core",
+        "image",
+        "io",
+        "methods"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ]
+    },
+    "entry": {
+      "target": "docenhance",
+      "summary": "The process entry point and sole production composition root",
+      "uses": [
+        "cli",
+        "core",
+        "host"
+      ],
+      "external": [],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ],
+      "may_catch": true,
+      "public_headers": false
     }
   }
 }

@@ -17,6 +17,7 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
+from architecture_manifest import validate_shape
 from deps import ROOT
 
 MANIFEST = ROOT / "spec/architecture.json"
@@ -38,6 +39,10 @@ class Manifest:
 
     def __init__(self, data: dict[str, Any]) -> None:
         """Index the manifest by layer and by the targets that stand for layers and packages."""
+        try:
+            validate_shape(data)
+        except (TypeError, ValueError) as exc:
+            raise ArchitectureError(str(exc)) from exc
         self.layers: dict[str, dict[str, Any]] = data["layers"]
         self.packages: dict[str, dict[str, list[str]]] = data["packages"]
         self.target_layer = {layer["target"]: name for name, layer in self.layers.items()}
@@ -134,7 +139,11 @@ def source_files(manifest: Manifest) -> dict[str, list[PurePosixPath]]:
             if path.suffix not in SOURCE_SUFFIXES:
                 continue
             relative = PurePosixPath(path.relative_to(ROOT).as_posix())
-            owned[relative.parts[len(PurePosixPath(root).parts)]].append(relative)
+            parts = relative.parts[len(PurePosixPath(root).parts) :]
+            if len(parts) <= 1 or parts[0] not in owned:
+                msg = f"{relative} has no declared source-layer owner"
+                raise ArchitectureError(msg)
+            owned[parts[0]].append(relative)
     return owned
 
 
@@ -147,9 +156,16 @@ def layout_errors(manifest: Manifest) -> list[str]:
             f"{root}/{name} is not a layer in {MANIFEST.name}"
             for name in sorted(directories - set(manifest.layers))
         ]
-    for name in manifest.layers:
-        if not (ROOT / "include/docenhance" / name).is_dir():
+    for name, layer in manifest.layers.items():
+        headers = ROOT / "include/docenhance" / name
+        if layer.get("public_headers", True) and not headers.is_dir():
             errors.append(f"layer {name} has no include/docenhance/{name} directory")
+        elif not layer.get("public_headers", True) and headers.exists():
+            errors.append(f"entry-only layer {name} must not export public headers")
+    try:
+        source_files(manifest)
+    except ArchitectureError as exc:
+        errors.append(str(exc))
     return errors
 
 

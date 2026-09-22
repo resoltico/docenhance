@@ -14,13 +14,14 @@ import tempfile
 import unittest
 from pathlib import Path
 from typing import Any, override
+from unittest.mock import patch
 
 from tools_path import ROOT
 
 import architecture
 import architecture_build
 
-LAYER_COUNT = 9
+LAYER_COUNT = 11
 
 
 def manifest_of(
@@ -67,9 +68,9 @@ class ManifestTests(unittest.TestCase):
         """A layer that reaches itself is a failure, however long the path."""
         cycle = manifest_of(
             {
-                "a": layer(uses=["b"]),
-                "b": layer(uses=["c"]),
-                "c": layer(uses=["a"]),
+                "a": layer(target="de_a", uses=["b"]),
+                "b": layer(target="de_b", uses=["c"]),
+                "c": layer(target="de_c", uses=["a"]),
             }
         )
         self.assertEqual(len(architecture.manifest_errors(cycle)), len(cycle.layers))
@@ -85,6 +86,78 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(self.manifest.package_of_header("nlohmann/json_fwd.hpp"), "nlohmann_json")
         self.assertEqual(self.manifest.package_of_header("lcms2.h"), "lcms")
         self.assertIsNone(self.manifest.package_of_header("string_view"))
+
+
+class ManifestBoundaryTests(unittest.TestCase):
+    """Malformed declarations cannot silently replace ownership or evade a rule."""
+
+    def test_duplicate_target_owners_are_rejected(self) -> None:
+        """Both layer-to-layer and layer-to-package target collisions fail closed."""
+        with self.assertRaisesRegex(architecture.ArchitectureError, "Duplicate"):
+            manifest_of({"a": layer(), "b": layer()})
+        with self.assertRaisesRegex(architecture.ArchitectureError, "Duplicate"):
+            manifest_of(
+                {"a": layer()}, {"foreign": {"targets": ["de_probe"], "headers": ["foreign/"]}}
+            )
+
+    def test_invalid_field_types_and_duplicate_edges_are_rejected(self) -> None:
+        """Booleans, lists and required strings are validated before graph indexing."""
+        for value in (
+            layer(may_catch="false"),
+            layer(may_allocate=1),
+            layer(uses="core"),
+            layer(uses=["core", "core"]),
+            layer(target=""),
+            layer(external={}),
+        ):
+            with self.subTest(value=value), self.assertRaises(architecture.ArchitectureError):
+                manifest_of({"a": value})
+        with self.assertRaises(architecture.ArchitectureError):
+            architecture.Manifest({"layers": [], "packages": {}})
+
+    def test_unowned_source_is_an_error_not_an_ignored_file(self) -> None:
+        """A source outside declared layer directories cannot disappear from the inventory."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "src").mkdir()
+            (root / "src/escape.cpp").write_text("int escape();\n", encoding="utf-8")
+            with (
+                patch.object(architecture, "ROOT", root),
+                self.assertRaisesRegex(
+                    architecture.ArchitectureError, "no declared source-layer owner"
+                ),
+            ):
+                architecture.source_files(manifest_of({"core": layer()}))
+
+    def test_allocator_calls_are_detected_by_the_real_ast(self) -> None:
+        """Explicit allocator calls and allocation expressions are separate bypass attempts."""
+        try:
+            clang_query = architecture_build.find_clang_query()
+        except architecture.ArchitectureError as exc:
+            self.skipTest(str(exc))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "src/image/probe.cpp"
+            source.parent.mkdir(parents=True)
+            source.write_text(
+                "#include <new>\nnamespace docenhance::image {\n"
+                "void probe() { void* p = ::operator new(16); ::operator delete(p); "
+                "int* q = new int; delete q; }\n}\n",
+                encoding="utf-8",
+            )
+            entry = {
+                "directory": directory,
+                "file": str(source),
+                "command": f'clang++ -std=c++23 -c "{source}"',
+            }
+            (root / "compile_commands.json").write_text(json.dumps([entry]), encoding="utf-8")
+            rules = architecture_build.matchers(architecture.load_manifest(), {"image"})
+            errors = architecture_build.api_violations(clang_query, root, entry, rules)
+            allocation = next(error for error in errors if "allocates directly" in error)
+            self.assertIn("::operator new", allocation)
+            self.assertIn("::operator delete", allocation)
+            self.assertIn("new int", allocation)
+            self.assertIn("delete q", allocation)
 
 
 class SourceRuleTests(unittest.TestCase):
@@ -186,6 +259,11 @@ class LinkRuleTests(unittest.TestCase):
         registrations = sorted(
             ROOT.glob("out/*/app/architecture-targets.json"), key=lambda p: p.stat().st_mtime
         )
+        registrations = [
+            path
+            for path in registrations
+            if "docenhance" in json.loads(path.read_text(encoding="utf-8"))
+        ]
         if not registrations:
             self.skipTest("no configured build tree to read the registration from")
         registration = registrations[-1]

@@ -216,23 +216,25 @@ void* leptonica_calloc(std::size_t count, std::size_t bytes);
 void* leptonica_realloc(void* data, std::size_t bytes);
 void leptonica_free(void* data);
 }
-// NOLINTBEGIN(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc): C allocator ABI.
 extern "C" void* leptonica_malloc(std::size_t bytes) {
     ++leptonica_allocations();
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
     return std::malloc(bytes);
 }
 extern "C" void* leptonica_calloc(std::size_t count, std::size_t bytes) {
     ++leptonica_allocations();
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
     return std::calloc(count, bytes);
 }
 extern "C" void* leptonica_realloc(void* const data, std::size_t bytes) {
     ++leptonica_allocations();
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
     return std::realloc(data, bytes);
 }
 extern "C" void leptonica_free(void* const data) {
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
     std::free(data);
 }
-// NOLINTEND(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
 #endif
 
 int main() { // NOLINT(bugprone-exception-escape): MSVC STL stream failures are caught below.

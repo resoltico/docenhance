@@ -20,8 +20,9 @@ namespace docenhance::exec {
 //                     or on who finished first. One worker is not a different program.
 //   same failure      When several items fail, the failure reported is the one with the lowest
 //                     index, not the one that happened to be noticed first.
-//   no allocation     Workers and their result slots are fixed-size and live on the stack, so a
-//                     schedule cannot compete with the page for the memory budget.
+//   bounded resources Worker metadata has a fixed ceiling. Thread stacks and OS bookkeeping
+//                     are outside the image budget; thread launch failure is a resource error.
+//                     Task exceptions become failures, never an uncaught worker termination.
 
 // A non-owning reference to the work. It never allocates and never outlives the call it is passed
 // to, which is why it takes the callable by reference.

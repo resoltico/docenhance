@@ -18,8 +18,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_TOOLS = ("cmake", "ninja")
-LINT_TOOLS = ("ruff", "mypy", "clang_format", "pre_commit")
+TEST_TOOLS = ("jsonschema", "types_jsonschema")
+BUILD_TOOLS = ("cmake", "ninja", *TEST_TOOLS)
+LINT_TOOLS = ("ruff", "mypy", "clang_format", "pre_commit", *TEST_TOOLS)
 
 
 def requirements(names: tuple[str, ...]) -> list[str]:

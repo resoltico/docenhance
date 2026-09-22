@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import struct
 import subprocess
 import sys
@@ -15,6 +14,8 @@ import tempfile
 import zlib
 from pathlib import Path
 from typing import Any
+
+from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
 SHA256_HEX_LENGTH = 64
@@ -69,34 +70,13 @@ def call(exe: Path, args: list[str], code: int = 0) -> str:
     return result.stdout
 
 
-def validate(value: Any, schema: dict[str, Any], where: str) -> None:  # noqa: ANN401
-    """Check a value against the JSON Schema subset the command contract uses."""
-    if "const" in schema:
-        expect(value == schema["const"], f"{where}: expected {schema['const']!r}, got {value!r}")
-    if "enum" in schema:
-        expect(value in schema["enum"], f"{where}: {value!r} is not one of {schema['enum']}")
-    types = {"object": dict, "array": list, "string": str, "integer": int}
-    if "type" in schema:
-        expect(isinstance(value, types[schema["type"]]), f"{where}: expected {schema['type']}")
-    if "pattern" in schema:
-        expect(re.fullmatch(schema["pattern"], value) is not None, f"{where}: {value!r}")
-    if isinstance(value, dict):
-        for name in schema.get("required", []):
-            expect(name in value, f"{where}: missing required field {name}")
-        properties = schema.get("properties", {})
-        if schema.get("additionalProperties") is False:
-            undeclared = sorted(set(value) - set(properties))
-            expect(not undeclared, f"{where}: undeclared fields {undeclared}")
-        for name, item in value.items():
-            if name in properties:
-                validate(item, properties[name], f"{where}.{name}")
-
-
 def call_json(exe: Path, args: list[str], code: int = 0) -> dict[str, Any]:
     """Run the executable, parse its single JSON object and validate it against the schema."""
     data: dict[str, Any] = json.loads(call(exe, args, code))
     schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
-    validate(data, schema, f"{args} response")
+    Draft202012Validator.check_schema(schema)
+    Draft202012Validator(schema).validate(data)
+    expect(data["exit_code"] == code, "envelope and process exit codes must agree")
     return data
 
 

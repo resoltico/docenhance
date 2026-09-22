@@ -18,10 +18,14 @@ constexpr std::uint8_t white = 255U;
 
 core::Result<void> fixed_threshold(image::PlaneView<const std::uint8_t> source,
                                    image::PlaneView<std::uint8_t> destination, double threshold) {
-    if (source.empty() || source.width() != destination.width() ||
+    if (source.empty() || destination.empty() || source.width() != destination.width() ||
         source.height() != destination.height()) {
         return core::failure(core::ErrorCode::argument,
                              "B03 needs a non-empty source and a destination of the same size");
+    }
+    if (image::overlaps(source, destination)) {
+        return core::failure(core::ErrorCode::argument,
+                             "B03 requires disjoint source and destination storage");
     }
     if (!std::isfinite(threshold) || threshold < 0.0 || threshold > 1.0) {
         return core::failure(core::ErrorCode::argument,

@@ -4,7 +4,7 @@
 
 The build is CMake + Ninja. Python scripts are **development tools**, never runtime workers. Git is used only during explicit acquisition and local source-integrity checks. There is no package-manager dependency at runtime.
 
-Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including floating-point `std::from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. The authoring environment tested only GCC 14.2 and Clang 17 against the dependency-free reference suites; this is not a full platform-support certification.
+Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including floating-point `std::from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. Verification is commit-specific; see the foundation audit and the PR checks rather than inferring support from a compiler version.
 
 An optional developer installation route uses an isolated Python environment:
 
@@ -22,7 +22,7 @@ py -3 -m venv .venv
 python tools/install_build_tools.py
 ```
 
-The explicit installer reads the version pins rather than carrying a second list. It installs the maintainers' CMake/Ninja wheels; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
+The explicit installer reads the version pins rather than carrying a second list. It installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
 
 ## Acquisition is a separate phase
 

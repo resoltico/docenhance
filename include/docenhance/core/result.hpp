@@ -19,10 +19,20 @@ enum class ExitCode : int {
     cancelled = 130,
 };
 // resource: a legitimate request the machine or the budget cannot satisfy.
-enum class ErrorCode { argument, input, resource, output, unavailable, invariant };
+enum class Publication { not_started, not_published, completed, unknown };
+enum class ErrorCode {
+    argument,
+    input,
+    resource,
+    output,
+    publication_unknown,
+    unavailable,
+    invariant,
+};
 struct Error {
     ErrorCode code;
     std::string message;
+    Publication publication = Publication::not_started;
     [[nodiscard]] constexpr ExitCode exit_code() const noexcept {
         switch (code) {
         case ErrorCode::argument:
@@ -34,6 +44,8 @@ struct Error {
             return ExitCode::processing;
         case ErrorCode::output:
             return ExitCode::output;
+        case ErrorCode::publication_unknown:
+            return ExitCode::publication_unknown;
         case ErrorCode::invariant:
             return ExitCode::invariant;
         }
@@ -51,6 +63,8 @@ struct Error {
             return "E_OUTPUT";
         case ErrorCode::unavailable:
             return "E_NOT_IMPLEMENTED";
+        case ErrorCode::publication_unknown:
+            return "E_PUBLICATION_UNKNOWN";
         case ErrorCode::invariant:
             return "E_INVARIANT";
         }

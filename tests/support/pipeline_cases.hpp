@@ -286,9 +286,11 @@ inline void box_mean_refusal_cases() {
             "blurring a plane onto itself is refused");
     std::array<float, 12> shared{};
     const image::PlaneShape shape{.width = 4, .height = 2, .stride = 4 * sizeof(float)};
-    const image::PlaneView<const float> offset_source{std::span<const float>(shared).first(8),
-                                                      shape};
-    const image::PlaneView<float> offset_destination{std::span<float>(shared).subspan(1, 8), shape};
+    const auto offset_source =
+        image::PlaneView<const float>::create(std::span<const float>(shared).first(8), shape)
+            .value();
+    const auto offset_destination =
+        image::PlaneView<float>::create(std::span<float>(shared).subspan(1, 8), shape).value();
     require(methods::box_mean(offset_source, offset_destination, 3, one, budget).error().code ==
                 core::ErrorCode::argument,
             "partially overlapping views are refused");

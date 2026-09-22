@@ -4,6 +4,32 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Changed
+
+- Separate validated application requests from the concrete processing host; inject the execution
+  port explicitly and keep CLI fuzzing entirely free of filesystem authority.
+- Unify production/fuzz target definitions and make full ASan/UBSan and TSan suites independent
+  required PR checks. Scheduled campaigns discover all harnesses through CTest.
+- Close the machine-response schema and validate it with pinned Draft 2020-12 tooling; remove
+  stale capability claims and the terminology ban that obstructed factual design documentation.
+
+### Fixed
+
+- Preserve buffer accounting after its budget owner is destroyed; validate borrowed view extents,
+  reset moved-from plane shapes, and reject empty/overlapping kernel destinations.
+- Contain worker and thread-launch exceptions; bound scheduling counters without integer wrap.
+- Charge PNG codec allocations to the page budget, preserve stored grayscale samples and handle
+  malformed data with destructors outside libpng jump frames.
+- Publish with native atomic no-replace semantics, preserve concurrent destinations/foreign stages,
+  and expose uncertain publication or cleanup instead of incorrectly promising a safe retry.
+- Preserve Unicode filesystem paths and normalize Windows command-line arguments to UTF-8.
+- Make corpus byte conversions explicit, prevent duplicate or unowned architecture declarations,
+  and check direct allocator calls as well as allocation expressions.
+- Bind lint exception fingerprints to the actual suppressed code and reject range-wide NOLINT
+  blocks; replace the native probe's broad allocator suppression with individual C ABI exceptions.
+- Disable unintended C++ module scanning for the header/translation-unit build model without
+  weakening compiler warnings or clang-tidy.
+
 ## [0.2.0] - 2026-09-22
 
 ### Added

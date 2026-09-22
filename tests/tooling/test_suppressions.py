@@ -21,18 +21,13 @@ class CxxSuppressionTests(unittest.TestCase):
     """clang-tidy, compiler, formatter and sanitizer suppressions in C and C++."""
 
     def test_named_nolint_forms_are_attributed(self) -> None:
-        """NOLINT, NOLINTNEXTLINE and NOLINTBEGIN all record each named check."""
-        text = (
-            "int a; // NOLINT(misc-a, misc-b)\n"
-            "// NOLINTNEXTLINE(bugprone-c)\n"
-            "// NOLINTBEGIN(readability-d)\n"
-            "// NOLINTEND(readability-d)\n"
-        )
+        """NOLINT and NOLINTNEXTLINE record each named check."""
+        text = "int a; // NOLINT(misc-a, misc-b)\n// NOLINTNEXTLINE(bugprone-c)\nint b;\n"
         result = suppressions.scan_cxx("x.cpp", text)
         self.assertEqual(result.errors, [])
-        expected = ["misc-a", "misc-b", "bugprone-c", "readability-d"]
+        expected = ["misc-a", "misc-b", "bugprone-c"]
         self.assertEqual(rules(result), [f"clang-tidy/{r}" for r in expected])
-        self.assertEqual([s.line for s in result.suppressions], [1, 1, 2, 3])
+        self.assertEqual([s.line for s in result.suppressions], [1, 1, 2])
 
     def test_blanket_nolint_is_rejected(self) -> None:
         """A NOLINT without a check list silences everything and is never allowed."""
@@ -52,10 +47,25 @@ class CxxSuppressionTests(unittest.TestCase):
         separators = "int n = 1'000'000; // NOLINT(misc-w)\n"
         self.assertEqual(rules(suppressions.scan_cxx("x.cpp", separators)), ["clang-tidy/misc-w"])
 
-    def test_unbalanced_nolint_block_is_rejected(self) -> None:
-        """A NOLINTBEGIN without its NOLINTEND would silence the rest of the file."""
-        result = suppressions.scan_cxx("x.cpp", "// NOLINTBEGIN(misc-a)\nint a;\n")
-        self.assertIn("x.cpp: unbalanced NOLINTBEGIN/NOLINTEND", result.errors)
+    def test_range_nolint_is_rejected_even_when_balanced(self) -> None:
+        """A named range can conceal unlimited future code and is never registrable."""
+        for text in (
+            "// NOLINTBEGIN(misc-a)\nint a;\n",
+            "// NOLINTBEGIN(misc-a)\nint a;\n// NOLINTEND(misc-a)\n",
+        ):
+            result = suppressions.scan_cxx("x.cpp", text)
+            self.assertTrue(result.errors)
+            self.assertEqual(result.suppressions, [])
+
+    def test_next_line_key_covers_the_actual_target(self) -> None:
+        """Changing suppressed code changes its key; unrelated line shifts do not."""
+        original = "// NOLINTNEXTLINE(misc-a)\nint a;\n"
+        key = suppressions.scan_cxx("x.cpp", original).suppressions[0].key
+        moved = suppressions.scan_cxx("x.cpp", "// other\n" + original).suppressions[0].key
+        changed = suppressions.scan_cxx("x.cpp", original.replace("int a", "int b"))
+        self.assertEqual(key, moved)
+        self.assertNotEqual(key, changed.suppressions[0].key)
+        self.assertTrue(suppressions.scan_cxx("x.cpp", original.splitlines()[0]).errors)
 
     def test_compiler_and_formatter_suppressions(self) -> None:
         """Diagnostic pragmas, MSVC warning pragmas and clang-format off are all recorded."""
@@ -111,6 +121,15 @@ class PythonSuppressionTests(unittest.TestCase):
                 "pylint/invalid-name",
             ],
         )
+
+    def test_python_key_covers_code_not_just_the_comment(self) -> None:
+        """A copied identical marker cannot approve different Python code."""
+        original = "a = 1  # noqa: S101\n"
+        key = suppressions.scan_python("x.py", original).suppressions[0].key
+        moved = suppressions.scan_python("x.py", "# header\n" + original).suppressions[0].key
+        changed = suppressions.scan_python("x.py", "b = 2  # noqa: S101\n").suppressions[0].key
+        self.assertEqual(key, moved)
+        self.assertNotEqual(key, changed)
 
     def test_blanket_and_file_wide_forms_are_rejected(self) -> None:
         """Unnamed, file-wide, range-wide and inline-config forms are never allowed."""
