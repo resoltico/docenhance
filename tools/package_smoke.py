@@ -56,8 +56,10 @@ def smoke(root: Path) -> list[str]:
         failures.append(f"Unexpected version report: {version}")
     if not list(root.rglob("sbom.spdx.json")) or not list(root.rglob("THIRD_PARTY_NOTICES.md")):
         failures.append("Package lacks its SBOM or third-party notices")
-    if run_json(candidates[0], "methods", "--json")["methods"] != []:
-        failures.append("Package advertises unimplemented methods")
+    if version["methods"] != [{"id": "B03", "method_version": 1}] or version[
+        "supported_formats"
+    ] != ["png"]:
+        failures.append("Package capabilities differ from the supported B03/PNG contract")
     return failures
 
 
