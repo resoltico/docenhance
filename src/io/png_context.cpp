@@ -8,9 +8,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
-#ifdef _WIN32
-#include <stdio.h> // NOLINT(modernize-deprecated-headers)
-#endif
 #include <filesystem>
 #include <png.h>
 #include <pngconf.h>
@@ -101,6 +98,7 @@ bool PngContext::open(const std::filesystem::path& path) {
         return false;
     }
 #ifdef _WIN32
+    // NOLINTNEXTLINE(misc-include-cleaner): MSVC exposes _wfopen through its C runtime internals.
     file.reset(_wfopen(path.c_str(), writing ? L"wbx" : L"rb"));
 #else
     // The unique_ptr immediately takes ownership of the C stream.
