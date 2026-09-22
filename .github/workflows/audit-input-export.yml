@@ -30,7 +30,7 @@ jobs:
           test "$fingerprint" = 6084F3CF814B57C1CF12EFD515CF4D18AF4F7421
           gpg --batch --dearmor -o export/llvm.gpg export/llvm.asc
           sudo install -m 0644 export/llvm.gpg /usr/share/keyrings/docenhance-audit-llvm.gpg
-          echo 'deb [signed-by=/usr/share/keyrings/docenhance-audit-llvm.gpg] https://apt.llvm.org/bookworm/ llvm-toolchain-bookworm main' | sudo tee /etc/apt/sources.list.d/docenhance-audit-llvm.list
+          echo 'deb [signed-by=/usr/share/keyrings/docenhance-audit-llvm.gpg] https://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-23 main' | sudo tee /etc/apt/sources.list.d/docenhance-audit-llvm.list
           sudo apt-get update
           (cd export/debs && apt-get download clang-23 clang-tidy-23 clang-tools-23 libclang-common-23-dev libclang-rt-23-dev libclang1-23 libclang-cpp23 libllvm23 llvm-23-linker-tools)
           python -m pip download --only-binary=:all: -d export/wheels types-jsonschema==4.26.0.20260518
