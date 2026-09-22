@@ -54,6 +54,15 @@
     "src/io/png_encode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
     },
+    "src/io/publication.cpp:clang-tidy/misc-include-cleaner@4ab6eb94": {
+      "explanation": "The Windows SDK exposes MoveFileExW and GetLastError through its required umbrella header, but clang's include cleaner cannot attribute either ABI entry point through that SDK layering. The private publication adapter is the only Windows API consumer."
+    },
+    "src/io/publication.cpp:clang-tidy/misc-include-cleaner@a07fcf58": {
+      "explanation": "MoveFileExW is the Windows-native atomic no-replace publication operation. Clang's include cleaner cannot map it through the required Windows SDK umbrella header; this one ABI call is exercised by the Windows native package test."
+    },
+    "src/io/publication.cpp:clang-tidy/misc-include-cleaner@fdb3a31a": {
+      "explanation": "GetLastError obtains the outcome of the immediately preceding MoveFileExW call. Clang's include cleaner cannot map it through the required Windows SDK umbrella header; keeping this code-bound exception preserves native error reporting."
+    },
     "src/io/publication.cpp:clang-tidy/modernize-deprecated-headers@16943187": {
       "explanation": "The GNU renameat2/RENAME_NOREPLACE and Darwin renamex_np/RENAME_EXCL extensions are declared by the native stdio.h, not by the standard C++ <cstdio> interface. Including the actual native provider is required by include-cleaner and deliberately confines this OS API dependency to the private publication adapter."
     },
