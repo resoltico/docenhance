@@ -47,3 +47,29 @@ jobs:
           name: docenhance-source
           path: dist/*
           if-no-files-found: error
+  publish:
+    name: Publish changelog-bound source release
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    needs: source
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v7.0.0
+        with:
+          name: docenhance-source
+          path: dist
+      - name: Validate changelog-bound release notes
+        run: python tools/publish_source_release.py --check
+      - name: Publish and verify changelog-bound source release
+        run: python tools/publish_source_release.py --assets-directory dist
+        env:
+          GH_TOKEN: ${{ github.token }}

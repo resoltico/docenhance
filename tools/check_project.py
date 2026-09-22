@@ -36,6 +36,7 @@ REQUIRED_SOURCE_COMMANDS = (
     "python -m mypy",
     "python -m unittest discover -s tests/tooling -v",
     "python tools/package_source.py",
+    "python tools/publish_source_release.py --check",
 )
 REQUIRED_CI_COMMANDS = ("cmake --workflow --preset release", "cmake --workflow --preset fuzz")
 SANITIZED_TEST_PRESETS = ("sanitize", "tsan", "fuzz", "fuzz-afl")

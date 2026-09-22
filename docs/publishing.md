@@ -1,8 +1,7 @@
 # Publishing the repository
 
-This working copy is initialized as a local `main` Git repository. It has no commit, remote, account
-setting or GitHub repository yet. Review the source, create the initial commit with your own Git
-identity, then publish it to the chosen repository.
+This repository is published on GitHub. Review changes locally, commit with your own Git identity,
+and use protected `main` through reviewed pull requests.
 
 Community-health files live in `.github/`: [security policy](../.github/SECURITY.md), [code of
 conduct](../.github/CODE_OF_CONDUCT.md), the pull-request template and the issue forms. GitHub reads
@@ -16,8 +15,9 @@ Two workflow families are checked in:
   tests, sanitizers and fuzzing. They create packages only for in-run smoke tests; they upload no
   development binaries and create no GitHub releases.
 - **Package source archive** runs source-level integrity, formatting, lint/type and tooling checks,
-  then creates the deterministic source archive. It runs on demand and for a `v*` tag, generates a
-  GitHub artifact-provenance attestation, and uploads the archive as the workflow result.
+  then creates and attests the deterministic source archive. On a `v*` tag it publishes the
+  source-only GitHub release using the exact Markdown below that version's heading in
+  `CHANGELOG.md`; there is no separate release-notes source.
 
 After the first quality-gate workflow run:
 
@@ -35,11 +35,13 @@ dependency-lock changes still require the review described in [CONTRIBUTING](../
 
 ## Source releases
 
-Publishing source is separate from shipping a binary. Create and push a reviewed, annotated `v*`
-tag, retrieve the matching source-workflow archive and checksum, and attach them to a manually
-created GitHub release. Do not attach a binary, claim that native CI passed before it has, or mark
-the release as a usable image enhancer. Release signing, binary distribution, credentials and
-approvals belong to a later distribution milestone.
+Publishing source is separate from shipping a binary. Before creating a reviewed, annotated `v*`
+tag, move the complete release prose from `Unreleased` under the matching dated changelog heading.
+The source workflow validates the tag/version match, creates the release from the tagged archive
+and checksum, and rejects any existing release whose body or assets differ; it never edits a release
+or replaces an asset. Do not attach a binary, claim that native CI passed before it has, or mark the
+release as a usable image enhancer. Release signing, binary distribution, credentials and approvals
+belong to a later distribution milestone.
 
 Verify the downloaded archive against both its checksum and the GitHub provenance before trusting
 or attaching it:

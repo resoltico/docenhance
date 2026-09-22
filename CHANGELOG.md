@@ -4,6 +4,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Changed
+
+- Future GitHub source releases publish the exact categorized Markdown from their
+  tagged changelog section; release prose has no second authoring source.
+
 ## [0.1.0] - 2026-09-21
 
 - First release.
