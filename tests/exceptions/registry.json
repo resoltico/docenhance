@@ -39,7 +39,7 @@
     "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
     },
-    "src/io/png_decode.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@ec239170": {
+    "src/io/png_decode.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@c09bc3d0": {
       "explanation": "Clang's analyzer misclassifies the MSVC standard library's internal filesystem bitmask cast when file_size combines its documented flags. The error-code overload still provides the required non-throwing file-size boundary and is covered by malformed-input tests."
     },
     "src/io/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
@@ -48,7 +48,7 @@
     "src/io/png_encode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
     },
-    "src/io/png_encode.cpp:msvc/4611@ebeaa512": {
+    "src/io/png_encode.cpp:msvc/4611@eab8232f": {
       "explanation": "MSVC warns for every setjmp in a C++ function even when no automatic object with a destructor can be crossed. This one-statement suppression is paired with the checked libpng jump-frame design and the existing cert-err52-cpp exception registration."
     },
     "src/io/png_encode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
