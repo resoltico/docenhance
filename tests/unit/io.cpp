@@ -7,7 +7,7 @@
 #include "publication.hpp"
 
 #include <array>
-#include <barrier>
+#include <atomic>
 #include <catch2/catch_test_macros.hpp>
 #include <chrono>
 #include <cstddef>
@@ -106,18 +106,29 @@ TEST_CASE("Only one concurrent native commit can win", "[io]") {
     const auto target = temporary.path / "target";
     REQUIRE(std::filesystem::create_directory(first));
     REQUIRE(std::filesystem::create_directory(second));
-    std::barrier ready{2};
+    std::atomic<unsigned> ready = 0;
+    std::atomic<bool> start = false;
     std::error_code first_error;
     std::error_code second_error;
     {
         std::jthread const a{[&] {
-            ready.arrive_and_wait();
+            ready.fetch_add(1, std::memory_order_release);
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
             first_error = io::rename_exclusive(first, target);
         }};
         std::jthread const b{[&] {
-            ready.arrive_and_wait();
+            ready.fetch_add(1, std::memory_order_release);
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
             second_error = io::rename_exclusive(second, target);
         }};
+        while (ready.load(std::memory_order_acquire) != 2) {
+            std::this_thread::yield();
+        }
+        start.store(true, std::memory_order_release);
     }
     CHECK((first_error.value() == 0) != (second_error.value() == 0));
     CHECK(std::filesystem::is_directory(target));
