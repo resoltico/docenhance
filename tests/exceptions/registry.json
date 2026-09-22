@@ -21,8 +21,20 @@
     "src/entry/main.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
       "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>."
     },
-    "src/entry/main.cpp:clang-tidy/misc-const-correctness@fd9d1751": {
+    "src/entry/main.cpp:clang-tidy/misc-const-correctness@dabdef11": {
       "explanation": "The Windows CRT declares wmain with wchar_t**. The entry point preserves that ABI and only reads the arguments through a span before converting them to owned UTF-8 strings."
+    },
+    "src/entry/main.cpp:clang-tidy/misc-include-cleaner@5c26b102": {
+      "explanation": "WideCharToMultiByte and its UTF-8 conversion constants are Windows SDK ABI declarations that clang's include cleaner cannot map through the required Windows umbrella header. This conversion is the entry adapter's only Windows API use."
+    },
+    "src/entry/main.cpp:clang-tidy/misc-include-cleaner@ee70c5ba": {
+      "explanation": "The Windows SDK umbrella header supplies the wide-character conversion ABI, but clang's include cleaner cannot attribute it through the SDK's header layering. The executable entry adapter is the only consumer."
+    },
+    "src/entry/main.cpp:clang-tidy/misc-include-cleaner@fa6a5cbd": {
+      "explanation": "WideCharToMultiByte converts the Windows CRT argument into admitted UTF-8 text. Clang's include cleaner cannot map this Windows SDK ABI call through its required umbrella header."
+    },
+    "src/entry/main.cpp:clang-tidy/misc-use-internal-linkage@dabdef11": {
+      "explanation": "wmain is the Windows process entry point and must have external linkage for the CRT. Making it static would prevent the linker from using the required Unicode entry ABI."
     },
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@bc0db12c": {
       "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
