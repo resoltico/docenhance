@@ -149,10 +149,11 @@ class ManifestBoundaryTests(unittest.TestCase):
             compiler = "clang++"
             if os.name == "nt":
                 compiler = str(Path(clang_query).with_name("clang++.exe"))
+            source_name = source.as_posix()
             entry = {
                 "directory": directory,
-                "file": str(source),
-                "command": f'{compiler} -std=c++23 -c "{source}"',
+                "file": source_name,
+                "command": f'{compiler} -std=c++23 -c "{source_name}"',
             }
             (root / "compile_commands.json").write_text(json.dumps([entry]), encoding="utf-8")
             rules = architecture_build.matchers(architecture.load_manifest(), {"image"})
