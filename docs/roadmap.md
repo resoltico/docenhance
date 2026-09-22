@@ -18,6 +18,6 @@ The work packages below are ordered by dependency. Each one needs its own specif
 | 11 | Cross-platform robustness and performance | Full corpus/codec/numerical/CLI tests; bounded resource measurements; real Windows Unicode paths; required minimum-OS environments |
 | 12 | Public release audit | Complete license and binary composition review, SBOM, signing policy, reproducibility qualifications, package smoke tests and documentation consistent with actual behavior |
 
-Each implementation change updates the relevant status entry and retains evidence. A green scaffold test suite is not equivalent to empirical readability/fidelity evaluation on real documents. Testing on already-good documents is required; a legitimate no-op must remain possible.
+Each implementation change updates the relevant status entry and retains evidence. A green test suite is not equivalent to empirical readability/fidelity evaluation on real documents. Testing on already-good documents is required; a legitimate no-op must remain possible.
 
 Do not create a “restore everything” preset by composing every method, add a second GUI, introduce OCR/neural inference, or change CLI meanings to simplify an implementation. Amend the authoritative design explicitly when a genuine contradiction is discovered.

@@ -71,9 +71,7 @@ def render_header(contract: dict[str, Any]) -> str:
         for name, command in commands.items()
         if command["scope_symbol"]
     }
-    status = json.dumps(contract["contract_status"], ensure_ascii=True)
     text = HEADER_PREAMBLE
-    text += f"inline constexpr std::string_view contract_status = {status};\n"
     text += "// The usage line of every command, as the reviewed contract states it.\n"
     text += "[[nodiscard]] constexpr std::string_view command_usage(Command command) noexcept {\n"
     text += "    switch (command) {\n"

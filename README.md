@@ -4,7 +4,7 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
 
-> **Development status: capability-limited preview, not a usable image enhancer.**
+> **Capability boundary: image processing is not available.**
 > The build graph, dependency acquisition, CLI shell, contracts, architectural boundaries, numerical reference primitives, test infrastructure and packaging are present. Complete image decoders, processing methods and output-bundle publication are **not implemented**. Processing commands fail explicitly without opening input images or writing results. Do not use this version for document processing.
 
 ## Start here
@@ -96,7 +96,7 @@ This repository supports source releases only. For a `v*` tag, the `Package sour
 workflow validates and builds a deterministic source tarball, attests it, and publishes the source
 release. Its GitHub release body is the exact dated section of [CHANGELOG.md](CHANGELOG.md), not a
 separate notes file or generated summary. The publisher never edits an existing release; it rejects
-different prose or source assets. Do not represent this preview as a usable image enhancer.
+different prose or source assets. Do not represent this release as a usable image enhancer.
 
 ## Contributing and security
 

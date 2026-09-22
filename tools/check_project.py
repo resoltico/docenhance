@@ -20,7 +20,7 @@ PRESET_SCHEMA = 12
 MIN_CLANG_TOOLS_MAJOR = 23
 CXX_STANDARD = 23
 SPDX_WINDOW = 300
-EVOLUTIONARY_TERMS = re.compile(r"\bf[o]undation(?:al)?\b", re.IGNORECASE)
+EVOLUTIONARY_TERMS = re.compile(r"\b(?:f[o]undation(?:al)?|scaff[o]ld|prev[i]ew)\b", re.IGNORECASE)
 TEXT_SUFFIXES = frozenset(
     {
         ".cmake",
