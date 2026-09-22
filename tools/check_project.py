@@ -20,6 +20,26 @@ PRESET_SCHEMA = 12
 MIN_CLANG_TOOLS_MAJOR = 23
 CXX_STANDARD = 23
 SPDX_WINDOW = 300
+EVOLUTIONARY_TERMS = re.compile(r"\bf[o]undation(?:al)?\b", re.IGNORECASE)
+TEXT_SUFFIXES = frozenset(
+    {
+        ".cmake",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".ini",
+        ".json",
+        ".md",
+        ".ps1",
+        ".py",
+        ".sh",
+        ".toml",
+        ".yml",
+        ".yaml",
+    }
+)
+# This is the upstream OpenCV CMake option spelling, not project terminology.
+TERMINOLOGY_EXEMPTIONS = frozenset({"deps/features.json"})
 # Machine-readable ownership on every first-party file (REUSE/SPDX).
 COPYRIGHT = "SPDX-FileCopyrightText: 2026 Ervins Strauhmanis"
 LICENSE_TAG = "SPDX-License-Identifier: MIT"
@@ -89,6 +109,19 @@ def metadata_errors() -> list[str]:
             for tag in (LICENSE_TAG, COPYRIGHT)
             if tag not in head
         )
+    return errors
+
+
+def terminology_errors() -> list[str]:
+    """Reject lifecycle branding from first-party interfaces and documentation."""
+    errors = []
+    for path in iter_files(ROOT):
+        rel = path.relative_to(ROOT).as_posix()
+        if rel in TERMINOLOGY_EXEMPTIONS or path.suffix not in TEXT_SUFFIXES:
+            continue
+        match = EVOLUTIONARY_TERMS.search(path.read_text(encoding="utf-8"))
+        if match is not None:
+            errors.append(f"Evolutionary project terminology in {rel}: {match.group(0)}")
     return errors
 
 
@@ -209,6 +242,7 @@ def check() -> list[str]:
         *json_errors(),
         *lock_errors(),
         *metadata_errors(),
+        *terminology_errors(),
         *link_errors(),
         *toolchain_errors(),
         *wiring_errors(),

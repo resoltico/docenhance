@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 include_guard(GLOBAL)
 option(DE_SUPERBUILD "Build isolated, locked dependencies and then the application" ON)
-option(DE_BUILD_TESTS "Build foundation and native dependency tests" ON)
+option(DE_BUILD_TESTS "Build application and native dependency tests" ON)
 option(DE_BUILD_TOOLS "Build development-only dependency probe" ON)
 option(DE_WARNINGS_AS_ERRORS "Treat first-party warnings as errors" ON)
 option(DE_ENABLE_ASAN "Instrument first-party code with AddressSanitizer" OFF)

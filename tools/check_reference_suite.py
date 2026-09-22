@@ -70,7 +70,7 @@ def main() -> int:
     if args.sanitize:
         flags += ["-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-g"]
     with tempfile.TemporaryDirectory(prefix="docenhance-reference-") as temp:
-        exe = Path(temp) / "foundation-tests"
+        exe = Path(temp) / "reference-tests"
         cmd = [
             compiler,
             *flags,

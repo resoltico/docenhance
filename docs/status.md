@@ -3,7 +3,7 @@
 What exists, what does not, and what has actually been run. This page is kept current; it is not a
 log of past sessions.
 
-**The product is a foundation, not a usable image enhancer.** Every processing command fails with
+**The product is capability-limited, not a usable image enhancer.** Every processing command fails with
 `E_NOT_IMPLEMENTED` before opening an input or writing a result.
 
 ## What exists
@@ -12,7 +12,7 @@ log of past sessions.
 |---|---|
 | Isolated superbuild, presets and packaging | Working: full locked dependency build, tests and relocatable package |
 | Pinned dependency acquisition and verification | Working: every source acquired, digest-inventoried and re-verified before each build |
-| CLI shell: help, version, capability discovery | Working: the adapter parses, `de_app` decides in types, `de_report` renders, and responses are validated against `schemas/foundation-result.schema.json` |
+| CLI shell: help, version, capability discovery | Working: the adapter parses, `de_app` decides in types, `de_report` renders, and responses are validated against `schemas/command-response.schema.json` |
 | Argument contract: 69 arguments, 17 planned methods | Parsed and documented; generated into help, reference docs and the fuzzing dictionary |
 | Numeric and parser reference primitives | Working and property-fuzzed against independent references |
 | First image kernel (`methods::box_mean`) | Working: separable moving average with reflected borders, checked against the summed definition and bitwise-stable across worker counts. A shared primitive, not an advertised method |
@@ -32,9 +32,8 @@ placeholder returns success by copying its input.
 
 ## What has been verified
 
-Last run 2026-09-20, on macOS 27.0 arm64 (Apple clang 21, Homebrew LLVM 23.1.1, GCC 16.2.0, CMake
-4.4.3, Ninja 1.13.2, Python 3.14.7) and in Ubuntu 24.04 **aarch64** containers that reproduce the
-Linux CI jobs from the packaged source archive.
+Last local run: 2026-09-22 on macOS arm64. The protected GitHub quality gate also passed on
+2026-09-22 across Linux x86-64/ARM64, macOS ARM64/Intel, and Windows x86-64.
 
 | Check | Result |
 |---|---|
@@ -46,6 +45,7 @@ Linux CI jobs from the packaged source archive.
 | AFL++ 5.03c | Built from its pinned commit; four targets, 60 s each, no findings |
 | Linux structural job | Ruff, mypy, clang-format, the gates, the source architecture rules, tooling tests, and the GCC and sanitized-clang reference suites, the latter with the pinned clang 23 |
 | Linux native job | Full superbuild, 16 tests, packaging and the relocated smoke test; the architecture rules pass there under GCC 13 with the pinned `clang-query` |
+| GitHub native matrix | Full superbuild, tests, package and relocated-package smoke test passed on Linux x86-64/ARM64, macOS ARM64/Intel and Windows x86-64 under the protected quality gate |
 | Linux leak detection | Confirmed active: a deliberately leaking binary aborted with a LeakSanitizer report |
 | Kernel property fuzzing | 50,349 inputs over planes, radii and worker counts with no finding: every sample matched the summed definition, and more workers never changed a bit |
 | GCC 16 strict warnings | Every harness and first-party source compiles with the full warning set as errors |
@@ -53,7 +53,7 @@ Linux CI jobs from the packaged source archive.
 | Architecture rules | Pass, and were checked in both directions: a forbidden link, a forbidden package, a cross-layer include, a fictional link, a missing link, a `throw`, a `catch`, a foreign namespace and a header that needs its includer were each introduced and each was rejected |
 | Pinned `clang-query` on Linux | `clang-tidy-23` and `clang-tools-23` install from the fingerprint-checked apt.llvm.org repository and provide `clang-query-23` (23.1.2) |
 
-## What has not been verified
+## Remaining verification
 
 - **GitHub source-archive validation passed** for the `v0.1.0` tag: its source checks, deterministic
   package, provenance attestation and artifact upload completed successfully. The downloaded archive
@@ -61,11 +61,8 @@ Linux CI jobs from the packaged source archive.
 - **macOS Intel uses a source-pinned LLVM 23 tool build.** The hosted Intel Homebrew channel provides
   LLVM 22 and LLVM 23 publishes no Intel macOS release archive, so CI SHA-verifies the LLVM 23 source
   archive, builds only clang-tidy and clang-query, and caches that build by version and architecture.
-- **Windows and MSVC have never been executed**: not the replay harnesses, not `tools/ci_windows.ps1`,
-  not the verified-installer path for clang-tidy. Portability there rests on review alone.
-- **x86-64 has never been executed**: every container run was aarch64.
 - **macOS 14 and 15 were never run**: the binary is built for 14.0 and asserts it, but has only run
-  on macOS 27.
+  on the hosted macOS 26 runners.
 - **Thread control on macOS is not available through OpenCV**: its `parallel_for_` uses Grand
   Central Dispatch, which ignores a requested thread count. `--threads` is therefore honoured by
   `de_exec` instead; the scheduler and its guarantees are implemented and tested, but no kernel

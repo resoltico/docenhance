@@ -128,7 +128,7 @@ std::optional<Outcome> require_target_arguments(const Invocation& invocation,
     return std::nullopt;
 }
 Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation) {
-    CLI::App cli{"DocEnhance development foundation"};
+    CLI::App cli{"DocEnhance"};
     cli.set_help_flag();
     cli.require_subcommand(0, 1);
     RootFlags root;

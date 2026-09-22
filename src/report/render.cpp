@@ -15,7 +15,7 @@ namespace docenhance::report {
 namespace {
 using Json = nlohmann::ordered_json;
 constexpr int json_indent = 2;
-// The envelope version of schemas/foundation-result.schema.json, which the CLI contract test
+// The envelope version of schemas/command-response.schema.json, which the CLI contract test
 // validates every response against.
 constexpr int schema_version = 1;
 
@@ -24,7 +24,6 @@ Json envelope(const app::Outcome& outcome, const Json& fields) {
     Json json = {
         {"schema_version", schema_version},
         {"command", contract::command_name(outcome.command)},
-        {"development_stage", outcome.build.development_stage},
         {"version", outcome.build.version},
         {"exit_code", static_cast<int>(outcome.exit_code)},
     };
@@ -64,8 +63,7 @@ Json option_fields(contract::Command command) {
     return options;
 }
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
-    std::string text = "DocEnhance " + std::string(outcome.build.version) +
-                       " — development foundation\n" +
+    std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
     text += "Implemented: help, version, honest capability discovery.\n";
     text +=
@@ -97,13 +95,13 @@ Output text_form(const app::Outcome& outcome) {
             } else if constexpr (std::is_same_v<Payload, app::Version>) {
                 return {
                     .out = "DocEnhance " + std::string(outcome.build.version) +
-                           " (foundation; image processing unavailable)\n",
+                           " (image processing unavailable)\n",
                     .err = {},
                 };
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {
                 return {
                     .out = "No complete image-processing methods are implemented in this "
-                           "foundation.\n",
+                           "application.\n",
                     .err = {},
                 };
             } else {

@@ -38,7 +38,7 @@ build fails when they are stale.
 
 A JSON catalog is a storage format, not a validator: the typed `EffectiveRecipe` and method variants
 remain required before any processing runs, and no option may be silently ignored once its operation
-exists. `schemas/foundation-result.schema.json` declares every field the executable emits, and the
+exists. `schemas/command-response.schema.json` declares every field the executable emits, and the
 CLI contract test validates real responses against it.
 
 ## Architecture is enforced against the compiler, not against source text
@@ -76,7 +76,7 @@ application layer previously composed both forms itself, which made it half a co
 wire format, the help layout and the use-case rules lived in one file, and any second front end
 would have had to parse strings or repeat the logic.
 
-The split also gives the JSON response one owner. `schemas/foundation-result.schema.json` declares
+The split also gives the JSON response one owner. `schemas/command-response.schema.json` declares
 what it contains, `de_report` is the only layer that links a JSON library, and no public header of
 any layer names a third-party header, so the types crossing these boundaries stay first-party.
 

@@ -15,7 +15,6 @@ namespace {
 BuildFacts build_facts() noexcept {
     return {
         .version = application_version,
-        .development_stage = development_stage,
         .platform = build_platform,
         .compiler = build_compiler,
         .dependency_lock_sha256 = dependency_lock_sha256,
@@ -67,9 +66,8 @@ Outcome dispatch(const contract::Invocation& invocation) {
         }
         return succeeded(invocation, Methods{.capabilities = capabilities()});
     }
-    return unavailable(invocation,
-                       std::string(contract::command_name(invocation.command)) +
-                           " is specified but not implemented in this foundation; no inputs were "
-                           "opened and no outputs were created");
+    return unavailable(invocation, std::string(contract::command_name(invocation.command)) +
+                                       " is specified but not implemented; no inputs were "
+                                       "opened and no outputs were created");
 }
 } // namespace docenhance::app

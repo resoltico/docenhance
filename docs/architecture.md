@@ -197,7 +197,7 @@ identities, `deps/features.json` the requested upstream feature values, and `dep
 tool pins. `spec/architecture.json` owns the layer graph. `spec/cli-contract.json` and
 `spec/method-contract.json` are the reviewed authoring sources for arguments and planned methods; `tools/generate_spec.py` turns them into typed C++
 descriptors, documentation and the fuzzing dictionary, and the build fails when those are stale.
-`schemas/foundation-result.schema.json` owns the shape of every JSON response.
+`schemas/command-response.schema.json` owns the shape of every JSON response.
 
 ## How a command becomes a response
 
@@ -210,7 +210,7 @@ Four steps, each owned by one layer, and nothing does two of them:
    exit code, the build identity, and a typed payload (`Help`, `Version`, `Methods`, `Failure`).
    It composes no text and knows no output format.
 3. `de_report` renders that outcome, as the JSON response
-   (`schemas/foundation-result.schema.json`) or as human text. It is the only owner of the wire
+   (`schemas/command-response.schema.json`) or as human text. It is the only owner of the wire
    format, and the only layer that links a JSON library.
 4. `de_cli` writes the rendered bytes to the streams it was given and returns the exit code.
 

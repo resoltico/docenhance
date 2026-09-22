@@ -83,7 +83,7 @@ Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --t
 
 ```sh
 cmake --workflow --preset release
-python tools/package_smoke.py dist/docenhance-0.1.0-foundation-Linux-x86_64.tar.gz
+python tools/package_smoke.py dist/docenhance-0.1.0-Linux-x86_64.tar.gz
 ```
 
 Use the actual platform-specific filename written by CPack. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates only the application and its metadata; upstream command-line tools, tests, compilers and Python are not included. A separate relocated-package smoke test is mandatory in CI.
@@ -103,9 +103,9 @@ This creates a deterministic source archive, with sorted entries, normalized own
 ```sh
 python tools/check_project.py
 python -m unittest discover -s tests/tooling -v
-python tools/check_foundation.py --compiler g++
-python tools/check_foundation.py --compiler clang++
-python tools/check_foundation.py --compiler g++ --sanitize
+python tools/check_reference_suite.py --compiler g++
+python tools/check_reference_suite.py --compiler clang++
+python tools/check_reference_suite.py --compiler g++ --sanitize
 ```
 
 The last three commands compile the same first-party reference cases used by Catch2. They are **not** a second application build framework or evidence that the native CLI/dependencies build. They are useful for rapid numerical and parser validation while dependency acquisition is unavailable.
