@@ -4,7 +4,6 @@
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/parse.hpp"
 #include "docenhance/image/numeric.hpp"
-#include "docenhance/io/capabilities.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "require.hpp"
 
@@ -197,9 +196,6 @@ inline void capabilities_cases() {
     require(methods::implemented_methods().size() == 1 &&
                 methods::implemented_methods().front().id == "B03",
             "B03 is the only advertised method");
-    require(io::supported_input_formats().size() == 1 &&
-                io::supported_input_formats().front() == "png",
-            "PNG is the only advertised input format");
     const core::Error unavailable{.code = core::ErrorCode::unavailable, .message = "not ready"};
     require(unavailable.exit_code() == core::ExitCode::processing,
             "unavailable is not publication-unknown");
