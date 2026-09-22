@@ -68,7 +68,12 @@ def main() -> int:
     sources = [*reference_sources(), "tests/support/standalone_main.cpp"]
     flags = ["-std=c++23", "-Werror", *STRICT_WARNINGS, "-fno-fast-math", "-ffp-contract=off"]
     if args.sanitize:
-        flags += ["-fsanitize=address,undefined", "-fno-omit-frame-pointer", "-g"]
+        flags += [
+            "-fsanitize=address,undefined",
+            "-fno-sanitize-recover=all",
+            "-fno-omit-frame-pointer",
+            "-g",
+        ]
     with tempfile.TemporaryDirectory(prefix="docenhance-reference-") as temp:
         exe = Path(temp) / "reference-tests"
         cmd = [

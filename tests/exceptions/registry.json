@@ -3,47 +3,98 @@
     "cmake/ProjectOptions.cmake:compiler/-Wno-unknown-warning-option@7fb1d038": {
       "explanation": "Applies to clang-tidy's own parse of GCC compile commands, where the GCC-only warning flags would otherwise be hard errors under -Werror. The compilers themselves still reject unknown options."
     },
+    "fuzz/support/replay_main.cpp:clang-tidy/bugprone-exception-escape@2d07a17a": {
+      "explanation": "The standalone replay boundary catches every standard and non-standard exception, writes an explicit diagnostic, and returns a failure status. MSVC's filesystem implementation exposes throws through its declarations but clang-tidy does not follow this local catch boundary."
+    },
     "fuzz/support/replay_main.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
       "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>."
     },
     "include/docenhance/contract/cli_contract.hpp:clang-format/off@6435d9d3": {
       "explanation": "Generated table: tools/generate_spec.py emits one option per line with long description literals; clang-format would split the literals and break byte-exact regeneration checks."
     },
-    "src/cli/main.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
-      "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>."
+    "include/docenhance/image/plane.hpp:clang-tidy/*-reinterpret-cast@180d663e": {
+      "explanation": "The one boundary where a plane's raw storage becomes samples, in a single private function. core::Buffer is over-aligned for every supported sample type, those types are implicit-lifetime, and the span covers whole rows, so no other cast is needed anywhere else in the project."
     },
-    "src/cli/run.cpp:clang-tidy/bugprone-exception-escape@d9bf508d": {
+    "src/cli/run.cpp:clang-tidy/bugprone-exception-escape@140fdeff": {
       "explanation": "CLI11 parsing allocates standard containers, and parse_and_dispatch is called inside the adapter's sole exception boundary; MSVC's STL model otherwise attributes those caught allocation failures to this local record declaration."
     },
-    "fuzz/support/replay_main.cpp:clang-tidy/bugprone-exception-escape@63b6534b": {
-      "explanation": "The standalone replay boundary catches every standard and non-standard exception, writes an explicit diagnostic, and returns a failure status. MSVC's filesystem implementation exposes throws through its declarations but clang-tidy does not follow this local catch boundary."
+    "src/entry/main.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
+      "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>."
     },
-    "tests/cli/test_cli.py:ruff/ANN401@6209a09a": {
-      "explanation": "The schema validator walks arbitrary decoded JSON, whose values are genuinely of any type; narrowing the parameter would defeat the recursion over objects, arrays and scalars."
+    "src/entry/main.cpp:clang-tidy/misc-const-correctness@fd9d1751": {
+      "explanation": "The Windows CRT declares wmain with wchar_t**. The entry point preserves that ABI and only reads the arguments through a span before converting them to owned UTF-8 strings."
     },
-    "tests/support/standalone_main.cpp:clang-tidy/bugprone-exception-escape@bdbb580c": {
+    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@bc0db12c": {
+      "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
+    },
+    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@cd3cd5d9": {
+      "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
+    },
+    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@ffd0216a": {
+      "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
+    },
+    "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
+    },
+    "src/io/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
+    },
+    "src/io/png_encode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
+    },
+    "src/io/png_encode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
+    },
+    "src/io/publication.cpp:clang-tidy/modernize-deprecated-headers@16943187": {
+      "explanation": "The GNU renameat2/RENAME_NOREPLACE and Darwin renamex_np/RENAME_EXCL extensions are declared by the native stdio.h, not by the standard C++ <cstdio> interface. Including the actual native provider is required by include-cleaner and deliberately confines this OS API dependency to the private publication adapter."
+    },
+    "src/methods/box_mean.cpp:clang-tidy/*-unchecked-container-access@550d11ea": {
+      "explanation": "The kernel's innermost read, reached by a coordinate that image::reflect101_folded has already folded into the plane, so it is in range by construction. A checked access here is on the hot path of every filtered sample; the sanitize, tsan and fuzz presets run the whole suite with a hardened standard library, which checks exactly this access."
+    },
+    "tests/support/foundation_cases.hpp:clang-tidy/bugprone-use-after-move@91525f20": {
+      "explanation": "Plane has an explicit post-move contract: empty dimensions and empty owned storage. This test deliberately inspects that specified empty state and checks kernel rejection. Generic move checkers treat calls other than empty() as invalid without modeling the custom contract; sanitizer/reference suites verify the actual lifetime and shape behavior."
+    },
+    "tests/support/foundation_cases.hpp:clang-tidy/clang-analyzer-cplusplus.Move@91525f20": {
+      "explanation": "Plane has an explicit post-move contract: empty dimensions and empty owned storage. This test deliberately inspects that specified empty state and checks kernel rejection. Generic move checkers treat calls other than empty() as invalid without modeling the custom contract; sanitizer/reference suites verify the actual lifetime and shape behavior."
+    },
+    "tests/support/standalone_main.cpp:clang-tidy/bugprone-exception-escape@6b355d85": {
       "explanation": "The standalone reference-test main catches failures and reports its exit status; MSVC's throwing expected accessors otherwise look like an escaping path to clang-tidy."
     },
-    "tools/dep_acquire.py:ruff/S310@3c54bc32": {
+    "tools/dep_acquire.py:ruff/S310@2d788465": {
       "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written."
+    },
+    "tools/dep_acquire.py:ruff/S310@71706d97": {
+      "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written."
+    },
+    "tools/dep_verify.py:ruff/PTH115@5accbde1": {
+      "explanation": "os.readlink returns the symlink target byte-for-byte; Path.readlink normalizes it, which would change recorded receipt hashes and invalidate verified caches."
     },
     "tools/native_probe.cpp:clang-tidy/bugprone-exception-escape@a9d02f7a": {
       "explanation": "The test-only main catches every standard and non-standard exception before returning its distinct failure code; MSVC's throwing iostream implementation otherwise looks like an uncaught path to clang-tidy."
     },
-    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-no-malloc@cd0cdb09": {
-      "explanation": "The Windows-only Leptonica interception ABI requires C malloc-family callbacks to prove the library's raster allocations are accounted for; RAII cannot express this external C allocator boundary."
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-no-malloc@2ad1e0f7": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
     },
-    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@cd0cdb09": {
-      "explanation": "The Windows-only Leptonica interception ABI returns and receives raw C allocator pointers, which are owned by Leptonica and released through the matching callback rather than by C++ code."
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-no-malloc@37bfc791": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
     },
-    "tools/dep_verify.py:ruff/PTH115@ff530aff": {
-      "explanation": "os.readlink returns the symlink target byte-for-byte; Path.readlink normalizes it, which would change recorded receipt hashes and invalidate verified caches."
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-no-malloc@72019d8b": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
     },
-    "include/docenhance/image/plane.hpp:clang-tidy/*-reinterpret-cast@180d663e": {
-      "explanation": "The one boundary where a plane's raw storage becomes samples, in a single private function. core::Buffer is over-aligned for every supported sample type, those types are implicit-lifetime, and the span covers whole rows, so no other cast is needed anywhere else in the project."
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-no-malloc@a7e2a566": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
     },
-    "src/methods/box_mean.cpp:clang-tidy/*-unchecked-container-access@550d11ea": {
-      "explanation": "The kernel's innermost read, reached by a coordinate that image::reflect101_folded has already folded into the plane, so it is in range by construction. A checked access here is on the hot path of every filtered sample; the sanitize, tsan and fuzz presets run the whole suite with a hardened standard library, which checks exactly this access."
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@2ad1e0f7": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
+    },
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@37bfc791": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
+    },
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@72019d8b": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
+    },
+    "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@a7e2a566": {
+      "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
     }
   }
 }

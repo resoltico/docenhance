@@ -4,6 +4,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 
+#include <bit>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -28,8 +29,8 @@ inline constexpr bool is_sample = std::is_same_v<std::remove_const_t<Sample>, st
 struct PlaneShape {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
-    // Bytes between the first samples of consecutive rows. Always a multiple of the buffer
-    // alignment, so every row starts aligned, and never smaller than one row of samples.
+    // Bytes between consecutive row starts. Owned planes align rows to buffer_alignment;
+    // borrowed views need only sample alignment. Never smaller than one row of samples.
     std::size_t stride = 0;
 };
 
@@ -39,6 +40,8 @@ struct PlaneShape {
 // The bytes a shape occupies, checked for overflow.
 [[nodiscard]] core::Result<std::size_t> plane_bytes(const PlaneShape& shape);
 
+template <typename Sample> class Plane;
+
 // A borrowed rectangle of samples. Sample may be const; a view never outlives the plane it names.
 // It holds a span of the whole plane, so every row is a subspan and no pointer arithmetic is done.
 template <typename Sample> class PlaneView {
@@ -46,8 +49,20 @@ template <typename Sample> class PlaneView {
 
   public:
     PlaneView() noexcept = default;
-    PlaneView(std::span<Sample> samples, const PlaneShape& shape) noexcept
-        : samples_(samples), shape_(shape) {}
+    [[nodiscard]] static core::Result<PlaneView> create(std::span<Sample> samples,
+                                                        const PlaneShape& shape) {
+        if (shape.width == 0 || shape.height == 0 || shape.stride % sizeof(Sample) != 0) {
+            return core::failure(core::ErrorCode::argument,
+                                 "A view needs nonzero dimensions and a sample-aligned stride");
+        }
+        const std::size_t pitch = shape.stride / sizeof(Sample);
+        if (pitch < shape.width || samples.size() < shape.width ||
+            static_cast<std::size_t>(shape.height - 1) > (samples.size() - shape.width) / pitch) {
+            return core::failure(core::ErrorCode::argument,
+                                 "The view rectangle exceeds its backing storage");
+        }
+        return PlaneView{samples, shape};
+    }
     // A mutable view can be read-only, never the reverse. Spelled out at the call site so that
     // handing a kernel write access is always visible.
     [[nodiscard]] PlaneView<const Sample> as_const() const noexcept
@@ -73,8 +88,7 @@ template <typename Sample> class PlaneView {
     [[nodiscard]] std::span<Sample> storage() const noexcept {
         return samples_;
     }
-    // Samples between the starts of consecutive rows. The stride is a multiple of the buffer
-    // alignment, which is a multiple of every supported sample size, so this division is exact.
+    // Samples between row starts. Construction validates that this division is exact.
     [[nodiscard]] std::size_t row_pitch() const noexcept {
         return shape_.stride / sizeof(Sample);
     }
@@ -84,9 +98,26 @@ template <typename Sample> class PlaneView {
     }
 
   private:
+    template <typename> friend class Plane;
+    template <typename> friend class PlaneView;
+    PlaneView(std::span<Sample> samples, const PlaneShape& shape) noexcept
+        : samples_(samples), shape_(shape) {}
     std::span<Sample> samples_;
     PlaneShape shape_;
 };
+
+// Addresses are compared as integers without forming an overflowing end address or comparing
+// unrelated pointers. Full backing spans (including padding) must be disjoint for separate roles.
+template <typename Left, typename Right>
+[[nodiscard]] bool overlaps(PlaneView<Left> left, PlaneView<Right> right) noexcept {
+    if (left.empty() || right.empty()) {
+        return false;
+    }
+    const auto first = std::bit_cast<std::uintptr_t>(left.storage().data());
+    const auto second = std::bit_cast<std::uintptr_t>(right.storage().data());
+    return first <= second ? second - first < left.storage().size_bytes()
+                           : first - second < right.storage().size_bytes();
+}
 
 // An owning plane. Its memory is charged to the budget that allocated it and refunded when it dies.
 template <typename Sample> class Plane {
@@ -95,6 +126,18 @@ template <typename Sample> class Plane {
 
   public:
     Plane() noexcept = default;
+    Plane(const Plane&) = delete;
+    Plane& operator=(const Plane&) = delete;
+    Plane(Plane&& other) noexcept
+        : buffer_(std::move(other.buffer_)), shape_(std::exchange(other.shape_, {})) {}
+    Plane& operator=(Plane&& other) noexcept {
+        if (this != &other) {
+            buffer_ = std::move(other.buffer_);
+            shape_ = std::exchange(other.shape_, {});
+        }
+        return *this;
+    }
+    ~Plane() = default;
     [[nodiscard]] static core::Result<Plane> allocate(core::Budget& budget, std::uint32_t width,
                                                       std::uint32_t height) {
         auto shape = plane_shape(width, height, sizeof(Sample));

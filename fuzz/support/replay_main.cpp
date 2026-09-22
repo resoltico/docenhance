@@ -46,8 +46,10 @@ std::vector<std::uint8_t> read(const std::filesystem::path& path) {
     if (!stream.is_open()) {
         throw std::runtime_error("Cannot open fuzz input " + path.string());
     }
-    std::vector<std::uint8_t> bytes{std::istreambuf_iterator<char>(stream),
-                                    std::istreambuf_iterator<char>()};
+    std::vector<std::uint8_t> bytes;
+    for (std::istreambuf_iterator<char> at(stream), end; at != end; ++at) {
+        bytes.push_back(static_cast<std::uint8_t>(static_cast<unsigned char>(*at)));
+    }
     if (stream.bad()) {
         throw std::runtime_error("Cannot read fuzz input " + path.string());
     }

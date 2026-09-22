@@ -108,7 +108,9 @@ def matchers(manifest: Manifest, present: set[str]) -> list[tuple[str, str]]:
                 (
                     f"{name} allocates directly instead of taking memory from a budget",
                     (
-                        "expr(anyOf(cxxNewExpr(), cxxDeleteExpr()), "
+                        "expr(anyOf(cxxNewExpr(), cxxDeleteExpr(), "
+                        'callExpr(callee(functionDecl(hasAnyName("operator new", "operator new[]", '
+                        '"operator delete", "operator delete[]"))))), '
                         f'isExpansionInFileMatching("{location}"))'
                     ),
                 )
@@ -116,7 +118,7 @@ def matchers(manifest: Manifest, present: set[str]) -> list[tuple[str, str]]:
         if not manifest.layers[name].get("may_catch"):
             rules.append(
                 (
-                    f"{name} catches an exception outside the adapter",
+                    f"{name} catches an exception outside an authorized containment boundary",
                     f'cxxCatchStmt(isExpansionInFileMatching("{location}"))',
                 )
             )

@@ -14,7 +14,7 @@ import hashlib
 import io
 import re
 import tokenize
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -68,7 +68,8 @@ def _marker(
 
 
 CXX_MARKERS = (
-    _marker(r"\bNOLINT(?:NEXTLINE|BEGIN)?\b(?:\((?P<rules>[^)]*)\))?", "clang-tidy"),
+    _marker(r"\bNOLINT(?:BEGIN|END)\b", "clang-tidy", "range-wide lint suppression"),
+    _marker(r"\bNOLINT(?:NEXTLINE)?\b(?:\((?P<rules>[^)]*)\))?", "clang-tidy"),
     _marker(
         r"^\s*#\s*pragma\s+(?:clang|GCC)\s+diagnostic\s+(?:ignored|warning)\s+\"(?P<rules>[^\"]+)\"",
         "compiler",
@@ -104,8 +105,7 @@ CMAKE_MARKERS = (
     _marker(r"\b(?P<rules>SKIP_LINTING)\b", "cmake"),
     _marker(r"target_include_directories\([^)]*\b(?P<rules>SYSTEM)\b", "cmake"),
 )
-NOLINT_BEGIN = re.compile(r"\bNOLINTBEGIN\b")
-NOLINT_END = re.compile(r"\bNOLINTEND\b")
+NOLINT_NEXT = re.compile(r"\bNOLINTNEXTLINE\b")
 RAW_STRING_OPEN = re.compile(r'(?<![\w])(?:u8|[uUL])?R"(?P<delimiter>[^()\\\s]{0,16})\(')
 
 
@@ -188,18 +188,24 @@ def _merge(results: list[ScanResult]) -> ScanResult:
 
 
 def scan_cxx(path: str, text: str) -> ScanResult:
-    """Scan C/C++ source after blanking literals; NOLINTBEGIN/END must balance."""
-    code = blank_cxx_literals(text)
-    pairs = zip(text.splitlines(), code.splitlines(), strict=True)
-    result = _merge(
-        [
-            _match_line(path, n, raw, CXX_MARKERS, blanked)
-            for n, (raw, blanked) in enumerate(pairs, 1)
-        ]
-    )
-    if len(NOLINT_BEGIN.findall(code)) != len(NOLINT_END.findall(code)):
-        result.errors.append(f"{path}: unbalanced NOLINTBEGIN/NOLINTEND")
-    return result
+    """Scan C++ markers and bind next-line exceptions to the code they actually suppress."""
+    lines = text.splitlines()
+    pairs = zip(lines, blank_cxx_literals(text).splitlines(), strict=True)
+    results = []
+    for number, (raw, blanked) in enumerate(pairs, 1):
+        result = _match_line(path, number, raw, CXX_MARKERS, blanked)
+        if NOLINT_NEXT.search(blanked) and result.suppressions:
+            if number == len(lines):
+                result.errors.append(f"{path}:{number}: next-line suppression has no target")
+            else:
+                result.suppressions = [
+                    replace(item, text=f"{raw}\n{lines[number]}")
+                    if item.rule.startswith("clang-tidy/")
+                    else item
+                    for item in result.suppressions
+                ]
+        results.append(result)
+    return _merge(results)
 
 
 def scan_python(path: str, text: str) -> ScanResult:
@@ -209,7 +215,15 @@ def scan_python(path: str, text: str) -> ScanResult:
     except (tokenize.TokenError, SyntaxError) as exc:
         return ScanResult([], [f"{path}: cannot tokenize for suppression scan: {exc}"])
     comments = [t for t in tokens if t.type == tokenize.COMMENT]
-    return _merge([_match_line(path, t.start[0], t.string, PYTHON_MARKERS) for t in comments])
+    lines = text.splitlines()
+    results = []
+    for token in comments:
+        result = _match_line(path, token.start[0], token.string, PYTHON_MARKERS)
+        result.suppressions = [
+            replace(item, text=lines[token.start[0] - 1]) for item in result.suppressions
+        ]
+        results.append(result)
+    return _merge(results)
 
 
 def scan_cmake(path: str, text: str) -> ScanResult:

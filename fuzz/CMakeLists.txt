@@ -35,38 +35,14 @@ if(NOT DE_HAVE_FUZZER_RUNTIME)
   message(FATAL_ERROR "The compiler cannot link -fsanitize=fuzzer; install LLVM's fuzzer runtime")
 endif()
 
-# Coverage instrumentation covers first-party code only, in isolated copies of the libraries, so
-# the normal application never carries fuzzer hooks.
-function(de_fuzz_library name)
-  cmake_parse_arguments(PARSE_ARGV 1 arg "" "" "SOURCES;LINKS")
-  add_library(${name} STATIC ${arg_SOURCES})
-  target_include_directories(${name} PUBLIC "${PROJECT_SOURCE_DIR}/include")
-  target_link_libraries(${name} PRIVATE ${arg_LINKS})
-  de_apply_options(${name})
-  target_compile_options(${name} PRIVATE -fsanitize=fuzzer-no-link)
-endfunction()
-de_fuzz_library(de_fuzzlib_contract SOURCES "${PROJECT_SOURCE_DIR}/src/contract/parse.cpp")
-de_fuzz_library(de_fuzzlib_image SOURCES "${PROJECT_SOURCE_DIR}/src/image/numeric.cpp")
-de_fuzz_library(de_fuzzlib_methods
-  SOURCES "${PROJECT_SOURCE_DIR}/src/methods/box_mean.cpp"
-    "${PROJECT_SOURCE_DIR}/src/image/numeric.cpp" "${PROJECT_SOURCE_DIR}/src/image/plane.cpp"
-    "${PROJECT_SOURCE_DIR}/src/core/memory.cpp" "${PROJECT_SOURCE_DIR}/src/exec/concurrency.cpp"
-    "${PROJECT_SOURCE_DIR}/src/exec/scheduler.cpp")
-de_fuzz_library(de_fuzzlib_cli
-  SOURCES "${PROJECT_SOURCE_DIR}/src/cli/run.cpp" "${PROJECT_SOURCE_DIR}/src/report/render.cpp"
-    "${PROJECT_SOURCE_DIR}/src/app/dispatch.cpp"
-    "${PROJECT_SOURCE_DIR}/src/methods/catalog.cpp"
-    "${PROJECT_SOURCE_DIR}/src/methods/fixed_threshold.cpp"
-    "${PROJECT_SOURCE_DIR}/src/io/capabilities.cpp" "${PROJECT_SOURCE_DIR}/src/image/plane.cpp"
-    "${PROJECT_SOURCE_DIR}/src/core/memory.cpp"
-  LINKS CLI11::CLI11 nlohmann_json::nlohmann_json DE::png)
-target_include_directories(de_fuzzlib_cli PRIVATE "${PROJECT_BINARY_DIR}/generated")
-
+# Instrumentation is applied by src/CMakeLists.txt to the production library targets. There is no
+# second source list, alternate implementation, or concrete I/O dependency in this build.
 # One engine binary and one time-boxed CTest run (tools/run_fuzzers.py) per harness.
 function(de_fuzz_target name)
   cmake_parse_arguments(PARSE_ARGV 1 arg "" "SOURCE" "LINKS")
   add_executable(de_fuzz_${name} "${arg_SOURCE}")
-  target_include_directories(de_fuzz_${name} PRIVATE "${PROJECT_SOURCE_DIR}/fuzz")
+  target_include_directories(de_fuzz_${name} PRIVATE "${PROJECT_SOURCE_DIR}/fuzz"
+    "${PROJECT_SOURCE_DIR}/tests/support")
   target_link_libraries(de_fuzz_${name} PRIVATE ${arg_LINKS})
   de_apply_options(de_fuzz_${name})
   target_compile_options(de_fuzz_${name} PRIVATE -fsanitize=fuzzer)
@@ -78,9 +54,9 @@ function(de_fuzz_target name)
   math(EXPR de_timeout "${DE_FUZZ_SECONDS} + 120")
   set_tests_properties(fuzz-${name} PROPERTIES TIMEOUT ${de_timeout})
 endfunction()
-de_fuzz_target(pages SOURCE "${PROJECT_SOURCE_DIR}/fuzz/pages.cpp" LINKS de_fuzzlib_contract)
-de_fuzz_target(decimal SOURCE "${PROJECT_SOURCE_DIR}/fuzz/decimal.cpp" LINKS de_fuzzlib_contract)
-de_fuzz_target(numeric SOURCE "${PROJECT_SOURCE_DIR}/fuzz/numeric.cpp" LINKS de_fuzzlib_image)
-de_fuzz_target(box_mean SOURCE "${PROJECT_SOURCE_DIR}/fuzz/box_mean.cpp" LINKS de_fuzzlib_methods)
+de_fuzz_target(pages SOURCE "${PROJECT_SOURCE_DIR}/fuzz/pages.cpp" LINKS de_contract)
+de_fuzz_target(decimal SOURCE "${PROJECT_SOURCE_DIR}/fuzz/decimal.cpp" LINKS de_contract)
+de_fuzz_target(numeric SOURCE "${PROJECT_SOURCE_DIR}/fuzz/numeric.cpp" LINKS de_image)
+de_fuzz_target(box_mean SOURCE "${PROJECT_SOURCE_DIR}/fuzz/box_mean.cpp" LINKS de_methods)
 de_fuzz_target(cli SOURCE "${PROJECT_SOURCE_DIR}/fuzz/cli.cpp"
-  LINKS de_fuzzlib_cli de_fuzzlib_contract nlohmann_json::nlohmann_json)
+  LINKS de_cli de_contract nlohmann_json::nlohmann_json)

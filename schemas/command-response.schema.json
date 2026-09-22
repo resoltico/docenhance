@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DocEnhance command response",
-  "description": "Every JSON response emitted by the executable. Enforced by tests/cli/test_cli.py against the real binary; new fields must be declared here first.",
+  "description": "Closed, disjoint payloads. Validated with Draft 2020-12 against the real executable and negative fixtures.",
   "type": "object",
   "required": [
     "schema_version",
@@ -9,18 +9,15 @@
     "version",
     "exit_code"
   ],
-  "additionalProperties": false,
   "properties": {
     "schema_version": {
+      "type": "integer",
       "const": 1
     },
     "command": {
       "enum": [
         "root",
         "process",
-        "plan",
-        "inspect",
-        "presets",
         "methods",
         "version"
       ]
@@ -31,63 +28,338 @@
     },
     "exit_code": {
       "type": "integer"
+    }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "exit_code": {
+          "const": 0
+        },
+        "usage": {
+          "type": "string"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "metavar",
+              "description",
+              "domain",
+              "methods"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "metavar": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "domain": {
+                "type": "string"
+              },
+              "methods": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "usage",
+        "options"
+      ]
     },
-    "error": {
+    {
+      "properties": {
+        "exit_code": {
+          "const": 0
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/method"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "supported_formats": {
+          "type": "array",
+          "items": {
+            "const": "png"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "platform": {
+          "type": "string"
+        },
+        "compiler": {
+          "type": "string"
+        },
+        "dependency_lock_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "command": {
+          "const": "version"
+        }
+      },
+      "required": [
+        "methods",
+        "supported_formats",
+        "platform",
+        "compiler",
+        "dependency_lock_sha256"
+      ]
+    },
+    {
+      "properties": {
+        "exit_code": {
+          "const": 0
+        },
+        "methods": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/method"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "supported_formats": {
+          "type": "array",
+          "items": {
+            "const": "png"
+          },
+          "minItems": 1,
+          "maxItems": 1
+        },
+        "command": {
+          "const": "methods"
+        }
+      },
+      "required": [
+        "methods",
+        "supported_formats"
+      ]
+    },
+    {
+      "properties": {
+        "exit_code": {
+          "const": 0
+        },
+        "method": {
+          "const": "B03"
+        },
+        "output": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publication": {
+          "const": "completed"
+        },
+        "command": {
+          "const": "process"
+        }
+      },
+      "required": [
+        "method",
+        "output",
+        "publication"
+      ]
+    },
+    {
+      "properties": {
+        "error": {
+          "type": "object",
+          "required": [
+            "code",
+            "message"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "publication": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "error",
+        "publication"
+      ],
+      "oneOf": [
+        {
+          "properties": {
+            "exit_code": {
+              "const": 2
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_ARGUMENT"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "exit_code": {
+              "const": 3
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_INPUT"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "exit_code": {
+              "const": 4
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_RESOURCE"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "exit_code": {
+              "const": 4
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_NOT_IMPLEMENTED"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "exit_code": {
+              "const": 5
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_OUTPUT"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "exit_code": {
+              "const": 8
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_INVARIANT"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "exit_code": {
+              "const": 7
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_PUBLICATION_UNKNOWN"
+                }
+              }
+            },
+            "publication": {
+              "const": "unknown"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "unevaluatedProperties": false,
+  "$defs": {
+    "method": {
       "type": "object",
       "required": [
-        "code",
-        "message"
+        "id",
+        "method_version"
       ],
       "additionalProperties": false,
       "properties": {
-        "code": {
-          "enum": [
-            "E_ARGUMENT",
-            "E_INPUT",
-            "E_RESOURCE",
-            "E_OUTPUT",
-            "E_NOT_IMPLEMENTED",
-            "E_INVARIANT"
-          ]
+        "id": {
+          "const": "B03"
         },
-        "message": {
-          "type": "string"
+        "method_version": {
+          "type": "integer",
+          "const": 1
         }
       }
-    },
-    "publication": {
-      "enum": [
-        "not_started",
-        "completed"
-      ]
-    },
-    "usage": {
-      "type": "string"
-    },
-    "options": {
-      "type": "array"
-    },
-    "methods": {
-      "type": "array"
-    },
-    "supported_formats": {
-      "type": "array"
-    },
-    "method": {
-      "const": "B03"
-    },
-    "output": {
-      "type": "string"
-    },
-    "platform": {
-      "type": "string"
-    },
-    "compiler": {
-      "type": "string"
-    },
-    "dependency_lock_sha256": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
     }
   }
 }

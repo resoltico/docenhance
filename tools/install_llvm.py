@@ -186,7 +186,17 @@ def main() -> int:
         else:
             msg = f"No pinned clang-tidy installation for {system}"
             raise InstallError(msg)
-    print(f"clang-tidy {tidy['version']} directory: {directory}")
+    candidates = (
+        directory / "clang-tidy",
+        directory / "clang-tidy.exe",
+        directory / "clang-tidy-23",
+    )
+    executable = next((path for path in candidates if path.is_file()), None)
+    if executable is None:
+        msg = f"clang-tidy is missing from {directory}"
+        raise InstallError(msg)
+    subprocess.run([str(executable), "--version"], check=True)
+    print(f"clang-tidy directory: {directory}")
     if github_env := os.environ.get("GITHUB_ENV"):
         with Path(github_env).open("a", encoding="utf-8") as stream:
             stream.write(f"DE_CLANG_TIDY_DIR={directory}\n")

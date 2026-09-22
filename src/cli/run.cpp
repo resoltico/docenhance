@@ -3,6 +3,7 @@
 #include "docenhance/cli/run.hpp"
 
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/process.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
@@ -11,8 +12,11 @@
 #include <CLI/CLI.hpp>
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <exception>
+#include <limits>
 #include <map>
+#include <new>
 #include <optional>
 #include <ostream>
 #include <ranges>
@@ -114,7 +118,8 @@ std::optional<Outcome> apply_root_flags(const CLI::App& cli, const RootFlags& ro
     }
     return std::nullopt;
 }
-Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation) {
+Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation,
+                           app::Processor& processor) {
     CLI::App cli{"DocEnhance"};
     cli.set_help_flag();
     cli.require_subcommand(0, 1);
@@ -145,7 +150,7 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
             return std::move(*rejected);
         }
     }
-    return docenhance::app::dispatch(invocation);
+    return docenhance::app::dispatch(invocation, processor);
 }
 // The only place that turns an outcome into bytes, and the only place that knows the streams.
 int emit(const Outcome& outcome, bool json, std::ostream& out, std::ostream& err) {
@@ -156,36 +161,46 @@ int emit(const Outcome& outcome, bool json, std::ostream& out, std::ostream& err
     if (!out || !err) {
         return static_cast<int>(docenhance::core::ExitCode::output);
     }
-    return static_cast<int>(outcome.exit_code);
+    return static_cast<int>(outcome.exit_code());
 }
 } // namespace
-int run(std::span<const char* const> args, std::ostream& out, std::ostream& err) {
+int run(std::span<const char* const> args, app::Processor& processor, std::ostream& out,
+        std::ostream& err) {
     Invocation invocation;
-    // Error presentation honors an exact --json token, even when parsing later fails. Arguments
-    // after "--" are operands, never options.
+    // argv pointers and its program name are caller-owned; reject an invalid API invocation.
+    if (args.empty() || args.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
+        std::ranges::any_of(args, [](const char* arg) { return arg == nullptr; })) {
+        return static_cast<int>(core::ExitCode::invocation);
+    }
     const auto options = args | std::views::drop(1) | std::views::take_while([](const char* arg) {
                              return std::string_view(arg) != "--";
                          });
     invocation.json = std::ranges::any_of(
         options, [](const char* arg) { return std::string_view(arg) == "--json"; });
-    // The invocation's --json is read before parsing, so a parse failure is reported in the form
-    // the caller asked for. Everything below reports through the same two steps: decide, render.
+    // Nothing has been emitted yet. Error mapping here cannot write a second response.
+    std::optional<Outcome> outcome;
     try {
-        const auto outcome = parse_and_dispatch(args, invocation);
-        return emit(outcome, invocation.json, out, err);
+        outcome = parse_and_dispatch(args, invocation, processor);
     } catch (const CLI::ParseError& error) {
-        return emit(argument_error(invocation, error.what()), invocation.json, out, err);
+        outcome = argument_error(invocation, error.what());
+    } catch (const std::bad_alloc&) {
+        outcome = app::failure(invocation, {
+                                               .code = ErrorCode::resource,
+                                               .message = "The system refused an allocation",
+                                           });
     } catch (const std::exception& error) {
-        return emit(docenhance::app::failure(
-                        invocation, {.code = ErrorCode::invariant, .message = error.what()}),
-                    invocation.json, out, err);
+        outcome = app::failure(invocation, {.code = ErrorCode::invariant, .message = error.what()});
     } catch (...) {
-        return emit(docenhance::app::failure(invocation,
-                                             {
-                                                 .code = ErrorCode::invariant,
-                                                 .message = "Unknown non-standard exception",
-                                             }),
-                    invocation.json, out, err);
+        outcome = app::failure(invocation, {
+                                               .code = ErrorCode::invariant,
+                                               .message = "Unknown non-standard exception",
+                                           });
+    }
+    // Publication may already be completed. Never retry rendering or claim it did not start.
+    try {
+        return emit(*outcome, invocation.json, out, err);
+    } catch (...) {
+        return static_cast<int>(core::ExitCode::output);
     }
 }
 } // namespace docenhance::cli

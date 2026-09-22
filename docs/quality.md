@@ -8,7 +8,7 @@ neither workflow publishes binary artifacts. The reasoning behind the strictness
 
 ```sh
 python tools/install_build_tools.py --lint   # pinned Ruff, mypy, clang-format, pre-commit
-python tools/check_all.py                    # ~2 s: structure, gates, format, lint, types, tests
+python tools/check_all.py                    # structure, gates, format, lint, types, tests
 cmake --workflow --preset dev                # build and test, clang-tidy on every target
 cmake --workflow --preset sanitize           # the suite under ASan and UBSan
 cmake --workflow --preset tsan               # the suite under ThreadSanitizer
@@ -26,7 +26,7 @@ and a forbidden link fails the configure step before anything is compiled.
 cmake --workflow --preset sanitize
 ```
 
-The sanitizer preset is for GCC and Clang on Linux and macOS, and instruments **first-party code**, not the whole dependency graph; it makes no claim of complete codec instrumentation. Every AddressSanitizer or UndefinedBehaviorSanitizer report is fatal, so undefined behavior fails a test instead of printing and continuing, and the build adds implicit-conversion, bounds and hardened standard-library checks. The nightly workflow runs this preset over the whole suite.
+The sanitizer preset is for GCC and Clang on Linux and macOS, and instruments **first-party code**, not the whole dependency graph; it makes no claim of complete codec instrumentation. Every AddressSanitizer or UndefinedBehaviorSanitizer report is fatal, so undefined behavior fails a test instead of printing and continuing, and the build adds implicit-conversion, bounds and hardened standard-library checks. Both sanitizer presets run independently over the whole suite in required PR jobs and in the nightly workflow.
 
 ## The tools
 
@@ -41,12 +41,12 @@ Every linter is pinned in `deps/tools.json`:
 | mypy (strict) | Every Python file | `mypy.ini` | `python -m mypy` |
 | Quality gates | Everything above | `tools/check_gates.py` | `python tools/check_gates.py` |
 
-Install the pinned Python-distributed tools into the project virtual environment with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the pinned build (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm` is equivalent. Homebrew does not preserve every historical formula name, so the major-version gate remains the authority. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
+Install the pinned Python-distributed tools into the project virtual environment with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the required major and reports the actual patch version (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm` is equivalent. Homebrew does not preserve every historical formula name, so the major-version gate remains the authority. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
 
 The gates allow nothing to be grandfathered:
 
 - **File size.** Code files are limited to 300 physical lines (production), 400 (tests and fuzzers) and 200 (build scripts). There is no waiver mechanism: split the file. Function size and complexity are limited by `readability-function-size`/`readability-function-cognitive-complexity` and by Ruff's `C901`/`PLR09xx` rules.
-- **In-source suppressions.** Every `NOLINT(...)`, diagnostic pragma, `clang-format off`, `# noqa: ...`, `# type: ignore[...]`, warning-disabling CMake flag or `SKIP_LINTING` must name its rules and be registered in `tests/exceptions/registry.json` as `"path:tool/rule@<digest>": {"explanation": "..."}`, where the digest covers the suppressed line, so the entry survives edits elsewhere in the file but must be reviewed when that line itself changes. Blanket, file-wide and range-wide forms (`// NOLINT`, `# noqa`, `# ruff: noqa`, `# mypy:`) are rejected outright, and registry entries that no longer match a suppression fail as stale.
+- **In-source suppressions.** Every `NOLINT(...)`, diagnostic pragma, `clang-format off`, `# noqa: ...`, `# type: ignore[...]`, warning-disabling CMake flag or `SKIP_LINTING` must name its rules and be registered in `tests/exceptions/registry.json` as `"path:tool/rule@<digest>": {"explanation": "..."}`, where the digest covers the complete source line (and both marker and target for `NOLINTNEXTLINE`), so the entry survives edits elsewhere in the file but must be reviewed when that line itself changes. Blanket, file-wide and range-wide forms (`// NOLINT`, `NOLINTBEGIN`/`NOLINTEND`, `# noqa`, `# ruff: noqa`, `# mypy:`) are rejected outright, and registry entries that no longer match a suppression fail as stale.
 - **Configuration suppressions.** Every disabled clang-tidy check and every ignored Ruff code carries its written reason in the configuration file itself. Nested `.clang-tidy` files may only disable checks with reasons; nested Ruff, mypy or clang-format configurations are rejected, as are mypy per-module overrides and escape hatches.
 - **Coverage.** A `.cpp` file that no target compiles, or a target that skips `de_apply_options()`, fails the gates because it would never be linted.
 
@@ -68,4 +68,4 @@ python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli 
 python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 600 --merge
 ```
 
-AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with libFuzzer. The nightly workflow runs both engines for 30 minutes per target and also runs the whole test suite under ASan and UBSan. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
+AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with libFuzzer. The nightly workflow runs both engines for 30 minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.

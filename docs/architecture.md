@@ -1,233 +1,153 @@
 # Architecture
 
-## Premises
+## Authority and composition
 
-These hold everywhere in the code. A change that breaks one is a change of design, not an
-implementation detail.
+The application owns meaning; adapters own effects. The command line parses syntax into
+`contract::Invocation`. `de_app` validates it and constructs a private-construction
+`ProcessRequest`. Only that admitted value can cross `app::Processor`, the processing port.
+`de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
+production composition root: it supplies the concrete host to the CLI. On Windows it converts
+wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
 
-1. **Processing authority never sits in the adapter, and presentation never sits in a use case.**
-   The command line parses syntax and writes bytes. What an option *means*, and whether a
-   combination is legal, belongs to the layers below it, in typed form; how an outcome is spelled
-   for a person or a program belongs to `de_report`, above them. An outcome crosses that boundary
-   as types, never as text.
-2. **Lower layers know nothing of higher ones**, and nothing outside the process. Numeric and pure
-   layers do not read files, the environment, the command line or the process streams; they take
-   values and return values.
-3. **Failure is a value, not an exception.** Every operation that can fail returns
-   `Result<T>` — `std::expected<T, Error>` — and every such function is `[[nodiscard]]`. Exceptions
-   cross exactly one boundary, the CLI11 adapter, which converts them to the same `Error`.
-4. **Capabilities are reported, never assumed.** `methods` and `supported_formats` list what is
-   implemented, which is currently nothing. A linked library is not a capability, and a placeholder
-   that returns success is a defect, not a stub.
-5. **Numbers are deterministic.** No fast-math, no locale-dependent parsing, fixed rounding
-   conventions, and results that do not depend on how work was scheduled.
-6. **The build declares what it uses, and uses what it declares.** A target links a dependency
-   exactly when its own files include it, so the dependency graph is evidence rather than
-   decoration.
+Application tests and CLI fuzzers supply a deterministic non-I/O processor. There is no runtime
+flag that substitutes it. Help, version and methods discovery never call the processing port.
+Adding another complete method extends admission and execution deliberately; it does not require
+a plugin loader, service locator or dependency-injection framework.
+
+Outcomes carry a typed payload and build identity. The exit code is derived from the payload,
+not separately writable state. `de_report` alone chooses JSON/text spelling. The CLI alone writes
+the rendered response. A stream failure after execution returns an output failure and never
+repeats processing or attempts a second, potentially misleading response.
 
 ## Layers
 
-`spec/architecture.json` is the reviewed statement of this table: which layers exist, which layers
-and third-party packages each may use, and what each is for. Nothing repeats it — CMake reads it to
-enforce link edges, the checker reads it to enforce includes and calls, and this table is checked
-against it.
+`spec/architecture.json` is authoritative. CMake reads it for direct link edges; the architecture
+checker reads it for include closure, API restrictions and this mechanically checked table.
 
 | Target | May use | Responsibility |
 |---|---|---|
-| `de_core` | — | Errors, exit codes and the `Result` vocabulary |
+| `de_core` | — | Errors, owned allocation budgets and the Result vocabulary |
 | `de_contract` | `de_core` | The command vocabulary, generated option descriptors and strict value parsers |
 | `de_exec` | `de_core` | The schedule: how many workers run a page's independent work items |
-| `de_image` | `de_core` | Numerical and colour primitives; later, the owning image representation |
+| `de_image` | `de_core` | Checked owning planes, borrowed views and numerical primitives |
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations; later, the catalog of complete methods |
 | `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
-| `de_app` | `de_contract`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods` | Use cases: what an invocation means, decided in types |
+| `de_app` | `de_contract`, `de_core`, `de_methods` | Validated use cases and the explicit processing port |
 | `de_report` | `de_core`, `de_contract`, `de_app` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
-| `docenhance` | `de_cli`, `de_core` | The executable: `main`, and nothing else |
+| `de_host` | `de_app`, `de_core`, `de_image`, `de_io`, `de_methods` | Executes admitted requests using codecs, kernels and publication |
+| `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 
-A layer may also reach, through the layers it uses, whatever those may reach: `de_methods` sees
-`de_core` through `de_image`. What it may *name itself* is exactly the row above.
+Only `de_report` uses nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
+Other pinned imaging libraries remain isolated in the native dependency probe until a real method
+needs them. Public headers never expose third-party types. The executable-only `entry` layer
+explicitly declares that it has no public header directory; it is not a fake reusable library.
 
-Third-party packages are allowed the same way, and only where they are used: `nlohmann_json` in
-`de_report`, `CLI11` in `de_cli`, nothing anywhere else. No public header may name one, so a
-third-party type never appears in what a layer hands to its callers. The codecs, OpenCV, Leptonica and Little CMS
-are declared packages with no layer yet allowed to use them; they become `de_io` and `de_methods`
-dependencies when the code that needs them exists. `tools/native_probe.cpp` proves meanwhile that
-they build, link and run — it belongs to no layer, and nothing in `src/` may depend on it.
+## Values, ownership and budgets
 
-Public headers are declared through CMake header file sets, sources are listed explicitly, and
-third-party include directories arrive through private imported targets rather than global
-settings. Warnings and sanitizer flags are target-scoped and never rewrite an upstream project's
-policy.
+`core::Result<T>` is `std::expected<T, Error>`. Expected failures are returned as values.
+Foreign-library callbacks, scheduler workers, filesystem publication and the process/CLI boundary
+contain exceptions where they originate. Only layers explicitly authorized in the manifest can
+catch; numeric kernels cannot throw or catch. A worker exception becomes a caller-visible resource
+or invariant failure after all started workers join, not `std::terminate`.
 
-## How the rules are enforced
+`core::Buffer` is move-only, aligned and charged to a finite `Budget`. Each live buffer holds a
+reference to the accounting ledger, so it can safely outlive the `Budget` object. Only the last
+reference destroys the ledger. Allocation/refund counters are atomic. Calling methods on a budget
+while destroying that same object is still invalid caller behavior.
 
-Five mechanisms, none of which reads source code as text for anything but the include directives
-first-party files write:
+An owning `image::Plane` moves without copying samples; a moved-from plane is empty in both storage
+and shape. A borrowed `PlaneView` can only be created through checked extent/stride validation or
+from an owning plane. It does not extend storage lifetime. Rows require in-range caller indices.
+Kernel entry points reject empty, shape-mismatched and overlapping source/destination storage.
+Full backing spans, including padding, are used for conservative overlap checks.
 
-- **Link edges, at configure time.** `cmake/ArchitectureChecks.cmake` reads the manifest and fails
-  the configure step when a target links a layer or a package its layer does not declare. Every
-  first-party target registers its layer and its files as it is defined, so a new target cannot
-  quietly escape the rules, and a layer the manifest declares but nothing builds is an error.
-- **Links against use.** The registration is written to the build tree, and the checker holds it
-  against what the code includes: a target must link every layer and package its own files name,
-  and must not link one that none of them names. Fictional dependencies and missing ones both fail.
-- **The real include graph.** `tools/check_architecture.py` asks the compiler itself (`-M`) for the
-  transitive headers of every translation unit, so a layer or a package reached through three other
-  headers counts exactly as much as a direct include. A third-party header belonging to no declared
-  package fails too.
-- **The real abstract syntax tree.** The same tool runs `clang-query` matchers over each
-  translation unit, so a banned call — `getenv`, `system`, `popen`, `imread` — is found through any
-  alias, macro or namespace qualification. The same pass enforces premise 3 — no first-party code
-  contains a `throw`, and only the CLI adapter contains a `catch` — that only `de_core` writes a
-  `new`-expression, so every other layer takes memory a budget accounted for, and that a layer's
-  files open only `docenhance::<layer>`, so the directory, the target and the namespace cannot
-  drift apart.
-- **Headers that stand alone.** Every public header is compiled on its own, and twice in the same
-  translation unit, so no header depends on what its includer happened to include first, and no
-  public header names a third-party one.
+The B03 host has a 128 MiB charged-buffer limit shared by image planes and libpng/zlib allocations.
+This is **not a process-RSS bound**: small standard-library metadata, the accounting ledger, C stream
+buffers, OS thread resources and stacks are outside it. The codec allocator uses a bounded
+registry; exhaustion is a resource failure, never permission to allocate elsewhere. Generic
+`std::string`/container use is not inaccurately described as zero-allocation.
 
-The last four need a configured build and GNU-style compiler options, so they run as the
-`architecture` test inside it — on MSVC, where the compilation database offers neither, only the
-source rules run and the other platforms carry them. The layout, include-directive and
-documentation rules need no build and run in `tools/check_all.py` and in CI as well.
-Together they are this project's answer to ArchUnit; [design decisions](decisions.md) explains why
-that answer is built from clang tooling rather than from a dedicated library.
+## PNG codec boundary
 
-## Memory, and pages that do not fit
+B03 accepts one regular PNG file, grayscale without transparency, at 1/2/4/8 bits per sample.
+Low-bit-depth input expands to 8-bit stored sample values. Gamma metadata does not change threshold
+semantics. Color, alpha/transparency and 16-bit input are rejected, not silently converted.
+Input is limited to 128 MiB and 40 million pixels; libpng also enforces its dimension and chunk limits.
+Output is a single 8-bit grayscale PNG with black iff `sample / 255 <= threshold`.
 
-A page is large. Forty megapixels of 32-bit samples is 160 MiB for one channel, and a pipeline
-holds several at once, so memory is a first-class design concern rather than an implementation
-detail. Four rules follow from that, and the first three are enforced.
+The codec uses libpng's custom memory callbacks charged to the caller's budget. Error callbacks
+jump only into dedicated C-facing frames with trivial automatic state. All owning C++ objects,
+allocation slots, diagnostic storage and file handles live outside those frames. No `longjmp`
+crosses a C++ owner. libpng's creation API contains its own jump frame, and `png_create_info_struct`
+uses its non-raising allocation API. The exact locked upstream implementation is part of this audit.
+Malformed/truncated data, strict CRC failures and refused allocations are regression-tested.
 
-1. **Running out of memory is a value, not an exception.** `core::Budget::allocate` returns
-   `Result<Buffer>`; a refusal carries `E_RESOURCE` and exit status 4. Nothing in the processing
-   layers allocates through a throwing path, so a page too large for the machine is an ordinary
-   answer, not a crash.
-2. **Every image allocation is charged.** `--memory-mib` is a working-allocation budget, and it is
-   a real object: `core::Budget` counts what is outstanding, atomically, so parallel work can share
-   one ceiling. A `Buffer` refunds its charge when it dies, and a `Plane` is a `Buffer` plus a
-   checked shape.
-3. **Only `de_core` allocates.** The manifest marks it `may_allocate`; every other layer receives
-   memory that a budget already accounted for, and `clang-query` rejects a `new`-expression or a
-   `malloc` anywhere else. A plane is move-only, so no operation copies a page by accident, and
-   algorithms take `PlaneView`, which owns nothing.
-4. **Sizes are checked before they are allocated.** `plane_shape` and `plane_bytes` return
-   `Result`: a row of 4,294,967,295 samples has no representable size, and saying so is much better
-   than overflowing into a small allocation and writing past it. Rows are padded to the buffer
-   alignment so every row starts aligned.
+## Exclusive publication
 
-## What a kernel is
+The output must be a new directory whose parent already exists. Prechecking the target improves
+errors but is not the correctness boundary. A bounded search exclusively creates a private sibling
+staging directory; occupied paths are never adopted. The encoder closes the staged PNG before commit.
+Return-path metadata is allocated before committing.
 
-`methods::box_mean` is the first one, and it sets the shape for the rest. A kernel is a pure
-function of the samples it is given: it takes `PlaneView`s, owns nothing, allocates only through
-the budget it was handed, returns `Result`, and never learns where its input came from or where
-the answer is going.
+Commit is native and atomically non-replacing: Linux `renameat2(RENAME_NOREPLACE)`, macOS
+`renamex_np(RENAME_EXCL)`, Windows `MoveFileExW` without replacement or copy flags. There is no
+check-then-rename fallback. An existing empty directory, file or symlink cannot be replaced, even
+when it appeared after the precheck. Unsupported filesystems fail closed.
 
-It is a *primitive*, not a method. `methods` reports only complete, specified methods; a box mean
-is the substrate that several of them share — the
-blurred term of unsharp masking (S01), the local mean of Sauvola thresholding (B02), the
-illumination surfaces of the shadow methods (I01, I02) — and sharing it is the reason to write it
-first.
+Cleanup removes only this attempt's known staged file and directory, never recursively.
+Responses distinguish `not_started`, `not_published`, `completed` and `unknown`. Ambiguous filesystem
+errors or failed cleanup produce `E_PUBLICATION_UNKNOWN` (exit 7); callers must inspect paths rather
+than retry blindly. Output-stream failure (exit 5 without a complete response) is also not proof
+that processing never committed.
 
-Three properties are checked rather than asserted:
+This guarantees atomic visibility, **not crash durability**: there is no fsync/directory-sync promise.
+The output parent/ancestors must be trusted against hostile replacement. This is not a filesystem
+sandbox or a defense against another process with equivalent permissions tampering with owned paths.
 
-- **It agrees with its own definition.** Every sample of a filtered plane is compared against the
-  window summed directly, in the reference suite and in a fuzz harness that generates planes,
-  radii and worker counts. A sliding window is an optimisation of a definition, so the definition
-  is what it is tested against.
-- **It is bitwise reproducible.** The same input gives the same bits at one worker and at eight,
-  which the tests and the fuzzer both assert. That is a property of the partition, not of luck:
-  tiles are a fixed size, so the order the sums accumulate in cannot change with `--threads`.
-- **Its failures are values.** A radius of zero, a destination of the wrong size, overlapping
-  source/destination storage and a budget with no room for the intermediate plane are all returned,
-  not thrown. A large radius is reduced through the reflected period during initialization, so it
-  cannot turn setup into radius-proportional work.
+## Numerical work and scheduling
 
-## The schedule is separate from the algorithm
+Scalar definitions remain deterministic: no fast-math, locale-independent decimal parsing, explicit
+rounding and border conventions. Fixed-threshold results are checked exhaustively for 8-bit samples.
+The shared box-mean kernel is checked against direct window sums and across worker counts. It is a
+primitive, not a separately advertised complete method.
 
-`--threads` promises internal numerical parallelism over one page, and it cannot be forwarded to a
-library: OpenCV's own `parallel_for_` ignores a requested thread count on macOS. So the schedule is
-this project's, in `de_exec`, and it is kept apart from the work it runs.
+`de_exec` schedules indexed work, not images. The partition is chosen before the worker count.
+It bounds workers by the requested concurrency and working-set budget; zero reported machine
+concurrency has an explicit fallback. Counters cannot wrap at `SIZE_MAX`. One worker runs inline;
+multiple workers use scoped `std::jthread` ownership. Every started worker joins, including after
+partial thread-creation failure. The lowest-index task failure is reported; thread-launch failure
+has resource-failure priority. The fixed result slots do not make OS thread creation allocation-free.
+The present public CLI does not expose `--threads`; this remains an internal kernel API.
 
-- **A kernel is a pure function of the region it is given.** It does not know whether it is one of
-  one or one of sixty-four, and it may touch only the data its own index owns. `de_exec` knows
-  nothing about images in return: it runs indices, not tiles.
-- **The partition is chosen before the workers are.** A page is divided the same way whatever the
-  worker count, so the answer never depends on how the work was spread or on who finished first.
-  One worker is not a different program, and `exec::Scheduler` runs it on the calling thread.
-- **The failure reported is the earliest one.** When several items fail, the one with the lowest
-  index wins, which is the failure a sequential run would have reported.
-- **The worker count is a function of the budget.** `exec::Concurrency::resolve` takes the request,
-  what the machine reports and what one worker's working set costs, and reduces the count until the
-  memory fits; a budget too small for a single worker is refused rather than silently shrunk. A
-  thread count that ignores memory is how a large page becomes a swap storm.
-- **The schedule allocates nothing.** Workers and their result slots are fixed-size, bounded by the
-  contract's own maximum of 64, so a schedule never competes with the page for the budget.
+## Enforced boundaries, not just a diagram
 
-Only `de_exec` may include `<thread>`, `<future>`, `<execution>` or their neighbours; every other
-layer is a pure function of its inputs, and the rule is checked. A persistent pool and a
-`std::execution` backend are both possible later without touching a kernel: that is the point of
-keeping the two apart.
+CMake rejects undeclared direct layer/package links. Every production target registers its files,
+headers and links. Native builds must contain every declared layer. An isolated fuzz build must
+contain the complete transitive closure of its named root, not a manually duplicated source list.
+Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs.
 
-## Third-party libraries own no memory and no threads of ours
+Source checks validate manifest shape, duplicate targets, directory ownership, direct includes and
+this table. Compiler-backed checks read the real include graph, require public headers to compile
+alone/twice, and compare actual includes with registered links. `clang-query` checks forbidden calls,
+throw/catch boundaries, explicit allocator calls as well as new/delete expressions, and namespaces.
+An unparsed translation unit or unanswered matcher is a failure, never an empty success result.
 
-The imaging libraries are configured and wired so that this project keeps both:
+Strict compiler warnings, clang-tidy, file-size limits, formatting, Ruff, mypy and reviewed local
+suppression identities remain enforced. Suppressions name a specific unavoidable boundary and its
+reason; no blanket waiver or historical-grandfathering path is introduced.
 
-- **OpenCV** operates on memory we already own. A `cv::Mat` can be a header over a `Plane`'s buffer
-  — no allocation, no reference counting, no hidden copy — and operations write into a destination
-  we supply. That, not a custom allocator, is how a page reaches OpenCV.
-- **Leptonica** allocates through `setPixMemoryManager`, so `Pix` data comes from us.
-- **Little CMS** keeps its state in a `cmsContext`, so a run holds its own transforms rather than
-  sharing global state.
-- **libjpeg** takes a memory ceiling (`max_memory_to_use`), **libpng** takes image limits
-  (`png_set_user_limits`), and **libtiff** reports through a handler we install rather than writing
-  to stderr. These are decompression-bomb defences, and they are set before anything is decoded.
-- **Parallelism is ours, not the libraries'.** OpenCV 5 can load a TBB or OpenMP parallel backend
-  from the machine at runtime; `PARALLEL_ENABLE_PLUGINS` is off, so it cannot. The `--threads`
-  contract is this program's scheduling decision over pages and tiles, not a request forwarded to a
-  library. On macOS OpenCV's own `parallel_for_` uses Grand Central Dispatch, which ignores a
-  requested thread count — a platform difference the probe reports rather than hides.
+## Single sources of truth and verification
 
-None of this is a claim: `tools/native_probe.cpp` exercises each hook and runs as the
-`dependency-native-link` test in every build that has the native dependencies.
+The top-level CMake project owns versioning. `deps/lock.json` owns source identities;
+`deps/features.json` owns upstream feature policy; `deps/tools.json` owns developer-tool versions.
+`spec/cli-contract.json` and `spec/method-contract.json` generate descriptors, reference docs and
+fuzz dictionaries. `schemas/command-response.schema.json` owns closed response payloads, validated
+by the real Draft 2020-12 implementation against executable output and negative fixtures.
 
-## Contract ownership
-
-The top-level `project(... VERSION ...)` command owns the version. `deps/lock.json` owns source
-identities, `deps/features.json` the requested upstream feature values, and `deps/tools.json` the
-tool pins. `spec/architecture.json` owns the layer graph. `spec/cli-contract.json` and
-`spec/method-contract.json` are the reviewed authoring sources for arguments and planned methods; `tools/generate_spec.py` turns them into typed C++
-descriptors, documentation and the fuzzing dictionary, and the build fails when those are stale.
-`schemas/command-response.schema.json` owns the shape of every JSON response.
-
-## How a command becomes a response
-
-Four steps, each owned by one layer, and nothing does two of them:
-
-1. `de_cli` turns `argv` into a typed `contract::Invocation`, rejecting only what the grammar forbids.
-   Which options a command accepts is a property of the contract — `option.scope.contains(command)` —
-   not a scope string the adapter interprets.
-2. `de_app` decides what that invocation *means* — including required inputs, output targets, and
-   the implemented capability set — and returns an `app::Outcome`: the command, the exit code, the
-   build identity, and a typed payload (`Help`, `Version`, `Methods`, `Failure`).
-   It composes no text and knows no output format.
-3. `de_report` renders that outcome, as the JSON response
-   (`schemas/command-response.schema.json`) or as human text. It is the only owner of the wire
-   format, and the only layer that links a JSON library.
-4. `de_cli` writes the rendered bytes to the streams it was given and returns the exit code.
-
-A second front end — a library API, a batch runner — reuses steps 2 and 3 unchanged. That is the
-reason presentation is not part of the use case.
-
-## What the executable does today
-
-It dispatches help, version, capability discovery, and one processing command: B03 fixed-threshold
-processing of 8-bit grayscale PNG input. `de_methods` and `de_io` report only B03 and PNG; every
-other method or image format remains unavailable. The numeric primitives implement exact scalar formulas
-with stated boundary conventions: sRGB encode and decode, relative luminance, neutral-axis luminance
-transport, nearest-rank percentiles and `REFLECT_101`. They are building blocks, not a colour-managed
-codec and not an enhancement algorithm.
-
-There is deliberately no plugin framework, service layer, network client, dependency-injection
-container, interactive terminal or database. New machinery has to solve a demonstrated problem.
+Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,
+and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target
+registration, including box-mean, rather than a second shell list. Sanitizers currently instrument
+first-party code, not every third-party implementation. Actual evidence and limitations belong in
+[the foundation audit](audits/foundation-2026-09-22.md) and the current PR, not evergreen claims that
+all platforms or future methods already passed.

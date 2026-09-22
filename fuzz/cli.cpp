@@ -5,6 +5,7 @@
 // nothing on stderr; errors on stderr in text mode; JSON errors whenever an exact --json option
 // token (before any "--") is present; identical results on repeated runs.
 #include "docenhance/cli/run.hpp"
+#include "processor.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
@@ -62,7 +63,8 @@ Outcome invoke(const std::vector<std::string>& args) {
     }
     std::ostringstream out;
     std::ostringstream err;
-    const int code = docenhance::cli::run(argv, out, err);
+    docenhance::tests::RejectingProcessor processor;
+    const int code = docenhance::cli::run(argv, processor, out, err);
     return {.code = code, .out = out.str(), .err = err.str()};
 }
 

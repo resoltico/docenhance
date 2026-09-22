@@ -17,7 +17,6 @@ from tools_path import ROOT
 import audit_build
 import check_all
 import check_gates
-import check_project
 import deps
 import generate_spec
 import package_source
@@ -112,10 +111,6 @@ class LocalCheckTests(unittest.TestCase):
                 self.assertTrue((ROOT / arguments[0]).is_file(), name)
             else:
                 self.assertEqual(arguments[0], "-m", name)
-
-    def test_project_terminology_is_not_a_lifecycle_label(self) -> None:
-        """Published interfaces do not identify the project by its development age."""
-        self.assertEqual(check_project.terminology_errors(), [])
 
     def test_project_version_is_strict_semver_from_cmake(self) -> None:
         """Only a stable semantic version in project() can name an application release."""

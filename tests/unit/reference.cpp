@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
+#include "foundation_cases.hpp"
 #include "pipeline_cases.hpp"
 #include "reference_cases.hpp"
 
@@ -24,4 +25,8 @@ TEST_CASE("The schedule is bounded, deterministic and reports the earliest failu
 }
 TEST_CASE("The box mean agrees with its definition and with itself") {
     REQUIRE_NOTHROW(docenhance::tests::box_mean_cases());
+}
+
+TEST_CASE("Ownership, views, execution boundaries and admitted requests", "[foundation]") {
+    REQUIRE_NOTHROW(docenhance::tests::foundation_cases());
 }

@@ -11,6 +11,9 @@ function(de_library name)
   target_include_directories(${name} PUBLIC "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>")
   target_link_libraries(${name} PRIVATE ${arg_LINKS})
   de_apply_options(${name})
+  if(DE_FUZZ_ONLY)
+    target_compile_options(${name} PRIVATE -fsanitize=fuzzer-no-link)
+  endif()
   de_register_target(${name} LAYER ${arg_LAYER} SOURCES ${arg_SOURCES} HEADERS ${arg_HEADERS} LINKS ${arg_LINKS})
 endfunction()
 
@@ -35,25 +38,40 @@ de_library(de_methods LAYER methods
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp"
   LINKS de_core de_exec de_image)
-de_library(de_io LAYER io
-  SOURCES io/capabilities.cpp HEADERS "${DE_INCLUDE}/io/capabilities.hpp"
-  LINKS de_core de_image DE::png)
 de_library(de_app LAYER app
-  SOURCES app/dispatch.cpp HEADERS "${DE_INCLUDE}/app/dispatch.hpp"
-  LINKS de_core de_contract de_image de_methods de_io)
+  SOURCES app/dispatch.cpp app/process.cpp
+  HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
+  LINKS de_core de_contract de_methods)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_report LAYER report
   SOURCES report/render.cpp HEADERS "${DE_INCLUDE}/report/render.hpp"
-  LINKS de_app de_contract nlohmann_json::nlohmann_json)
+  LINKS de_app de_contract de_core nlohmann_json::nlohmann_json)
 de_library(de_cli LAYER cli
   SOURCES cli/run.cpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
   LINKS de_app de_contract de_core de_report CLI11::CLI11)
 
-add_executable(docenhance cli/main.cpp)
-target_link_libraries(docenhance PRIVATE de_cli de_core)
+# Fuzzing compiles the SAME first-party targets and their real transitive links, but deliberately
+# never builds the concrete host or codecs. The CLI harness supplies an in-memory processing port.
+if(DE_FUZZ_ONLY)
+  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli)
+  return()
+endif()
+de_library(de_io LAYER io
+  SOURCES io/png_context.cpp io/png_decode.cpp io/png_encode.cpp io/png_publish.cpp
+          io/publication.cpp io/png_context.hpp io/publication.hpp
+  HEADERS "${DE_INCLUDE}/io/png.hpp"
+  LINKS de_core de_image DE::png)
+de_library(de_host LAYER host
+  SOURCES host/processor.cpp HEADERS "${DE_INCLUDE}/host/processor.hpp"
+  LINKS de_app de_core de_image de_io de_methods)
+add_executable(docenhance entry/main.cpp)
+if(MINGW)
+  target_link_options(docenhance PRIVATE -municode)
+endif()
+target_link_libraries(docenhance PRIVATE de_cli de_core de_host)
 de_apply_options(docenhance)
 set_target_properties(docenhance PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
-de_register_target(docenhance LAYER cli SOURCES cli/main.cpp LINKS de_cli de_core)
+de_register_target(docenhance LAYER entry SOURCES entry/main.cpp LINKS de_cli de_core de_host)
 de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json")
 
 # Not a layer: this probe exists to prove the pinned native dependencies build, link and run, so it

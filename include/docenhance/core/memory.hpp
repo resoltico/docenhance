@@ -3,7 +3,6 @@
 #pragma once
 #include "docenhance/core/result.hpp"
 
-#include <atomic>
 #include <cstddef>
 #include <span>
 #include <utility>
@@ -14,17 +13,19 @@ namespace docenhance::core {
 //
 // First, running out of memory is an expected outcome of a legitimate request, not a defect, so it
 // is a value: buffers are obtained through a Budget that returns Result, and nothing in the
-// processing layers allocates through a throwing path.
+// processing layers directly allocates through a throwing path. Small metadata and OS resources
+// are outside the byte budget and are translated to resource failures at execution boundaries.
 //
-// Second, memory that is not accounted for cannot be limited. `--memory-mib` promises a working
-// allocation budget, so every image buffer is charged against one Budget and refunded when the
+// Second, memory that is not accounted for cannot be limited. The host supplies a working
+// allocation budget, so every image buffer is charged against one ledger and refunded when the
 // buffer dies. A buffer owns its memory alone: it cannot be copied, only moved, so no operation
-// silently duplicates a page.
+// silently duplicates a page. The ledger itself is fixed-size control metadata.
 
 // Rows begin on this boundary so that vector loads on any supported target are aligned.
 inline constexpr std::size_t buffer_alignment = 64;
 
 class Budget;
+struct BudgetState;
 
 // Owning, aligned, move-only bytes, charged to the budget that produced them.
 class Buffer {
@@ -34,13 +35,13 @@ class Buffer {
     Buffer& operator=(const Buffer&) = delete;
     Buffer(Buffer&& other) noexcept
         : data_(std::exchange(other.data_, nullptr)), size_(std::exchange(other.size_, 0)),
-          budget_(std::exchange(other.budget_, nullptr)) {}
+          state_(std::exchange(other.state_, nullptr)) {}
     Buffer& operator=(Buffer&& other) noexcept {
         if (this != &other) {
             release();
             data_ = std::exchange(other.data_, nullptr);
             size_ = std::exchange(other.size_, 0);
-            budget_ = std::exchange(other.budget_, nullptr);
+            state_ = std::exchange(other.state_, nullptr);
         }
         return *this;
     }
@@ -63,24 +64,24 @@ class Buffer {
 
   private:
     friend class Budget;
-    Buffer(std::byte* data, std::size_t size, Budget* budget) noexcept
-        : data_(data), size_(size), budget_(budget) {}
+    Buffer(std::byte* data, std::size_t size, BudgetState* state) noexcept
+        : data_(data), size_(size), state_(state) {}
     void release() noexcept;
     std::byte* data_ = nullptr;
     std::size_t size_ = 0;
-    Budget* budget_ = nullptr;
+    BudgetState* state_ = nullptr;
 };
 
-// The working-memory ceiling one run was given. A budget outlives every buffer it hands out, is
-// neither copied nor moved, and counts atomically so that parallel work can share one ceiling.
+// The working-memory ceiling one run was given. Its shared ledger outlives both the budget and
+// every buffer it hands out. Atomic accounting lets parallel work share one ceiling safely.
 class Budget {
   public:
-    explicit Budget(std::size_t limit) noexcept : limit_(limit) {}
+    explicit Budget(std::size_t limit) noexcept;
     Budget(const Budget&) = delete;
     Budget& operator=(const Budget&) = delete;
     Budget(Budget&&) = delete;
     Budget& operator=(Budget&&) = delete;
-    ~Budget() = default;
+    ~Budget();
 
     // Zero bytes is an empty buffer and costs nothing; anything else is charged before it is
     // allocated, and the charge is returned if the allocator cannot satisfy it.
@@ -88,18 +89,15 @@ class Budget {
     [[nodiscard]] std::size_t limit() const noexcept {
         return limit_;
     }
-    [[nodiscard]] std::size_t used() const noexcept {
-        return used_.load(std::memory_order_relaxed);
-    }
+    [[nodiscard]] std::size_t used() const noexcept;
     [[nodiscard]] std::size_t available() const noexcept {
-        return limit_ - used();
+        return state_ == nullptr ? 0 : limit_ - used();
     }
 
   private:
     friend class Buffer;
     [[nodiscard]] bool charge(std::size_t bytes) noexcept;
-    void refund(std::size_t bytes) noexcept;
     std::size_t limit_;
-    std::atomic<std::size_t> used_{0};
+    BudgetState* state_;
 };
 } // namespace docenhance::core

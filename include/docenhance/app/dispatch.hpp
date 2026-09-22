@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "docenhance/app/process.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/catalog.hpp"
@@ -19,7 +20,7 @@ struct BuildFacts {
     std::string_view compiler;
     std::string_view dependency_lock_sha256;
 };
-// What is implemented, which is currently nothing: both spans are empty by construction.
+// Capabilities admitted by the application and verified by real end-to-end tests.
 struct Capabilities {
     std::span<const methods::ImplementedMethod> methods;
     std::span<const std::string_view> input_formats;
@@ -33,20 +34,20 @@ struct Version {
 struct Methods {
     Capabilities capabilities;
 };
-struct Processed {
-    std::string output;
-};
 struct Failure {
     core::Error error;
 };
 using Payload = std::variant<Help, Version, Methods, Processed, Failure>;
 struct Outcome {
     contract::Command command = contract::Command::root;
-    core::ExitCode exit_code = core::ExitCode::success;
     // Every response identifies the build that produced it, whatever the payload.
     BuildFacts build;
     Payload payload;
+    [[nodiscard]] core::ExitCode exit_code() const noexcept {
+        const auto* const failed = std::get_if<Failure>(&payload);
+        return failed == nullptr ? core::ExitCode::success : failed->error.exit_code();
+    }
 };
-[[nodiscard]] Outcome dispatch(const contract::Invocation& invocation);
+[[nodiscard]] Outcome dispatch(const contract::Invocation& invocation, Processor& processor);
 [[nodiscard]] Outcome failure(const contract::Invocation& invocation, core::Error error);
 } // namespace docenhance::app

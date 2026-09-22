@@ -3,7 +3,7 @@
 include(ExternalProject)
 # Explicit source order; serial projects avoid N libraries each starting N workers.
 if(DE_FUZZ_ONLY)
-  set(de_names zlib png cli11 json)
+  set(de_names cli11 json)
 else()
   set(de_names zlib jpeg png tiff opencv leptonica lcms cli11 json picosha2)
   if(DE_BUILD_TESTS)
