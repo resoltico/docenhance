@@ -18,17 +18,19 @@
 #endif
 #include <string>
 #include <utility>
-#include <windows.h>
+#include <windows.h> // NOLINT(misc-include-cleaner)
 
 namespace docenhance::entry {
 namespace {
-core::Result<std::string> utf8_argument(const wchar_t* value) {
+core::Result<std::string> utf8_argument(const wchar_t* const value) {
+    // NOLINTNEXTLINE(misc-include-cleaner)
     const int count =
         WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value, -1, nullptr, 0, nullptr, nullptr);
     if (count <= 0) {
         return core::failure(core::ErrorCode::argument, "An argument is not valid UTF-16");
     }
     std::string result(static_cast<std::size_t>(count), '\0');
+    // NOLINTNEXTLINE(misc-include-cleaner)
     if (WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS, value, -1, result.data(), count, nullptr,
                             nullptr) != count) {
         return core::failure(core::ErrorCode::argument, "Cannot convert an argument to UTF-8");
@@ -39,7 +41,7 @@ core::Result<std::string> utf8_argument(const wchar_t* value) {
 int run_windows(std::span<wchar_t* const> raw) {
     std::vector<std::string> owned;
     owned.reserve(raw.size());
-    for (const wchar_t* value : raw) {
+    for (const wchar_t* const value : raw) {
         auto converted = utf8_argument(value);
         if (!converted) {
             return static_cast<int>(converted.error().exit_code());
@@ -57,7 +59,8 @@ int run_windows(std::span<wchar_t* const> raw) {
 } // namespace
 } // namespace docenhance::entry
 
-int wmain(int argc, wchar_t** const argv) { // NOLINT(misc-const-correctness)
+int wmain(int argc,
+          wchar_t** const argv) { // NOLINT(misc-const-correctness,misc-use-internal-linkage)
     try {
         return docenhance::entry::run_windows({argv, static_cast<std::size_t>(argc)});
     } catch (...) {
