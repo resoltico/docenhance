@@ -68,6 +68,8 @@ core::Result<image::Plane<std::uint8_t>> load_grayscale_png(const std::string& i
         return core::failure(core::ErrorCode::input,
                              "The PNG input must be a readable regular file");
     }
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange): MSVC STL bitmask false
+    // positive.
     const auto size = std::filesystem::file_size(path, error);
     if (error) {
         return core::failure(core::ErrorCode::input, "Cannot inspect the PNG input");

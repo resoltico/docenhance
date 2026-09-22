@@ -16,6 +16,9 @@ namespace {
 [[nodiscard]] bool write_pixels(const PngContext& context,
                                 image::PlaneView<const std::uint8_t> view) {
     // libpng requires a C jump frame; all C++ owners are in the caller.
+#ifdef _MSC_VER
+#pragma warning(suppress : 4611)
+#endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
     if (setjmp(png_jmpbuf(context.png)) != 0) {
         return false;
