@@ -4,27 +4,23 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Added
+
+- `process` now performs B03 fixed-threshold binarization for grayscale PNG input without alpha (1, 2, 4, or 8 bits), producing an 8-bit grayscale `result.png` in a newly published output directory.
+- `methods` reports B03 and `version --json` reports PNG as supported capabilities.
+
 ### Changed
 
-- Future GitHub source releases publish the exact categorized Markdown from their
-  tagged changelog section; release prose has no second authoring source.
-- Replaced lifecycle-branded command response, package, test-suite and tooling names with durable
-  interfaces; lifecycle metadata is removed from command responses.
-- Moved command input and output-target requirements from the CLI adapter into the application
-  layer, where capability and invocation policy are decided.
-- Centralized stable semantic-version validation on the CMake project version used by builds,
-  packages, source archives, metadata, tags, and release notes.
-- Hardened the shared box-mean kernel against partially overlapping views and pathological large
-  radii while preserving reflected-border behavior and deterministic output.
-- Added the first complete operation: bounded grayscale PNG input without alpha, B03 fixed-threshold
-  binarization, staged 8-bit PNG publication, and truthful runtime capability reporting.
-- Enforced the terminology policy in structural checks; the upstream OpenCV `WITH_AVFOUNDATION`
-  feature spelling is the sole exemption.
+- **Breaking:** The command-line contract is reduced to `process`, `methods`, and `version`; `plan`, `inspect`, `presets`, and unsupported processing options are no longer accepted. Integrators must invoke the explicit B03/PNG operation described above.
+- **Breaking:** JSON responses no longer contain lifecycle metadata. Consumers must use [command-response.schema.json](schemas/command-response.schema.json) and stop reading the removed fields.
+- Source releases now derive their GitHub release notes from the matching dated changelog section and verify the published source archive and checksum against the tagged revision.
 
-### Documentation
+### Internal
 
-- Added an authority map, removed the hand-maintained dependency catalog, and updated publishing
-  guidance to the protected repository's current operating policy.
+- The shared box-mean primitive now rejects overlapping storage and initializes large reflected windows by period, preserving deterministic output while avoiding radius-proportional setup work.
+- The quality workflow includes Linux x86-64/ARM64, macOS ARM64/Intel, and Windows x86-64; source releases retain source-only provenance rather than publishing binaries.
+
+**Versioning note:** This candidate has not been tagged or published and still declares `0.1.0` in `CMakeLists.txt`; the intended release version and date remain undecided.
 
 ## [0.1.0] - 2026-09-21
 
