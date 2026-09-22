@@ -8,6 +8,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdio>
+#ifdef _WIN32
+#include <stdio.h> // NOLINT(modernize-deprecated-headers)
+#endif
 #include <filesystem>
 #include <png.h>
 #include <pngconf.h>
@@ -19,16 +22,18 @@
 namespace docenhance::io {
 namespace {
 [[nodiscard]] png_voidp allocate_block(PngMemory& memory, png_alloc_size_t size) {
-    auto* const slot = std::ranges::find_if(memory.blocks, &core::Buffer::empty);
-    if (slot == memory.blocks.end()) {
-        return nullptr;
+    for (core::Buffer& slot : memory.blocks) {
+        if (!slot.empty()) {
+            continue;
+        }
+        auto allocated = memory.budget.get().allocate(size);
+        if (!allocated) {
+            return nullptr;
+        }
+        slot = std::move(*allocated);
+        return slot.bytes().data();
     }
-    auto allocated = memory.budget.get().allocate(size);
-    if (!allocated) {
-        return nullptr;
-    }
-    *slot = std::move(*allocated);
-    return slot->bytes().data();
+    return nullptr;
 }
 png_voidp allocate_png(png_structp png, png_alloc_size_t size) noexcept {
     auto& memory = *static_cast<PngMemory*>(png_get_mem_ptr(png));

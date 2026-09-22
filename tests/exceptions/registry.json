@@ -33,6 +33,9 @@
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@ffd0216a": {
       "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
     },
+    "src/io/png_context.cpp:clang-tidy/modernize-deprecated-headers@16943187": {
+      "explanation": "The Windows _wfopen extension is declared by the native stdio.h, not by the standard C++ <cstdio> interface as modeled by clang's include cleaner. Including the actual C runtime provider confines this platform-specific file-opening boundary to the private PNG adapter."
+    },
     "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
     },
