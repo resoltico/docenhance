@@ -19,16 +19,16 @@ Two workflow families are checked in:
   source-only GitHub release using the exact Markdown below that version's heading in
   `CHANGELOG.md`; there is no separate release-notes source.
 
-After the first quality-gate workflow run:
+## Repository policy
 
-- Require the **Required quality gate** status check, and reviewed pull requests, in the `main`
-  branch ruleset. That aggregate job fails when any other job fails, is skipped or is cancelled.
-  Committing a workflow does not activate branch protection.
-- Enable **private vulnerability reporting**, which is the reporting channel the security policy
-  names. Without it the policy has nowhere to send reporters.
-- Check that the **Nightly deep checks** workflow is running: it fuzzes with both engines and runs
-  the suite under sanitizers, and neither runs on pull requests.
-- Add `.github/CODEOWNERS` with the maintainer's account once it is known.
+`main` is protected by the **Required quality gate** aggregate check. It fails if any structural,
+native, sanitizer, or fuzzing job fails, is skipped, or is cancelled. Linear history is required;
+force pushes and branch deletion are prohibited. Private vulnerability reporting is enabled, and
+the security policy names it as the reporting channel.
+
+The **Nightly deep checks** workflow runs both fuzz engines and the sanitizer suite outside pull
+requests. `.github/CODEOWNERS` must name the current maintainer before any required-owner review
+rule is enabled; do not enable a rule that cannot be satisfied.
 
 Actions are pinned to reviewed commit identifiers, and Dependabot proposes Action updates only;
 dependency-lock changes still require the review described in [CONTRIBUTING](../CONTRIBUTING.md).

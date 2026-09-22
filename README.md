@@ -9,7 +9,10 @@ A C++ command-line project for improving the readability of contemporary and his
 
 ## Start here
 
-Read [status](docs/status.md) for what exists and what has been verified, [build instructions](docs/build.md), [quality gates](docs/quality.md), and the [roadmap](docs/roadmap.md) for what comes next. [Design decisions](docs/decisions.md) explains why the project is built this way.
+Use the [documentation map](docs/README.md) to find the authority for a change. Read
+[status](docs/status.md) for verified capability boundaries, [architecture](docs/architecture.md),
+[build instructions](docs/build.md), [quality gates](docs/quality.md), and the
+[roadmap](docs/roadmap.md) before extending the program.
 
 ## Modern native architecture
 
@@ -32,7 +35,7 @@ cmake -P cmake/AcquireDependencies.cmake
 # Offline configure → isolated native dependency build → application → tests.
 cmake --workflow --preset dev
 
-# Build/test/package a development release, not the final 1.0 enhancer.
+# Build, test and package for local validation; this does not publish a binary.
 cmake --workflow --preset release
 ```
 
