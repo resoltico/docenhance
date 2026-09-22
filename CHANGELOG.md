@@ -13,6 +13,11 @@ Notable changes to this project are documented in this file. The format is based
 - Enforced the terminology policy in structural checks; the upstream OpenCV `WITH_AVFOUNDATION`
   feature spelling is the sole exemption.
 
+### Documentation
+
+- Added an authority map, removed the hand-maintained dependency catalog, and updated publishing
+  guidance to the protected repository's current operating policy.
+
 ## [0.1.0] - 2026-09-21
 
 - First release.
