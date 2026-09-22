@@ -39,9 +39,6 @@
     "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
     },
-    "src/io/png_decode.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@c09bc3d0": {
-      "explanation": "Clang's analyzer misclassifies the MSVC standard library's internal filesystem bitmask cast when file_size combines its documented flags. The error-code overload still provides the required non-throwing file-size boundary and is covered by malformed-input tests."
-    },
     "src/io/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
     },
