@@ -203,11 +203,12 @@ descriptors, documentation and the fuzzing dictionary, and the build fails when 
 
 Four steps, each owned by one layer, and nothing does two of them:
 
-1. `de_cli` turns `argv` into a typed `contract::Invocation`, rejecting what the grammar forbids.
+1. `de_cli` turns `argv` into a typed `contract::Invocation`, rejecting only what the grammar forbids.
    Which options a command accepts is a property of the contract — `option.scope.contains(command)` —
    not a scope string the adapter interprets.
-2. `de_app` decides what that invocation *means*, and returns an `app::Outcome`: the command, the
-   exit code, the build identity, and a typed payload (`Help`, `Version`, `Methods`, `Failure`).
+2. `de_app` decides what that invocation *means* — including required inputs, output targets, and
+   the implemented capability set — and returns an `app::Outcome`: the command, the exit code, the
+   build identity, and a typed payload (`Help`, `Version`, `Methods`, `Failure`).
    It composes no text and knows no output format.
 3. `de_report` renders that outcome, as the JSON response
    (`schemas/command-response.schema.json`) or as human text. It is the only owner of the wire

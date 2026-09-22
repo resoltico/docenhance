@@ -10,6 +10,8 @@ Notable changes to this project are documented in this file. The format is based
   tagged changelog section; release prose has no second authoring source.
 - Replaced lifecycle-branded command response, package, test-suite and tooling names with durable
   interfaces; lifecycle metadata is removed from command responses.
+- Moved command input and output-target requirements from the CLI adapter into the application
+  layer, where capability and invocation policy are decided.
 - Enforced the terminology policy in structural checks; the upstream OpenCV `WITH_AVFOUNDATION`
   feature spelling is the sole exemption.
 
