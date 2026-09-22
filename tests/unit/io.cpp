@@ -80,8 +80,8 @@ TEST_CASE("Codec allocations share the caller budget and refund on every path", 
         if (!result) {
             CHECK(result.error().code == core::ErrorCode::resource);
             CHECK(result.error().publication == core::Publication::not_published);
-            CHECK_FALSE(std::filesystem::exists(output));
-            CHECK_FALSE(std::filesystem::exists(utf8_name(output) + ".staging-0"));
+            CHECK(!std::filesystem::exists(output));
+            CHECK(!std::filesystem::exists(utf8_name(output) + ".staging-0"));
         }
         CHECK(constrained.used() == 0);
     }
