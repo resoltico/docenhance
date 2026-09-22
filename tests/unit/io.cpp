@@ -32,7 +32,8 @@ class TemporaryDirectory {
     TemporaryDirectory& operator=(const TemporaryDirectory&) = delete;
     TemporaryDirectory(TemporaryDirectory&&) = delete;
     TemporaryDirectory& operator=(TemporaryDirectory&&) = delete;
-    ~TemporaryDirectory() {
+    // NOLINTNEXTLINE(bugprone-exception-escape)
+    ~TemporaryDirectory() noexcept {
         std::error_code error;
         std::filesystem::remove_all(path, error);
     }
@@ -70,7 +71,7 @@ TEST_CASE("Codec allocations share the caller budget and refund on every path", 
                 CHECK(decoded.error().code == core::ErrorCode::resource);
             }
             if (limit == 0) {
-                CHECK_FALSE(decoded);
+                CHECK(!decoded);
             }
         }
         CHECK(constrained.used() == 0);
