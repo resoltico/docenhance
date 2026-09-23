@@ -14,6 +14,7 @@ from typing import Any
 from check_all import CHECKS
 from check_gates import code_files, iter_files
 from deps import ROOT, load_lock
+from fuzz_manifest import inventory_errors
 from project_version import VersionError, project_version
 
 PRESET_SCHEMA = 12
@@ -38,7 +39,14 @@ REQUIRED_SOURCE_COMMANDS = (
     "python tools/package_source.py",
     "python tools/publish_source_release.py --check",
 )
-REQUIRED_CI_COMMANDS = ("cmake --workflow --preset release", "cmake --workflow --preset fuzz")
+REQUIRED_CI_COMMANDS = (
+    "cmake --workflow --preset release",
+    "cmake --workflow --preset ${{ matrix.preset }}",
+    "preset: fuzz\n",
+    "preset: fuzz-afl\n",
+    "python tools/install_aflplusplus.py",
+    "python tools/run_fuzz_campaign.py --plan",
+)
 SANITIZED_TEST_PRESETS = ("sanitize", "tsan", "fuzz", "fuzz-afl")
 
 
@@ -159,24 +167,10 @@ def wiring_errors() -> list[str]:
 def fuzz_errors() -> list[str]:
     """Harnesses, settings, engine targets, replay tests, corpora and sanitizer options agree."""
     settings = read_json("fuzz/targets.json")
-    configured = set(settings["targets"])
-    harnesses = {path.stem for path in (ROOT / "fuzz").glob("*.cpp")}
-    fuzz_cmake = (ROOT / "fuzz/CMakeLists.txt").read_text(encoding="utf-8")
-    tests_cmake = (ROOT / "tests/CMakeLists.txt").read_text(encoding="utf-8")
-    built = set(re.findall(r"^de_fuzz_target\((\w+)", fuzz_cmake, flags=re.MULTILINE))
-    replayed = set(re.findall(r"^de_fuzz_replay\((\w+)", tests_cmake, flags=re.MULTILINE))
-    errors = []
-    if not configured == harnesses == built == replayed:
-        errors.append(
-            f"Fuzz targets differ: targets.json {sorted(configured)}, "
-            f"harnesses {sorted(harnesses)}, engine targets {sorted(built)}, "
-            f"replay tests {sorted(replayed)}"
-        )
-    for target in sorted(configured):
-        for kind in ("corpus", "regressions"):
-            directory = ROOT / "fuzz" / kind / target
-            if not directory.is_dir() or not any(p.is_file() for p in directory.iterdir()):
-                errors.append(f"fuzz/{kind}/{target} must contain at least one input")
+    errors = inventory_errors(ROOT)
+    for path, mode in (("fuzz/CMakeLists.txt", "ENGINE"), ("tests/CMakeLists.txt", "REPLAY")):
+        if f"de_register_fuzz_targets({mode})" not in (ROOT / path).read_text(encoding="utf-8"):
+            errors.append(f"{path} must use the authoritative harness manifest")
     presets = {p["name"]: p for p in read_json("CMakePresets.json")["testPresets"]}
     expected = settings["sanitizer_options"]
     errors.extend(

@@ -1,19 +1,18 @@
 # Fuzzing
 
-Strict, engine-agnostic fuzz harnesses. See [design decisions](../docs/decisions.md) for the design and [quality gates](../docs/quality.md) for commands.
+`targets.json` is the authoritative harness inventory: source files, direct link requirements,
+input limits and sanitizer settings. Both engine builds and ordinary corpus replays consume it.
+See [campaigns and decoder coverage](../docs/fuzzing.md) for execution, evidence, and failure
+contracts, and [quality gates](../docs/quality.md) for commands.
 
-| Target | Checks | Input layout |
-| --- | --- | --- |
-| `pages` | `contract::parse_pages` against an independent reference parser; invariants; round trip | 2-byte big-endian expansion limit, then the selection text |
-| `decimal` | `contract::parse_finite` against a regular-expression grammar; exact conversion; range and bound errors | 1 selector byte (0–7: option bounds; otherwise 16 bytes of arbitrary bounds), then the text |
-| `numeric` | Raster budgets, reflect-101, sRGB, luminance transport and nearest-rank against exact references | 1 operation byte, then the operands |
-| `cli` | The complete command line: exit codes, one valid JSON object, JSON errors for `--json`, determinism | NUL-separated arguments |
+Harness sources describe their byte layouts and independent oracles. `png_decode` consumes raw
+encoded bytes; `png_samples` consumes five selector bytes (width, height, depth, interlace,
+scanline filter) followed by sample indices, constructing valid inputs without the production
+encoder. The CLI harness has no host/filesystem authority.
 
-- `corpus/<target>/` holds reviewed seed inputs. Merge new coverage with `tools/run_fuzzers.py --merge`; never commit a raw campaign corpus.
-- `regressions/<target>/` holds every input that once found a defect. Add the reproducer when you fix the defect.
-- `dict/<target>.dict` holds the dictionaries. `cli.dict` is generated from `spec/cli-contract.json`.
-- `targets.json` holds per-target limits and the strict sanitizer runtime options.
-
-`tools/run_fuzzers.py` adds each engine's own requirements, such as the `symbolize=0` that AFL++ insists on, so the same strict options work with libFuzzer and AFL++.
-
-Every normal build replays both directories through each harness as the `fuzz-replay-*` tests, on every compiler.
+`corpus/<target>/` holds reviewed seeds; `regressions/<target>/` holds reproducers.
+Every input is replayed in normal builds. Campaign preparation copies distinct contents by hash
+and records all original paths, including duplicate origins. Prior campaign output is never
+removed. Review and minimize findings before deliberately committing them; the runner has no
+implicit merge or promotion command. `dict/<target>.dict` supplies optional dictionaries;
+`cli.dict` is generated from the reviewed command contract.

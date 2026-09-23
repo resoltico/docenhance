@@ -50,17 +50,17 @@ de_library(de_cli LAYER cli
   SOURCES cli/run.cpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
   LINKS de_app de_contract de_core de_report CLI11::CLI11)
 
-# Fuzzing compiles the SAME first-party targets and their real transitive links, but deliberately
-# never builds the concrete host or codecs. The CLI harness supplies an in-memory processing port.
-if(DE_FUZZ_ONLY)
-  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli)
-  return()
-endif()
 de_library(de_io LAYER io
-  SOURCES io/png_context.cpp io/png_decode.cpp io/png_encode.cpp io/png_publish.cpp
-          io/publication.cpp io/png_context.hpp io/publication.hpp
+  SOURCES io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_publish.cpp
+          io/publication.cpp io/png_context.hpp io/png_reader.hpp io/publication.hpp
   HEADERS "${DE_INCLUDE}/io/png.hpp"
   LINKS de_core de_image DE::png)
+# Both fuzz groups compile production targets. Only codec harnesses link io; the CLI closure
+# remains pure and never composes the host or publication path.
+if(DE_FUZZ_ONLY)
+  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli io)
+  return()
+endif()
 de_library(de_host LAYER host
   SOURCES host/processor.cpp HEADERS "${DE_INCLUDE}/host/processor.hpp"
   LINKS de_app de_core de_image de_io de_methods)

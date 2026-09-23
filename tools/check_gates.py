@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 import config_gates
 import repo_hygiene
 import suppressions
+from fuzz_manifest import targets as fuzz_targets
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -145,6 +146,9 @@ def build_coverage_errors(root: Path = ROOT) -> list[str]:
     files = cmake_files(root)
     everything = "\n".join(files.values())
     errors = []
+    manifest_sources = set()
+    if (root / "fuzz/targets.json").is_file():
+        manifest_sources = {f"fuzz/{target.source}" for target in fuzz_targets(root)}
     for path, rel, kind in code_files(root):
         if kind != "cxx" or path.suffix not in {".c", ".cc", ".cpp", ".cxx"}:
             continue
@@ -154,6 +158,10 @@ def build_coverage_errors(root: Path = ROOT) -> list[str]:
             path.is_relative_to(cmake.parent) and path.relative_to(cmake.parent).as_posix() in text
             for cmake, text in files.items()
         )
+        if rel in manifest_sources:
+            referenced = all(
+                f"de_register_fuzz_targets({mode})" in everything for mode in ("ENGINE", "REPLAY")
+            )
         if not referenced:
             errors.append(f"{rel} is not compiled by any CMake target, so it is never linted")
     return errors

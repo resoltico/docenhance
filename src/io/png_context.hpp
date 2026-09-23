@@ -13,6 +13,7 @@
 #include <functional>
 #include <memory>
 #include <png.h>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -30,6 +31,12 @@ struct PngMemory {
     std::array<core::Buffer, codec_allocation_slots> blocks;
     std::array<char, codec_diagnostic_bytes> message{};
     bool exhausted = false;
+};
+// Reader state and its remaining-byte bound also live outside every libpng jump frame.
+struct PngInput {
+    void* state;
+    bool (*read)(void*, std::span<std::uint8_t>) noexcept;
+    std::size_t remaining;
 };
 class PngContext {
   public:

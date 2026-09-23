@@ -36,7 +36,7 @@ if(NOT DE_HAVE_FUZZER_RUNTIME)
 endif()
 
 # Instrumentation is applied by src/CMakeLists.txt to the production library targets. There is no
-# second source list, alternate implementation, or concrete I/O dependency in this build.
+# second source list or alternate decoder. The CLI harness still has no codec link.
 # One engine binary and one time-boxed CTest run (tools/run_fuzzers.py) per harness.
 function(de_fuzz_target name)
   cmake_parse_arguments(PARSE_ARGV 1 arg "" "SOURCE" "LINKS")
@@ -51,14 +51,9 @@ function(de_fuzz_target name)
     COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_fuzzers.py"
       --engine ${DE_FUZZ_ENGINE} --target ${name} --binary "$<TARGET_FILE:de_fuzz_${name}>"
       --work "${PROJECT_BINARY_DIR}/fuzz-work" --seconds ${DE_FUZZ_SECONDS})
-  math(EXPR de_timeout "${DE_FUZZ_SECONDS} + 120")
-  set_tests_properties(fuzz-${name} PROPERTIES TIMEOUT ${de_timeout})
+  set_tests_properties(fuzz-${name} PROPERTIES TIMEOUT ${DE_FUZZ_TARGET_TIMEOUT})
 endfunction()
-de_fuzz_target(pages SOURCE "${PROJECT_SOURCE_DIR}/fuzz/pages.cpp" LINKS de_contract)
-de_fuzz_target(decimal SOURCE "${PROJECT_SOURCE_DIR}/fuzz/decimal.cpp" LINKS de_contract)
-de_fuzz_target(numeric SOURCE "${PROJECT_SOURCE_DIR}/fuzz/numeric.cpp" LINKS de_image)
-de_fuzz_target(box_mean SOURCE "${PROJECT_SOURCE_DIR}/fuzz/box_mean.cpp" LINKS de_methods)
-de_fuzz_target(cli SOURCE "${PROJECT_SOURCE_DIR}/fuzz/cli.cpp"
-  LINKS de_cli de_contract nlohmann_json::nlohmann_json)
-de_fuzz_target(utf8 SOURCE "${PROJECT_SOURCE_DIR}/fuzz/utf8.cpp"
-  LINKS de_contract nlohmann_json::nlohmann_json)
+include(FuzzTargets)
+de_register_fuzz_targets(ENGINE)
+file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/fuzz-codecs.json"
+  CONTENT "{\"png\":\"$<TARGET_FILE:DE::png>\",\"zlib\":\"$<TARGET_FILE:DE::zlib>\"}\n")

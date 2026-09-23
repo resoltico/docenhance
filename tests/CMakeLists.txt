@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
 add_executable(de_tests unit/reference.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/utf8.cpp)
+  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io")
 target_link_libraries(de_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods de_io de_cli Catch2::Catch2WithMain)
 de_apply_options(de_tests)
@@ -24,14 +24,8 @@ function(de_fuzz_replay name)
   add_test(NAME fuzz-replay-${name} COMMAND de_fuzz_replay_${name}
     "${PROJECT_SOURCE_DIR}/fuzz/corpus/${name}" "${PROJECT_SOURCE_DIR}/fuzz/regressions/${name}")
 endfunction()
-de_fuzz_replay(pages SOURCE "${PROJECT_SOURCE_DIR}/fuzz/pages.cpp" LINKS de_contract)
-de_fuzz_replay(decimal SOURCE "${PROJECT_SOURCE_DIR}/fuzz/decimal.cpp" LINKS de_contract)
-de_fuzz_replay(numeric SOURCE "${PROJECT_SOURCE_DIR}/fuzz/numeric.cpp" LINKS de_image)
-de_fuzz_replay(box_mean SOURCE "${PROJECT_SOURCE_DIR}/fuzz/box_mean.cpp"
-  LINKS de_core de_exec de_image de_methods)
-de_fuzz_replay(cli SOURCE "${PROJECT_SOURCE_DIR}/fuzz/cli.cpp" LINKS de_cli nlohmann_json::nlohmann_json)
-de_fuzz_replay(utf8 SOURCE "${PROJECT_SOURCE_DIR}/fuzz/utf8.cpp"
-  LINKS de_contract nlohmann_json::nlohmann_json)
+include(FuzzTargets)
+de_register_fuzz_targets(REPLAY)
 include(Catch)
 catch_discover_tests(de_tests DISCOVERY_MODE PRE_TEST)
 add_test(NAME cli-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_cli.py" "$<TARGET_FILE:docenhance>")

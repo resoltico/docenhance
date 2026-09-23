@@ -76,7 +76,7 @@
   },
   "fuzzing": {
     "llvm_major": "23",
-    "engines": "libFuzzer from the pinned LLVM for CI; AFL++ for scheduled campaigns",
+    "engines": "libFuzzer and AFL++ for required PR and scheduled campaigns",
     "afl_plus_plus": {
       "version": "5.03c",
       "repository": "https://github.com/AFLplusplus/AFLplusplus.git",

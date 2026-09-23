@@ -5,27 +5,31 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_context.hpp"
+#include "png_reader.hpp"
 
 #include <algorithm>
 #include <csetjmp>
 #include <cstdint>
-#include <cstdio>
 #include <expected>
-#include <filesystem>
 #include <png.h>
-#include <string>
-#include <system_error>
+#include <pngconf.h>
+#include <span>
 #include <utility>
 
 namespace docenhance::io {
 namespace {
-constexpr std::uint64_t max_pixels = 40'000'000;
 constexpr std::uintmax_t mebibyte = std::uintmax_t{1024} * 1024;
-constexpr std::uintmax_t max_file_bytes = 128 * mebibyte;
 constexpr unsigned max_cached_chunks = 32;
 constexpr int nibble_depth = 4;
 // The jump target contains only trivial automatic state. All owning C++ objects are in its caller.
-[[nodiscard]] bool read_header(const PngContext& context) {
+void read_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
+    auto& input = *static_cast<PngInput*>(png_get_io_ptr(png));
+    if (count > input.remaining || !input.read(input.state, {bytes, count})) {
+        png_error(png, "The PNG input is truncated or exceeds its encoded-byte bound");
+    }
+    input.remaining -= count;
+}
+[[nodiscard]] bool read_header(const PngContext& context, PngInput& input) {
     // libpng requires a C jump frame; all C++ owners are in the caller.
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -38,7 +42,7 @@ constexpr int nibble_depth = 4;
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-    png_init_io(context.png, context.file.get());
+    png_set_read_fn(context.png, &input, read_bytes);
     png_set_crc_action(context.png, PNG_CRC_ERROR_QUIT, PNG_CRC_ERROR_QUIT);
     png_set_chunk_malloc_max(context.png, mebibyte);
     png_set_chunk_cache_max(context.png, max_cached_chunks);
@@ -75,30 +79,22 @@ constexpr int nibble_depth = 4;
 }
 } // namespace
 
-core::Result<image::Plane<std::uint8_t>> load_grayscale_png(const std::string& input,
-                                                            core::Budget& budget) {
-    const auto path = utf8_path(input);
-    std::error_code error;
-    if (!std::filesystem::is_regular_file(path, error) || error) {
-        return core::failure(core::ErrorCode::input,
-                             "The PNG input must be a readable regular file");
+core::Result<image::Plane<std::uint8_t>> decode_png(PngContext& context, PngInput& input,
+                                                    PngLimits limits) {
+    const PngLimits ceiling;
+    if (limits.encoded_bytes == 0 || limits.pixels == 0 ||
+        limits.encoded_bytes > ceiling.encoded_bytes || limits.pixels > ceiling.pixels) {
+        return core::failure(core::ErrorCode::argument,
+                             "PNG limits must be positive and within production limits");
     }
-    PngContext context{budget, false};
-    if (!context.open(path)) {
-        return std::unexpected(context.error(core::ErrorCode::input));
-    }
-    if (std::fseek(context.file.get(), 0, SEEK_END) != 0) {
-        return core::failure(core::ErrorCode::input, "Cannot inspect the PNG input");
-    }
-    const auto size = static_cast<std::int64_t>(std::ftell(context.file.get()));
-    if (size < 0 || std::fseek(context.file.get(), 0, SEEK_SET) != 0) {
-        return core::failure(core::ErrorCode::input, "Cannot inspect the PNG input");
-    }
-    if (std::cmp_greater(size, max_file_bytes)) {
+    if (input.remaining > limits.encoded_bytes) {
         return core::failure(core::ErrorCode::resource,
-                             "The PNG input exceeds the 128 MiB file limit");
+                             "The PNG input exceeds its encoded-byte limit");
     }
-    if (!read_header(context)) {
+    if (context.png == nullptr || context.info == nullptr) {
+        return std::unexpected(context.error(core::ErrorCode::resource));
+    }
+    if (!read_header(context, input)) {
         return std::unexpected(context.error(core::ErrorCode::input));
     }
     const auto depth = png_get_bit_depth(context.png, context.info);
@@ -112,11 +108,11 @@ core::Result<image::Plane<std::uint8_t>> load_grayscale_png(const std::string& i
     const auto width = png_get_image_width(context.png, context.info);
     const auto height = png_get_image_height(context.png, context.info);
     const auto pixels = static_cast<std::uint64_t>(width) * height;
-    if (pixels == 0 || pixels > max_pixels) {
+    if (pixels == 0 || pixels > limits.pixels) {
         return core::failure(core::ErrorCode::resource,
-                             "PNG dimensions exceed the 40 megapixel processing limit");
+                             "PNG dimensions exceed the processing pixel limit");
     }
-    auto plane = image::Plane<std::uint8_t>::allocate(budget, width, height);
+    auto plane = image::Plane<std::uint8_t>::allocate(context.memory.budget.get(), width, height);
     if (!plane) {
         return std::unexpected(std::move(plane.error()));
     }
@@ -125,5 +121,22 @@ core::Result<image::Plane<std::uint8_t>> load_grayscale_png(const std::string& i
         return std::unexpected(context.error(core::ErrorCode::input));
     }
     return plane;
+}
+namespace {
+bool read_memory(void* const state, std::span<std::uint8_t> output) noexcept {
+    auto& bytes = *static_cast<std::span<const std::uint8_t>*>(state);
+    if (output.size() > bytes.size()) {
+        return false;
+    }
+    std::ranges::copy(bytes.first(output.size()), output.begin());
+    bytes = bytes.subspan(output.size());
+    return true;
+}
+} // namespace
+core::Result<image::Plane<std::uint8_t>>
+decode_grayscale_png(std::span<const std::uint8_t> input, core::Budget& budget, PngLimits limits) {
+    PngContext context{budget, false};
+    PngInput reader{.state = &input, .read = read_memory, .remaining = input.size()};
+    return decode_png(context, reader, limits);
 }
 } // namespace docenhance::io
