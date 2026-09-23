@@ -1,0 +1,34 @@
+name: Audit source export
+on:
+  push:
+    branches: [audit/processing-contracts]
+    paths: [.github/workflows/audit-source-export.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    if: github.repository == 'resoltico/docenhance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 71ac25374c7086924d04202a30ce45dc03d1880d
+          persist-credentials: false
+      - name: Export verified merged source
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 71ac25374c7086924d04202a30ce45dc03d1880d
+          test "$(git rev-parse HEAD^{tree})" = 4b7df63430b9cd3026675655613bc4d2f8cea099
+          mkdir export
+          git archive --format=tar HEAD | gzip -n > export/source.tar.gz
+          git ls-tree -rz HEAD > export/tree.bin
+          git cat-file commit HEAD > export/commit.txt
+          (cd export && sha256sum source.tar.gz tree.bin commit.txt > SHA256SUMS)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: docenhance-merged-source
+          path: export/
+          if-no-files-found: error
+          retention-days: 1
