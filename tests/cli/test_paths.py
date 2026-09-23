@@ -100,11 +100,10 @@ def malformed_paths(binary: Path, root: Path, source: Path) -> int:
     if response["publication"] != "not_started" or set(root.iterdir()) != before:
         msg = "Malformed output path was not rejected before effects"
         raise AssertionError(msg)
-    invalid_source = root / os.fsdecode(b"invalid-\x80.png")
-    invalid_source.write_bytes(fixture())
+    invalid_source = os.fsencode(root) + b"/invalid-\x80.png"
     before = set(root.iterdir())
     response = verify_response(
-        invoke(binary, os.fsencode(invalid_source), os.fsencode(root / "never-created")),
+        invoke(binary, invalid_source, os.fsencode(root / "never-created")),
         ARGUMENT_ERROR,
     )
     if response["publication"] != "not_started" or set(root.iterdir()) != before:
