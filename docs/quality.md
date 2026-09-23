@@ -7,15 +7,16 @@ neither workflow publishes binary artifacts. The reasoning behind the strictness
 [design decisions](decisions.md).
 
 ```sh
+python tools/install_build_tools.py          # pinned CMake, Ninja and test dependencies
 python tools/install_build_tools.py --lint   # pinned Ruff, mypy, clang-format, pre-commit
 python tools/check_all.py                    # structure, gates, format, lint, types, tests
 cmake --workflow --preset dev                # build and test, clang-tidy on every target
 cmake --workflow --preset sanitize           # the suite under ASan and UBSan
 cmake --workflow --preset tsan               # the suite under ThreadSanitizer
-cmake --workflow --preset fuzz               # strict fuzzing of parsers and the command line
+cmake --workflow --preset fuzz               # strict complete fuzz campaign, including PNG
 ```
 
-The build also runs the [architecture rules](architecture.md#how-the-rules-are-enforced) as the
+The build also runs the [architecture rules](architecture.md#enforced-boundaries-not-just-a-diagram) as the
 `architecture` test, over the real include graph, the real abstract syntax tree, the links the build
 declares and every public header on its own. The rules that need no build run in `check_all.py` too,
 and a forbidden link fails the configure step before anything is compiled.
@@ -56,16 +57,23 @@ Fuzzing is strict and engine-agnostic; see [design decisions](decisions.md) and 
 
 ```sh
 python tools/install_llvm.py --fuzzing          # or: brew install llvm (macOS)
+python tools/deps.py fetch --dependency zlib
+python tools/deps.py fetch --dependency png
 python tools/deps.py fetch --dependency cli11
 python tools/deps.py fetch --dependency json
 CC=clang-23 CXX=clang++-23 cmake --workflow --preset fuzz
 ```
 
-On macOS, use `CC=$(brew --prefix llvm)/bin/clang CXX=$(brew --prefix llvm)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds only the fuzz targets and their two header-only dependencies, then fuzzes every target for `DE_FUZZ_SECONDS` (default 60). For longer runs, or to merge new coverage into the committed corpus after review:
+On macOS, use `CC=$(brew --prefix llvm)/bin/clang CXX=$(brew --prefix llvm)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds the fuzz targets, CLI11/JSON, and sanitizer/coverage-instrumented PNG/zlib, then fuzzes every target for `DE_FUZZ_SECONDS` (default 60). For a separate bounded run with retained evidence:
 
 ```sh
 python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 1800
-python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 600 --merge
+python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 600
 ```
 
-AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with libFuzzer. The nightly workflow runs both engines for 30 minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
+AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with both libFuzzer and AFL++. The nightly workflow runs both engines for 30 minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
+
+Campaign completeness, bounded parallelism, corpus ownership and retained evidence are specified
+in [fuzzing](fuzzing.md). Each run owns a fresh directory; automatic corpus merging is removed.
+The PNG fuzz build instruments libpng/zlib as well as first-party code. Required PR checks retain
+evidence artifacts; no source or regression is automatically rewritten by a successful run.

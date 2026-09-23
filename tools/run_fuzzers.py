@@ -1,13 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
-"""Run fuzz targets with strict engine and sanitizer settings; any finding fails the run.
+"""Run one bounded harness and retain corpus provenance, statistics, logs and findings.
 
-libFuzzer (the default) or AFL++ fuzzes a target for a time budget, starting from a scratch copy
-of its committed seed corpus plus its recorded regressions, with its dictionary. Crashes, sanitizer
-reports, violated harness properties, timeouts and out-of-memory conditions are findings: each
-reproducer is kept under the work directory and the command exits non-zero. With --merge, only
-inputs adding new coverage are copied back into the committed seed corpus.
+Every invocation creates a new owned directory. No old evidence is removed and no inputs are
+silently promoted into the repository. Review and deliberately copy minimized regressions instead.
 """
 
 from __future__ import annotations
@@ -15,161 +12,51 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
-import subprocess
+import signal
 import sys
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
-ROOT = Path(__file__).resolve().parents[1]
-FUZZ = ROOT / "fuzz"
-PER_INPUT_TIMEOUT_SECONDS = 5
-MEMORY_LIMIT_MB = 2048
-LIBFUZZER_FLAGS = (
-    f"-timeout={PER_INPUT_TIMEOUT_SECONDS}",
-    f"-rss_limit_mb={MEMORY_LIMIT_MB}",
-    f"-malloc_limit_mb={MEMORY_LIMIT_MB}",
-    "-use_value_profile=1",
-    "-reduce_inputs=1",
-    "-print_final_stats=1",
-    "-error_exitcode=77",
-    "-timeout_exitcode=78",
-)
+from fuzz_execution import Run, execute
+from fuzz_manifest import DEFAULT_SECONDS, FuzzError, duration, targets
+
+if TYPE_CHECKING:
+    from types import FrameType
 
 
-class FuzzError(RuntimeError):
-    """The fuzz run could not be set up."""
-
-
-def settings() -> dict[str, Any]:
-    """Return fuzz/targets.json."""
-    data: dict[str, Any] = json.loads((FUZZ / "targets.json").read_text(encoding="utf-8"))
-    return data
-
-
-def sanitizer_environment() -> dict[str, str]:
-    """The strict sanitizer runtime options, on top of the current environment."""
-    return {**os.environ, **settings()["sanitizer_options"]}
-
-
-def afl_environment() -> dict[str, str]:
-    """AFL++ refuses to start unless the sanitizer options disable symbolization."""
-    environment = {**sanitizer_environment(), "AFL_NO_UI": "1", "AFL_SKIP_CPUFREQ": "1"}
-    environment["ASAN_OPTIONS"] += ":symbolize=0"
-    return environment
-
-
-def seed_corpus(target: str, destination: Path) -> Path:
-    """Copy the committed seeds and regressions of target into a fresh directory."""
-    shutil.rmtree(destination, ignore_errors=True)
-    destination.mkdir(parents=True)
-    for source in (FUZZ / "corpus" / target, FUZZ / "regressions" / target):
-        for path in sorted(source.iterdir()):
-            if path.is_file():
-                shutil.copyfile(path, destination / f"{source.name}-{path.name}")
-    return destination
-
-
-def dictionary(target: str) -> list[Path]:
-    """The target's dictionary, when it has one."""
-    path = FUZZ / "dict" / f"{target}.dict"
-    return [path] if path.is_file() else []
-
-
-def run_libfuzzer(binary: Path, target: str, seconds: int, work: Path) -> list[Path]:
-    """Fuzz with libFuzzer and return the reproducers it wrote."""
-    corpus = seed_corpus(target, work / "corpus")
-    artifacts = work / "artifacts"
-    shutil.rmtree(artifacts, ignore_errors=True)
-    artifacts.mkdir(parents=True)
-    target_settings = settings()["targets"][target]
-    max_len = target_settings["max_len"]
-    command = [
-        str(binary),
-        f"-max_total_time={seconds}",
-        f"-max_len={max_len}",
-        f"-artifact_prefix={artifacts}/",
-        *[f"-dict={path}" for path in dictionary(target)],
-        *LIBFUZZER_FLAGS,
-        *target_settings.get("libfuzzer_options", []),
-        str(corpus),
-    ]
-    result = subprocess.run(command, env=sanitizer_environment(), check=False)
-    findings = sorted(artifacts.iterdir())
-    if result.returncode != 0 and not findings:
-        msg = f"libFuzzer exited with {result.returncode} without writing a reproducer"
-        raise FuzzError(msg)
-    return findings
-
-
-def run_afl(binary: Path, target: str, seconds: int, work: Path) -> list[Path]:
-    """Fuzz with AFL++ and return its crashes and hangs."""
-    afl_fuzz = shutil.which("afl-fuzz")
-    if afl_fuzz is None:
-        msg = "afl-fuzz not found; install the pinned AFL++ (docs/build.md)"
-        raise FuzzError(msg)
-    seeds = seed_corpus(target, work / "seeds")
-    output = work / "afl"
-    shutil.rmtree(output, ignore_errors=True)
-    command = [
-        afl_fuzz,
-        "-i",
-        str(seeds),
-        "-o",
-        str(output),
-        "-V",
-        str(seconds),
-        "-t",
-        str(PER_INPUT_TIMEOUT_SECONDS * 1000),
-        "-m",
-        "none",
-        *[arg for path in dictionary(target) for arg in ("-x", str(path))],
-        "--",
-        str(binary),
-    ]
-    subprocess.run(command, env=afl_environment(), check=True)
-    return sorted(
-        path
-        for kind in ("crashes", "hangs")
-        for path in (output / "default" / kind).glob("id*")
-        if path.is_file()
-    )
-
-
-def merge(binary: Path, target: str, work: Path) -> None:
-    """Add inputs with new coverage from the last run's corpus to the committed seeds."""
-    committed = FUZZ / "corpus" / target
-    command = [str(binary), "-merge=1", str(committed), str(work / "corpus")]
-    subprocess.run(command, env=sanitizer_environment(), check=True)
+def interrupted(_signum: int, _frame: FrameType | None) -> None:
+    """Unwind on CTest cancellation so the engine group is killed and evidence is retained."""
+    msg = "Fuzz execution interrupted"
+    raise InterruptedError(msg)
 
 
 def main() -> int:
-    """Fuzz one target and report findings."""
+    """Run one declared target; zero engine work or incomplete evidence is failure."""
+    declared = {target.name: target for target in targets()}
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--target", required=True, choices=sorted(settings()["targets"]))
+    parser.add_argument("--target", required=True, choices=sorted(declared))
     parser.add_argument("--binary", type=Path, required=True)
-    parser.add_argument("--work", type=Path, required=True, help="Scratch directory")
-    parser.add_argument("--seconds", type=int, default=60)
+    parser.add_argument(
+        "--work", type=Path, required=True, help="Parent of new evidence directories"
+    )
+    parser.add_argument("--seconds", type=duration, default=DEFAULT_SECONDS)
     parser.add_argument("--engine", choices=["libfuzzer", "afl"], default="libfuzzer")
-    parser.add_argument("--merge", action="store_true", help="Merge new coverage into fuzz/corpus")
     args = parser.parse_args()
-    work = args.work.resolve() / args.target
+    if os.name == "posix":
+        signal.signal(signal.SIGTERM, interrupted)
+    # The campaign owns a fresh parent; independently invoked targets use their explicit --work.
+    work = Path(os.environ.get("DE_FUZZ_RUN_ROOT", str(args.work))).resolve()
     try:
-        run = run_afl if args.engine == "afl" else run_libfuzzer
-        findings = run(args.binary.resolve(), args.target, args.seconds, work)
-        if args.merge and args.engine == "libfuzzer" and not findings:
-            merge(args.binary.resolve(), args.target, work)
-    except (OSError, subprocess.CalledProcessError, FuzzError) as exc:
+        run = Run(declared[args.target], args.binary.resolve(), args.engine, args.seconds)
+        directory = execute(run, work)
+        report = json.loads((directory / "result.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError, FuzzError) as exc:
         print(f"Fuzzing {args.target} failed: {exc}", file=sys.stderr)
         return 1
-    if findings:
-        print(f"FINDINGS in {args.target}: fix the defect, then add each reproducer to", end=" ")
-        print(f"fuzz/regressions/{args.target}/:")
-        print("\n".join(f"  {path}" for path in findings))
-        return 1
-    print(f"PASS: {args.target} fuzzed for {args.seconds}s ({args.engine}) without findings")
-    return 0
+    passed = report["passed"] is True
+    print(f"{'PASS' if passed else 'FAIL'}: {args.target}; evidence: {directory}")
+    return 0 if passed else 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    raise SystemExit(main())

@@ -21,7 +21,9 @@ jobs:
         with:
           python-version: '3.13'
       - name: Install pinned source-quality tools
-        run: python tools/install_build_tools.py --lint
+        run: |
+          python tools/install_build_tools.py
+          python tools/install_build_tools.py --lint
       - name: Source integrity and structural checks
         run: python tools/check_project.py
       - name: Quality-policy checks

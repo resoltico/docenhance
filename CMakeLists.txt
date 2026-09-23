@@ -33,9 +33,11 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
   "${PROJECT_SOURCE_DIR}/deps/features.json"
   "${PROJECT_SOURCE_DIR}/deps/lock.json"
   "${PROJECT_SOURCE_DIR}/deps/tools.json"
-  "${PROJECT_SOURCE_DIR}/spec/architecture.json")
-include(Options)
+  "${PROJECT_SOURCE_DIR}/spec/architecture.json"
+  "${PROJECT_SOURCE_DIR}/fuzz/targets.json"
+  "${PROJECT_SOURCE_DIR}/tools/fuzz_manifest.py")
 find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
+include(Options)
 include(CTest)
 if(DE_SUPERBUILD)
   include(Superbuild)

@@ -148,7 +148,8 @@ The present public CLI does not expose `--threads`; this remains an internal ker
 CMake rejects undeclared direct layer/package links. Every production target registers its files,
 headers and links. Native builds must contain every declared layer. An isolated fuzz build must
 contain the complete transitive closure of its named root, not a manually duplicated source list.
-Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs.
+Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs. Separate PNG harnesses use the shared byte-span
+decoder; only those targets link the codec layer.
 
 Source checks validate manifest shape, duplicate targets, directory ownership, direct includes and
 this table. Compiler-backed checks read the real include graph, require public headers to compile
@@ -170,6 +171,6 @@ by the real Draft 2020-12 implementation against executable output and negative 
 
 Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,
 and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target
-registration, including box-mean, rather than a second shell list. Sanitizers currently instrument
-first-party code, not every third-party implementation. Documentation records current guarantees
+registration, including box-mean, rather than a second shell list. Native sanitizer presets instrument first-party code. The isolated PNG fuzz build additionally
+instruments pinned libpng/zlib and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
 and limits, rather than claiming that every platform or future method already passed.

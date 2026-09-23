@@ -1,5 +1,5 @@
 {
-  "$comment": "Per-target fuzzing settings, read by tools/run_fuzzers.py; the harness list is checked against the CMake targets, corpora and regressions by tools/check_project.py. libfuzzer_options are extra engine flags: the CLI target is slow (it builds the full parser per input), so it uses its whole length budget from the start instead of growing it.",
+  "$comment": "Authoritative harness sources, direct links and input bounds. CMake creates engine and replay targets from these declarations; Python validates and runs the same complete set.",
   "sanitizer_options": {
     "ASAN_OPTIONS": "abort_on_error=1:detect_stack_use_after_return=1:strict_string_checks=1:check_initialization_order=1:strict_init_order=1:allocator_may_return_null=0",
     "UBSAN_OPTIONS": "halt_on_error=1:print_stacktrace=1:report_error_type=1",
@@ -7,25 +7,71 @@
   },
   "targets": {
     "pages": {
-      "max_len": 4200
+      "max_len": 4200,
+      "source": "pages.cpp",
+      "links": [
+        "de_contract"
+      ]
     },
     "decimal": {
-      "max_len": 200
+      "max_len": 200,
+      "source": "decimal.cpp",
+      "links": [
+        "de_contract"
+      ]
     },
     "numeric": {
-      "max_len": 1100
+      "max_len": 1100,
+      "source": "numeric.cpp",
+      "links": [
+        "de_image"
+      ]
     },
     "cli": {
       "max_len": 1300,
-      "libfuzzer_options": [
-        "-len_control=0"
-      ]
+      "source": "cli.cpp",
+      "links": [
+        "de_cli",
+        "de_contract",
+        "nlohmann_json::nlohmann_json"
+      ],
+      "full_length": true
     },
     "box_mean": {
-      "max_len": 1300
+      "max_len": 1300,
+      "source": "box_mean.cpp",
+      "links": [
+        "de_core",
+        "de_exec",
+        "de_image",
+        "de_methods"
+      ]
     },
     "utf8": {
-      "max_len": 4096
+      "max_len": 4096,
+      "source": "utf8.cpp",
+      "links": [
+        "de_contract",
+        "nlohmann_json::nlohmann_json"
+      ]
+    },
+    "png_decode": {
+      "source": "png_decode.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_io"
+      ],
+      "max_len": 65536
+    },
+    "png_samples": {
+      "source": "png_samples.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_io"
+      ],
+      "max_len": 1100
     }
   }
 }

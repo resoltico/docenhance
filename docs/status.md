@@ -22,7 +22,8 @@ See [architecture](architecture.md) for exact limits and the publication trust/d
 C++23/CMake target boundaries, a verified offline source lock and isolated native dependency builds;
 strict warnings and linters; generated method/argument contracts; deterministic scalar primitives;
 checked aligned planes; budget accounting; bounded indexed scheduling; a box-mean primitive;
-reference/property tests and five engine-independent fuzz harnesses.
+reference/property tests and manifest-declared engine-independent fuzz harnesses, including
+raw PNG decoding and independently generated exact-sample PNG checks. See [fuzzing](fuzzing.md).
 
 The box-mean primitive uses the internal scheduler, but the current public CLI does not expose
 `--threads`, batching or arbitrary recipes. OpenCV, Leptonica, JPEG, TIFF and Little CMS are linked

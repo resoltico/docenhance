@@ -3,7 +3,7 @@
 include(ExternalProject)
 # Explicit source order; serial projects avoid N libraries each starting N workers.
 if(DE_FUZZ_ONLY)
-  set(de_names cli11 json)
+  set(de_names zlib png cli11 json)
 else()
   set(de_names zlib jpeg png tiff opencv leptonica lcms cli11 json picosha2)
   if(DE_BUILD_TESTS)
@@ -99,6 +99,11 @@ foreach(name IN LISTS de_names)
   if(name STREQUAL "tiff")
     list(APPEND de_options "-DJPEG_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
   endif()
+  if(DE_FUZZ_ONLY AND (name STREQUAL "png" OR name STREQUAL "zlib"))
+    # Instrument the actual pinned C decoder/decompressor, not just the C++ adapter.
+    list(APPEND de_options
+      "-DCMAKE_C_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer")
+  endif()
   ExternalProject_Add(de_dep_${name}
     SOURCE_DIR "${de_source}" BINARY_DIR "${de_binary}"
     PREFIX "${PROJECT_BINARY_DIR}/ep/${name}"
@@ -141,6 +146,7 @@ ExternalProject_Add(de_native
     "-DDE_FUZZ_ONLY:BOOL=${DE_FUZZ_ONLY}"
     "-DDE_FUZZ_SECONDS:STRING=${DE_FUZZ_SECONDS}"
     "-DDE_FUZZ_ENGINE:STRING=${DE_FUZZ_ENGINE}"
+    "-DDE_FUZZ_JOBS:STRING=${DE_FUZZ_JOBS}"
     "-DDE_BUILD_JOBS:STRING=${DE_BUILD_JOBS}"
     "-DPython3_EXECUTABLE:FILEPATH=${Python3_EXECUTABLE}"
   BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --parallel "${DE_BUILD_JOBS}"
@@ -156,9 +162,10 @@ if(DE_BUILD_TESTS)
   set_tests_properties(native-suite PROPERTIES TIMEOUT 180)
 endif()
 if(DE_ENABLE_FUZZING)
-  add_test(NAME fuzz-suite COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${de_inner}" --output-on-failure --no-tests=error -R "^fuzz-")
-  # Five targets, each fuzzed for DE_FUZZ_SECONDS, plus build-independent margin.
-  math(EXPR de_fuzz_timeout "5 * ${DE_FUZZ_SECONDS} + 300")
+  add_test(NAME fuzz-suite COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_fuzz_campaign.py"
+    --build "${de_inner}" --seconds "${DE_FUZZ_SECONDS}" --jobs "${DE_FUZZ_JOBS}"
+    --ctest "${CMAKE_CTEST_COMMAND}")
+  math(EXPR de_fuzz_timeout "${DE_FUZZ_CAMPAIGN_TIMEOUT} + 30")
   set_tests_properties(fuzz-suite PROPERTIES TIMEOUT ${de_fuzz_timeout})
 endif()
 foreach(gate IN ITEMS check-project check-spec check-architecture check-gates check-format)

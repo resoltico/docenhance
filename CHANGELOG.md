@@ -6,6 +6,13 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- Declare fuzz harness sources and links once for engine builds, native replays and complete
+  campaigns. Run bounded child-level parallelism with target-derived timeouts and retained evidence.
+- Share grayscale PNG decoding between bounded file and byte-span readers. Add raw-input and
+  independently constructed exact-sample harnesses, with instrumented libpng/zlib archives.
+- Replace destructive fuzz scratch reuse and implicit corpus merging with exclusive run directories
+  and content-addressed seed/regression staging that preserves every origin.
+
 - **Breaking:** Require well-formed UTF-8 command text and paths without normalization or byte
   repair. Keep machine-readable identities strict; malformed diagnostics use an explicit fallback.
 - Separate validated application requests from the concrete processing host; inject the execution

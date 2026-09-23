@@ -4,8 +4,10 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
+#include "png_fixture.hpp"
 #include "publication.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <catch2/catch_test_macros.hpp>
@@ -13,6 +15,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <ios>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -134,5 +138,49 @@ TEST_CASE("Only one concurrent native commit can win", "[io]") {
     CHECK((first_error.value() == 0) != (second_error.value() == 0));
     CHECK(std::filesystem::is_directory(target));
     CHECK(std::filesystem::exists(first) != std::filesystem::exists(second));
+}
+TEST_CASE("File and memory PNG sources use identical decoding and error policy", "[io][png]") {
+    TemporaryDirectory const temporary;
+    const auto input = temporary.path / "parity.png";
+    const GrayFixture fixture{
+        .width = 2,
+        .height = 1,
+        .depth = 2,
+        .interlaced = true,
+        .samples = {0, 3},
+    };
+    auto bytes = make_gray_png(fixture);
+    for (const bool corrupt : {false, true}) {
+        if (corrupt) {
+            bytes.at(29) ^= 1U;
+        }
+        {
+            std::ofstream stream{input, std::ios::binary};
+            for (const auto byte : bytes) {
+                stream.put(static_cast<char>(byte));
+            }
+            stream.close();
+            REQUIRE(stream);
+        }
+        core::Budget file_budget{mebibyte};
+        core::Budget memory_budget{mebibyte};
+        {
+            const auto from_file = io::load_grayscale_png(utf8_name(input), file_budget);
+            const auto from_memory = io::decode_grayscale_png(bytes, memory_budget);
+            REQUIRE(from_file.has_value() == from_memory.has_value());
+            if (corrupt) {
+                REQUIRE(!from_file);
+                CHECK(from_file.error().code == from_memory.error().code);
+                CHECK(from_file.error().code == core::ErrorCode::input);
+            } else {
+                REQUIRE(from_file);
+                CHECK(from_file->width() == from_memory->width());
+                CHECK(from_file->height() == from_memory->height());
+                CHECK(std::ranges::equal(from_file->view().row(0), from_memory->view().row(0)));
+            }
+        }
+        CHECK(file_budget.used() == 0);
+        CHECK(memory_budget.used() == 0);
+    }
 }
 } // namespace docenhance::tests
