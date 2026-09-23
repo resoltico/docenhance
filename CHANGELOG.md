@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking:** Require well-formed UTF-8 command text and paths without normalization or byte
+  repair. Keep machine-readable identities strict; malformed diagnostics use an explicit fallback.
 - Separate validated application requests from the concrete processing host; inject the execution
   port explicitly and keep CLI fuzzing entirely free of filesystem authority.
 - Unify production/fuzz target definitions and make full ASan/UBSan and TSan suites independent
@@ -15,6 +17,13 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Fixed
 
+- Preserve unknown publication when a processor throws after an unreported effect; reserve the
+  fallback outcome before execution instead of misreporting a safe retry or allocating in the catch.
+- Deliver exact serialized bytes regardless of caller width/fill settings, then flush and check
+  the selected response stream; delayed delivery failures cannot report success,
+  and an unused stream cannot invalidate a response or cause processing to repeat.
+- Preserve literal backslashes in POSIX output directory names when reporting the published file.
+- Align agent and design instructions with implemented capabilities and exception ownership.
 - Preserve buffer accounting after its budget owner is destroyed; validate borrowed view extents,
   reset moved-from plane shapes, and reject empty/overlapping kernel destinations.
 - Contain worker and thread-launch exceptions; bound scheduling counters without integer wrap.

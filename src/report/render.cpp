@@ -6,6 +6,7 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
+#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
 
 #include <nlohmann/json.hpp>
@@ -46,10 +47,14 @@ Json envelope(const app::Outcome& outcome, const Json& fields) {
     json.update(fields);
     return json;
 }
-// Messages can quote arguments, which need not be UTF-8. Replace invalid sequences with U+FFFD so
-// the output is always valid JSON instead of a serialization exception.
+// Identity fields must never be silently repaired. Diagnostic text alone may be substituted;
+// malformed identities cause serialization failure, contained by the transport boundary.
 std::string dump(const Json& json) {
-    return json.dump(json_indent, ' ', false, Json::error_handler_t::replace) + "\n";
+    return json.dump(json_indent) + "\n";
+}
+std::string_view diagnostic(const core::Error& error) noexcept {
+    return contract::valid_utf8(error.message) ? std::string_view{error.message}
+                                               : "The diagnostic was not well-formed UTF-8";
 }
 Json capability_fields(const app::Capabilities& capabilities) {
     Json methods = Json::array();
@@ -124,8 +129,8 @@ Output text_form(const app::Outcome& outcome) {
             } else {
                 return {
                     .out = {},
-                    .err = std::string(payload.error.identifier()) + ": " + payload.error.message +
-                           "\n",
+                    .err = std::string(payload.error.identifier()) + ": " +
+                           std::string(diagnostic(payload.error)) + "\n",
                 };
             }
         },
@@ -162,7 +167,7 @@ Output json_form(const app::Outcome& outcome) {
             } else {
                 const Json error = {
                     {"code", payload.error.identifier()},
-                    {"message", payload.error.message},
+                    {"message", diagnostic(payload.error)},
                 };
                 const Json fields = {
                     {"error", error},

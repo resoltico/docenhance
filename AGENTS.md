@@ -1,15 +1,42 @@
 # Instructions for implementation agents
 
-Read `docs/status.md`, `docs/architecture.md` and `docs/decisions.md`, then the reviewed contracts under `spec/`. Follow the order in `docs/roadmap.md`; nothing there is complete.
+Read `docs/status.md`, `docs/architecture.md`, `docs/decisions.md` and the reviewed contracts under
+`spec/`. The roadmap describes planned work; inspect current capability contracts before choosing
+a package. Names describe responsibilities, not a project's age, maturity or delivery phase.
 
-`spec/architecture.json` is the layer graph, and the only place it is stated: add a layer or an allowed edge there, not in the build files, the checker or the documentation. A target links exactly the layers and packages its own files include. Layers below the adapter do not read files, environment variables, command lines or process streams, do not `throw`, and do not `catch`. The CLI is not the authority for processing rules.
+`spec/architecture.json` owns the layer graph and API permissions. Update it when a genuine design
+change requires a new edge or exception boundary; do not duplicate rules in build scripts or docs.
+A target links exactly the layers and packages its own files include. Numeric kernels remain free
+of I/O, process state, allocation expressions, throwing and catching. The CLI owns syntax and
+response delivery, never processing rules. `de_app` admits `ProcessRequest`; `de_host` executes it.
+The application contains unreported processing exceptions as unknown publication, not safe retry.
 
-Do not advertise a method/format until its entire contract and tests are implemented. Never use no-op/copy stubs to create apparently successful processing. `E_NOT_IMPLEMENTED` uses exit 4 and publication `not_started`; never repurpose exit 7.
+Do not advertise a method or format until its complete contract and tests exist. B03 grayscale-PNG
+processing is implemented; other method entries are plans, not capabilities. Never use no-op/copy
+stubs to manufacture successful processing. `E_NOT_IMPLEMENTED` uses exit 4 and `not_started`;
+`E_PUBLICATION_UNKNOWN` uses exit 7 and `unknown`. An incomplete response is not proof of no effect.
 
-Use the locked sources and explicit feature configuration. Do not fetch from moving branches or silently use system packages. Do not add neural/OCR/GPU/GUI/network/runtime Python components. Do not stamp MIT on upstream code or copy restricted research implementations.
+Command text and admitted paths must be well-formed UTF-8. Do not normalize paths, repair invalid
+identity bytes or let diagnostic fallback change a filename. Rendering and delivery happen once,
+after execution. Explicitly flush the selected stream and handle its failure without retrying.
 
-Edit `spec/cli-contract.json` and `spec/method-contract.json` as reviewed authoring sources; regenerate with `python tools/generate_spec.py`. The JSON catalog is not a substitute for typed validated `EffectiveRecipe` and method variants. No semantic option may be silently ignored once its processing operation exists.
+Use locked sources and explicit feature configuration. Do not follow moving references or silently
+substitute system packages. Do not add neural/OCR/GPU/GUI/network/runtime Python components. Do not
+stamp MIT on upstream code or copy restricted research implementations.
 
-Run `python tools/check_project.py`, `python tools/check_gates.py`, `python tools/check_format.py`, `python -m ruff check`, `python -m mypy`, `python -m unittest discover -s tests/tooling -v`, relevant reference tests, and the real CMake workflow. Fix findings instead of suppressing them: every suppression must name its rule and be registered with a reason in `tests/exceptions/registry.json`, and size limits have no waivers. When you change a parser or the command line, fuzz it (`cmake --workflow --preset fuzz`) and add any reproducer to `fuzz/regressions/`. Report which checks actually ran. No fake dependency headers/libraries, mock build logs or claims that CI passed when a workflow was only authored. When dependency acquisition is unavailable, test what is available and clearly retain the missing native validation as an open requirement.
+Edit `spec/cli-contract.json` and `spec/method-contract.json`; regenerate with
+`python tools/generate_spec.py`. Extend typed admission together with a complete processing method;
+a JSON catalog is not executable validation, and unsupported options must not be silently ignored.
 
-For numerical work implement the specified mathematics, border conventions, precision, resource estimates, failures and reference fixtures before performance optimization. Preserve unknown/ambiguous state rather than converting it to success. An enhanced image is never a certificate of the original document's meaning or authenticity.
+Run `python tools/check_project.py`, `python tools/check_gates.py`, `python tools/check_format.py`,
+`python -m ruff check`, `python -m mypy`, `python -m unittest discover -s tests/tooling -v`, relevant
+reference tests and the real CMake workflow. Fix findings, rather than weakening the gates. Every
+suppression names its rule and has a code-bound reason in `tests/exceptions/registry.json`; size
+limits have no waivers. Fuzz parser/CLI changes with `cmake --workflow --preset fuzz` and retain
+reproducers in `fuzz/regressions/`. Report precisely which checks and platforms ran; authored CI,
+partial local builds and absent dependencies do not establish a passing full workflow.
+
+For numerical work implement the specified mathematics, borders, precision, resource estimates,
+failures and reference fixtures before optimizing. A charged-buffer budget is not a process-RSS
+limit. Preserve unknown state rather than converting it to success. An enhanced image is not a
+certificate of the original document's meaning or authenticity.

@@ -112,15 +112,14 @@ core::Result<std::string> publish_grayscale_png(const std::string& output_direct
         // All potentially allocating return metadata is prepared before the commit point.
         // Preserve the admitted UTF-8 spelling rather than round-tripping through native
         // character types, including its preferred separator when it has one.
-        const auto separator_index = output_directory.find_last_of("/\\");
 #ifdef _WIN32
-        constexpr char default_separator = '\\';
+        const auto separator_index = output_directory.find_last_of("/\\");
+        const char separator =
+            separator_index == std::string::npos ? '\\' : output_directory.at(separator_index);
 #else
-        constexpr char default_separator = '/';
+        // Backslash is a filename byte on POSIX, not a directory separator.
+        constexpr char separator = '/';
 #endif
-        const char separator = separator_index == std::string::npos
-                                   ? default_separator
-                                   : output_directory.at(separator_index);
         std::string published = output_directory + separator + "result.png";
         auto reserved = reserve_stage(stage, target);
         if (!reserved) {

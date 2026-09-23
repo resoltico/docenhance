@@ -4,6 +4,7 @@
 
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/parse.hpp"
+#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
 
 #include <string>
@@ -20,6 +21,10 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     }
     if (invocation.subject.contains('\0') || invocation.output_directory.contains('\0')) {
         return core::failure(core::ErrorCode::argument, "Paths cannot contain NUL bytes");
+    }
+    if (!contract::valid_utf8(invocation.subject) ||
+        !contract::valid_utf8(invocation.output_directory)) {
+        return core::failure(core::ErrorCode::argument, "Paths must be well-formed UTF-8");
     }
     if (invocation.binarize != "fixed") {
         return core::failure(core::ErrorCode::argument,

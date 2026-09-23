@@ -19,7 +19,7 @@ P = process.
 
 **Scope:** P. **Domain/default:** Required; a new result directory.
 
-Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success.
+Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success.
 
 **Applicable methods:** B03.
 
@@ -43,7 +43,7 @@ Normalized grayscale threshold. A sample is black iff its value is less than or 
 
 **Scope:** All commands. **Domain/default:** False.
 
-Writes exactly one final JSON response to stdout.
+Render one JSON response on stdout and no diagnostic text on stderr. Flush the selected stream before returning. JSON exit_code describes the rendered command outcome; response-delivery failure can instead end the process with exit 5. Check both the response and process status. A missing/incomplete response or exit 5 does not prove that publication did not commit; do not retry blindly.
 
 ## `--help`
 

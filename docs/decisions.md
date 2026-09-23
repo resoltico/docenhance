@@ -1,200 +1,120 @@
 # Design decisions
 
-The decisions that govern this project, with the reasoning behind them. This is not a history:
-when a decision changes, this page changes with it, and the [changelog](../CHANGELOG.md) records
-that it moved.
+These decisions describe the current system and their rationale, not a session history. Change
+them with the implementation; record user-visible changes in the [changelog](../CHANGELOG.md).
+The [architecture](architecture.md) owns the detailed guarantees and limitations.
 
-## Language and build system
+## Language and build model
 
-C++23 with CMake 4.4 and Ninja, using preset schema 12, configure/build/test/package workflows,
-target-scoped usage requirements, header file sets and an isolated dependency superbuild. There are
-no handwritten makefiles, global include or link directories, or downloads during a normal build.
+Use C++23, explicit CMake targets and header file sets, Ninja presets and an isolated dependency
+superbuild. A second build framework, a pre-standard language baseline or C++ modules would add
+portability obligations without resolving a demonstrated runtime requirement. Ordinary translation
+units therefore do not enable automatic module scanning. Dependencies are acquired explicitly;
+a normal build verifies the cache rather than downloading or substituting host packages.
 
-A pre-standard C++26 baseline, `import std`, or modules across C libraries would add portability
-risk without solving a present problem. A second build framework would add machinery, not answers.
+`deps/lock.json` owns source identities, `deps/features.json` upstream feature policy and
+`deps/tools.json` tool versions and deployment floors. Exact pins and receipts detect changed
+inputs; they do not prove that upstream code is trustworthy. Source/licence review and package
+inspection remain necessary. Keep external types out of public headers and libraries behind the
+adapter that owns their effects. The native dependency probe is a verification program, not
+permission to use every pinned imaging library in production.
 
-## Dependencies are pinned, verified and isolated
+## Typed admission and explicit execution
 
-Every dependency is pinned to an exact Git release object or archive digest in `deps/lock.json`,
-acquired in a separate explicit step, digest-inventoried into a receipt, and re-verified before
-every build. A moving branch or tag is never followed, and no host library is silently substituted.
-Each upstream project is configured and installed into a per-preset private prefix.
+The CLI translates syntax into `contract::Invocation`. Application validation constructs a private
+`ProcessRequest`, and the processing port accepts only that admitted value. `de_host` implements
+the port; `entry` composes it. Tests and CLI fuzzers inject a deterministic non-I/O implementation,
+not a runtime bypass flag. This preserves realistic command coverage without filesystem authority.
 
-Pins detect change; they are not signed-release verification and not a guarantee against a
-compromised upstream. Source and licence review remains a human step, described in
-[CONTRIBUTING](../CONTRIBUTING.md).
+Do not prebuild an arbitrary recipe engine or a dependency-injection framework. Extend admission,
+execution and capability reporting together when another complete operation exists. The generated
+catalog describes options and reviewed method definitions; it does not validate a processing plan.
+The B03/PNG operation is real. Unimplemented catalog entries remain unadvertised and return explicit
+failure rather than a successful copy or no-op placeholder.
 
-**OpenCV's module closure is `core`, `flann`, `geometry`, `imgproc`, `photo`.** OpenCV 5 changed the
-graph: `photo` requires `geometry`, which requires `flann`. Neural, GPU, GUI, video and external
-acceleration downloads are disabled, and a CMake hook fails any attempted nested download. Linking
-OpenCV does not authorize `imread` or `imwrite` in algorithm code; dedicated codecs own image I/O.
+## Exception containment follows authority
 
-## The contract is machine-readable, and generated code follows it
+Expected failures use `std::expected<T, Error>`, aliased as `core::Result<T>`. Numeric kernels do not
+throw or catch. External-library, scheduling and transport boundaries contain exceptional failures
+under permissions declared in the layer manifest. The application must also contain exceptions
+escaping the processing port: only it knows that execution has begun and effects may have occurred.
 
-`spec/cli-contract.json` and `spec/method-contract.json` are the reviewed authoring sources.
-`tools/generate_spec.py` emits the typed C++ option descriptors, the argument and method
-documentation, and the CLI fuzzing dictionary. Generated files are never edited by hand, and the
-build fails when they are stale.
+Before calling the processor, prepare a complete unknown-publication response. Returning that
+response on an unexpected exception requires no fresh diagnostic allocation; a compile-time check
+requires the outcome move to be non-throwing. Do not declare the processor `noexcept`: terminating
+would lose the very outcome distinction that callers need. Returned expected failures keep their
+reported state. Pre-execution validation remains before this boundary, so ordinary argument
+rejection still means processing did not start.
 
-A JSON catalog is a storage format, not a validator: the typed `EffectiveRecipe` and method variants
-remain required before any processing runs, and no option may be silently ignored once its operation
-exists. `schemas/command-response.schema.json` declares every field the executable emits, and the
-CLI contract test validates real responses against it.
+An outcome's exit status is derived from its typed payload, not independently writable state.
+`de_report` alone renders it. The CLI emits once with unformatted writes, so an embedding caller's
+width/fill settings cannot rewrite the serialized bytes. It explicitly flushes only the stream
+carrying content, without reconfiguring standard stream ties or exception masks. Buffer insertion alone does not establish delivery: `flush()` can set `badbit` or throw.
+A transport failure never causes processing or rendering to run again. This does not acknowledge
+consumer receipt, define a new process-signal policy or promise filesystem durability. JSON
+`exit_code` describes the rendered outcome, not a later transport failure. A complete success
+payload may therefore precede process exit 5; consumers must examine both without blind replay.
 
-## Architecture is enforced against the compiler, not against source text
+## UTF-8 is an admission contract, not a repair policy
 
-C++ has no established equivalent of ArchUnit, ArchUnitNET or Tach. The named candidate
-(`blurman-ai/archcheck`) has almost no adoption, `cpp-dependencies` analyses include graphs but
-asserts nothing and has slowed, `clang-uml` draws diagrams, and ArchGuard is a multi-language
-workbench aimed at larger estates. Include-what-you-use is actively developed but answers a
-different question, and clang-tidy's `misc-include-cleaner` already covers it here.
+Validate UTF-8 scalar encoding without allocation, locale dependence or normalization. Reject
+malformed CLI tokens before CLI11 can quote them, and independently validate path strings in direct
+application admission. NUL is a valid Unicode code point but not a valid embedded path character.
+Unassigned scalar values and noncharacters are not malformed UTF-8; surrogate encodings, overlong
+forms, truncated sequences and values above U+10FFFF are malformed.
 
-So the rules are built from the clang tooling that is actively developed and already pinned: the
-compiler's own dependency output (`-M`) for layer and package reach, `clang-query` AST matchers for
-forbidden calls, `throw` and `catch`, and `-fsyntax-only` for header self-containment, all driven
-by the compilation database the build already writes. This is stronger than a text-based checker,
-which cannot see a dependency reached through another header and cannot tell a call from the same
-word in a comment or a string. It costs a configured build, which is why those rules run as a test
-inside the build rather than as a source-only pass.
+Do not silently rewrite an identity to satisfy JSON. Strict serialization fails on a malformed
+output path, whereas a malformed diagnostic gets a visibly explanatory ASCII fallback. This
+separates identity from display text instead of allowing a global serializer replacement option
+to change filenames. POSIX joins use `/`; a backslash there belongs to a filename. Windows path
+conversion remains at the native adapter. Preserve admitted spelling, including decomposed Unicode.
 
-The layer graph itself is stated once, in `spec/architecture.json`, because it was previously
-repeated in the build files, the checker and the documentation, and the copies drifted. CMake reads
-the manifest to reject a forbidden link while configuring, and every first-party target registers
-its layer and files as it is defined, so a new target cannot quietly escape the rules and a layer
-nothing builds is an error. That registration is written into the build tree, which lets the
-checker hold the declared links against the includes the code actually writes: a target must link
-every layer and package its own files name, and must not link one that none of them names.
+The validator is checked over every scalar value and against an independent strict JSON decoder
+in its own engine-agnostic fuzz target. CLI fuzzing and executable path tests exercise admission,
+serialization and native publication together; a validator-only test is not sufficient.
 
-Bazel's `layering_check` and visibility rules would enforce the same properties in the build system
-itself, but changing build systems is a much larger break than this project needs.
+## Memory and schedule are explicit resources
 
-## Use cases decide in types; one layer spells them
+`core::Budget` tracks charged image/codec blocks. Move-only buffers share ownership of the atomic
+accounting ledger, so a buffer can outlive its originating budget handle. Checked planes and views
+establish extent and stride before kernel access; kernels additionally reject unsupported overlap.
+Small standard-library metadata, C stream buffers and OS thread stacks are not charged blocks.
+Do not claim that a ban on explicit allocation expressions eliminates every implicit allocation.
 
-`de_app` returns an `app::Outcome` — a command, an exit code, the build identity and a typed
-payload — and `de_report` turns that into the documented JSON response or into human text. Required
-input and output-target rules, and the capability set itself, are decided in `de_app`; the CLI only
-translates argument syntax into the typed invocation. The
-application layer previously composed both forms itself, which made it half a command line: the
-wire format, the help layout and the use-case rules lived in one file, and any second front end
-would have had to parse strings or repeat the logic.
+The scheduler owns work partitioning and thread creation, not an imaging dependency. Indexed
+regions keep the numerical kernel independent from worker count; scoped workers join on failure
+and report a deterministic task error. A persistent pool or different scheduler is justified only
+by a measured requirement, not by a desire for more abstraction. The present CLI exposes neither
+`--threads` nor `--memory-mib`; the B03 host uses its documented internal resource ceiling.
 
-The split also gives the JSON response one owner. `schemas/command-response.schema.json` declares
-what it contains, `de_report` is the only layer that links a JSON library, and no public header of
-any layer names a third-party header, so the types crossing these boundaries stay first-party.
+## Publication is an irreversible boundary
 
-What an option applies to is contract data, not adapter logic. `spec/cli-contract.json` states each
-command's usage line and scope symbol, and the generated catalog carries a typed `CommandSet`, so
-both the adapter and the renderer ask `option.scope.contains(command)` instead of searching a scope
-string for a letter.
+Write a complete PNG into exclusively owned sibling staging, close and check the encoded file,
+and prepare allocating response metadata before the commit operation. Commit uses a native atomic
+no-replace operation, never an existence check as a substitute for that operation. Cleanup touches
+only the paths the current attempt owns; foreign entries and ambiguous filesystem errors must not
+be hidden by a recursive cleanup or a false safe-retry response.
 
-## The vocabulary types are the standard ones
+Atomic visibility is not crash durability. The output parent and its ancestors are trusted; this
+is not a hostile-filesystem sandbox. `unknown` publication and a missing or incomplete response
+require inspection rather than automatic replay of a potentially completed operation.
 
-Fallible operations return `std::expected<T, Error>`, aliased as `Result<T>`. The project previously
-carried a hand-written variant-based equivalent; the standard type is understood by every reader and
-every tool, composes through `and_then` and `transform`, and costs nothing to maintain. It is
-available on every supported compiler at the supported floors, including Apple clang at macOS 14.
+## Enforcement must observe the real program
 
-## Memory is budgeted, owned and fallible
+`spec/architecture.json` declares the layer graph once. CMake verifies registrations and direct
+links. Compiler dependency output checks include closure, clang-query checks AST restrictions and
+standalone compilation checks public headers. Tests must demonstrate forbidden behavior is
+rejected, not merely assert that a policy file exists. Compilation or matcher failure is not an
+empty success result. Source-only checks on platforms without compatible compiler tooling are
+not equivalent to compiler-backed enforcement.
 
-A page is large enough that memory is a design decision rather than an implementation detail, so
-the vocabulary came before the pipeline. `core::Budget` counts what is outstanding and hands out
-`core::Buffer`, which is aligned, move-only and refunds its charge when it dies; `image::Plane` is
-that buffer plus a shape whose arithmetic is checked before anything is allocated. Allocation
-returns `Result`, because a page too large for the machine is an ordinary answer to a legitimate
-request, not an invariant violation — `E_RESOURCE`, exit status 4.
+Warnings, clang-tidy, formatting, Ruff, mypy and size limits remain required. Suppressions must be
+narrow, code-bound and explained; a new implementation does not inherit an exception because its
+filename or line number resembles an old one. Fuzz targets compile the same production targets,
+and CTest registration drives campaigns and normal corpus replay. Full ASan/UBSan and TSan jobs
+are independent, so a failing sanitizer job does not prevent the other from running.
 
-Only `de_core` may write a `new`-expression or call `malloc`; every other layer receives memory a
-budget already accounted for, which is why `--memory-mib` can mean something. A rule enforces it on
-the real syntax tree, so the shape of the code cannot drift away from the promise in the contract.
-
-A shared allocator behind `operator new` (an arena, a pool) was rejected for now: it would hide
-which subsystem holds a page, and the budget answers the question that actually matters. Tiling and
-streaming for pages that exceed the budget belong to the pipeline that does not exist yet.
-
-## The schedule is a layer, not a library call
-
-`--threads` is honoured by `de_exec` over the tiles of one page, not by asking a dependency to
-parallelise. That is partly forced — OpenCV's `parallel_for_` cannot be pinned on macOS, where it
-dispatches through Grand Central Dispatch — and partly deliberate: a library's thread count knows
-nothing about the memory budget, and per-worker working sets are what actually decide whether a
-large page fits.
-
-Separating the schedule from the algorithm is the same idea Halide made explicit, and it is what
-keeps determinism affordable: kernels stay pure functions over regions, the partition is fixed
-before the worker count is known, and the scheduler reports the earliest failure rather than the
-first one noticed. `exec::Scheduler` hands out indices from an atomic counter, which balances
-uniform tiles as well as work stealing would, and starts `std::jthread` workers per call rather
-than keeping a pool alive. Per-call threads cost about as much as a thousand rows of a page and
-avoid a long-lived pool with its own state; a persistent pool, or a `std::execution` scheduler when
-that is standard, can replace the inside of `for_each` without touching a kernel.
-
-Google's Highway, Intel's TBB and a hand-rolled work-stealing pool were all rejected for now: the
-first solves a different problem (portable SIMD, which belongs inside a kernel), and the others add
-a dependency or a pile of machinery to a project whose kernels do not exist yet.
-
-## The imaging libraries get no memory and no threads of their own
-
-Each dependency is wired so that this project keeps ownership: OpenCV computes into buffers we
-already own through `cv::Mat` headers rather than allocating its own, Leptonica allocates through
-`setPixMemoryManager`, Little CMS keeps state in a `cmsContext`, and the codecs take explicit
-ceilings and limits before decoding anything. `tools/native_probe.cpp` exercises every one of those
-hooks as a test, so the claims are checked on each platform instead of being believed.
-
-Two findings from that audit changed the build. OpenCV 5 registers dynamic TBB and OpenMP parallel
-backends and can load one from the machine at runtime, which would let an unpinned library decide
-this program's threading and memory: `PARALLEL_ENABLE_PLUGINS` is now off, and the audit test
-verifies it. OpenCV also logs to **stdout**, where the JSON response goes, so every library is
-silenced at startup and the probe's own test fails if a diagnostic appears there.
-
-Parallelism stays this program's decision. `--threads` will schedule pages and tiles in our own
-code rather than being forwarded to a library, partly because it is the only way to bound memory
-per worker, and partly because it cannot be forwarded: on macOS OpenCV's `parallel_for_` uses Grand
-Central Dispatch, which ignores a requested thread count. The probe reports the framework on each
-platform rather than pretending the behaviour is uniform.
-
-## Capability claims must be true
-
-The executable advertises only what is implemented, which is currently nothing:
-`methods` and `supported_formats` are empty, and every processing command fails with
-`E_NOT_IMPLEMENTED` and exit 4 before opening an input. Exit 7 keeps its meaning of unknown
-publication state and is never reused. No placeholder returns success by copying its input.
-
-## Strict tooling, no grandfathering
-
-clang-tidy 23, clang-format, Ruff with every rule and mypy in strict mode run as errors. Findings are
-fixed rather than suppressed: a suppression must name its rule and carry a registered reason,
-file-size limits have no waivers, and no translation unit or target may escape linting. Sanitizer
-builds abort on the first report. [Quality gates](quality.md) describes the whole set.
-
-## Fuzzing is engine-agnostic and checks correctness
-
-Harnesses implement `LLVMFuzzerTestOneInput` and use a first-party byte reader, so they compile with
-every supported compiler. They check results against independent references — a separate parser, a
-regular-expression grammar, exact 128-bit arithmetic, a slow reflection loop, the output contract —
-rather than only watching for crashes, because a crash-only harness misses wrong answers.
-
-libFuzzer from the pinned LLVM runs on every pull request; AFL++ 5.03c, built from a pinned release
-commit, joins it nightly. Every normal build replays the seed corpora and recorded regressions as
-ordinary tests, on every compiler. Google FuzzTest was rejected because it would add GoogleTest,
-Abseil and RE2 to a pinned graph that already uses Catch2; honggfuzz has had no release since 2024.
-
-## macOS 14.0 is the minimum
-
-`deps/tools.json` holds the value, CMake applies it, and the package smoke test asserts the shipped
-binary declares it. macOS 13 no longer receives Apple security updates; macOS 14 still runs on Macs
-from about 2018, including the Intel machines this project builds for.
-
-Raising the floor further would drop users for nothing this code needs — floating-point
-`std::from_chars`, for instance, requires macOS 26, and the decimal parser does not use it. GitHub
-retires its macOS 14 runners on 2026-11-02, so CI executes the ARM64 binary on macOS 26 while the
-compiler enforces the floor. Intel macOS validation remains a release requirement until a pinned
-LLVM 23 distribution is available on a hosted Intel runner.
-
-## Documentation describes the present
-
-These documents describe what the project is now. The original 2,370-line target-product blueprint
-was removed: a design document written before implementation drifts from the code the moment work
-starts, and a public repository should not ship a specification that contradicts its own source.
-What survived it lives here, in the [architecture](architecture.md), the reviewed contracts under
-`spec/`, and the [roadmap](roadmap.md) for work not yet done. Product requirements for a method
-belong in that method's own specification, written when the method is implemented.
+Use the real JSON Schema validator on executable responses. A permissive homemade subset cannot
+establish conformance to a closed response schema. Generated contract files are byte-checked from
+their reviewed sources. Required GitHub checks establish the submitted commit's CI state; a local
+subset, a historical run or a newly authored workflow cannot establish it.

@@ -23,6 +23,9 @@
     },
     "box_mean": {
       "max_len": 1300
+    },
+    "utf8": {
+      "max_len": 4096
     }
   }
 }
