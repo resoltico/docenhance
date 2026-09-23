@@ -86,11 +86,15 @@ jobs:
         run: ctest --preset ${{ matrix.preset }} --output-on-failure
       - name: Retain campaign evidence
         if: always()
+        shell: bash
+        run: |
+          mkdir -p out/${{ matrix.preset }}/app/fuzz-work out/${{ matrix.preset }}/app/Testing/Temporary
+          tar -czf out/${{ matrix.preset }}/fuzz-evidence.tar.gz -C out/${{ matrix.preset }}/app fuzz-work Testing/Temporary
+      - name: Upload campaign evidence
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: campaign-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            out/${{ matrix.preset }}/app/fuzz-work/
-            out/${{ matrix.preset }}/app/Testing/Temporary/
+          path: out/${{ matrix.preset }}/fuzz-evidence.tar.gz
           if-no-files-found: warn
           retention-days: 7

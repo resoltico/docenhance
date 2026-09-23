@@ -43,6 +43,10 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         require(result->width() == expected.width && result->height() == expected.height,
                 "PNG dimensions agree with the independently constructed fixture");
         const unsigned maximum = (1U << expected.depth) - 1U;
+        if (maximum == 0) {
+            require(false, "fixture bit depth has a nonzero sample range");
+            return 0;
+        }
         const auto decoded_view = result->view();
         for (std::uint32_t y = 0; y < expected.height; ++y) {
             std::uint32_t x = 0;

@@ -53,7 +53,9 @@ count, engine exit, elapsed time and finding paths. Full engine logs and actual 
 beside the reports. The inherited environment and credentials are never exported. Review any new
 finding, minimize it deliberately, then commit the regression; a successful campaign never edits
 its own repository corpus. Both engines run short required PR campaigns and longer nightly
-campaigns. CI retains evidence artifacts for seven days, including failed runs.
+campaigns. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
+the artifact uploader cannot accept directly. Artifacts are retained for seven days, including
+failed runs.
 Evidence is commit/binary-specific, not a promise that a future version has no defects.
 
 ## Shared PNG decode boundary
