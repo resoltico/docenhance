@@ -23,7 +23,7 @@ de_library(de_core LAYER core
 de_library(de_contract LAYER contract
   SOURCES contract/parse.cpp
   HEADERS "${DE_INCLUDE}/contract/command.hpp" "${DE_INCLUDE}/contract/cli_contract.hpp"
-          "${DE_INCLUDE}/contract/parse.hpp"
+          "${DE_INCLUDE}/contract/parse.hpp" "${DE_INCLUDE}/contract/utf8.hpp"
   LINKS de_core)
 de_library(de_exec LAYER exec
   SOURCES exec/concurrency.cpp exec/scheduler.cpp

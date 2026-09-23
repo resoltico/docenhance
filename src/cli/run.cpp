@@ -6,6 +6,7 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
+#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/report/render.hpp"
 
@@ -14,6 +15,7 @@
 #include <array>
 #include <cstddef>
 #include <exception>
+#include <ios>
 #include <limits>
 #include <map>
 #include <new>
@@ -55,7 +57,8 @@ bool has_repeated_option(const CLI::App& app) {
                                [](const CLI::Option* option) { return option->count() > 1; });
 }
 void add_switches(ParsedCommand& command) {
-    command.parser->set_help_flag(); // Our core, not CLI11, owns text/JSON help.
+    command.parser
+        ->set_help_flag(); // Application/reporting own help; CLI11 only recognizes syntax.
     command.parser->add_flag("--help", command.help)->disable_flag_override();
     command.parser->add_flag("--json", command.json)->disable_flag_override();
 }
@@ -120,6 +123,9 @@ std::optional<Outcome> apply_root_flags(const CLI::App& cli, const RootFlags& ro
 }
 Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation,
                            app::Processor& processor) {
+    if (std::ranges::any_of(args, [](const char* arg) { return !contract::valid_utf8(arg); })) {
+        return argument_error(invocation, "Arguments must be well-formed UTF-8");
+    }
     CLI::App cli{"DocEnhance"};
     cli.set_help_flag();
     cli.require_subcommand(0, 1);
@@ -152,13 +158,24 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
     }
     return docenhance::app::dispatch(invocation, processor);
 }
+// Transfer rendered bytes without inheriting an embedding caller's width/fill formatting.
+// Standard stream ties and exception masks remain the caller's; only direct access is selected.
+bool deliver_bytes(std::string_view bytes, std::ostream& stream) {
+    if (bytes.empty()) {
+        return true;
+    }
+    if (!std::in_range<std::streamsize>(bytes.size())) {
+        return false;
+    }
+    stream.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    stream.flush();
+    return static_cast<bool>(stream);
+}
 // The only place that turns an outcome into bytes, and the only place that knows the streams.
 int emit(const Outcome& outcome, bool json, std::ostream& out, std::ostream& err) {
     const auto format = json ? report::Format::json : report::Format::text;
     const auto rendered = report::render(outcome, format);
-    out << rendered.out;
-    err << rendered.err;
-    if (!out || !err) {
+    if (!deliver_bytes(rendered.out, out) || !deliver_bytes(rendered.err, err)) {
         return static_cast<int>(docenhance::core::ExitCode::output);
     }
     return static_cast<int>(outcome.exit_code());

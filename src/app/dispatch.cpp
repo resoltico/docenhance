@@ -11,6 +11,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 namespace docenhance::app {
 namespace {
@@ -47,9 +48,22 @@ Outcome process(const contract::Invocation& invocation, Processor& processor) {
     if (!request) {
         return failure(invocation, std::move(request.error()));
     }
-    auto result = processor.process(*request);
-    return result ? succeeded(invocation, std::move(*result))
-                  : failure(invocation, std::move(result.error()));
+    // Prepare a complete response before effects: even bad_alloc after commit must not make the
+    // CLI report not_started. Returning this fallback during unwinding does not allocate.
+    static_assert(std::is_nothrow_move_constructible_v<Outcome>);
+    auto interrupted = failure(invocation, {
+                                               .code = core::ErrorCode::publication_unknown,
+                                               .message = "Processing did not report its outcome; "
+                                                          "inspect the output before retrying",
+                                               .publication = core::Publication::unknown,
+                                           });
+    try {
+        auto result = processor.process(*request);
+        return result ? succeeded(invocation, std::move(*result))
+                      : failure(invocation, std::move(result.error()));
+    } catch (...) {
+        return interrupted;
+    }
 }
 } // namespace
 Outcome failure(const contract::Invocation& invocation, core::Error error) {

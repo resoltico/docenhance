@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
-add_executable(de_tests unit/reference.cpp unit/application.cpp unit/io.cpp unit/transport.cpp)
+add_executable(de_tests unit/reference.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
+  unit/command_delivery.cpp unit/utf8.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io")
 target_link_libraries(de_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods de_io de_cli Catch2::Catch2WithMain)
 de_apply_options(de_tests)
@@ -29,10 +30,13 @@ de_fuzz_replay(numeric SOURCE "${PROJECT_SOURCE_DIR}/fuzz/numeric.cpp" LINKS de_
 de_fuzz_replay(box_mean SOURCE "${PROJECT_SOURCE_DIR}/fuzz/box_mean.cpp"
   LINKS de_core de_exec de_image de_methods)
 de_fuzz_replay(cli SOURCE "${PROJECT_SOURCE_DIR}/fuzz/cli.cpp" LINKS de_cli nlohmann_json::nlohmann_json)
+de_fuzz_replay(utf8 SOURCE "${PROJECT_SOURCE_DIR}/fuzz/utf8.cpp"
+  LINKS de_contract nlohmann_json::nlohmann_json)
 include(Catch)
 catch_discover_tests(de_tests DISCOVERY_MODE PRE_TEST)
 add_test(NAME cli-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_cli.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME png-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_png.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME path-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_paths.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME generated-contract COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/generate_spec.py" --check)
 # The compiler-driven architecture rules need GNU-style options (-M, -fsyntax-only) and a pinned
 # clang-query, which an MSVC compilation database cannot provide; there only the source rules run.
@@ -53,4 +57,4 @@ endif()
 if(DEFINED DE_SUPERBUILD_BINARY)
   add_test(NAME dependency-configuration COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/audit_build.py" --build "${DE_SUPERBUILD_BINARY}")
 endif()
-set_tests_properties(cli-contract png-contract PROPERTIES TIMEOUT 90)
+set_tests_properties(cli-contract png-contract path-contract PROPERTIES TIMEOUT 90)

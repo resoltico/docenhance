@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
-# Fuzz targets (docs/adr/0003-fuzzing.md). The harnesses are engine-agnostic LLVMFuzzerTestOneInput
+# Fuzz targets (docs/quality.md). The harnesses are engine-agnostic LLVMFuzzerTestOneInput
 # entry points, built here for libFuzzer or AFL++; tests/CMakeLists.txt also replays their corpora
 # in every normal build. Fuzz builds are strict: ASan and UBSan with every report fatal.
 if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR MSVC)
@@ -60,3 +60,5 @@ de_fuzz_target(numeric SOURCE "${PROJECT_SOURCE_DIR}/fuzz/numeric.cpp" LINKS de_
 de_fuzz_target(box_mean SOURCE "${PROJECT_SOURCE_DIR}/fuzz/box_mean.cpp" LINKS de_methods)
 de_fuzz_target(cli SOURCE "${PROJECT_SOURCE_DIR}/fuzz/cli.cpp"
   LINKS de_cli de_contract nlohmann_json::nlohmann_json)
+de_fuzz_target(utf8 SOURCE "${PROJECT_SOURCE_DIR}/fuzz/utf8.cpp"
+  LINKS de_contract nlohmann_json::nlohmann_json)

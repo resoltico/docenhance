@@ -134,6 +134,9 @@
     },
     "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@a7e2a566": {
       "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
+    },
+    "tests/unit/command_delivery.cpp:clang-tidy/bugprone-std-exception-baseclass@2f051b1a": {
+      "explanation": "This test-only processor deliberately throws a non-standard exception after an observed effect. It verifies catch-all containment and unknown publication reporting; replacing it with std::exception would leave that boundary untested. Production throw restrictions are unchanged."
     }
   }
 }

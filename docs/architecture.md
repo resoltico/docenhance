@@ -8,6 +8,9 @@ The application owns meaning; adapters own effects. The command line parses synt
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
 production composition root: it supplies the concrete host to the CLI. On Windows it converts
 wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
+The CLI rejects malformed UTF-8 before handing any token to CLI11. Direct application admission
+independently validates input and output paths. Validation preserves byte spelling: no Unicode
+normalization or replacement is performed, and embedded NUL remains invalid in a path.
 
 Application tests and CLI fuzzers supply a deterministic non-I/O processor. There is no runtime
 flag that substitutes it. Help, version and methods discovery never call the processing port.
@@ -16,8 +19,26 @@ a plugin loader, service locator or dependency-injection framework.
 
 Outcomes carry a typed payload and build identity. The exit code is derived from the payload,
 not separately writable state. `de_report` alone chooses JSON/text spelling. The CLI alone writes
-the rendered response. A stream failure after execution returns an output failure and never
-repeats processing or attempts a second, potentially misleading response.
+the rendered response. It uses unformatted writes and explicitly flushes only a stream with
+response content, then checks that stream's state. Caller width/fill settings cannot alter the
+serialized bytes. The adapter does not directly access an unselected stream; standard stream
+ties and exception masks remain in effect. A write,
+flush or rendering failure after execution returns an output failure and never repeats processing
+or attempts a second, potentially misleading response. This is stream delivery, not proof that a
+consumer read the response or that a file is crash-durable. JSON `exit_code` describes the rendered
+command outcome. A later delivery failure can make the process exit 5 even after a complete success
+object was emitted; callers inspect both statuses, and must not replay processing based on exit 5.
+
+Before crossing the processing port, the application prepares a complete unknown-publication
+outcome. An escaping processor exception, including allocation failure or a non-standard exception,
+returns that outcome by a statically checked non-throwing move. It cannot imply `not_started` after
+an unreported effect. A processor's returned `Result` retains its explicit publication state.
+Exceptions during admission still occur before any processing effect.
+
+JSON serialization is strict for identity fields, including the reported output path. A malformed
+identity fails rendering; it is never rewritten with replacement characters. An invalid diagnostic
+message alone is rendered as an explanatory ASCII fallback while retaining its error code and
+publication state.
 
 ## Layers
 
@@ -30,7 +51,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_contract` | `de_core` | The command vocabulary, generated option descriptors and strict value parsers |
 | `de_exec` | `de_core` | The schedule: how many workers run a page's independent work items |
 | `de_image` | `de_core` | Checked owning planes, borrowed views and numerical primitives |
-| `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations; later, the catalog of complete methods |
+| `de_methods` | `de_core`, `de_exec`, `de_image` | Image operations and the catalog of implemented methods |
 | `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
 | `de_app` | `de_contract`, `de_core`, `de_methods` | Validated use cases and the explicit processing port |
 | `de_report` | `de_core`, `de_contract`, `de_app` | Renders an outcome as the documented JSON response or as human text |
@@ -46,8 +67,8 @@ explicitly declares that it has no public header directory; it is not a fake reu
 ## Values, ownership and budgets
 
 `core::Result<T>` is `std::expected<T, Error>`. Expected failures are returned as values.
-Foreign-library callbacks, scheduler workers, filesystem publication and the process/CLI boundary
-contain exceptions where they originate. Only layers explicitly authorized in the manifest can
+Foreign-library callbacks, scheduler workers, filesystem publication, the application processing
+port and the process/CLI boundary contain exceptions at their respective authority boundaries. Only layers explicitly authorized in the manifest can
 catch; numeric kernels cannot throw or catch. A worker exception becomes a caller-visible resource
 or invariant failure after all started workers join, not `std::terminate`.
 
@@ -88,7 +109,9 @@ Malformed/truncated data, strict CRC failures and refused allocations are regres
 The output must be a new directory whose parent already exists. Prechecking the target improves
 errors but is not the correctness boundary. A bounded search exclusively creates a private sibling
 staging directory; occupied paths are never adopted. The encoder closes the staged PNG before commit.
-Return-path metadata is allocated before committing.
+Return-path metadata is allocated before committing. POSIX output paths use `/` as the separator;
+a literal backslash remains part of the directory name. Windows accepts native separator spelling.
+The reported path preserves the admitted UTF-8 directory spelling on both paths.
 
 Commit is native and atomically non-replacing: Linux `renameat2(RENAME_NOREPLACE)`, macOS
 `renamex_np(RENAME_EXCL)`, Windows `MoveFileExW` without replacement or copy flags. There is no

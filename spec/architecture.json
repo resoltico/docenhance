@@ -1,5 +1,5 @@
 {
-  "$comment": "The reviewed source of the layer graph. CMake enforces link edges from it at configure time, tools/check_architecture.py enforces includes, calls and documentation against it, and docs/architecture.md must agree with it. Editing this file is a design change. may_allocate marks the single layer that may write a new-expression or call operator new/delete: everything else receives memory that a core::Budget already accounted for.",
+  "$comment": "The reviewed source of the layer graph, target identities and boundary permissions. CMake enforces declared links; tools/check_architecture.py checks includes, AST restrictions and the matching documentation table. may_allocate permits explicit allocation expressions and allocator calls only in the owning layer. This is not a ban on implicit standard-library metadata allocation or a process-RSS guarantee.",
   "packages": {
     "CLI11": {
       "targets": [
@@ -226,7 +226,7 @@
     },
     "methods": {
       "target": "de_methods",
-      "summary": "Pure image operations; later, the catalog of complete methods",
+      "summary": "Image operations and the catalog of implemented methods",
       "uses": [
         "core",
         "exec",
@@ -331,7 +331,8 @@
         "secure_getenv",
         "strdup",
         "system"
-      ]
+      ],
+      "may_catch": true
     },
     "report": {
       "target": "de_report",

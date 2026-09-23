@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_edition": "2.0",
+  "contract_edition": "3.0",
   "value_grammar": {
     "decimal": "Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale."
   },
@@ -30,7 +30,7 @@
       "group": "Processing arguments",
       "domain": "Required; a new result directory",
       "methods": "B03",
-      "description": "Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success."
+      "description": "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success."
     },
     {
       "name": "--binarize",
@@ -57,7 +57,7 @@
       "group": "Presentation arguments",
       "domain": "False",
       "methods": "",
-      "description": "Writes exactly one final JSON response to stdout."
+      "description": "Render one JSON response on stdout and no diagnostic text on stderr. Flush the selected stream before returning. JSON exit_code describes the rendered command outcome; response-delivery failure can instead end the process with exit 5. Check both the response and process status. A missing/incomplete response or exit 5 does not prove that publication did not commit; do not retry blindly."
     },
     {
       "name": "--help",
