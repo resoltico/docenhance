@@ -138,6 +138,9 @@
     "tests/unit/command_delivery.cpp:clang-tidy/bugprone-std-exception-baseclass@2f051b1a": {
       "explanation": "This test-only processor deliberately throws a non-standard exception after an observed effect. It verifies catch-all containment and unknown publication reporting; replacing it with std::exception would leave that boundary untested. Production throw restrictions are unchanged."
     },
+    "tests/unit/cancellation.cpp:clang-tidy/misc-const-correctness@d83a69f2": {
+      "explanation": "The test helper needs a mutable std::stop_source reference because libc++ declares request_stop non-const. libstdc++ permits the call on const and clang-tidy otherwise recommends an incompatible const reference; this single test boundary keeps both standard libraries compiling."
+    },
     "src/entry/signals.cpp:clang-tidy/modernize-deprecated-headers@6c5b764d": {
       "explanation": "POSIX sigaction, signal sets and SA_RESTART are declared by the native signal.h provider, not the standard C++ csignal interface. The platform boundary requires that direct include; scope installation/restoration and real interrupts are tested without weakening signal safety."
     },
