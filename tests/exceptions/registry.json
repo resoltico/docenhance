@@ -161,6 +161,21 @@
     },
     "tests/support/interrupt_process.cpp:clang-tidy/misc-const-correctness@de9c9db9": {
       "explanation": "The standard process-entry signature is char**. This test-only executable reads argv through a span without mutating it, and tests the same production interrupt bridge, CLI and host."
+    },
+    "tests/support/interrupt_process.cpp:clang-tidy/misc-include-cleaner@ee70c5ba": {
+      "explanation": "The Windows SDK umbrella header is required for the native console-test driver. Include-cleaner cannot attribute its console ABI through SDK layering even though the driver uses it directly."
+    },
+    "tests/support/interrupt_process.cpp:clang-tidy/misc-include-cleaner@6f8044e3": {
+      "explanation": "FreeConsole is the Windows SDK operation used before and after attaching the test sender to the child console. Include-cleaner cannot map it through windows.h; this exact call is covered by the native CTRL_BREAK test."
+    },
+    "tests/support/interrupt_process.cpp:clang-tidy/misc-include-cleaner@12d06d96": {
+      "explanation": "AttachConsole is the Windows SDK operation that targets the child process for the real CTRL_BREAK test. Include-cleaner cannot attribute it through the required windows.h umbrella."
+    },
+    "tests/support/interrupt_process.cpp:clang-tidy/misc-include-cleaner@0a4c98f5": {
+      "explanation": "GenerateConsoleCtrlEvent and CTRL_BREAK_EVENT are Windows SDK console ABI symbols supplied through windows.h. This test-only call delivers the real event to the child; include-cleaner cannot attribute the SDK layering."
+    },
+    "tests/support/interrupt_process.cpp:clang-tidy/misc-include-cleaner@b3f294c8": {
+      "explanation": "GetConsoleCP and AllocConsole are Windows SDK calls that establish a console for the native interrupt test on hosted CI. Include-cleaner cannot map them through windows.h; this line is test-only and failure is reported explicitly."
     }
   }
 }

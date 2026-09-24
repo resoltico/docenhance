@@ -23,8 +23,9 @@
 #define WIN32_LEAN_AND_MEAN
 #endif
 #include <charconv>
+#include <cstdint>
 #include <system_error>
-#include <windows.h>
+#include <windows.h> // NOLINT(misc-include-cleaner)
 #else
 #include <csignal>
 #endif
@@ -53,17 +54,18 @@ int check_dispositions() {
 #endif
 #ifdef _WIN32
 int send_break(std::string_view process) {
-    unsigned long id = 0;
-    const auto parsed = std::from_chars(process.begin(), process.end(), id);
-    if (parsed.ec != std::errc{} || parsed.ptr != process.end() || id == 0) {
+    std::uint32_t id = 0;
+    const auto parsed = std::from_chars(process.data(), process.data() + process.size(), id);
+    if (parsed.ec != std::errc{} || parsed.ptr != process.data() + process.size() || id == 0) {
         return 2;
     }
-    static_cast<void>(FreeConsole());
-    if (AttachConsole(id) == 0) {
+    static_cast<void>(FreeConsole()); // NOLINT(misc-include-cleaner)
+    if (AttachConsole(id) == 0) {     // NOLINT(misc-include-cleaner)
         return 2;
     }
-    const bool sent = GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, id) != 0;
-    static_cast<void>(FreeConsole());
+    const bool sent =
+        GenerateConsoleCtrlEvent(CTRL_BREAK_EVENT, id) != 0; // NOLINT(misc-include-cleaner)
+    static_cast<void>(FreeConsole());                        // NOLINT(misc-include-cleaner)
     return sent ? 0 : 2;
 }
 #endif
@@ -83,7 +85,7 @@ int run(std::span<char* const> args) {
 #endif
 #ifdef _WIN32
     // Hosted CI may have no console. Allocate before installing the production handler.
-    if (GetConsoleCP() == 0 && AllocConsole() == 0) {
+    if (GetConsoleCP() == 0 && AllocConsole() == 0) { // NOLINT(misc-include-cleaner)
         return 2;
     }
 #endif
