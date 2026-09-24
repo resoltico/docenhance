@@ -33,9 +33,13 @@
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t allocation_limit = std::size_t{4} * 1024 * 1024;
+void request_stop(std::stop_source& source) noexcept {
+    // libc++ requires a mutable source; libstdc++ permits const and misleads const-correctness.
+    static_cast<void>(source.request_stop());
+}
 core::Cancellation stopped_token() {
     std::stop_source source;
-    static_cast<void>(source.request_stop());
+    request_stop(source);
     return core::Cancellation{source.get_token()};
 }
 contract::Invocation invocation() {
@@ -113,7 +117,7 @@ TEST_CASE("The scheduler does not call work after a cancellation checkpoint", "[
     unsigned called = 0;
     const auto task = [&](std::size_t) {
         ++called;
-        static_cast<void>(source.request_stop());
+        request_stop(source);
         return core::Result<void>{};
     };
     CHECK(scheduler.for_each(2, exec::WorkRef{task}).error().code == core::ErrorCode::cancelled);
@@ -129,7 +133,7 @@ TEST_CASE("Real worker failure outranks simultaneous cancellation and all worker
         started.arrive_and_wait();
         ++finished;
         if (index == 0) {
-            static_cast<void>(source.request_stop());
+            request_stop(source);
             return core::cancelled();
         }
         return core::failure(core::ErrorCode::input, "A real task error");
