@@ -34,12 +34,12 @@ bool pending_interrupt(core::Checkpoint /*at*/) noexcept {
     return interrupt_latch().load(std::memory_order_relaxed);
 }
 #ifdef _WIN32
-BOOL WINAPI handle_console(DWORD event) noexcept {
-    if (event != CTRL_C_EVENT && event != CTRL_BREAK_EVENT) {
-        return FALSE;
+BOOL WINAPI handle_console(DWORD event) noexcept {            // NOLINT(misc-include-cleaner)
+    if (event != CTRL_C_EVENT && event != CTRL_BREAK_EVENT) { // NOLINT(misc-include-cleaner)
+        return 0;
     }
     interrupt_latch().store(true, std::memory_order_relaxed);
-    return TRUE;
+    return 1;
 }
 #else
 constexpr auto handled_signals = std::to_array<int>({SIGINT, SIGTERM});
@@ -57,7 +57,7 @@ bool InterruptScope::install() noexcept {
     if (installed_) {
         return false;
     }
-    installed_ = SetConsoleCtrlHandler(handle_console, TRUE) != 0;
+    installed_ = SetConsoleCtrlHandler(handle_console, 1) != 0; // NOLINT(misc-include-cleaner)
     return installed_;
 #else
     struct sigaction action{};
@@ -91,7 +91,7 @@ bool InterruptScope::install() noexcept {
 InterruptScope::~InterruptScope() {
 #ifdef _WIN32
     if (installed_) {
-        static_cast<void>(SetConsoleCtrlHandler(handle_console, FALSE));
+        static_cast<void>(SetConsoleCtrlHandler(handle_console, 0));
     }
 #else
     for (auto [signal, previous, installed] :

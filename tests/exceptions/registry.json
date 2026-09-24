@@ -141,6 +141,15 @@
     "src/entry/signals.cpp:clang-tidy/modernize-deprecated-headers@6c5b764d": {
       "explanation": "POSIX sigaction, signal sets and SA_RESTART are declared by the native signal.h provider, not the standard C++ csignal interface. The platform boundary requires that direct include; scope installation/restoration and real interrupts are tested without weakening signal safety."
     },
+    "src/entry/signals.cpp:clang-tidy/misc-include-cleaner@f7082945": {
+      "explanation": "BOOL, WINAPI and DWORD are Windows console-handler ABI types supplied through the required windows.h umbrella. Include-cleaner cannot attribute them through SDK layering; the native CTRL_BREAK integration test exercises this exact handler signature."
+    },
+    "src/entry/signals.cpp:clang-tidy/misc-include-cleaner@40d17db4": {
+      "explanation": "CTRL_C_EVENT and CTRL_BREAK_EVENT are Windows SDK console constants provided through windows.h. Include-cleaner cannot map them to a usable direct header; the handler must distinguish these two supported events from all others."
+    },
+    "src/entry/signals.cpp:clang-tidy/misc-include-cleaner@bd1af92b": {
+      "explanation": "SetConsoleCtrlHandler is the Windows SDK installation ABI exposed through windows.h. Include-cleaner cannot attribute it through SDK layering; the process bridge checks registration failure and the native interrupt test exercises the registered callback."
+    },
     "src/entry/signals.hpp:clang-tidy/modernize-deprecated-headers@6c5b764d": {
       "explanation": "POSIX sigaction, signal sets and SA_RESTART are declared by the native signal.h provider, not the standard C++ csignal interface. The platform boundary requires that direct include; scope installation/restoration and real interrupts are tested without weakening signal safety."
     },
