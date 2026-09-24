@@ -177,7 +177,7 @@
     "tests/support/interrupt_process.cpp:clang-tidy/misc-include-cleaner@b3f294c8": {
       "explanation": "GetConsoleCP and AllocConsole are Windows SDK calls that establish a console for the native interrupt test on hosted CI. Include-cleaner cannot map them through windows.h; this line is test-only and failure is reported explicitly."
     },
-    "tests/support/interrupt_process.cpp:clang-tidy/bugprone-suspicious-stringview-data-usage@abde8ba0": {
+    "tests/support/interrupt_process.cpp:clang-tidy/bugprone-suspicious-stringview-data-usage@c6795ca9": {
       "explanation": "std::from_chars parses the explicit [first, end) byte range and never requires NUL termination. This test-only Windows PID parser supplies both pointers from one nonempty string_view; the heuristic mistakes the bounded overload for a C-string consumer."
     }
   }

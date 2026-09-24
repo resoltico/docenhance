@@ -60,8 +60,8 @@ int send_break(std::string_view process) {
     std::uint32_t id = 0;
     // MSVC string_view iterators are not raw pointers; an empty suffix supplies the end pointer.
     const char* const end = process.substr(process.size()).data();
-    const auto parsed = std::from_chars(process.data(), end,
-                                        id); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    // NOLINTNEXTLINE(bugprone-suspicious-stringview-data-usage)
+    const auto parsed = std::from_chars(process.data(), end, id);
     if (parsed.ec != std::errc{} || parsed.ptr != end || id == 0) {
         return 2;
     }
