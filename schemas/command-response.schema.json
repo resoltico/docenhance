@@ -187,6 +187,200 @@
     },
     {
       "properties": {
+        "command": {
+          "const": "process"
+        },
+        "exit_code": {
+          "const": 0
+        },
+        "operation": {
+          "const": "continuous"
+        },
+        "output": {
+          "type": "string",
+          "minLength": 1
+        },
+        "publication": {
+          "const": "completed"
+        },
+        "conversion": {
+          "type": "object",
+          "required": [
+            "decoded_input",
+            "encoded_output",
+            "profile_decision",
+            "assumed_transfer",
+            "assumed_primaries",
+            "source_orientation",
+            "resolution",
+            "alpha_flattened_pixels",
+            "clipped_components",
+            "depth_reduced",
+            "verified",
+            "warnings"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "decoded_input": {
+              "type": "object",
+              "required": [
+                "width",
+                "height",
+                "channels",
+                "bit_depth"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "channels": {
+                  "enum": [
+                    1,
+                    2,
+                    3,
+                    4
+                  ]
+                },
+                "bit_depth": {
+                  "enum": [
+                    8,
+                    16
+                  ]
+                }
+              }
+            },
+            "encoded_output": {
+              "type": "object",
+              "required": [
+                "width",
+                "height",
+                "channels",
+                "bit_depth"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "width": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "height": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4294967295
+                },
+                "channels": {
+                  "enum": [
+                    1,
+                    3
+                  ]
+                },
+                "bit_depth": {
+                  "enum": [
+                    8,
+                    16
+                  ]
+                }
+              }
+            },
+            "profile_decision": {
+              "enum": [
+                "assumed_srgb",
+                "overridden_srgb",
+                "srgb",
+                "cicp_srgb",
+                "icc",
+                "png_gamma",
+                "png_chromaticities"
+              ]
+            },
+            "assumed_transfer": {
+              "type": "boolean"
+            },
+            "assumed_primaries": {
+              "type": "boolean"
+            },
+            "source_orientation": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "resolution": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "x_ppm",
+                    "y_ppm"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "x_ppm": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    },
+                    "y_ppm": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 4294967295
+                    }
+                  }
+                }
+              ]
+            },
+            "alpha_flattened_pixels": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 18446744073709551615
+            },
+            "clipped_components": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 18446744073709551615
+            },
+            "depth_reduced": {
+              "type": "boolean"
+            },
+            "verified": {
+              "const": true
+            },
+            "warnings": {
+              "type": "array",
+              "uniqueItems": true,
+              "maxItems": 4,
+              "items": {
+                "enum": [
+                  "W_PROFILE_ASSUMED",
+                  "W_PROFILE_OVERRIDDEN",
+                  "W_ALPHA_FLATTENED",
+                  "W_DEPTH_REDUCED"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "operation",
+        "output",
+        "publication",
+        "conversion"
+      ]
+    },
+    {
+      "properties": {
         "error": {
           "type": "object",
           "required": [
@@ -362,6 +556,26 @@
               "properties": {
                 "code": {
                   "const": "E_CANCELLED"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "exit_code": {
+              "const": 5
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_OUTPUT_VERIFY"
                 }
               }
             },

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <functional>
 #include <new>
 #include <string>
 #include <system_error>
@@ -113,11 +114,11 @@ struct Stage {
 }
 } // namespace
 
-core::Result<std::string> publish_png(const std::string& output_directory,
-                                      image::PlaneView<const std::uint8_t> image,
-                                      core::Budget& budget, const core::Cancellation& cancellation,
-                                      PublishRename commit) {
-    if (image.empty() || commit == nullptr) {
+core::Result<std::string> publish_generated_png(const std::string& output_directory,
+                                                PngWriterRef writer,
+                                                const core::Cancellation& cancellation,
+                                                PublishRename commit) {
+    if (writer.write == nullptr || writer.state == nullptr || commit == nullptr) {
         return core::failure(core::ErrorCode::argument, "Cannot publish an empty image");
     }
     Stage stage;
@@ -139,7 +140,7 @@ core::Result<std::string> publish_png(const std::string& output_directory,
         if (!reserved) {
             return std::unexpected(std::move(reserved.error()));
         }
-        auto encoded = encode_png(stage.output, image, budget, cancellation);
+        auto encoded = writer.write(writer.state, stage.output);
         if (!encoded) {
             return std::unexpected(abandon(stage, std::move(encoded.error())));
         }
@@ -177,6 +178,29 @@ core::Result<std::string> publish_png(const std::string& output_directory,
                                .message = "A filesystem operation prevented publication",
                            }));
     }
+}
+core::Result<std::string> publish_png(const std::string& output_directory,
+                                      image::PlaneView<const std::uint8_t> image,
+                                      core::Budget& budget, const core::Cancellation& cancellation,
+                                      PublishRename commit) {
+    struct BinaryWriter {
+        image::PlaneView<const std::uint8_t> image;
+        std::reference_wrapper<core::Budget> budget;
+        std::reference_wrapper<const core::Cancellation> cancellation;
+    };
+    if (image.empty()) {
+        return core::failure(core::ErrorCode::argument, "Cannot publish an empty image");
+    }
+    BinaryWriter state{.image = image, .budget = budget, .cancellation = cancellation};
+    const PngWriterRef writer{
+        .state = &state,
+        .write =
+            [](void* raw, const std::filesystem::path& path) {
+                auto const& value = *static_cast<BinaryWriter*>(raw);
+                return encode_png(path, value.image, value.budget.get(), value.cancellation.get());
+            },
+    };
+    return publish_generated_png(output_directory, writer, cancellation, commit);
 }
 core::Result<std::string> publish_grayscale_png(const std::string& output_directory,
                                                 image::PlaneView<const std::uint8_t> image,

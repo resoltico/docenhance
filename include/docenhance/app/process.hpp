@@ -4,12 +4,16 @@
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/continuous.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
 
+#include <optional>
 #include <string>
 #include <utility>
+#include <variant>
 namespace docenhance::app {
+using Operation = std::variant<methods::Binarization, image::Continuous>;
 // The application admits requests; adapters cannot construct an unvalidated request.
 class ProcessRequest {
   public:
@@ -19,21 +23,26 @@ class ProcessRequest {
     [[nodiscard]] const std::string& output_directory() const noexcept {
         return output_;
     }
-    [[nodiscard]] const methods::Binarization& method() const noexcept {
-        return method_;
+    [[nodiscard]] const Operation& operation() const noexcept {
+        return operation_;
     }
 
   private:
     friend core::Result<ProcessRequest> prepare_process(const contract::Invocation& /*invocation*/);
-    ProcessRequest(std::string input, std::string output, methods::Binarization method)
-        : input_(std::move(input)), output_(std::move(output)), method_(method) {}
+    ProcessRequest(std::string input, std::string output, Operation operation)
+        : input_(std::move(input)), output_(std::move(output)), operation_(operation) {}
     std::string input_;
     std::string output_;
-    methods::Binarization method_;
+    Operation operation_;
 };
 [[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
 struct PublishedImage {
     std::string output;
+    std::optional<image::ConversionReport> conversion = std::nullopt;
+};
+struct ContinuousProcessed {
+    std::string output;
+    image::ConversionReport conversion;
 };
 struct Processed {
     std::string output;

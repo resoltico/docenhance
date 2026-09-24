@@ -196,6 +196,7 @@ TEST_CASE("Host cancellation preserves input and never publishes incomplete proc
         .command = contract::Command::process,
         .subject = spelling(source),
         .output_directory = spelling(directory.path / "output"),
+        .output_mode = "bw",
         .binarize = "sauvola",
     };
     host::Processor processor;

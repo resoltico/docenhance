@@ -56,4 +56,4 @@ endfunction()
 include(FuzzTargets)
 de_register_fuzz_targets(ENGINE)
 file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/fuzz-codecs.json"
-  CONTENT "{\"png\":\"$<TARGET_FILE:DE::png>\",\"zlib\":\"$<TARGET_FILE:DE::zlib>\"}\n")
+  CONTENT "{\"png\":\"$<TARGET_FILE:DE::png>\",\"zlib\":\"$<TARGET_FILE:DE::zlib>\",\"lcms\":\"$<TARGET_FILE:DE::lcms>\"}\n")

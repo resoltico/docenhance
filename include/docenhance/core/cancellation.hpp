@@ -16,6 +16,7 @@ enum class Checkpoint {
     processing,
     decode,
     encode,
+    verification,
     staging,
     commit,
 };

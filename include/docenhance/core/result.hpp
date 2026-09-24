@@ -26,6 +26,7 @@ enum class ErrorCode {
     input,
     resource,
     output,
+    output_verify,
     publication_unknown,
     unavailable,
     invariant,
@@ -46,6 +47,7 @@ struct Error {
         case ErrorCode::unavailable:
             return ExitCode::processing;
         case ErrorCode::output:
+        case ErrorCode::output_verify:
             return ExitCode::output;
         case ErrorCode::publication_unknown:
             return ExitCode::publication_unknown;
@@ -66,6 +68,8 @@ struct Error {
             return "E_RESOURCE";
         case ErrorCode::output:
             return "E_OUTPUT";
+        case ErrorCode::output_verify:
+            return "E_OUTPUT_VERIFY";
         case ErrorCode::unavailable:
             return "E_NOT_IMPLEMENTED";
         case ErrorCode::publication_unknown:

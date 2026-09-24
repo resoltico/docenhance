@@ -95,12 +95,16 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const R
         invocation.subject = std::move(command.subject);
         if (command.command == Command::process) {
             invocation.output_directory = command.options["--out-dir"];
-            invocation.binarize = command.options["--binarize"];
             const auto optional_value = [&](const std::string& name) -> std::optional<std::string> {
                 return command.parser->get_option(name)->count() == 0
                            ? std::nullopt
                            : std::optional{command.options.at(name)};
             };
+            invocation.output_mode = optional_value("--output-mode");
+            invocation.bit_depth = optional_value("--bit-depth");
+            invocation.alpha = optional_value("--alpha");
+            invocation.profile_policy = optional_value("--profile-policy");
+            invocation.binarize = optional_value("--binarize");
             invocation.fixed_threshold = optional_value("--fixed-threshold");
             invocation.sauvola_window = optional_value("--sauvola-window");
             invocation.sauvola_k = optional_value("--sauvola-k");

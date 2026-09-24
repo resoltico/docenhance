@@ -136,10 +136,12 @@ inline void admission_cases() {
     invocation.command = contract::Command::process;
     invocation.subject = "input.png";
     invocation.output_directory = "output";
+    invocation.output_mode = "bw";
     invocation.binarize = "fixed";
     auto accepted = app::prepare_process(invocation);
-    require(accepted.has_value() &&
-                std::get<methods::FixedThreshold>(accepted->method()).threshold() == 0.5,
+    require(accepted.has_value() && std::get<methods::FixedThreshold>(
+                                        std::get<methods::Binarization>(accepted->operation()))
+                                            .threshold() == 0.5,
             "application admission owns defaults");
     invocation.fixed_threshold = "NaN";
     require(!app::prepare_process(invocation),

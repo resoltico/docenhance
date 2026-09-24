@@ -146,3 +146,18 @@ store. Normal execution observes the request, joins workers and cleans owned unp
 A final precommit snapshot authorizes the native operation, whose actual outcome remains authoritative
 thereafter. No monitor thread, asynchronous job system or forced-shutdown cleanup promise is needed.
 The full contract and separate design QA are in [cancellation](cancellation.md).
+
+## Output representation is not an enhancement method
+
+Admission now distinguishes a continuous-tone representation operation from binary segmentation.
+The new `color` adapter owns context-local Little CMS resources; `image` owns native-library-free
+raster/option/report types; `io` owns PNG framing, metadata and sample decoding. The host composes
+those effects. No filter is advertised for a color/profile conversion. B02/B03 remain stored-sample
+operations, not consumers of a silently changed color pipeline.
+
+Retain decoded integer samples and convert bounded chunks instead of building redundant full-page
+RGB float frames. A single metadata policy handles PNG declarations, including researched cICP
+precedence, so native convenience APIs cannot silently override it. The shared publication owner
+commits continuous output only after a separate decoder verifies every integer row and intended
+metadata. Resource limits, deliberate breaks, independent references and design QA are in
+[PNG processing](png-processing.md).

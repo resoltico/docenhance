@@ -52,7 +52,17 @@ def oracle(rows: list[bytes], window: int, k: float, r: float) -> list[bytes]:
 
 def command(source: Path, output: Path, selector: str = "sauvola") -> list[str]:
     """Return a real processing invocation, with JSON for schema and identity checks."""
-    return ["process", str(source), "--out-dir", str(output), "--binarize", selector, "--json"]
+    return [
+        "process",
+        str(source),
+        "--out-dir",
+        str(output),
+        "--output-mode",
+        "bw",
+        "--binarize",
+        selector,
+        "--json",
+    ]
 
 
 def sample_cases(exe: Path, root: Path) -> None:

@@ -118,6 +118,8 @@ int run(std::span<char* const> args) {
         args.subspan(1).front(),
         "--out-dir",
         args.subspan(2).front(),
+        "--output-mode",
+        "bw",
         "--binarize",
         "fixed",
         "--json",

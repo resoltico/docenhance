@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/report/render.hpp"
 
+#include "continuous.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/cli_contract.hpp"
@@ -87,10 +88,9 @@ Json option_fields(contract::Command command) {
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
-    text += "Implemented: 1/2/4/8-bit grayscale PNG input and 8-bit B02 Sauvola or B03 "
-            "fixed-threshold output.\n";
-    text += "Not implemented: other image formats, color handling, batching, presets, and other "
-            "methods.\n\n";
+    text += "Implemented: static PNG color-managed continuous-tone 8/16-bit output; explicit "
+            "B02/B03 binary output on stored 1/2/4/8-bit grayscale samples.\n";
+    text += "Not implemented: other image formats, enhancement filters, batching or presets.\n\n";
     if (help.list_commands) {
         text += "Commands: process, methods, version\n\n";
     }
@@ -118,7 +118,7 @@ Output text_form(const app::Outcome& outcome) {
             } else if constexpr (std::is_same_v<Payload, app::Version>) {
                 return {
                     .out = "DocEnhance " + std::string(outcome.build.version) +
-                           " (grayscale PNG binarization)\n",
+                           " (continuous-tone PNG and explicit binarization)\n",
                     .err = {},
                 };
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {
@@ -129,6 +129,8 @@ Output text_form(const app::Outcome& outcome) {
                 return {.out = std::move(text), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 return {.out = "Wrote " + payload.output + "\n", .err = {}};
+            } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {
+                return {.out = continuous_text(payload), .err = {}};
             } else {
                 return {
                     .out = {},
@@ -168,6 +170,8 @@ Output json_form(const app::Outcome& outcome) {
                     {"publication", "completed"},
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
+            } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {
+                return {.out = dump(envelope(outcome, continuous_fields(payload))), .err = {}};
             } else {
                 const Json error = {
                     {"code", payload.error.identifier()},

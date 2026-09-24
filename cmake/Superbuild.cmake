@@ -3,7 +3,7 @@
 include(ExternalProject)
 # Explicit source order; serial projects avoid N libraries each starting N workers.
 if(DE_FUZZ_ONLY)
-  set(de_names zlib png cli11 json)
+  set(de_names zlib png lcms cli11 json)
 else()
   set(de_names zlib jpeg png tiff opencv leptonica lcms cli11 json picosha2)
   if(DE_BUILD_TESTS)
@@ -99,7 +99,7 @@ foreach(name IN LISTS de_names)
   if(name STREQUAL "tiff")
     list(APPEND de_options "-DJPEG_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
   endif()
-  if(DE_FUZZ_ONLY AND (name STREQUAL "png" OR name STREQUAL "zlib"))
+  if(DE_FUZZ_ONLY AND (name STREQUAL "png" OR name STREQUAL "zlib" OR name STREQUAL "lcms"))
     # Instrument the actual pinned C decoder/decompressor, not just the C++ adapter.
     list(APPEND de_options
       "-DCMAKE_C_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer")

@@ -179,6 +179,54 @@
     },
     "tests/support/interrupt_process.cpp:clang-tidy/bugprone-suspicious-stringview-data-usage@c6795ca9": {
       "explanation": "std::from_chars parses the explicit [first, end) byte range and never requires NUL termination. This test-only Windows PID parser supplies both pointers from one nonempty string_view; the heuristic mistakes the bounded overload for a C-string consumer."
+    },
+    "src/color/context.cpp:clang-tidy/misc-const-correctness@69b738dc": {
+      "explanation": "Little CMS fixes its free/realloc callback ABI to a mutable void pointer. This callback never modifies the old pointee except via the owned replacement allocation; changing the parameter pointee type makes the callback assignment ill-formed. Native allocation/refund tests cover these adapters."
+    },
+    "src/color/context.cpp:clang-tidy/misc-const-correctness@6003c9a2": {
+      "explanation": "Little CMS fixes its free/realloc callback ABI to a mutable void pointer. This callback never modifies the old pointee except via the owned replacement allocation; changing the parameter pointee type makes the callback assignment ill-formed. Native allocation/refund tests cover these adapters."
+    },
+    "src/color/converter.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@9ec6cda1": {
+      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary."
+    },
+    "src/io/png_profile.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@d489b247": {
+      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary."
+    },
+    "src/io/png_profile.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@d4d86c61": {
+      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary."
+    },
+    "src/io/png_raster.cpp:msvc/4611@eab8232f": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_raster.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_raster.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_snapshot.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@313ba343": {
+      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary."
+    },
+    "src/io/png_verify_rows.cpp:msvc/4611@eab8232f": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_verify_rows.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_verify_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_write_rows.cpp:msvc/4611@eab8232f": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_write_rows.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_write_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "tests/unit/continuous.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@a86d5712": {
+      "explanation": "This negative test deliberately constructs an unnamed value of a scoped enum with fixed underlying int type. C++ permits this representation, while the analyzer intentionally diagnoses unnamed enumerators. The assertion proves Continuous::create rejects it; the exception applies only to this test line, never production validation."
     }
   }
 }

@@ -93,6 +93,25 @@
         "de_io"
       ],
       "max_len": 200
+    },
+    "png_continuous": {
+      "source": "png_continuous.cpp",
+      "links": [
+        "de_color",
+        "de_core",
+        "de_image",
+        "de_io"
+      ],
+      "max_len": 65536
+    },
+    "color_profile": {
+      "source": "color_profile.cpp",
+      "links": [
+        "de_color",
+        "de_core",
+        "de_image"
+      ],
+      "max_len": 65536
     }
   }
 }

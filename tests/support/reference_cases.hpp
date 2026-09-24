@@ -179,7 +179,7 @@ inline void numerical_cases() {
     require(!image::reflect101(0, 0).has_value(), "empty reflection rejected");
 }
 inline void capabilities_cases() {
-    require(contract::option_catalog.size() == 9, "compiled target contract size");
+    require(contract::option_catalog.size() == 13, "compiled target contract size");
     // The reviewed scope of an option is typed, so no layer has to interpret a scope string.
     const auto& out_dir = contract::option_catalog.front();
     require(out_dir.name == "--out-dir", "the catalog keeps the reviewed order");

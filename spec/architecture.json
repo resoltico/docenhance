@@ -43,7 +43,8 @@
         "DE::lcms"
       ],
       "headers": [
-        "lcms2.h"
+        "lcms2.h",
+        "lcms2_plugin.h"
       ]
     },
     "jpeg": {
@@ -87,6 +88,15 @@
       ],
       "headers": [
         "catch2/"
+      ]
+    },
+    "zlib": {
+      "targets": [
+        "DE::zlib"
+      ],
+      "headers": [
+        "zlib.h",
+        "zconf.h"
       ]
     }
   },
@@ -269,7 +279,8 @@
         "image"
       ],
       "external": [
-        "png"
+        "png",
+        "zlib"
       ],
       "forbidden_headers": [
         "condition_variable",
@@ -302,7 +313,8 @@
       "uses": [
         "contract",
         "core",
-        "methods"
+        "methods",
+        "image"
       ],
       "external": [],
       "forbidden_headers": [
@@ -339,7 +351,8 @@
       "uses": [
         "core",
         "contract",
-        "app"
+        "app",
+        "image"
       ],
       "external": [
         "nlohmann_json"
@@ -419,7 +432,8 @@
         "exec",
         "image",
         "io",
-        "methods"
+        "methods",
+        "color"
       ],
       "external": [],
       "forbidden_headers": [
@@ -485,6 +499,45 @@
       ],
       "may_catch": true,
       "public_headers": false
+    },
+    "color": {
+      "target": "de_color",
+      "summary": "Context-local color interpretation and bounded continuous-tone row conversion",
+      "uses": [
+        "core",
+        "image"
+      ],
+      "external": [
+        "lcms"
+      ],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ],
+      "may_catch": true,
+      "may_allocate": true
     }
   }
 }

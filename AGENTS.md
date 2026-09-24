@@ -12,7 +12,9 @@ response delivery, never processing rules. `de_app` admits `ProcessRequest`; `de
 The application contains unreported processing exceptions as unknown publication, not safe retry.
 
 Do not advertise a method or format until its complete contract and tests exist. B02 Sauvola and B03 fixed-threshold
-grayscale-PNG processing are implemented; other method entries remain plans. Never use no-op/copy
+grayscale-PNG processing are implemented; other method entries remain plans. Continuous-tone
+PNG representation is separately implemented; read docs/png-processing.md. It is not a fictional
+enhancement method. Keep binary sample meaning separate from color/profile interpretation. Never use no-op/copy
 stubs to manufacture successful processing. `E_NOT_IMPLEMENTED` uses exit 4 and `not_started`;
 `E_PUBLICATION_UNKNOWN` uses exit 7 and `unknown`. An incomplete response is not proof of no effect.
 

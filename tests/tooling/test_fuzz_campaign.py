@@ -7,6 +7,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -28,6 +29,31 @@ class FuzzManifestTests(unittest.TestCase):
     def test_real_inventory_is_complete(self) -> None:
         """The same declarations account for every committed harness and corpus directory."""
         self.assertEqual(fuzz_manifest.inventory_errors(), [])
+
+    def test_pr_workload_fits_its_published_budget(self) -> None:
+        """Exercise the actual workflow plan so adding a harness cannot break PR admission."""
+        prefix = "- run: python tools/run_fuzz_campaign.py --plan "
+        lines = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8").splitlines()
+        plans = [
+            line.strip().removeprefix("- run: ")
+            for line in lines
+            if line.strip().startswith(prefix)
+        ]
+        self.assertTrue(plans, "No literal PR campaign plan found")
+        for plan in plans:
+            result = subprocess.run(
+                [sys.executable, *shlex.split(plan)[1:]],
+                cwd=ROOT,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(
+                set(json.loads(result.stdout)["targets"]),
+                {target.name for target in fuzz_manifest.targets()},
+            )
 
     def test_invalid_bounds_are_rejected(self) -> None:
         """Zero, negatives, booleans and excessive times/concurrency never mean unlimited."""

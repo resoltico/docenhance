@@ -20,6 +20,14 @@ namespace docenhance::io {
 // coordinate cancellation after the gate and call the actual native operation without timing races.
 using PublishRename = std::error_code (*)(const std::filesystem::path&,
                                           const std::filesystem::path&) noexcept;
+// Borrowed writer operation: encoding and verification run before the one commit cutoff.
+struct PngWriterRef {
+    void* state;
+    core::Result<void> (*write)(void*, const std::filesystem::path&);
+};
+[[nodiscard]] core::Result<std::string>
+publish_generated_png(const std::string& output_directory, PngWriterRef writer,
+                      const core::Cancellation& cancellation, PublishRename commit);
 [[nodiscard]] core::Result<std::string>
 publish_png(const std::string& output_directory, image::PlaneView<const std::uint8_t> image,
             core::Budget& budget, const core::Cancellation& cancellation, PublishRename commit);
