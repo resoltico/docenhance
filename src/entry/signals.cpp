@@ -15,8 +15,9 @@
 #include <windows.h> // NOLINT(misc-include-cleaner)
 #else
 #include <array>
-#include <cstddef>
+#include <ranges>
 #include <signal.h> // NOLINT(modernize-deprecated-headers): POSIX sigaction provider.
+#include <sys/signal.h>
 #endif
 
 namespace docenhance::entry {
@@ -68,18 +69,19 @@ bool InterruptScope::install() noexcept {
             return false;
         }
     }
-    for (std::size_t i = 0; i < handled_signals.size(); ++i) {
-        if (installed_.at(i) || sigaction(handled_signals.at(i), nullptr, &previous_.at(i)) != 0) {
+    for (auto [signal, previous, installed] :
+         std::views::zip(handled_signals, previous_, installed_)) {
+        if (installed || sigaction(signal, nullptr, &previous) != 0) {
             return false;
         }
         // Respect dispositions inherited from a shell that deliberately ignored interruption.
-        if (previous_.at(i).sa_handler == SIG_IGN) {
+        if (previous.sa_handler == SIG_IGN) {
             continue;
         }
-        if (sigaction(handled_signals.at(i), &action, nullptr) != 0) {
+        if (sigaction(signal, &action, nullptr) != 0) {
             return false;
         }
-        installed_.at(i) = true;
+        installed = true;
     }
     return true;
 #endif
@@ -90,9 +92,10 @@ InterruptScope::~InterruptScope() {
         static_cast<void>(SetConsoleCtrlHandler(handle_console, FALSE));
     }
 #else
-    for (std::size_t i = 0; i < handled_signals.size(); ++i) {
-        if (installed_.at(i)) {
-            static_cast<void>(sigaction(handled_signals.at(i), &previous_.at(i), nullptr));
+    for (auto [signal, previous, installed] :
+         std::views::zip(handled_signals, previous_, installed_)) {
+        if (installed) {
+            static_cast<void>(sigaction(signal, &previous, nullptr));
         }
     }
 #endif
