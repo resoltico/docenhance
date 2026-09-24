@@ -17,7 +17,9 @@
 #include <array>
 #include <ranges>
 #include <signal.h> // NOLINT(modernize-deprecated-headers): POSIX sigaction provider.
+#ifdef __APPLE__
 #include <sys/signal.h>
+#endif
 #endif
 
 namespace docenhance::entry {
