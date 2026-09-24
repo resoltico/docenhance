@@ -1,12 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 
 #include <concepts>
 #include <cstddef>
 #include <memory>
+#include <utility>
 
 namespace docenhance::exec {
 // The schedule, kept apart from the algorithm. A kernel is a pure function of the region it is
@@ -18,8 +20,8 @@ namespace docenhance::exec {
 //   same answers      The partition is chosen before the workers are, and an item may touch only
 //                     the data its own index owns, so the result never depends on the worker count
 //                     or on who finished first. One worker is not a different program.
-//   same failure      When several items fail, the failure reported is the one with the lowest
-//                     index, not the one that happened to be noticed first.
+//   same failure      Among observed genuine errors, report the lowest task index; cancellation
+//                     cannot erase one. Skipped unfinished work returns cancellation, not success.
 //   bounded resources Worker metadata has a fixed ceiling. Thread stacks and OS bookkeeping
 //                     are outside the image budget; thread launch failure is a resource error.
 //                     Task exceptions become failures, never an uncaught worker termination.
@@ -48,17 +50,23 @@ class WorkRef {
 
 class Scheduler {
   public:
-    explicit Scheduler(Concurrency concurrency) noexcept : concurrency_(concurrency) {}
+    explicit Scheduler(Concurrency concurrency, core::Cancellation cancellation = {}) noexcept
+        : concurrency_(concurrency), cancellation_(std::move(cancellation)) {}
 
-    // Runs work(index) for every index below count and returns the lowest-index failure, or
-    // success. With one worker the work runs on the calling thread and no thread is created.
-    // A failure stops the remaining items, which is why an item must be independent of the rest.
+    // Runs independent work items until completion, error or observed cancellation. Every started
+    // worker joins; genuine errors outrank cancellation. Empty work may succeed. With one worker
+    // work runs inline. An item must not depend on another item being scheduled or completing.
     [[nodiscard]] core::Result<void> for_each(std::size_t count, WorkRef work) const;
     [[nodiscard]] unsigned workers() const noexcept {
         return concurrency_.workers();
     }
 
+    [[nodiscard]] const core::Cancellation& cancellation() const noexcept {
+        return cancellation_;
+    }
+
   private:
     Concurrency concurrency_;
+    core::Cancellation cancellation_;
 };
 } // namespace docenhance::exec

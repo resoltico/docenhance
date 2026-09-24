@@ -345,6 +345,29 @@
               "const": "unknown"
             }
           }
+        },
+        {
+          "properties": {
+            "command": {
+              "const": "process"
+            },
+            "exit_code": {
+              "const": 130
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_CANCELLED"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
         }
       ]
     }

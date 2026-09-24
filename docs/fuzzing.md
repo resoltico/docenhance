@@ -101,3 +101,8 @@ through the shared decoder. Fuzzing finds counterexamples, not proofs: a green b
 not certify every PNG or make the memory budget a process-RSS limit. libFuzzer has an RSS ceiling;
 AFL++ uses ASan-compatible address-space settings, finite harness allocations and job watchdogs,
 not an equivalent process-RSS enforcement claim.
+
+The `cancellation` harness chooses deterministic stop checkpoints for B02/B03, box means and the
+production PNG byte decoder. It sends no OS signals and performs no filesystem publication. Completed
+results retain their numerical/sample oracles; cancellation must return its typed result and refund
+scratch/codec allocations. Native interrupt and commit-cutoff behavior have separate CTest coverage.

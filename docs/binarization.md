@@ -155,3 +155,10 @@ conflicts, source preservation, publication and closed JSON responses. A known s
 on a changing background distinguishes Sauvola from global fixed thresholding; it is not evidence
 of universal superiority or preservation of arbitrary handwriting, faded marks, halftones or color.
 Full empirical readability/fidelity evaluation remains distinct from mathematical conformance.
+
+## Execution cancellation
+
+The scheduler carries the operation's cancellation capability separately from B02/B03 parameters.
+Both binarizers observe bounded checkpoints; B02 also observes reflected initialization and scratch
+admission. Cancellation can leave a partially written destination, which the host discards without
+publishing. No-stop arithmetic and method versions remain unchanged. See [cancellation](cancellation.md).

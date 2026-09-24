@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/app/process.hpp"
 #include "docenhance/cli/run.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 
 #include <array>
@@ -17,7 +18,8 @@ namespace {
 class CountingProcessor final : public app::Processor {
   public:
     unsigned calls = 0;
-    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/) override {
+    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/,
+                                              const core::Cancellation& /*cancellation*/) override {
         ++calls;
         return app::PublishedImage{.output = "result/result.png"};
     }

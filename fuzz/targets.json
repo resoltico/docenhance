@@ -82,6 +82,17 @@
         "de_methods"
       ],
       "max_len": 200
+    },
+    "cancellation": {
+      "source": "cancellation.cpp",
+      "links": [
+        "de_core",
+        "de_exec",
+        "de_image",
+        "de_methods",
+        "de_io"
+      ],
+      "max_len": 200
     }
   }
 }

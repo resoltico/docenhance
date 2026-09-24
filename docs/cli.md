@@ -52,3 +52,12 @@ CLI tokens and admitted paths must be well-formed UTF-8, with no embedded path N
 are not normalized or repaired. Invalid diagnostic text alone gets an explanatory fallback.
 The [executable method tests](../tests/cli/test_sauvola.py) cover admission, decoding, method
 execution, published samples, selected discovery and response conformance together.
+
+## Interrupting processing
+
+SIGINT/SIGTERM on POSIX and CTRL_C/CTRL_BREAK on Windows request cooperative cancellation.
+A confirmed cancellation produces `E_CANCELLED` and process exit 130. Valid requests cancelled
+before execution do no input/output work. The last precommit checkpoint is a cutoff: a late request
+cannot turn successful publication into cancellation. Unknown publication or cleanup retains exit 7;
+response delivery can still fail with exit 5. Repeated handled interrupts do not force termination.
+See [cancellation](cancellation.md) for precise outcomes, signal safety and blocking-I/O limits.

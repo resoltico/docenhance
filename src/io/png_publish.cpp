@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
@@ -32,12 +33,17 @@ struct Stage {
         if (!owned) {
             return true;
         }
-        std::error_code file_error;
-        std::error_code directory_error;
-        std::filesystem::remove(output, file_error);
-        std::filesystem::remove(directory, directory_error);
-        owned = file_error || directory_error;
-        return !owned;
+        try {
+            std::error_code file_error;
+            std::error_code directory_error;
+            std::filesystem::remove(output, file_error);
+            std::filesystem::remove(directory, directory_error);
+            owned = file_error || directory_error;
+            return !owned;
+        } catch (...) {
+            // Even allocation failure in a filesystem error-code overload cannot escape cleanup.
+            return false;
+        }
     }
     ~Stage() {
         static_cast<void>(cleanup());
@@ -53,7 +59,11 @@ struct Stage {
     }
     return error;
 }
-[[nodiscard]] core::Result<void> reserve_stage(Stage& stage, const std::filesystem::path& target) {
+[[nodiscard]] core::Result<void> reserve_stage(Stage& stage, const std::filesystem::path& target,
+                                               const core::Cancellation& cancellation) {
+    if (cancellation.requested(core::Checkpoint::staging)) {
+        return core::cancelled();
+    }
     const auto parent =
         target.parent_path().empty() ? std::filesystem::path{"."} : target.parent_path();
     std::error_code error;
@@ -71,6 +81,9 @@ struct Stage {
                              "The output path already exists or cannot be inspected");
     }
     for (unsigned attempt = 0; attempt < staging_attempts; ++attempt) {
+        if (cancellation.requested(core::Checkpoint::staging)) {
+            return core::cancelled();
+        }
         stage.directory = parent / (target.filename().native() +
                                     utf8_path(".staging-" + std::to_string(attempt)).native());
         stage.output = stage.directory / "result.png";
@@ -100,10 +113,11 @@ struct Stage {
 }
 } // namespace
 
-core::Result<std::string> publish_grayscale_png(const std::string& output_directory,
-                                                image::PlaneView<const std::uint8_t> image,
-                                                core::Budget& budget) {
-    if (image.empty()) {
+core::Result<std::string> publish_png(const std::string& output_directory,
+                                      image::PlaneView<const std::uint8_t> image,
+                                      core::Budget& budget, const core::Cancellation& cancellation,
+                                      PublishRename commit) {
+    if (image.empty() || commit == nullptr) {
         return core::failure(core::ErrorCode::argument, "Cannot publish an empty image");
     }
     Stage stage;
@@ -121,15 +135,20 @@ core::Result<std::string> publish_grayscale_png(const std::string& output_direct
         constexpr char separator = '/';
 #endif
         std::string published = output_directory + separator + "result.png";
-        auto reserved = reserve_stage(stage, target);
+        auto reserved = reserve_stage(stage, target, cancellation);
         if (!reserved) {
             return std::unexpected(std::move(reserved.error()));
         }
-        auto encoded = encode_png(stage.output, image, budget);
+        auto encoded = encode_png(stage.output, image, budget, cancellation);
         if (!encoded) {
             return std::unexpected(abandon(stage, std::move(encoded.error())));
         }
-        const auto error = rename_exclusive(stage.directory, target);
+        // This snapshot is the cancellation cutoff. Once it authorizes commit, report only
+        // the native operation's real outcome; a late stop must never erase a completed image.
+        if (cancellation.requested(core::Checkpoint::commit)) {
+            return std::unexpected(abandon(stage, core::cancelled().error()));
+        }
+        const auto error = commit(stage.directory, target);
         if (error) {
             auto failure = abandon(stage, {
                                               .code = core::ErrorCode::output,
@@ -144,7 +163,7 @@ core::Result<std::string> publish_grayscale_png(const std::string& output_direct
             return std::unexpected(std::move(failure));
         }
         stage.owned = false;
-        return published;
+        return core::Result<std::string>{std::move(published)};
     } catch (const std::bad_alloc&) {
         return std::unexpected(
             abandon(stage, {
@@ -158,5 +177,11 @@ core::Result<std::string> publish_grayscale_png(const std::string& output_direct
                                .message = "A filesystem operation prevented publication",
                            }));
     }
+}
+core::Result<std::string> publish_grayscale_png(const std::string& output_directory,
+                                                image::PlaneView<const std::uint8_t> image,
+                                                core::Budget& budget,
+                                                const core::Cancellation& cancellation) {
+    return publish_png(output_directory, image, budget, cancellation, rename_exclusive);
 }
 } // namespace docenhance::io

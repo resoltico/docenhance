@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
 add_executable(de_tests unit/reference.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/binarization.cpp)
+  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io")
-target_link_libraries(de_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods de_io de_cli Catch2::Catch2WithMain)
+target_link_libraries(de_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods de_io de_cli de_host Catch2::Catch2WithMain)
 de_apply_options(de_tests)
 # The dependency-free reference runner used by tools/check_reference_suite.py, built, linted and run here too.
 add_executable(de_reference_tests support/standalone_main.cpp)
@@ -53,3 +53,11 @@ if(DEFINED DE_SUPERBUILD_BINARY)
   add_test(NAME dependency-configuration COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/audit_build.py" --build "${DE_SUPERBUILD_BINARY}")
 endif()
 set_tests_properties(cli-contract png-contract path-contract sauvola-contract PROPERTIES TIMEOUT 90)
+
+# A test composition with a handshake, using the exact production interrupt bridge.
+add_executable(de_interrupt_process support/interrupt_process.cpp "${PROJECT_SOURCE_DIR}/src/entry/signals.cpp")
+target_include_directories(de_interrupt_process PRIVATE "${PROJECT_SOURCE_DIR}/src/entry")
+target_link_libraries(de_interrupt_process PRIVATE de_cli de_host de_core)
+de_apply_options(de_interrupt_process)
+add_test(NAME interrupt-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_interrupts.py" "$<TARGET_FILE:de_interrupt_process>")
+set_tests_properties(interrupt-contract PROPERTIES TIMEOUT 60)

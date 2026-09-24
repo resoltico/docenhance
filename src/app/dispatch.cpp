@@ -4,6 +4,7 @@
 
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/command.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
@@ -46,22 +47,27 @@ Outcome unavailable(const contract::Invocation& invocation, std::string message)
                    {.code = core::ErrorCode::unavailable, .message = std::move(message)});
 }
 
-Outcome process(const contract::Invocation& invocation, Processor& processor) {
+Outcome process(const contract::Invocation& invocation, Processor& processor,
+                const core::Cancellation& cancellation) {
     auto request = prepare_process(invocation);
     if (!request) {
         return failure(invocation, std::move(request.error()));
     }
+    if (cancellation.requested(core::Checkpoint::admission)) {
+        return failure(invocation, core::cancelled().error());
+    }
     // Prepare a complete response before effects: even bad_alloc after commit must not make the
     // CLI report not_started. Returning this fallback during unwinding does not allocate.
     static_assert(std::is_nothrow_move_constructible_v<Outcome>);
-    auto interrupted = failure(invocation, {
-                                               .code = core::ErrorCode::publication_unknown,
-                                               .message = "Processing did not report its outcome; "
-                                                          "inspect the output before retrying",
-                                               .publication = core::Publication::unknown,
-                                           });
+    auto unknown_outcome =
+        failure(invocation, {
+                                .code = core::ErrorCode::publication_unknown,
+                                .message = "Processing did not report its outcome; "
+                                           "inspect the output before retrying",
+                                .publication = core::Publication::unknown,
+                            });
     try {
-        auto result = processor.process(*request);
+        auto result = processor.process(*request, cancellation);
         return result ? succeeded(invocation,
                                   Processed{
                                       .output = std::move(result->output),
@@ -69,7 +75,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor) {
                                   })
                       : failure(invocation, std::move(result.error()));
     } catch (...) {
-        return interrupted;
+        return unknown_outcome;
     }
 }
 } // namespace
@@ -80,7 +86,8 @@ Outcome failure(const contract::Invocation& invocation, core::Error error) {
         .payload = Failure{.error = std::move(error)},
     };
 }
-Outcome dispatch(const contract::Invocation& invocation, Processor& processor) {
+Outcome dispatch(const contract::Invocation& invocation, Processor& processor,
+                 const core::Cancellation& cancellation) {
     const bool bare_root =
         invocation.command == contract::Command::root && !invocation.root_version;
     if (invocation.help || bare_root) {
@@ -89,7 +96,7 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor) {
                          Help{.list_commands = invocation.command == contract::Command::root});
     }
     if (invocation.command == contract::Command::process) {
-        return process(invocation, processor);
+        return process(invocation, processor, cancellation);
     }
     if (invocation.command == contract::Command::version || invocation.root_version) {
         auto outcome = succeeded(invocation, Version{.capabilities = capabilities()});

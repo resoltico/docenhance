@@ -51,7 +51,8 @@ jobs:
             cc: afl-clang-fast
             cxx: afl-clang-fast++
     runs-on: ubuntu-24.04
-    timeout-minutes: 180
+    # Covers the admitted manifest-derived campaign plus tool/dependency build headroom.
+    timeout-minutes: 210
     env:
       SECONDS_PER_TARGET: ${{ github.event.inputs.seconds || '1800' }}
     steps:
@@ -69,7 +70,7 @@ jobs:
           python tools/install_aflplusplus.py
           echo core | sudo tee /proc/sys/kernel/core_pattern
       - name: Admit the complete workload before building
-        run: python tools/run_fuzz_campaign.py --plan --seconds "$SECONDS_PER_TARGET" --jobs 2 --job-budget 9000
+        run: python tools/run_fuzz_campaign.py --plan --seconds "$SECONDS_PER_TARGET" --jobs 2 --job-budget 10800
       - run: |
           python tools/deps.py fetch --dependency zlib
           python tools/deps.py fetch --dependency png

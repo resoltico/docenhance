@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
@@ -9,6 +10,7 @@
 
 #include <algorithm>
 #include <csetjmp>
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <png.h>
@@ -24,10 +26,19 @@ constexpr int nibble_depth = 4;
 // The jump target contains only trivial automatic state. All owning C++ objects are in its caller.
 void read_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
     auto& input = *static_cast<PngInput*>(png_get_io_ptr(png));
-    if (count > input.remaining || !input.read(input.state, {bytes, count})) {
-        png_error(png, "The PNG input is truncated or exceeds its encoded-byte bound");
+    constexpr std::size_t transfer_bytes = std::size_t{64} * 1024;
+    auto output = std::span{bytes, count};
+    while (!output.empty()) {
+        if (observe_cancellation(png, core::Checkpoint::decode)) {
+            png_error(png, "Cancelled");
+        }
+        const auto chunk = output.first(std::min(transfer_bytes, output.size()));
+        if (chunk.size() > input.remaining || !input.read(input.state, chunk)) {
+            png_error(png, "The PNG input is truncated or exceeds its encoded-byte bound");
+        }
+        input.remaining -= chunk.size();
+        output = output.subspan(chunk.size());
     }
-    input.remaining -= count;
 }
 [[nodiscard]] bool read_header(const PngContext& context, PngInput& input) {
     // libpng requires a C jump frame; all C++ owners are in the caller.
@@ -71,6 +82,9 @@ void read_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
     }
     for (int pass = 0; pass < context.passes; ++pass) {
         for (std::uint32_t row = 0; row < view.height(); ++row) {
+            if (observe_cancellation(context.png, core::Checkpoint::decode)) {
+                return false;
+            }
             png_read_row(context.png, view.row(row).data(), nullptr);
         }
     }
@@ -94,6 +108,9 @@ core::Result<image::Plane<std::uint8_t>> decode_png(PngContext& context, PngInpu
     if (context.png == nullptr || context.info == nullptr) {
         return std::unexpected(context.error(core::ErrorCode::resource));
     }
+    if (observe_cancellation(context.png, core::Checkpoint::decode)) {
+        return core::cancelled();
+    }
     if (!read_header(context, input)) {
         return std::unexpected(context.error(core::ErrorCode::input));
     }
@@ -112,11 +129,23 @@ core::Result<image::Plane<std::uint8_t>> decode_png(PngContext& context, PngInpu
         return core::failure(core::ErrorCode::resource,
                              "PNG dimensions exceed the processing pixel limit");
     }
+    if (observe_cancellation(context.png, core::Checkpoint::decode)) {
+        return core::cancelled();
+    }
     auto plane = image::Plane<std::uint8_t>::allocate(context.memory.budget.get(), width, height);
     if (!plane) {
         return std::unexpected(std::move(plane.error()));
     }
-    std::ranges::fill(plane->view().storage(), 0);
+    constexpr std::size_t chunk_bytes = std::size_t{64} * 1024;
+    auto storage = plane->view().storage();
+    while (!storage.empty()) {
+        if (observe_cancellation(context.png, core::Checkpoint::decode)) {
+            return core::cancelled();
+        }
+        const auto chunk = storage.first(std::min(chunk_bytes, storage.size()));
+        std::ranges::fill(chunk, 0);
+        storage = storage.subspan(chunk.size());
+    }
     if (!read_pixels(context, plane->view())) {
         return std::unexpected(context.error(core::ErrorCode::input));
     }
@@ -134,8 +163,9 @@ bool read_memory(void* const state, std::span<std::uint8_t> output) noexcept {
 }
 } // namespace
 core::Result<image::Plane<std::uint8_t>>
-decode_grayscale_png(std::span<const std::uint8_t> input, core::Budget& budget, PngLimits limits) {
-    PngContext context{budget, false};
+decode_grayscale_png(std::span<const std::uint8_t> input, core::Budget& budget, PngLimits limits,
+                     const core::Cancellation& cancellation) {
+    PngContext context{budget, false, cancellation};
     PngInput reader{.state = &input, .read = read_memory, .remaining = input.size()};
     return decode_png(context, reader, limits);
 }

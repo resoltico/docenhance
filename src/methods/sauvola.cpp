@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/methods/sauvola.hpp"
 
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
@@ -38,7 +39,7 @@ std::uint32_t fold(std::int64_t at, std::uint32_t extent) noexcept {
 // Visit at most one real reflected period, with multiplicity for repeated periods. A singleton
 // dimension is one sample even for a 4095-wide window; narrow/tall pages do not multiply work by w.
 template <typename Add>
-void window_samples(std::uint32_t center, std::uint32_t extent, std::uint32_t window,
+bool window_samples(std::uint32_t center, std::uint32_t extent, std::uint32_t window,
                     const Add& add) {
     const std::uint64_t period = extent == 1 ? 1 : std::uint64_t{2} * (extent - 1);
     const auto cycles = window / period;
@@ -46,9 +47,12 @@ void window_samples(std::uint32_t center, std::uint32_t extent, std::uint32_t wi
     const auto count = std::min<std::uint64_t>(window, period);
     const auto first = static_cast<std::int64_t>(center) - (window / 2);
     for (std::uint64_t i = 0; i < count; ++i) {
-        add(fold(first + static_cast<std::int64_t>(i), extent),
-            cycles + static_cast<std::uint64_t>(i < remainder));
+        if (!add(fold(first + static_cast<std::int64_t>(i), extent),
+                 cycles + static_cast<std::uint64_t>(i < remainder))) {
+            return false;
+        }
     }
+    return true;
 }
 struct Moments {
     std::uint64_t sum = 0;
@@ -77,6 +81,7 @@ struct Columns {
 struct StripRange {
     std::uint32_t first{};
     std::uint32_t end{};
+    std::reference_wrapper<const core::Cancellation> cancellation;
 };
 struct Strip {
     image::PlaneView<const std::uint8_t> source;
@@ -85,18 +90,22 @@ struct Strip {
     std::uint32_t first;
     std::uint32_t end;
     Columns columns;
+    std::reference_wrapper<const core::Cancellation> cancellation;
 
     Strip(image::PlaneView<const std::uint8_t> source_view,
           image::PlaneView<std::uint8_t> destination_view, const Sauvola& selected,
           StripRange range, Columns workspace_columns)
         : source(source_view), destination(destination_view), method(selected), first(range.first),
-          end(range.end), columns(workspace_columns) {}
+          end(range.end), columns(workspace_columns), cancellation(range.cancellation) {}
 
-    void initialize() const {
+    [[nodiscard]] bool initialize() const {
         std::ranges::fill(columns.sums, 0);
         std::ranges::fill(columns.squares, 0);
-        window_samples(
+        return window_samples(
             0, source.height(), method.get().window(), [&](std::uint32_t row, std::uint64_t count) {
+                if (cancellation.get().requested(core::Checkpoint::initialization)) {
+                    return false;
+                }
                 const auto samples = source.row(row).subspan(columns.first, columns.sums.size());
                 for (auto [p, sum, squares] :
                      std::views::zip(samples, columns.sums, columns.squares)) {
@@ -104,6 +113,7 @@ struct Strip {
                     sum += value * count;
                     squares += value * value * count;
                 }
+                return true;
             });
     }
     void advance(std::uint32_t row) const {
@@ -122,18 +132,27 @@ struct Strip {
             squares = squares - (old_sample * old_sample) + (new_sample * new_sample);
         }
     }
-    void write_row(std::uint32_t row) const {
+    [[nodiscard]] bool write_row(std::uint32_t row) const {
         Moments total;
-        window_samples(first, source.width(), method.get().window(),
-                       [&](std::uint32_t column, std::uint64_t count) {
-                           total.add(columns.at(column), count);
-                       });
+        const auto initialized = window_samples(first, source.width(), method.get().window(),
+                                                [&](std::uint32_t column, std::uint64_t count) {
+                                                    total.add(columns.at(column), count);
+                                                    return true;
+                                                });
+        if (!initialized) {
+            return false;
+        }
         const auto area = static_cast<std::uint64_t>(method.get().window()) * method.get().window();
         const auto n = static_cast<double>(area);
         const auto radius = static_cast<std::int64_t>(method.get().window() / 2);
         const auto in = source.row(row);
         const auto out = destination.row(row);
         for (std::uint32_t x = first; x < end; ++x) {
+            constexpr std::uint32_t chunk_samples = 1024;
+            if ((x - first) % chunk_samples == 0 &&
+                cancellation.get().requested(core::Checkpoint::processing)) {
+                return false;
+            }
             // Exact integer cancellation avoids catastrophic floating mean-square subtraction.
             const auto variance_numerator = (area * total.squares) - (total.sum * total.sum);
             const double mean = static_cast<double>(total.sum) / n;
@@ -151,15 +170,21 @@ struct Strip {
                     columns.at(fold(static_cast<std::int64_t>(x) + radius + 1, source.width())));
             }
         }
+        return true;
     }
-    void run() const {
-        initialize();
+    [[nodiscard]] bool run() const {
+        if (!initialize()) {
+            return false;
+        }
         for (std::uint32_t row = 0; row < source.height(); ++row) {
-            write_row(row);
+            if (cancellation.get().requested(core::Checkpoint::processing) || !write_row(row)) {
+                return false;
+            }
             if (row + 1 < source.height()) {
                 advance(row);
             }
         }
+        return true;
     }
 };
 struct Work {
@@ -168,6 +193,7 @@ struct Work {
     std::reference_wrapper<const Sauvola> method;
     image::PlaneView<std::uint64_t> workspace;
     unsigned slots{};
+    std::reference_wrapper<const core::Cancellation> cancellation;
     core::Result<void> operator()(std::size_t slot) const {
         const auto radius = method.get().window() / 2;
         for (auto tile = slot; tile < strip_count(source.width()); tile += slots) {
@@ -180,7 +206,7 @@ struct Work {
                 source,
                 destination,
                 method.get(),
-                {.first = first, .end = end},
+                {.first = first, .end = end, .cancellation = cancellation},
                 {
                     .sums = workspace.row(static_cast<std::uint32_t>(2 * slot)).first(count),
                     .squares =
@@ -188,7 +214,9 @@ struct Work {
                     .first = source_first,
                 },
             };
-            strip.run();
+            if (!strip.run()) {
+                return core::cancelled();
+            }
         }
         return {};
     }
@@ -224,6 +252,9 @@ core::Result<void> sauvola(image::PlaneView<const std::uint8_t> source,
     if (!plan) {
         return std::unexpected(plan.error());
     }
+    if (context.scheduler.get().cancellation().requested(core::Checkpoint::allocation)) {
+        return core::cancelled();
+    }
     auto workspace = image::Plane<std::uint64_t>::allocate(context.budget.get(), plan->shape.width,
                                                            plan->shape.height);
     if (!workspace) {
@@ -235,6 +266,7 @@ core::Result<void> sauvola(image::PlaneView<const std::uint8_t> source,
         .method = method,
         .workspace = workspace->view(),
         .slots = plan->slots,
+        .cancellation = context.scheduler.get().cancellation(),
     };
     return context.scheduler.get().for_each(plan->slots, exec::WorkRef{work});
 }

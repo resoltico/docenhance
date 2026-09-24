@@ -55,7 +55,8 @@ struct Apply {
     image::PlaneView<std::uint8_t> destination;
     BinarizationContext context;
     core::Result<void> operator()(const FixedThreshold& method) const {
-        return fixed_threshold(source, destination, method.threshold());
+        return fixed_threshold(source, destination, method.threshold(),
+                               context.scheduler.get().cancellation());
     }
     core::Result<void> operator()(const Sauvola& method) const {
         return sauvola(source, destination, method, context);

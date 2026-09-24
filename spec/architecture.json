@@ -105,7 +105,6 @@
         "iostream",
         "latch",
         "semaphore",
-        "stop_token",
         "thread"
       ],
       "forbidden_calls": [

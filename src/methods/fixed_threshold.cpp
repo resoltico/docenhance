@@ -2,10 +2,13 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/methods/fixed_threshold.hpp"
 
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <ranges>
 
@@ -17,7 +20,8 @@ constexpr std::uint8_t white = 255U;
 } // namespace
 
 core::Result<void> fixed_threshold(image::PlaneView<const std::uint8_t> source,
-                                   image::PlaneView<std::uint8_t> destination, double threshold) {
+                                   image::PlaneView<std::uint8_t> destination, double threshold,
+                                   const core::Cancellation& cancellation) {
     if (source.empty() || destination.empty() || source.width() != destination.width() ||
         source.height() != destination.height()) {
         return core::failure(core::ErrorCode::argument,
@@ -34,8 +38,16 @@ core::Result<void> fixed_threshold(image::PlaneView<const std::uint8_t> source,
     for (std::uint32_t y = 0; y < source.height(); ++y) {
         const auto in = source.row(y);
         const auto out = destination.row(y);
-        for (auto [input, output] : std::views::zip(in, out)) {
-            output = static_cast<double>(input) / max_sample <= threshold ? black : white;
+        constexpr std::size_t chunk_samples = 1024;
+        for (std::size_t x = 0; x < in.size(); x += chunk_samples) {
+            if (cancellation.requested(core::Checkpoint::processing)) {
+                return core::cancelled();
+            }
+            const auto count = std::min(chunk_samples, in.size() - x);
+            for (auto [input, output] :
+                 std::views::zip(in.subspan(x, count), out.subspan(x, count))) {
+                output = static_cast<double>(input) / max_sample <= threshold ? black : white;
+            }
         }
     }
     return {};

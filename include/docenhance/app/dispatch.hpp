@@ -3,6 +3,7 @@
 #pragma once
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/command.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/catalog.hpp"
 
@@ -48,6 +49,7 @@ struct Outcome {
         return failed == nullptr ? core::ExitCode::success : failed->error.exit_code();
     }
 };
-[[nodiscard]] Outcome dispatch(const contract::Invocation& invocation, Processor& processor);
+[[nodiscard]] Outcome dispatch(const contract::Invocation& invocation, Processor& processor,
+                               const core::Cancellation& cancellation = {});
 [[nodiscard]] Outcome failure(const contract::Invocation& invocation, core::Error error);
 } // namespace docenhance::app
