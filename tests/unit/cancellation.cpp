@@ -33,7 +33,7 @@
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t allocation_limit = std::size_t{4} * 1024 * 1024;
-void request_stop(std::stop_source& source) noexcept {
+void request_stop(std::stop_source& source) noexcept { // NOLINT(misc-const-correctness)
     // libc++ requires a mutable source; libstdc++ permits const and misleads const-correctness.
     static_cast<void>(source.request_stop());
 }

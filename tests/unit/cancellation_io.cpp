@@ -61,6 +61,9 @@ std::string spelling(const std::filesystem::path& path) {
     }
     return value;
 }
+bool empty_directory(const std::filesystem::path& path) {
+    return std::filesystem::directory_iterator(path) == std::filesystem::directory_iterator{};
+}
 std::vector<std::uint8_t> png_bytes(bool interlaced) {
     return make_gray_png({
         .width = 8,
@@ -171,7 +174,7 @@ TEST_CASE("Every PNG encoding checkpoint cleans unpublished output", "[cancellat
             REQUIRE(!result);
             CHECK(result.error().code == core::ErrorCode::cancelled);
             CHECK(result.error().publication == core::Publication::not_published);
-            CHECK(std::filesystem::is_empty(directory.path));
+            CHECK(empty_directory(directory.path));
         } else {
             REQUIRE(result);
             completed = true;
@@ -234,7 +237,7 @@ TEST_CASE("The final commit checkpoint is the cancellation cutoff", "[cancellati
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(result.error().publication == core::Publication::not_published);
-        CHECK(std::filesystem::is_empty(directory.path));
+        CHECK(empty_directory(directory.path));
     }
     commit_source() = std::stop_source{};
     const core::Cancellation control{commit_source().get_token()};
@@ -260,7 +263,7 @@ TEST_CASE("A late cancellation never erases refused or uncertain publication",
         if (commit == refused_commit) {
             CHECK(result.error().code == core::ErrorCode::output);
             CHECK(result.error().publication == core::Publication::not_published);
-            CHECK(std::filesystem::is_empty(directory.path / "output"));
+            CHECK(empty_directory(directory.path / "output"));
         } else {
             CHECK(result.error().code == core::ErrorCode::publication_unknown);
             CHECK(result.error().publication == core::Publication::unknown);
