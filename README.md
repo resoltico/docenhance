@@ -4,11 +4,13 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
 
-> **Capability boundary: two explicit binarization methods are available.**
-> `process` accepts grayscale PNG without transparency (1/2/4/8 bits) and performs B02 Sauvola
-> or B03 fixed-threshold binarization, publishing an 8-bit PNG into a new result directory.
-> Other formats, color/alpha/16-bit handling, batching, presets and restoration workflows remain
-> unsupported. See [typed binarization](docs/binarization.md) for exact sample and resource semantics.
+> **Capability boundary: continuous-tone PNG representation and two explicit binarizers.**
+> `process` defaults to color-managed PNG conversion with no enhancement filter. Static grayscale,
+> palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
+> and metadata policies. Explicit `--output-mode bw` selects B02/B03 on their narrower stored-gray
+> input domain. All output is published into a new directory. See [PNG processing](docs/png-processing.md)
+> and [typed binarization](docs/binarization.md). Other formats, batch processing, presets and
+> illumination/denoising/restoration methods remain unsupported.
 
 ## Start here
 
@@ -107,7 +109,7 @@ This repository supports source releases only. For a `v*` tag, the `Package sour
 workflow validates and builds a deterministic source tarball, attests it, and publishes the source
 release. Its GitHub release body is the exact dated section of [CHANGELOG.md](CHANGELOG.md), not a
 separate notes file or generated summary. The publisher never edits an existing release; it rejects
-different prose or source assets. Do not represent this release as a usable image enhancer.
+different prose or source assets. Source publication is not publication of prebuilt binaries or proof of document-enhancement quality.
 
 ## Contributing and security
 

@@ -31,8 +31,9 @@ de_library(de_exec LAYER exec
   HEADERS "${DE_INCLUDE}/exec/concurrency.hpp" "${DE_INCLUDE}/exec/scheduler.hpp"
   LINKS de_core)
 de_library(de_image LAYER image
-  SOURCES image/numeric.cpp image/plane.cpp
+  SOURCES image/numeric.cpp image/plane.cpp image/raster.cpp image/continuous.cpp
   HEADERS "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
+          "${DE_INCLUDE}/image/raster.hpp" "${DE_INCLUDE}/image/continuous.hpp"
   LINKS de_core)
 de_library(de_methods LAYER methods
   SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/binarization.cpp methods/sauvola.cpp
@@ -43,11 +44,11 @@ de_library(de_methods LAYER methods
 de_library(de_app LAYER app
   SOURCES app/dispatch.cpp app/process.cpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
-  LINKS de_core de_contract de_methods)
+  LINKS de_core de_contract de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_report LAYER report
-  SOURCES report/render.cpp HEADERS "${DE_INCLUDE}/report/render.hpp"
-  LINKS de_app de_contract de_core nlohmann_json::nlohmann_json)
+  SOURCES report/render.cpp report/continuous.cpp report/continuous.hpp HEADERS "${DE_INCLUDE}/report/render.hpp"
+  LINKS de_app de_contract de_core de_image nlohmann_json::nlohmann_json)
 de_library(de_cli LAYER cli
   SOURCES cli/run.cpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
   LINKS de_app de_contract de_core de_report CLI11::CLI11)
@@ -55,17 +56,25 @@ de_library(de_cli LAYER cli
 de_library(de_io LAYER io
   SOURCES io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_publish.cpp
           io/publication.cpp io/png_context.hpp io/png_reader.hpp io/publication.hpp
-  HEADERS "${DE_INCLUDE}/io/png.hpp"
-  LINKS de_core de_image DE::png)
+          io/png_metadata.cpp io/png_metadata.hpp io/png_profile.cpp io/png_exif.cpp
+          io/png_raster.cpp io/png_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
+          io/png_inventory.cpp io/png_verify_rows.cpp io/png_publish_rows.cpp
+  HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp"
+  LINKS de_core de_image DE::png DE::zlib)
+de_library(de_color LAYER color
+  SOURCES color/context.cpp color/context.hpp color/profiles.cpp color/interpretation.cpp
+          color/converter.cpp color/conversion.hpp color/prepare.cpp color/rows.cpp
+  HEADERS "${DE_INCLUDE}/color/converter.hpp"
+  LINKS de_core de_image DE::lcms)
 # Both fuzz groups compile production targets. Only codec harnesses link io; the CLI closure
 # remains pure and never composes the host or publication path.
 if(DE_FUZZ_ONLY)
-  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli io)
+  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli io color)
   return()
 endif()
 de_library(de_host LAYER host
   SOURCES host/processor.cpp HEADERS "${DE_INCLUDE}/host/processor.hpp"
-  LINKS de_app de_core de_exec de_image de_io de_methods)
+  LINKS de_app de_core de_exec de_image de_io de_methods de_color)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)
 if(MINGW)
   target_link_options(docenhance PRIVATE -municode)

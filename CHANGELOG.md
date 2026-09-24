@@ -4,6 +4,18 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Added
+
+- Continuous-tone PNG conversion accepts static grayscale, indexed, RGB and alpha images, retaining 16-bit sample precision unless reduction is explicitly requested. Profile interpretation, linear-light alpha compositing, grayscale luminance, exact EXIF orientation and physical-resolution handling are explicit and reported.
+- Continuous-tone output is independently decoded and checked against every intended integer sample and required metadata before publication. Verification failure returns `E_OUTPUT_VERIFY` (exit 5), without publishing an incomplete result.
+- Bounded PNG/color-profile fuzz harnesses exercise the same production adapters; isolated campaigns verify instrumentation of the actual libpng, zlib and Little CMS archives.
+
+### Changed
+
+- **Breaking (CLI):** `process` defaults to `--output-mode preserve`, with no enhancement filter. Binary processing now requires explicit `--output-mode bw`; an absent binarizer in that mode defaults to Sauvola. B02/B03 retain their released stored-grayscale sample semantics and input domain. There is no inference or compatibility alias.
+- **Breaking (API/JSON):** Validated processing alternatives distinguish binary methods from continuous output. Continuous success reports `operation: continuous` and typed conversion descriptors, assumptions and warnings, without a fabricated method ID. The generated command-contract edition is 6.0.
+- Continuous processing uses a 1 GiB charged-buffer ceiling and bounded conversion rows; the binary ceiling remains 128 MiB. Neither ceiling is a process-RSS guarantee. No release, new enhancement method, JPEG/TIFF, preset or recipe feature is introduced.
+
 ## [0.3.0] - 2026-09-24
 
 ### Added

@@ -13,8 +13,8 @@ namespace docenhance::contract {
     case Command::root:
         return "docenhance COMMAND [OPTIONS]";
     case Command::process:
-        return "docenhance process INPUT --out-dir DIRECTORY --binarize "
-               "METHOD [METHOD OPTIONS] [--json]";
+        return "docenhance process INPUT --out-dir DIRECTORY [--output-mode "
+               "preserve|gray|bw] [OPTIONS]";
     case Command::methods:
         return "docenhance methods [ID] [--json]";
     case Command::version:
@@ -34,8 +34,12 @@ struct OptionDescriptor {
 // Descriptions are long single-line literals; keep one option per line.
 // clang-format off
 inline constexpr auto option_catalog = std::to_array<OptionDescriptor>({
-    {.name = "--out-dir", .metavar = "DIRECTORY", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "Required; a new result directory", .methods = "B02,B03", .description = "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success."},
-    {.name = "--binarize", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "Required; `fixed` or `sauvola`", .methods = "B02,B03", .description = "Select B03 fixed threshold or B02 Sauvola. Options of the other method are rejected even when explicitly empty or equal to their default."},
+    {.name = "--out-dir", .metavar = "DIRECTORY", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "Required; a new result directory", .methods = "", .description = "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced."},
+    {.name = "--output-mode", .metavar = "MODE", .scope = CommandSet{Command::process}, .group = "Output arguments", .domain = "preserve; preserve|gray|bw", .methods = "", .description = "Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output has no enhancement filter and is verified before publication. Gray converts linear luminance; bw explicitly activates stored-sample binarization."},
+    {.name = "--bit-depth", .metavar = "DEPTH", .scope = CommandSet{Command::process}, .group = "Output arguments", .domain = "auto; auto|8|16", .methods = "", .description = "Continuous output only. Auto retains 16-bit source precision, otherwise 8. Explicit 16-to-8 reduction is reported; no precision fallback is used for resource limits."},
+    {.name = "--alpha", .metavar = "MODE", .scope = CommandSet{Command::process}, .group = "Output arguments", .domain = "white; white|black|reject", .methods = "", .description = "Continuous output only. Composite straight PNG alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque."},
+    {.name = "--profile-policy", .metavar = "POLICY", .scope = CommandSet{Command::process}, .group = "Output arguments", .domain = "embedded; embedded|srgb", .methods = "", .description = "Continuous output only. Interpret supported cICP, compatible ICC, sRGB or gAMA/cHRM; otherwise report an sRGB assumption. srgb explicitly overrides color declarations, not integrity or orientation checks. Unsupported HDR/cICP is rejected by embedded policy."},
+    {.name = "--binarize", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "sauvola for bw; fixed|sauvola", .methods = "B02,B03", .description = "Requires explicit --output-mode bw. B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied."},
     {.name = "--fixed-threshold", .metavar = "T", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.50; finite `[0,1]`", .methods = "B03", .description = "B03 only. Normalized grayscale threshold; black iff sample/255 <= T. Rejected for Sauvola."},
     {.name = "--sauvola-window", .metavar = "PIXELS", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "31; odd integer `[3,4095]`", .methods = "B02", .description = "B02 only. Centered square window with REFLECT_101 borders; a singleton dimension repeats its sample."},
     {.name = "--sauvola-k", .metavar = "K", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.2; finite `[0,1]`", .methods = "B02", .description = "B02 only. Weight in T=m*(1+k*(s/(255*R)-1)), using population standard deviation in stored byte units."},

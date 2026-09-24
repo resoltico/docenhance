@@ -43,7 +43,7 @@ class MethodMetadataTests(unittest.TestCase):
             {"selector": ""},
             {"selector": "a-b"},
             {"arguments": ["--absent"]},
-            {"arguments": ["--binarize", "--binarize"]},
+            {"arguments": ["--output-mode", "bw", "--binarize", "--binarize"]},
             {"arguments": "--binarize"},
         ):
             with self.subTest(change=change), self.assertRaises(ValueError):

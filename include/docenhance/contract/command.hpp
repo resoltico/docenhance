@@ -37,7 +37,11 @@ struct Invocation {
     bool root_version = false;
     std::string subject;
     std::string output_directory;
-    std::string binarize;
+    std::optional<std::string> output_mode = std::nullopt;
+    std::optional<std::string> bit_depth = std::nullopt;
+    std::optional<std::string> alpha = std::nullopt;
+    std::optional<std::string> profile_policy = std::nullopt;
+    std::optional<std::string> binarize = std::nullopt;
     std::optional<std::string> fixed_threshold = std::nullopt;
     std::optional<std::string> sauvola_window = std::nullopt;
     std::optional<std::string> sauvola_k = std::nullopt;

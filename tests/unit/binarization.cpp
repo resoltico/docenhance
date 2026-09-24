@@ -37,6 +37,7 @@ contract::Invocation request(const std::string& selector) {
     value.command = contract::Command::process;
     value.subject = "input.png";
     value.output_directory = "output";
+    value.output_mode = "bw";
     value.binarize = selector;
     return value;
 }
@@ -137,7 +138,8 @@ TEST_CASE("Application admits only options belonging to the selected method", "[
     auto value = request("sauvola");
     const auto admitted = app::prepare_process(value);
     REQUIRE(admitted);
-    const auto& method = std::get<methods::Sauvola>(admitted->method());
+    const auto& method =
+        std::get<methods::Sauvola>(std::get<methods::Binarization>(admitted->operation()));
     CHECK(method.window() == 31);
     CHECK(method.k() == 0.2);
     CHECK(method.r() == 0.5);

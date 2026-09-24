@@ -61,6 +61,8 @@ TEST_CASE("Output stream failure cannot repeat processing or render another outc
         "input.png",
         "--out-dir",
         "result",
+        "--output-mode",
+        "bw",
         "--binarize",
         "fixed",
         "--json",

@@ -53,11 +53,12 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_image` | `de_core` | Checked owning planes, borrowed views and numerical primitives |
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
 | `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
-| `de_app` | `de_contract`, `de_core`, `de_methods` | Validated use cases and the explicit processing port |
-| `de_report` | `de_core`, `de_contract`, `de_app` | Renders an outcome as the documented JSON response or as human text |
+| `de_app` | `de_contract`, `de_core`, `de_methods`, `de_image` | Validated use cases and the explicit processing port |
+| `de_report` | `de_core`, `de_contract`, `de_app`, `de_image` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
-| `de_host` | `de_app`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods` | Executes admitted requests using codecs, kernels and publication |
+| `de_host` | `de_app`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods`, `de_color` | Executes admitted requests using codecs, kernels and publication |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
+| `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
 
 Only `de_report` uses nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
 Other pinned imaging libraries remain isolated in the native dependency probe until a real method
@@ -89,7 +90,13 @@ buffers, OS thread resources and stacks are outside it. The codec allocator uses
 registry; exhaustion is a resource failure, never permission to allocate elsewhere. Generic
 `std::string`/container use is not inaccurately described as zero-allocation.
 
-## PNG codec boundary
+## PNG codec boundaries
+
+The continuous-tone path is specified in [PNG processing](png-processing.md): immutable bounded
+encoded snapshot, checked raw raster, a separate color adapter, and row-wise encode/verify within
+the shared publication transaction. Its 1 GiB charged-buffer ceiling does not change the binary
+128 MiB ceiling. Public raster and policy types contain no native-library objects.
+
 
 B02 and B03 accept one regular PNG file, grayscale without transparency, at 1/2/4/8 bits per sample.
 Low-bit-depth input expands to 8-bit stored sample values. Gamma metadata does not change threshold
@@ -149,7 +156,7 @@ The present public CLI does not expose `--threads`; this remains an internal ker
 CMake rejects undeclared direct layer/package links. Every production target registers its files,
 headers and links. Native builds must contain every declared layer. An isolated fuzz build must
 contain the complete transitive closure of its named root, not a manually duplicated source list.
-Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs. Separate PNG harnesses use the shared byte-span
+Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs. Separate PNG and ICC harnesses exercise the raw representation and native color boundary. PNG harnesses use the shared byte-span
 decoder; only those targets link the codec layer.
 
 Source checks validate manifest shape, duplicate targets, directory ownership, direct includes and
@@ -175,7 +182,7 @@ built from actual method variant alternatives and must equal the reviewed catalo
 Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,
 and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target
 registration, including box-mean, rather than a second shell list. Native sanitizer presets instrument first-party code. The isolated PNG fuzz build additionally
-instruments pinned libpng/zlib and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
+instruments pinned libpng/zlib/LCMS and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
 and limits, rather than claiming that every platform or future method already passed.
 
 ## Cooperative cancellation

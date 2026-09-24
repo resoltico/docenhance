@@ -17,6 +17,7 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 namespace docenhance::app {
 namespace {
 BuildFacts build_facts() noexcept {
@@ -68,12 +69,25 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                             });
     try {
         auto result = processor.process(*request, cancellation);
-        return result ? succeeded(invocation,
-                                  Processed{
-                                      .output = std::move(result->output),
-                                      .method = methods::describe(request->method()),
-                                  })
-                      : failure(invocation, std::move(result.error()));
+        if (!result) {
+            return failure(invocation, std::move(result.error()));
+        }
+        if (const auto* const method = std::get_if<methods::Binarization>(&request->operation())) {
+            if (result->conversion) {
+                return unknown_outcome;
+            }
+            return succeeded(invocation, Processed{
+                                             .output = std::move(result->output),
+                                             .method = methods::describe(*method),
+                                         });
+        }
+        if (!result->conversion || !result->conversion->verified) {
+            return unknown_outcome;
+        }
+        return succeeded(invocation, ContinuousProcessed{
+                                         .output = std::move(result->output),
+                                         .conversion = *result->conversion,
+                                     });
     } catch (...) {
         return unknown_outcome;
     }

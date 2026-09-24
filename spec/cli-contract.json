@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "contract_edition": "5.0",
+  "contract_edition": "6.0",
   "value_grammar": {
     "decimal": "Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale.",
     "window": "Decimal digits only; odd integer in [3,4095]. No sign, whitespace, fraction or exponent."
@@ -11,7 +11,7 @@
       "scope_symbol": null
     },
     "process": {
-      "usage": "docenhance process INPUT --out-dir DIRECTORY --binarize METHOD [METHOD OPTIONS] [--json]",
+      "usage": "docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]",
       "scope_symbol": "P"
     },
     "methods": {
@@ -30,17 +30,53 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "Required; a new result directory",
-      "methods": "B02,B03",
-      "description": "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success."
+      "methods": "",
+      "description": "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced."
+    },
+    {
+      "name": "--output-mode",
+      "metavar": "MODE",
+      "scope": "P",
+      "group": "Output arguments",
+      "domain": "preserve; preserve|gray|bw",
+      "methods": "",
+      "description": "Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output has no enhancement filter and is verified before publication. Gray converts linear luminance; bw explicitly activates stored-sample binarization."
+    },
+    {
+      "name": "--bit-depth",
+      "metavar": "DEPTH",
+      "scope": "P",
+      "group": "Output arguments",
+      "domain": "auto; auto|8|16",
+      "methods": "",
+      "description": "Continuous output only. Auto retains 16-bit source precision, otherwise 8. Explicit 16-to-8 reduction is reported; no precision fallback is used for resource limits."
+    },
+    {
+      "name": "--alpha",
+      "metavar": "MODE",
+      "scope": "P",
+      "group": "Output arguments",
+      "domain": "white; white|black|reject",
+      "methods": "",
+      "description": "Continuous output only. Composite straight PNG alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque."
+    },
+    {
+      "name": "--profile-policy",
+      "metavar": "POLICY",
+      "scope": "P",
+      "group": "Output arguments",
+      "domain": "embedded; embedded|srgb",
+      "methods": "",
+      "description": "Continuous output only. Interpret supported cICP, compatible ICC, sRGB or gAMA/cHRM; otherwise report an sRGB assumption. srgb explicitly overrides color declarations, not integrity or orientation checks. Unsupported HDR/cICP is rejected by embedded policy."
     },
     {
       "name": "--binarize",
       "metavar": "METHOD",
       "scope": "P",
       "group": "Processing arguments",
-      "domain": "Required; `fixed` or `sauvola`",
+      "domain": "sauvola for bw; fixed|sauvola",
       "methods": "B02,B03",
-      "description": "Select B03 fixed threshold or B02 Sauvola. Options of the other method are rejected even when explicitly empty or equal to their default."
+      "description": "Requires explicit --output-mode bw. B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied."
     },
     {
       "name": "--fixed-threshold",

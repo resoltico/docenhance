@@ -22,7 +22,7 @@ from tools_path import ROOT
 import architecture
 import architecture_build
 
-LAYER_COUNT = 11
+LAYER_COUNT = 12
 
 
 def manifest_of(

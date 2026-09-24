@@ -7,7 +7,7 @@ The work packages below are ordered by dependency. Each one needs its own specif
 | 0 | Verify the native baseline on GitHub CI | Complete: native GitHub validation runs on Windows/MSVC, Linux ARM64/x86-64 and macOS ARM64/Intel with retained logs and the pinned LLVM 23 toolchain. |
 | 1 | Extend typed method execution | B02/B03 are validated alternatives with bounded execution and cross-option tests. Add further alternatives alongside complete methods; introduce recipes/presets only for a demonstrated composition requirement. |
 | 2 | Resource, cancellation and publication primitives | Owned budgets, cooperative cancellation and exclusive publication have tested contracts. Extend alongside real requirements; forced-shutdown recovery and crash durability are not implied. |
-| 3 | JPEG/PNG/TIFF and color pipeline | All accepted/rejected encodings and precision/profile/orientation contracts; C longjmp boundaries; malformed-image tests; codec fuzzing; no implicit 8-bit downgrade |
+| 3 | Extend image containers and interpretation | Static PNG continuous-tone precision/profile/alpha/orientation and verified output are implemented. Add JPEG/TIFF alongside complete codec contracts, malformed-input coverage and the same resource/cancellation boundaries. |
 | 4 | Photometric reference operations | Target-plane conversions, masks, blending and validity semantics; full numerical fixtures; no complete-method advertisement before its tests |
 | 5 | Illumination methods I01/I02 | Specified solvers, automatic-decision criteria, gains and protected-region behavior; tiled/reference equivalence where specified |
 | 6 | Denoising D01/D02 | Exact 16-bit NLM-L1 correction contract and float TV-L1 solver; precision, convergence, cancellation and memory tests |

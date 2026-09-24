@@ -75,13 +75,24 @@ class RecordingProcessor final : public app::Processor {
         }
     }
 };
-constexpr auto process_args = std::to_array<const char*>(
-    {"docenhance", "process", "input.png", "--out-dir", "result", "--binarize", "fixed", "--json"});
+constexpr auto process_args = std::to_array<const char*>({
+    "docenhance",
+    "process",
+    "input.png",
+    "--out-dir",
+    "result",
+    "--output-mode",
+    "bw",
+    "--binarize",
+    "fixed",
+    "--json",
+});
 contract::Invocation request() {
     return {
         .command = contract::Command::process,
         .subject = "input.png",
         .output_directory = "result",
+        .output_mode = "bw",
         .binarize = "fixed",
         .fixed_threshold = {},
     };

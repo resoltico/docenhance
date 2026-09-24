@@ -81,7 +81,7 @@ narrow images with omitted passes. Production validation is never disabled to ob
 These are complementary oracles: structured inputs reach successful decode paths; raw inputs
 exercise malformed headers, compressed streams, truncation and strict rejection behavior.
 
-The isolated fuzz build instruments the actual pinned libpng and zlib C archives with ASan,
+The isolated fuzz build instruments the actual pinned libpng, zlib and Little CMS C archives with ASan,
 UBSan and the selected coverage engine. Before a campaign, the imported archive paths are checked
 for sanitizer/coverage symbols and hashed. Native sanitizer builds still make only their existing
 first-party instrumentation promise; this change does not instrument every planned dependency.
@@ -106,3 +106,13 @@ The `cancellation` harness chooses deterministic stop checkpoints for B02/B03, b
 production PNG byte decoder. It sends no OS signals and performs no filesystem publication. Completed
 results retain their numerical/sample oracles; cancellation must return its typed result and refund
 scratch/codec allocations. Native interrupt and commit-cutoff behavior have separate CTest coverage.
+
+## Continuous-tone and profile harnesses
+
+`png_continuous` exercises bounded raw PNG metadata/pixel decoding and the production row converter,
+with 4,096 pixels and 65,536 encoded bytes as tighter input limits. It repeats integer rows and
+checks complete budget refunds. It tests both embedded interpretation and explicit sRGB override,
+without filesystem writes. `color_profile` feeds raw ICC bytes directly to the native adapter on
+tiny gray/RGB rasters, so profile mutations need not survive an unrelated PNG CRC first. Both use
+first-party, generated corpus profiles/images. `fuzz-codecs.json` identifies all three actual
+instrumented native archives; the campaign rejects a missing ASan, UBSan or coverage signature.

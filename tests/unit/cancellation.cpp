@@ -47,6 +47,7 @@ contract::Invocation invocation() {
         .command = contract::Command::process,
         .subject = "unopened.png",
         .output_directory = "uncreated",
+        .output_mode = "bw",
         .binarize = "fixed",
     };
 }
@@ -79,6 +80,8 @@ TEST_CASE("Cancelled CLI processing produces one normal JSON response", "[cancel
         "absent.png",
         "--out-dir",
         "absent",
+        "--output-mode",
+        "bw",
         "--binarize",
         "fixed",
         "--json",

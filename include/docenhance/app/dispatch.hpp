@@ -38,7 +38,7 @@ struct Methods {
 struct Failure {
     core::Error error;
 };
-using Payload = std::variant<Help, Version, Methods, Processed, Failure>;
+using Payload = std::variant<Help, Version, Methods, Processed, ContinuousProcessed, Failure>;
 struct Outcome {
     contract::Command command = contract::Command::root;
     // Every response identifies the build that produced it, whatever the payload.

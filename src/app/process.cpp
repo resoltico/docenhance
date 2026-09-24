@@ -6,16 +6,21 @@
 #include "docenhance/contract/parse.hpp"
 #include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/continuous.hpp"
 #include "docenhance/methods/binarization.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <system_error>
+#include <utility>
 
 namespace docenhance::app {
 namespace {
@@ -54,7 +59,7 @@ core::Result<methods::Binarization> prepare_method(const contract::Invocation& i
         return methods::FixedThreshold::create(*threshold)
             .transform([](auto value) -> methods::Binarization { return value; });
     }
-    if (invocation.binarize != methods::Sauvola::descriptor().selector) {
+    if (invocation.binarize.value_or("sauvola") != methods::Sauvola::descriptor().selector) {
         return core::failure(core::ErrorCode::argument, "--binarize requires fixed or sauvola");
     }
     if (invocation.fixed_threshold) {
@@ -77,6 +82,84 @@ core::Result<methods::Binarization> prepare_method(const contract::Invocation& i
     return methods::Sauvola::create({.window = *window, .k = *k, .r = *r})
         .transform([](auto value) -> methods::Binarization { return value; });
 }
+template <typename Value, std::size_t Size>
+core::Result<Value> choice(const std::optional<std::string>& raw,
+                           const std::array<std::pair<std::string_view, Value>, Size>& choices) {
+    if (!raw) {
+        return choices.front().second;
+    }
+    for (const auto& [name, value] : choices) {
+        if (*raw == name) {
+            return value;
+        }
+    }
+    return core::failure(core::ErrorCode::argument, "Invalid or empty output policy value");
+}
+core::Result<image::Continuous> prepare_tone(const contract::Invocation& invocation) {
+    using image::AlphaPolicy;
+    using image::OutputDepth;
+    using image::ProfilePolicy;
+    constexpr std::array<std::pair<std::string_view, OutputDepth>, 3> depths{
+        {
+            std::pair<std::string_view, OutputDepth>{"auto", OutputDepth::automatic},
+            {"8", OutputDepth::byte},
+            {"16", OutputDepth::word},
+        },
+    };
+    constexpr std::array<std::pair<std::string_view, AlphaPolicy>, 3> alphas{
+        {
+            std::pair<std::string_view, AlphaPolicy>{"white", AlphaPolicy::white},
+            {"black", AlphaPolicy::black},
+            {"reject", AlphaPolicy::reject},
+        },
+    };
+    constexpr std::array<std::pair<std::string_view, ProfilePolicy>, 2> profiles{
+        {
+            std::pair<std::string_view, ProfilePolicy>{"embedded", ProfilePolicy::embedded},
+            {"srgb", ProfilePolicy::srgb},
+        },
+    };
+    const auto depth = choice(invocation.bit_depth, depths);
+    if (!depth) {
+        return std::unexpected(depth.error());
+    }
+    const auto alpha = choice(invocation.alpha, alphas);
+    if (!alpha) {
+        return std::unexpected(alpha.error());
+    }
+    const auto profile = choice(invocation.profile_policy, profiles);
+    if (!profile) {
+        return std::unexpected(profile.error());
+    }
+    return image::Continuous::create({
+        .mode =
+            invocation.output_mode == "gray" ? image::ToneMode::gray : image::ToneMode::preserve,
+        .depth = *depth,
+        .alpha = *alpha,
+        .profile = *profile,
+    });
+}
+core::Result<Operation> prepare_operation(const contract::Invocation& invocation) {
+    const auto mode = invocation.output_mode.value_or("preserve");
+    if (mode == "bw") {
+        if (invocation.bit_depth || invocation.alpha || invocation.profile_policy) {
+            return core::failure(core::ErrorCode::argument,
+                                 "Binary output retains its stored-sample/8-bit contract; "
+                                 "continuous-tone policies are not applicable");
+        }
+        return prepare_method(invocation).transform([](auto value) -> Operation { return value; });
+    }
+    if (mode != "preserve" && mode != "gray") {
+        return core::failure(core::ErrorCode::argument,
+                             "--output-mode requires preserve, gray or bw");
+    }
+    if (invocation.binarize || invocation.fixed_threshold || invocation.sauvola_window ||
+        invocation.sauvola_k || invocation.sauvola_r) {
+        return core::failure(core::ErrorCode::argument,
+                             "Binarization requires explicit --output-mode bw");
+    }
+    return prepare_tone(invocation).transform([](auto value) -> Operation { return value; });
+}
 } // namespace
 core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation) {
     if (invocation.command != contract::Command::process) {
@@ -95,7 +178,7 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
         !contract::valid_utf8(invocation.output_directory)) {
         return core::failure(core::ErrorCode::argument, "Paths must be well-formed UTF-8");
     }
-    auto method = prepare_method(invocation);
+    auto method = prepare_operation(invocation);
     if (!method) {
         return std::unexpected(method.error());
     }

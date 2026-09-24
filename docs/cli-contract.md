@@ -7,7 +7,7 @@ P = process.
 ## Commands
 
 - `root` — `docenhance COMMAND [OPTIONS]`
-- `process` — `docenhance process INPUT --out-dir DIRECTORY --binarize METHOD [METHOD OPTIONS] [--json]`
+- `process` — `docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]`
 - `methods` — `docenhance methods [ID] [--json]`
 - `version` — `docenhance version [--json]`
 
@@ -21,15 +21,37 @@ P = process.
 
 **Scope:** P. **Domain/default:** Required; a new result directory.
 
-Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success.
+Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced.
 
-**Applicable methods:** B02,B03.
+## `--output-mode MODE`
+
+**Scope:** P. **Domain/default:** preserve; preserve|gray|bw.
+
+Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output has no enhancement filter and is verified before publication. Gray converts linear luminance; bw explicitly activates stored-sample binarization.
+
+## `--bit-depth DEPTH`
+
+**Scope:** P. **Domain/default:** auto; auto|8|16.
+
+Continuous output only. Auto retains 16-bit source precision, otherwise 8. Explicit 16-to-8 reduction is reported; no precision fallback is used for resource limits.
+
+## `--alpha MODE`
+
+**Scope:** P. **Domain/default:** white; white|black|reject.
+
+Continuous output only. Composite straight PNG alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque.
+
+## `--profile-policy POLICY`
+
+**Scope:** P. **Domain/default:** embedded; embedded|srgb.
+
+Continuous output only. Interpret supported cICP, compatible ICC, sRGB or gAMA/cHRM; otherwise report an sRGB assumption. srgb explicitly overrides color declarations, not integrity or orientation checks. Unsupported HDR/cICP is rejected by embedded policy.
 
 ## `--binarize METHOD`
 
-**Scope:** P. **Domain/default:** Required; `fixed` or `sauvola`.
+**Scope:** P. **Domain/default:** sauvola for bw; fixed|sauvola.
 
-Select B03 fixed threshold or B02 Sauvola. Options of the other method are rejected even when explicitly empty or equal to their default.
+Requires explicit --output-mode bw. B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied.
 
 **Applicable methods:** B02,B03.
 

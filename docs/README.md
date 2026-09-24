@@ -29,3 +29,6 @@ same change as the behavior they describe.
 
 [Typed binarization](binarization.md) specifies B02/B03 parameters, mathematics, memory, execution
 contracts and the separate design QA.
+
+[PNG processing](png-processing.md) specifies continuous-tone sample, profile, alpha, orientation,
+resource and verified-publication contracts, separately from binary method mathematics.

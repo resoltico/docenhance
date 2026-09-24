@@ -33,7 +33,17 @@ def png(depth: int, color: int, samples: bytes, metadata: bytes = b"") -> bytes:
 
 def command(source: Path, output: Path) -> list[str]:
     """Exercise the production composition root, never a mock codec."""
-    return ["process", str(source), "--out-dir", str(output), "--binarize", "fixed", "--json"]
+    return [
+        "process",
+        str(source),
+        "--out-dir",
+        str(output),
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--json",
+    ]
 
 
 def accepted_samples(exe: Path, root: Path) -> None:

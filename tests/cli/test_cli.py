@@ -19,7 +19,7 @@ from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
 SHA256_HEX_LENGTH = 64
-PROCESS_OPTION_COUNT = 8
+PROCESS_OPTION_COUNT = 12
 EXIT_INVOCATION = 2
 EXIT_PROCESSING = 4
 PNG_FILTER_NONE = 0
@@ -38,7 +38,7 @@ REJECTED_INVOCATIONS = (
     ["process"],
     ["process", "file.png"],
     ["process", "x.png", "--out-dir", "y", "--out-dir", "z"],
-    ["process", "x.png", "--out-dir", "y", "--binarize", "otsu"],
+    ["process", "x.png", "--out-dir", "y", "--output-mode", "bw", "--binarize", "otsu"],
     ["--json", "version"],
 )
 
@@ -163,7 +163,17 @@ def unavailable_cases(exe: Path) -> None:
         source = root / "untrusted.png"
         source.write_bytes(b"not a PNG")
         output = root / "result"
-        args = ["process", str(source), "--out-dir", str(output), "--binarize", "fixed", "--json"]
+        args = [
+            "process",
+            str(source),
+            "--out-dir",
+            str(output),
+            "--output-mode",
+            "bw",
+            "--binarize",
+            "fixed",
+            "--json",
+        ]
         response = call_json(exe, args, 3)
         expect(response["error"]["code"] == "E_INPUT", "invalid PNG is an input failure")
         expect(response["publication"] == "not_started", "nothing published")
@@ -191,6 +201,8 @@ def processing_case(exe: Path) -> None:
                 str(source),
                 "--out-dir",
                 str(output),
+                "--output-mode",
+                "bw",
                 "--binarize",
                 "fixed",
                 "--fixed-threshold",

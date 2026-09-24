@@ -5,6 +5,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "png_context.hpp"
+#include "png_rows.hpp"
 
 #include <algorithm>
 #include <csetjmp>
@@ -53,7 +54,7 @@ void flush_bytes(png_structp png) noexcept {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-    png_set_write_fn(context.png, &context, write_bytes, flush_bytes);
+    install_png_writer(context);
     png_set_IHDR(context.png, context.info, view.width(), view.height(), byte_depth,
                  PNG_COLOR_TYPE_GRAY, PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
                  PNG_FILTER_TYPE_DEFAULT);
@@ -68,6 +69,9 @@ void flush_bytes(png_structp png) noexcept {
     return true;
 }
 } // namespace
+void install_png_writer(PngContext& context) {
+    png_set_write_fn(context.png, &context, write_bytes, flush_bytes);
+}
 core::Result<void> encode_png(const std::filesystem::path& output,
                               image::PlaneView<const std::uint8_t> view, core::Budget& budget,
                               const core::Cancellation& cancellation) {

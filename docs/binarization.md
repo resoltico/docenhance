@@ -28,14 +28,14 @@ The schema template is `spec/command-response.schema.json`; method identities co
 
 | Method | Selector | Options and defaults |
 |---|---|---|
-| B03 | `--binarize fixed` | `--fixed-threshold 0.5`, finite in `[0,1]` |
-| B02 | `--binarize sauvola` | `--sauvola-window 31`, odd integer in `[3,4095]`; `--sauvola-k 0.2`, finite in `[0,1]`; `--sauvola-r 0.5`, finite in `[1/255,1]` |
+| B03 | `--output-mode bw --binarize fixed` | `--fixed-threshold 0.5`, finite in `[0,1]` |
+| B02 | `--output-mode bw --binarize sauvola` | `--sauvola-window 31`, odd integer in `[3,4095]`; `--sauvola-k 0.2`, finite in `[0,1]`; `--sauvola-r 0.5`, finite in `[1/255,1]` |
 
 Window syntax is ASCII digits only. Leading zeros are accepted; signs, whitespace, fractions,
 exponents, overflow and even windows are rejected. Decimal options use the existing finite-decimal
 contract. A B03 invocation rejects every explicitly present Sauvola option, and B02 rejects an
 explicit fixed threshold, even when the supplied value is empty or equal to a default. There are
-no ignored method-specific options, recipes, compatibility aliases or implicit method selection.
+no ignored method-specific options, recipes, compatibility aliases or inference of binary output from private method flags. In explicit `bw` mode, an absent selector uses Sauvola.
 
 `R` uses **normalized grayscale units**. Its default `0.5` is `127.5` in byte units, not the value
 `128` used by some byte-scale implementations. The normalized positive floor prevents meaningless
