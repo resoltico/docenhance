@@ -65,7 +65,7 @@ struct Moments {
 struct Columns {
     std::span<std::uint64_t> sums;
     std::span<std::uint64_t> squares;
-    std::uint32_t first;
+    std::uint32_t first{};
     [[nodiscard]] Moments at(std::uint32_t column) const noexcept {
         const auto index = column - first;
         return {
@@ -74,6 +74,10 @@ struct Columns {
         };
     }
 };
+struct StripRange {
+    std::uint32_t first{};
+    std::uint32_t end{};
+};
 struct Strip {
     image::PlaneView<const std::uint8_t> source;
     image::PlaneView<std::uint8_t> destination;
@@ -81,6 +85,12 @@ struct Strip {
     std::uint32_t first;
     std::uint32_t end;
     Columns columns;
+
+    Strip(image::PlaneView<const std::uint8_t> source_view,
+          image::PlaneView<std::uint8_t> destination_view, const Sauvola& selected,
+          StripRange range, Columns workspace_columns)
+        : source(source_view), destination(destination_view), method(selected), first(range.first),
+          end(range.end), columns(workspace_columns) {}
 
     void initialize() const {
         std::ranges::fill(columns.sums, 0);
@@ -157,7 +167,7 @@ struct Work {
     image::PlaneView<std::uint8_t> destination;
     std::reference_wrapper<const Sauvola> method;
     image::PlaneView<std::uint64_t> workspace;
-    unsigned slots;
+    unsigned slots{};
     core::Result<void> operator()(std::size_t slot) const {
         const auto radius = method.get().window() / 2;
         for (auto tile = slot; tile < strip_count(source.width()); tile += slots) {
@@ -167,18 +177,16 @@ struct Work {
             const auto source_end = end + std::min(radius, source.width() - end);
             const auto count = source_end - source_first;
             const Strip strip{
-                .source = source,
-                .destination = destination,
-                .method = method,
-                .first = first,
-                .end = end,
-                .columns =
-                    {
-                        .sums = workspace.row(static_cast<std::uint32_t>(2 * slot)).first(count),
-                        .squares =
-                            workspace.row(static_cast<std::uint32_t>((2 * slot) + 1)).first(count),
-                        .first = source_first,
-                    },
+                source,
+                destination,
+                method.get(),
+                {.first = first, .end = end},
+                {
+                    .sums = workspace.row(static_cast<std::uint32_t>(2 * slot)).first(count),
+                    .squares =
+                        workspace.row(static_cast<std::uint32_t>((2 * slot) + 1)).first(count),
+                    .first = source_first,
+                },
             };
             strip.run();
         }

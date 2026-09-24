@@ -140,7 +140,7 @@ TEST_CASE("Application admits only options belonging to the selected method", "[
     CHECK(method.k() == 0.2);
     CHECK(method.r() == 0.5);
     auto outcome = app::dispatch(value, processor);
-    CHECK(std::get<app::Processed>(outcome.payload).method.id == "B02");
+    CHECK(std::string(std::get<app::Processed>(outcome.payload).method.id) == "B02");
     CHECK(processor.calls == 1);
     value.fixed_threshold = "";
     CHECK(!app::prepare_process(value));
