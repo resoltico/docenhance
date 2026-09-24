@@ -1,0 +1,78 @@
+# Temporary exact-byte publication; removed before opening the pull request.
+name: Publish reviewed tree
+on:
+  push:
+    branches: [feat/png-continuous-tone]
+    paths: [.github/workflows/publish-tree.yml]
+permissions:
+  contents: read
+concurrency:
+  group: publish-png-continuous-tone
+  cancel-in-progress: false
+jobs:
+  transfer:
+    if: github.repository == 'resoltico/docenhance' && github.ref == 'refs/heads/feat/png-continuous-tone' && github.event.before == '0000000000000000000000000000000000000000'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Verify and publish the exact reviewed code on its feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, lzma, os, pathlib, subprocess
+          BASE = '3a6f54685b9769328d7f012263ce756e66dddd45'
+          BASE_TREE = 'fdafe792a7abd87984f2ea659417d8a21ab9befb'
+          TARGET = 'c61faa139dcfb1ac8f6009c07ab5106eba4ea901'
+          PACKED_SHA = '376a47ba9a99de4581effe02f188b2ce57fbba9c68746affcadebdb8c0d740be'
+          BRANCH = 'refs/heads/feat/png-continuous-tone'
+          def require(condition, message):
+              if not condition:
+                  raise RuntimeError(message)
+          def git(*args, data=None):
+              return subprocess.check_output(['git', *args], input=data)
+          head = git('rev-parse', 'HEAD').decode().strip()
+          require(head == os.environ['GITHUB_SHA'], 'Unexpected checkout identity')
+          require(os.environ['GITHUB_REF'] == BRANCH, 'Unexpected branch')
+          require(git('rev-parse', head + '^').decode().strip() == BASE, 'Unexpected preparation parent')
+          require(git('rev-parse', BASE + '^{tree}').decode().strip() == BASE_TREE, 'Unexpected source tree')
+          parts = [f'.github/transfer/part-{i:02}' for i in range(6)]
+          packed = b''.join(pathlib.Path(path).read_bytes() for path in parts)
+          require(hashlib.sha256(packed).hexdigest() == PACKED_SHA, 'Transfer checksum mismatch')
+          patch = lzma.decompress(packed)
+          require(len(patch) < 2 * 1024 * 1024, 'Oversized reviewed patch')
+          index = pathlib.Path(os.environ['RUNNER_TEMP']) / 'png-publication-index'
+          require(not index.exists(), 'Refusing an existing index')
+          os.environ['GIT_INDEX_FILE'] = str(index)
+          git('read-tree', BASE_TREE)
+          git('apply', '--cached', '--binary', '--unidiff-zero', '--whitespace=error', data=patch)
+          require(git('write-tree').decode().strip() == TARGET, 'Reviewed tree mismatch')
+          print('VERIFIED_FINAL_TREE=' + TARGET, flush=True)
+          # This runner publishes code only. Connected GitHub writes finalize CI changes
+          # and remove the transfer, so no token with workflow-write scope is required.
+          retained = ['.github/workflows/ci.yml', '.github/workflows/nightly.yml',
+                      '.github/workflows/publish-tree.yml', *parts]
+          for path in retained:
+              metadata, name = git('ls-tree', head, '--', path).rstrip(b'\n').split(b'\t', 1)
+              mode, kind, blob = metadata.decode().split()
+              require(kind == 'blob' and name.decode() == path, 'Unexpected retained entry')
+              git('update-index', '--add', '--cacheinfo', f'{mode},{blob},{path}')
+          transfer_tree = git('write-tree').decode().strip()
+          git('config', 'user.name', 'github-actions[bot]')
+          git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com')
+          message = b'feat: add color-managed precision-preserving PNG processing\n\nExact reviewed code transfer. CI updates and temporary infrastructure removal follow through connected GitHub writes.\n'
+          commit = git('commit-tree', transfer_tree, '-p', head, data=message).decode().strip()
+          remote = git('ls-remote', 'origin', BRANCH).decode().split()[0]
+          require(remote == head, 'Concurrent remote change; refusing to publish')
+          subprocess.run(['git', 'push', 'origin', f'{commit}:{BRANCH}'], check=True)
+          require(git('ls-remote', 'origin', BRANCH).decode().split()[0] == commit, 'Remote readback mismatch')
+          print('TRANSFER_COMMIT=' + commit)
+          print('TRANSFER_TREE=' + transfer_tree)
+          PY
