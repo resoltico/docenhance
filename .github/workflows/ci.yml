@@ -116,7 +116,7 @@ jobs:
             cc: afl-clang-fast
             cxx: afl-clang-fast++
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -126,7 +126,7 @@ jobs:
           python-version: '3.13'
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
-      - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 2 --job-budget 1200
+      - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 2 --job-budget 1500
       - name: Build pinned AFL++
         if: matrix.engine == 'afl'
         run: |
@@ -137,6 +137,7 @@ jobs:
           python tools/deps.py fetch --dependency png
           python tools/deps.py fetch --dependency cli11
           python tools/deps.py fetch --dependency json
+          python tools/deps.py fetch --dependency lcms
       - name: Build and fuzz every target (60 s each)
         env:
           CC: ${{ matrix.cc }}
