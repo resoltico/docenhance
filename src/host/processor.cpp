@@ -3,6 +3,7 @@
 #include "docenhance/host/processor.hpp"
 
 #include "docenhance/app/process.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
@@ -17,12 +18,19 @@
 #include <optional>
 #include <utility>
 namespace docenhance::host {
-core::Result<app::PublishedImage> Processor::process(const app::ProcessRequest& request) {
+core::Result<app::PublishedImage> Processor::process(const app::ProcessRequest& request,
+                                                     const core::Cancellation& cancellation) {
+    if (cancellation.requested(core::Checkpoint::admission)) {
+        return core::cancelled();
+    }
     constexpr std::size_t processing_budget_bytes = std::size_t{128} * 1024 * 1024;
     core::Budget budget{processing_budget_bytes};
-    auto source = io::load_grayscale_png(request.input(), budget);
+    auto source = io::load_grayscale_png(request.input(), budget, cancellation);
     if (!source) {
         return std::unexpected(source.error());
+    }
+    if (cancellation.requested(core::Checkpoint::allocation)) {
+        return core::cancelled();
     }
     auto destination =
         image::Plane<std::uint8_t>::allocate(budget, source->width(), source->height());
@@ -38,15 +46,15 @@ core::Result<app::PublishedImage> Processor::process(const app::ProcessRequest& 
     if (!concurrency) {
         return std::unexpected(concurrency.error());
     }
-    const exec::Scheduler scheduler{*concurrency};
+    const exec::Scheduler scheduler{*concurrency, cancellation};
     const auto applied =
         methods::binarize(source->view().as_const(), destination->view(), request.method(),
                           {.scheduler = scheduler, .budget = budget});
     if (!applied) {
         return std::unexpected(applied.error());
     }
-    auto published = io::publish_grayscale_png(request.output_directory(),
-                                               destination->view().as_const(), budget);
+    auto published = io::publish_grayscale_png(
+        request.output_directory(), destination->view().as_const(), budget, cancellation);
     if (!published) {
         return std::unexpected(published.error());
     }

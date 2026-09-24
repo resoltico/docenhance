@@ -4,6 +4,7 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/cli/run.hpp"
 #include "docenhance/contract/command.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/report/render.hpp"
 
@@ -51,7 +52,8 @@ class RecordingProcessor final : public app::Processor {
     Behavior behavior = Behavior::success;
     unsigned calls = 0;
     bool effect_observed = false;
-    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/) override {
+    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/,
+                                              const core::Cancellation& /*cancellation*/) override {
         ++calls;
         if (behavior == Behavior::refusal) {
             return std::unexpected(core::Error{

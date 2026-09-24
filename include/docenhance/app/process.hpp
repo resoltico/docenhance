@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/contract/command.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
@@ -49,6 +50,7 @@ class Processor {
     Processor(Processor&&) = delete;
     Processor& operator=(Processor&&) = delete;
     virtual ~Processor() = default;
-    [[nodiscard]] virtual core::Result<PublishedImage> process(const ProcessRequest& request) = 0;
+    [[nodiscard]] virtual core::Result<PublishedImage>
+    process(const ProcessRequest& request, const core::Cancellation& cancellation) = 0;
 };
 } // namespace docenhance::app

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
@@ -16,6 +17,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace docenhance::io {
 // The callback registry, diagnostics and C handles live OUTSIDE every setjmp frame. No longjmp
@@ -27,10 +29,14 @@ struct FileCloser {
     void operator()(std::FILE* file) const noexcept;
 };
 struct PngMemory {
+    PngMemory(core::Budget& owner, core::Cancellation control)
+        : budget(owner), cancellation(std::move(control)) {}
     std::reference_wrapper<core::Budget> budget;
-    std::array<core::Buffer, codec_allocation_slots> blocks;
+    std::array<core::Buffer, codec_allocation_slots> blocks{};
     std::array<char, codec_diagnostic_bytes> message{};
     bool exhausted = false;
+    core::Cancellation cancellation;
+    bool cancelled = false;
 };
 // Reader state and its remaining-byte bound also live outside every libpng jump frame.
 struct PngInput {
@@ -40,7 +46,7 @@ struct PngInput {
 };
 class PngContext {
   public:
-    PngContext(core::Budget& budget, bool write);
+    PngContext(core::Budget& budget, bool write, const core::Cancellation& cancellation = {});
     PngContext(const PngContext&) = delete;
     PngContext& operator=(const PngContext&) = delete;
     PngContext(PngContext&&) = delete;
@@ -56,8 +62,10 @@ class PngContext {
     int passes = 1;
     bool writing;
 };
+[[nodiscard]] bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept;
 [[nodiscard]] std::filesystem::path utf8_path(std::string_view value);
 [[nodiscard]] core::Result<void> encode_png(const std::filesystem::path& output,
                                             image::PlaneView<const std::uint8_t> view,
-                                            core::Budget& budget);
+                                            core::Budget& budget,
+                                            const core::Cancellation& cancellation = {});
 } // namespace docenhance::io

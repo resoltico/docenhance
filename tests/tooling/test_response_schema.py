@@ -88,3 +88,26 @@ class ResponseSchemaTests(unittest.TestCase):
         validator = Draft202012Validator(SCHEMA)
         validator.validate(response)
         self.assertFalse(validator.is_valid(response | {"options": [{"name": "--help"}]}))
+
+    def test_cancellation_cannot_claim_completion_or_uncertainty(self) -> None:
+        """Cancellation has its own status; ambiguous publication is a different outcome."""
+        response = {
+            "schema_version": 1,
+            "command": "process",
+            "version": "0.3.0",
+            "exit_code": 130,
+            "publication": "not_started",
+            "error": {"code": "E_CANCELLED", "message": "Cancelled"},
+        }
+        validator = Draft202012Validator(SCHEMA)
+        validator.validate(response)
+        validator.validate(response | {"publication": "not_published"})
+        for change in (
+            {"publication": "completed"},
+            {"publication": "unknown"},
+            {"command": "methods"},
+            {"exit_code": 0},
+            {"exit_code": 7},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(validator.is_valid(response | change))

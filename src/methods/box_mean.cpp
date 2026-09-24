@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/methods/box_mean.hpp"
 
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/scheduler.hpp"
@@ -14,6 +15,7 @@
 #include <cstdint>
 #include <expected>
 #include <limits>
+#include <optional>
 #include <ranges>
 #include <span>
 
@@ -48,8 +50,10 @@ static_assert(std::numeric_limits<std::uint32_t>::max() <= image::max_reflect_ex
 // A reflected window is periodic. Summing full periods first changes initialization from O(radius)
 // to O(extent) when a requested radius reaches beyond the input many times.
 template <typename Sample>
-[[nodiscard]] double reflected_window_sum(Sample sample, std::int64_t center, std::uint32_t extent,
-                                          std::int64_t radius) {
+[[nodiscard]] std::optional<double> reflected_window_sum(Sample sample, std::int64_t center,
+                                                         std::uint32_t extent, std::int64_t radius,
+                                                         const core::Cancellation& cancellation) {
+    constexpr std::uint64_t chunk_samples = 1024;
     const auto length = window_length(radius);
     if (extent == 1U) {
         return static_cast<double>(length) * sample(0);
@@ -59,12 +63,20 @@ template <typename Sample>
     if (length <= period) {
         double sum = 0.0;
         for (std::uint64_t offset = 0; offset < length; ++offset) {
+            if (offset % chunk_samples == 0 &&
+                cancellation.requested(core::Checkpoint::initialization)) {
+                return std::nullopt;
+            }
             sum += sample(static_cast<std::int64_t>(offset) + begin);
         }
         return sum;
     }
     double period_sum = 0.0;
     for (std::uint32_t index = 0; index < extent; ++index) {
+        if (index % chunk_samples == 0 &&
+            cancellation.requested(core::Checkpoint::initialization)) {
+            return std::nullopt;
+        }
         const double multiplicity = index == 0U || index + 1U == extent ? 1.0 : 2.0;
         period_sum += multiplicity * sample(static_cast<std::int64_t>(index));
     }
@@ -72,6 +84,10 @@ template <typename Sample>
     const auto full_periods = static_cast<double>(complete_periods);
     double sum = full_periods * period_sum;
     for (std::uint64_t offset = 0; offset < length % period; ++offset) {
+        if (offset % chunk_samples == 0 &&
+            cancellation.requested(core::Checkpoint::initialization)) {
+            return std::nullopt;
+        }
         sum += sample(static_cast<std::int64_t>(offset) + begin);
     }
     return sum;
@@ -79,16 +95,25 @@ template <typename Sample>
 
 // One row of the horizontal pass: the window slides by adding the sample that enters it and
 // subtracting the one that leaves, which is why the cost does not grow with the radius.
-void mean_along_row(std::span<const float> source, std::span<float> destination, Window window) {
+bool mean_along_row(std::span<const float> source, std::span<float> destination, Window window,
+                    const core::Cancellation& cancellation) {
     const auto width = static_cast<std::uint32_t>(source.size());
     // The one place a sample is reached by a computed index; every index is folded into the plane
     // first, and the sanitizer presets check that with a hardened standard library.
     const auto sample = [source, width](std::int64_t at) {
         return static_cast<double>(source[fold(at, width)]); // NOLINT(*-unchecked-container-access)
     };
-    double sum = reflected_window_sum(sample, 0, width, window.radius);
+    auto initial = reflected_window_sum(sample, 0, width, window.radius, cancellation);
+    if (!initial) {
+        return false;
+    }
+    double sum = *initial;
     std::uint32_t x = 0;
     for (float& mean : destination) {
+        constexpr std::uint32_t chunk_samples = 1024;
+        if (x % chunk_samples == 0 && cancellation.requested(core::Checkpoint::processing)) {
+            return false;
+        }
         mean = static_cast<float>(sum * window.scale);
         if (x + 1U < width) {
             sum += sample(static_cast<std::int64_t>(x) + window.radius + 1) -
@@ -96,12 +121,18 @@ void mean_along_row(std::span<const float> source, std::span<float> destination,
         }
         ++x;
     }
+    return true;
 }
 
 // One tile of the vertical pass: the same sliding window, held for a block of columns at once so
 // that every read is a whole row and the sums stay in cache.
-void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float> destination,
-                    Window window, std::uint32_t first_column, std::uint32_t first_row) {
+struct TileOrigin {
+    std::uint32_t column;
+    std::uint32_t row;
+};
+bool mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float> destination,
+                    Window window, TileOrigin origin, const core::Cancellation& cancellation) {
+    const auto [first_column, first_row] = origin;
     const auto height = source.height();
     const auto columns = std::min(tile_columns, source.width() - first_column);
     const auto last_row = first_row + std::min(tile_rows, height - first_row);
@@ -117,21 +148,31 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
     // radius uses one reflected period per column instead of iterating the radius itself.
     if (window_length(window.radius) <= reflection_period(height)) {
         for (std::int64_t offset = -window.radius; offset <= window.radius; ++offset) {
+            if (cancellation.requested(core::Checkpoint::initialization)) {
+                return false;
+            }
             accumulate(static_cast<std::int64_t>(first_row) + offset, 1.0);
         }
     } else {
         auto sum = block.begin();
         for (std::uint32_t offset = 0; offset < columns; ++offset, ++sum) {
             const auto column = first_column + offset;
-            *sum = reflected_window_sum(
+            const auto initial = reflected_window_sum(
                 [&](std::int64_t row) {
                     const auto samples = source.row(static_cast<std::uint32_t>(fold(row, height)));
                     return static_cast<double>(samples.subspan(column, 1).front());
                 },
-                static_cast<std::int64_t>(first_row), height, window.radius);
+                static_cast<std::int64_t>(first_row), height, window.radius, cancellation);
+            if (!initial) {
+                return false;
+            }
+            *sum = *initial;
         }
     }
     for (std::uint32_t y = first_row; y < last_row; ++y) {
+        if (cancellation.requested(core::Checkpoint::processing)) {
+            return false;
+        }
         const auto out = destination.row(y).subspan(first_column, columns);
         for (auto [mean, sum] : std::views::zip(out, block)) {
             mean = static_cast<float>(sum * window.scale);
@@ -139,6 +180,7 @@ void mean_down_tile(image::PlaneView<const float> source, image::PlaneView<float
         accumulate(static_cast<std::int64_t>(y) + window.radius + 1, 1.0);
         accumulate(static_cast<std::int64_t>(y) - window.radius, -1.0);
     }
+    return true;
 }
 
 [[nodiscard]] std::uint32_t tiles_of(std::uint32_t extent, std::uint32_t tile) noexcept {
@@ -172,6 +214,10 @@ core::Result<void> box_mean(image::PlaneView<const float> source,
     if (auto checked = usable(source, destination, radius); !checked) {
         return checked;
     }
+    const auto& cancellation = scheduler.cancellation();
+    if (cancellation.requested(core::Checkpoint::allocation)) {
+        return core::cancelled();
+    }
     auto intermediate = image::Plane<float>::allocate(budget, source.width(), source.height());
     if (!intermediate) {
         return std::unexpected(intermediate.error());
@@ -182,16 +228,17 @@ core::Result<void> box_mean(image::PlaneView<const float> source,
     };
     const auto rows = intermediate->view();
     const auto row_tiles = tiles_of(source.height(), tile_rows);
-    const auto across =
-        scheduler.for_each(row_tiles, exec::WorkRef{[&](std::size_t tile) {
-                               const auto first = static_cast<std::uint32_t>(tile) * tile_rows;
-                               const auto last =
-                                   first + std::min(tile_rows, source.height() - first);
-                               for (std::uint32_t y = first; y < last; ++y) {
-                                   mean_along_row(source.row(y), rows.row(y), window);
-                               }
-                               return core::Result<void>{};
-                           }});
+    const auto across = scheduler.for_each(
+        row_tiles, exec::WorkRef{[&](std::size_t tile) {
+            const auto first = static_cast<std::uint32_t>(tile) * tile_rows;
+            const auto last = first + std::min(tile_rows, source.height() - first);
+            for (std::uint32_t y = first; y < last; ++y) {
+                if (!mean_along_row(source.row(y), rows.row(y), window, cancellation)) {
+                    return core::Result<void>{core::cancelled()};
+                }
+            }
+            return core::Result<void>{};
+        }});
     if (!across) {
         return across;
     }
@@ -201,8 +248,10 @@ core::Result<void> box_mean(image::PlaneView<const float> source,
         static_cast<std::size_t>(column_tiles) * row_tiles, exec::WorkRef{[&](std::size_t tile) {
             const auto column = static_cast<std::uint32_t>(tile % column_tiles) * tile_columns;
             const auto row = static_cast<std::uint32_t>(tile / column_tiles) * tile_rows;
-            mean_down_tile(constant, destination, window, column, row);
-            return core::Result<void>{};
+            return mean_down_tile(constant, destination, window, {.column = column, .row = row},
+                                  cancellation)
+                       ? core::Result<void>{}
+                       : core::Result<void>{core::cancelled()};
         }});
 }
 } // namespace docenhance::methods

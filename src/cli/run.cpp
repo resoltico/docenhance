@@ -7,6 +7,7 @@
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/utf8.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/report/render.hpp"
 
@@ -130,7 +131,7 @@ std::optional<Outcome> apply_root_flags(const CLI::App& cli, const RootFlags& ro
     return std::nullopt;
 }
 Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation,
-                           app::Processor& processor) {
+                           app::Processor& processor, const core::Cancellation& cancellation) {
     if (std::ranges::any_of(args, [](const char* arg) { return !contract::valid_utf8(arg); })) {
         return argument_error(invocation, "Arguments must be well-formed UTF-8");
     }
@@ -164,7 +165,7 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
             return std::move(*rejected);
         }
     }
-    return docenhance::app::dispatch(invocation, processor);
+    return docenhance::app::dispatch(invocation, processor, cancellation);
 }
 // Transfer rendered bytes without inheriting an embedding caller's width/fill formatting.
 // Standard stream ties and exception masks remain the caller's; only direct access is selected.
@@ -190,7 +191,7 @@ int emit(const Outcome& outcome, bool json, std::ostream& out, std::ostream& err
 }
 } // namespace
 int run(std::span<const char* const> args, app::Processor& processor, std::ostream& out,
-        std::ostream& err) {
+        std::ostream& err, const core::Cancellation& cancellation) {
     Invocation invocation;
     // argv pointers and its program name are caller-owned; reject an invalid API invocation.
     if (args.empty() || args.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
@@ -205,7 +206,7 @@ int run(std::span<const char* const> args, app::Processor& processor, std::ostre
     // Nothing has been emitted yet. Error mapping here cannot write a second response.
     std::optional<Outcome> outcome;
     try {
-        outcome = parse_and_dispatch(args, invocation, processor);
+        outcome = parse_and_dispatch(args, invocation, processor, cancellation);
     } catch (const CLI::ParseError& error) {
         outcome = argument_error(invocation, error.what());
     } catch (const std::bad_alloc&) {

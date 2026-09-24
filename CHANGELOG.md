@@ -6,6 +6,9 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Added
 
+- Cooperative execution cancellation with typed `E_CANCELLED` responses (exit 130), safe
+  SIGINT/SIGTERM and Windows console interruption, and joined worker/resource cleanup.
+- Deterministic cancellation, codec-cleanup and commit-cutoff tests plus a cancellation fuzz target.
 - B02 Sauvola binarization for the existing grayscale PNG subset, with validated window/k/R
   options, exact integer local statistics, reflected borders and bounded per-worker scratch.
 - Direct-window, resource-boundary and real-executable conformance tests, a Sauvola fuzz oracle,
@@ -13,6 +16,10 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- Pass cancellation separately from admitted method settings through the processing port, codecs,
+  scheduler and publication. Late requests cannot erase committed or uncertain output outcomes.
+- Size the nightly campaign job for the manifest-derived ten-target workload and its watchdog
+  margins instead of rejecting the intended 1800-second campaigns before execution.
 - **Breaking:** Replace the single-threshold processing request with validated method alternatives;
   reject explicitly empty and cross-method options. B03 sample/equality behavior is unchanged.
 - Derive executable capabilities from actual method alternatives and check them against generated

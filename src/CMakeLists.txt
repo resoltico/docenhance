@@ -19,7 +19,8 @@ endfunction()
 
 de_library(de_core LAYER core
   SOURCES core/memory.cpp
-  HEADERS "${DE_INCLUDE}/core/memory.hpp" "${DE_INCLUDE}/core/result.hpp")
+  HEADERS "${DE_INCLUDE}/core/memory.hpp" "${DE_INCLUDE}/core/result.hpp"
+          "${DE_INCLUDE}/core/cancellation.hpp")
 de_library(de_contract LAYER contract
   SOURCES contract/parse.cpp
   HEADERS "${DE_INCLUDE}/contract/command.hpp" "${DE_INCLUDE}/contract/cli_contract.hpp"
@@ -65,14 +66,14 @@ endif()
 de_library(de_host LAYER host
   SOURCES host/processor.cpp HEADERS "${DE_INCLUDE}/host/processor.hpp"
   LINKS de_app de_core de_exec de_image de_io de_methods)
-add_executable(docenhance entry/main.cpp)
+add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)
 if(MINGW)
   target_link_options(docenhance PRIVATE -municode)
 endif()
 target_link_libraries(docenhance PRIVATE de_cli de_core de_host)
 de_apply_options(docenhance)
 set_target_properties(docenhance PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
-de_register_target(docenhance LAYER entry SOURCES entry/main.cpp LINKS de_cli de_core de_host)
+de_register_target(docenhance LAYER entry SOURCES entry/main.cpp entry/signals.cpp entry/signals.hpp LINKS de_cli de_core de_host)
 de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json")
 
 # Not a layer: this probe exists to prove the pinned native dependencies build, link and run, so it

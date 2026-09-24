@@ -45,3 +45,8 @@ certificate of the original document's meaning or authenticity.
 For binarization, read `docs/binarization.md`. Preserve validated method alternatives, strict
 option presence and normalized units. The runtime catalog comes from actual variant types and
 must match reviewed generated metadata; a catalog flag alone does not implement a capability.
+
+Cancellation is explicit execution control, never method configuration. Preserve the final precommit
+cutoff, real-error precedence, worker joins and truthful publication states. Add bounded checkpoints
+inside new long-running loops and test them without timing sleeps. Read `docs/cancellation.md` before
+changing interrupts, scheduling, codecs or publication; never call `request_stop` from an OS handler.

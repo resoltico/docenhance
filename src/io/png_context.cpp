@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "png_context.hpp"
 
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 
@@ -69,8 +70,8 @@ void warn_png(png_structp png, png_const_charp message) noexcept {
 }
 } // namespace
 
-PngContext::PngContext(core::Budget& budget, bool write)
-    : memory{.budget = budget, .blocks = {}}, writing(write) {
+PngContext::PngContext(core::Budget& budget, bool write, const core::Cancellation& cancellation)
+    : memory(budget, cancellation), writing(write) {
     png = writing ? png_create_write_struct_2(PNG_LIBPNG_VER_STRING, &memory, fail_png, warn_png,
                                               &memory, allocate_png, free_png)
                   : png_create_read_struct_2(PNG_LIBPNG_VER_STRING, &memory, fail_png, warn_png,
@@ -127,11 +128,21 @@ core::Error PngContext::error(core::ErrorCode fallback) const {
             .message = "The PNG codec exhausted its bounded allocation budget",
         };
     }
+    if (memory.cancelled) {
+        return core::cancelled().error();
+    }
     return {
         .code = fallback,
         .message = memory.message.front() == '\0' ? "Cannot open or initialize the PNG stream"
                                                   : memory.message.data(),
     };
+}
+bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept {
+    auto& memory = *static_cast<PngMemory*>(png_get_error_ptr(png));
+    if (memory.cancellation.requested(at)) {
+        memory.cancelled = true;
+    }
+    return memory.cancelled;
 }
 std::filesystem::path utf8_path(std::string_view value) {
     std::u8string utf8;

@@ -16,6 +16,8 @@ image/codec allocations are bounded. Help, version and method discovery perform 
 The application validates a typed request; the production host owns execution; the CLI and report
 layers own transport and presentation. Buffer lifetime, borrowed views, scheduler failure handling,
 codec allocations and exclusive publication have explicit contracts and regression tests.
+Cooperative cancellation is carried through the pipeline, with native interrupt handling and a
+publication cutoff; see [cancellation](cancellation.md).
 See [architecture](architecture.md) for exact limits and the publication trust/durability boundary.
 
 ## Reusable components

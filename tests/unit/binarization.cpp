@@ -5,6 +5,7 @@
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/command.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
@@ -42,7 +43,8 @@ contract::Invocation request(const std::string& selector) {
 class SuccessfulProcessor final : public app::Processor {
   public:
     unsigned calls = 0;
-    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/) override {
+    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/,
+                                              const core::Cancellation& /*cancellation*/) override {
         ++calls;
         return app::PublishedImage{.output = "output/result.png"};
     }

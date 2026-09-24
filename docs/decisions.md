@@ -137,3 +137,12 @@ for other operations; it is not forced into a numerically or spatially unsuitabl
 The response schema template and method catalog jointly generate the delivered wire schema.
 The application attaches the admitted method's identity to the host's published-image result,
 so report metadata is neither a hard-coded B03 label nor an unchecked adapter claim.
+
+## Cancellation belongs to execution, not method parameters
+
+An owned stop token and a static interrupt probe are passed explicitly; methods do not read
+process-global state. The process bridge only latches supported interrupts with a lock-free atomic
+store. Normal execution observes the request, joins workers and cleans owned unpublished output.
+A final precommit snapshot authorizes the native operation, whose actual outcome remains authoritative
+thereafter. No monitor thread, asynchronous job system or forced-shutdown cleanup promise is needed.
+The full contract and separate design QA are in [cancellation](cancellation.md).

@@ -177,3 +177,10 @@ and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's auth
 registration, including box-mean, rather than a second shell list. Native sanitizer presets instrument first-party code. The isolated PNG fuzz build additionally
 instruments pinned libpng/zlib and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
 and limits, rather than claiming that every platform or future method already passed.
+
+## Cooperative cancellation
+
+A request-scoped `core::Cancellation` owns its standard stop token and optionally observes a static
+interrupt latch. It is execution control, not a method parameter. The scheduler owns the numerical
+operation's observation; codecs and publication receive the same control explicitly. See
+[cancellation](cancellation.md) for checkpoints, signal restrictions, commit cutoff and test coverage.

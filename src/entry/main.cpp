@@ -3,6 +3,7 @@
 #include "docenhance/cli/run.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
+#include "signals.hpp"
 
 #include <cstddef>
 #include <iostream>
@@ -55,7 +56,8 @@ int run_windows(std::span<wchar_t* const> raw) {
         args.push_back(value.c_str());
     }
     host::Processor processor;
-    return cli::run(args, processor, std::cout, std::cerr);
+    return cli::run(args, processor, std::cout, std::cerr,
+                    docenhance::entry::process_cancellation());
 }
 } // namespace
 } // namespace docenhance::entry
@@ -63,6 +65,10 @@ int run_windows(std::span<wchar_t* const> raw) {
 // NOLINTNEXTLINE(misc-const-correctness,misc-use-internal-linkage)
 int wmain(int argc, wchar_t** const argv) {
     try {
+        docenhance::entry::InterruptScope interrupts;
+        if (!interrupts.install()) {
+            return static_cast<int>(docenhance::core::ExitCode::invariant);
+        }
         return docenhance::entry::run_windows({argv, static_cast<std::size_t>(argc)});
     } catch (...) {
         return static_cast<int>(docenhance::core::ExitCode::invariant);
@@ -71,10 +77,15 @@ int wmain(int argc, wchar_t** const argv) {
 #else
 int main(int argc, char** const argv) { // NOLINT(misc-const-correctness)
     try {
+        docenhance::entry::InterruptScope interrupts;
+        if (!interrupts.install()) {
+            return static_cast<int>(docenhance::core::ExitCode::invariant);
+        }
         const std::span<char* const> raw(argv, static_cast<std::size_t>(argc));
         const std::vector<const char*> args(raw.begin(), raw.end());
         docenhance::host::Processor processor;
-        return docenhance::cli::run(args, processor, std::cout, std::cerr);
+        return docenhance::cli::run(args, processor, std::cout, std::cerr,
+                                    docenhance::entry::process_cancellation());
     } catch (...) {
         // Reporting the original failure failed too (for example, out of memory).
         return static_cast<int>(docenhance::core::ExitCode::invariant);
