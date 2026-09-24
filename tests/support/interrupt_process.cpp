@@ -54,9 +54,14 @@ int check_dispositions() {
 #endif
 #ifdef _WIN32
 int send_break(std::string_view process) {
+    if (process.empty()) {
+        return 2;
+    }
     std::uint32_t id = 0;
-    const auto parsed = std::from_chars(process.data(), process.data() + process.size(), id);
-    if (parsed.ec != std::errc{} || parsed.ptr != process.data() + process.size() || id == 0) {
+    // MSVC string_view iterators are not raw pointers; an empty suffix supplies the end pointer.
+    const char* const end = process.substr(process.size()).data();
+    const auto parsed = std::from_chars(process.data(), end, id);
+    if (parsed.ec != std::errc{} || parsed.ptr != end || id == 0) {
         return 2;
     }
     static_cast<void>(FreeConsole()); // NOLINT(misc-include-cleaner)
