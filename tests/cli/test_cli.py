@@ -19,7 +19,7 @@ from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
 SHA256_HEX_LENGTH = 64
-PROCESS_OPTION_COUNT = 5
+PROCESS_OPTION_COUNT = 8
 EXIT_INVOCATION = 2
 EXIT_PROCESSING = 4
 PNG_FILTER_NONE = 0
@@ -136,12 +136,17 @@ def read_gray_png(path: Path) -> bytes:
 def discovery_cases(exe: Path) -> None:
     """Version, method and help discovery report capabilities honestly."""
     version = call_json(exe, ["version", "--json"])
-    expect(version["methods"] == [{"id": "B03", "method_version": 1}], "B03 advertised")
+    expect(
+        version["methods"]
+        == [{"id": "B02", "method_version": 1}, {"id": "B03", "method_version": 1}],
+        "implemented methods advertised",
+    )
     expect(version["supported_formats"] == ["png"], "PNG advertised")
     expect(len(version["dependency_lock_sha256"]) == SHA256_HEX_LENGTH, "lock digest")
     expect(
-        call_json(exe, ["methods", "--json"])["methods"] == [{"id": "B03", "method_version": 1}],
-        "methods list is B03",
+        call_json(exe, ["methods", "--json"])["methods"]
+        == [{"id": "B02", "method_version": 1}, {"id": "B03", "method_version": 1}],
+        "methods list matches implementation",
     )
     for command in HELP_COMMANDS:
         response = call_json(exe, [*([command] if command else []), "--help", "--json"])

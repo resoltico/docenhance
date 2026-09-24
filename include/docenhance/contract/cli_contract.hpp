@@ -14,7 +14,7 @@ namespace docenhance::contract {
         return "docenhance COMMAND [OPTIONS]";
     case Command::process:
         return "docenhance process INPUT --out-dir DIRECTORY --binarize "
-               "fixed [--fixed-threshold T] [--json]";
+               "METHOD [METHOD OPTIONS] [--json]";
     case Command::methods:
         return "docenhance methods [ID] [--json]";
     case Command::version:
@@ -34,9 +34,12 @@ struct OptionDescriptor {
 // Descriptions are long single-line literals; keep one option per line.
 // clang-format off
 inline constexpr auto option_catalog = std::to_array<OptionDescriptor>({
-    {.name = "--out-dir", .metavar = "DIRECTORY", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "Required; a new result directory", .methods = "B03", .description = "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success."},
-    {.name = "--binarize", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "Required; `fixed`", .methods = "B03", .description = "Selects B03 fixed-threshold binarization. No other method is accepted."},
-    {.name = "--fixed-threshold", .metavar = "T", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.50; finite `[0,1]`", .methods = "B03", .description = "Normalized grayscale threshold. A sample is black iff its value is less than or equal to T."},
+    {.name = "--out-dir", .metavar = "DIRECTORY", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "Required; a new result directory", .methods = "B02,B03", .description = "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success."},
+    {.name = "--binarize", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "Required; `fixed` or `sauvola`", .methods = "B02,B03", .description = "Select B03 fixed threshold or B02 Sauvola. Options of the other method are rejected even when explicitly empty or equal to their default."},
+    {.name = "--fixed-threshold", .metavar = "T", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.50; finite `[0,1]`", .methods = "B03", .description = "B03 only. Normalized grayscale threshold; black iff sample/255 <= T. Rejected for Sauvola."},
+    {.name = "--sauvola-window", .metavar = "PIXELS", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "31; odd integer `[3,4095]`", .methods = "B02", .description = "B02 only. Centered square window with REFLECT_101 borders; a singleton dimension repeats its sample."},
+    {.name = "--sauvola-k", .metavar = "K", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.2; finite `[0,1]`", .methods = "B02", .description = "B02 only. Weight in T=m*(1+k*(s/(255*R)-1)), using population standard deviation in stored byte units."},
+    {.name = "--sauvola-r", .metavar = "R", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.5; finite `[1/255,1]`", .methods = "B02", .description = "B02 only. Normalized deviation scale: 0.5 means 127.5 in byte units, not 128. Black iff sample <= T; no threshold rounding or clipping."},
     {.name = "--json", .metavar = "", .scope = CommandSet::all(), .group = "Presentation arguments", .domain = "False", .methods = "", .description = "Render one JSON response on stdout and no diagnostic text on stderr. Flush the selected stream before returning. JSON exit_code describes the rendered command outcome; response-delivery failure can instead end the process with exit 5. Check both the response and process status. A missing/incomplete response or exit 5 does not prove that publication did not commit; do not retry blindly."},
     {.name = "--help", .metavar = "", .scope = CommandSet::all(), .group = "Presentation arguments", .domain = "N/A", .methods = "", .description = "Renders help and exits without opening input or creating output."},
     {.name = "--version", .metavar = "", .scope = CommandSet{Command::root}, .group = "Presentation arguments", .domain = "N/A", .methods = "", .description = "Human-readable alias of `version`."},

@@ -5,10 +5,13 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/version.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -59,7 +62,11 @@ Outcome process(const contract::Invocation& invocation, Processor& processor) {
                                            });
     try {
         auto result = processor.process(*request);
-        return result ? succeeded(invocation, std::move(*result))
+        return result ? succeeded(invocation,
+                                  Processed{
+                                      .output = std::move(result->output),
+                                      .method = methods::describe(request->method()),
+                                  })
                       : failure(invocation, std::move(result.error()));
     } catch (...) {
         return interrupted;
@@ -90,11 +97,18 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor) {
         return outcome;
     }
     if (invocation.command == contract::Command::methods) {
-        if (!invocation.subject.empty() && invocation.subject != "B03") {
-            return unavailable(invocation, "No completed method with this ID is available; "
-                                           "see docs/methods.md for planned methods");
+        auto available = capabilities();
+        if (!invocation.subject.empty()) {
+            const auto selected = std::ranges::find(available.methods, invocation.subject,
+                                                    &methods::ImplementedMethod::id);
+            if (selected == available.methods.end()) {
+                return unavailable(invocation, "No completed method with this ID is available; "
+                                               "see docs/methods.md for planned methods");
+            }
+            available.methods = available.methods.subspan(
+                static_cast<std::size_t>(selected - available.methods.begin()), 1);
         }
-        return succeeded(invocation, Methods{.capabilities = capabilities()});
+        return succeeded(invocation, Methods{.capabilities = available});
     }
     return unavailable(invocation, std::string(contract::command_name(invocation.command)) +
                                        " is specified but not implemented; no inputs were "

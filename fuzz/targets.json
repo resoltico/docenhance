@@ -72,6 +72,16 @@
         "de_io"
       ],
       "max_len": 1100
+    },
+    "sauvola": {
+      "source": "sauvola.cpp",
+      "links": [
+        "de_core",
+        "de_exec",
+        "de_image",
+        "de_methods"
+      ],
+      "max_len": 200
     }
   }
 }

@@ -51,7 +51,7 @@ class RecordingProcessor final : public app::Processor {
     Behavior behavior = Behavior::success;
     unsigned calls = 0;
     bool effect_observed = false;
-    core::Result<app::Processed> process(const app::ProcessRequest& /*request*/) override {
+    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/) override {
         ++calls;
         if (behavior == Behavior::refusal) {
             return std::unexpected(core::Error{
@@ -69,7 +69,7 @@ class RecordingProcessor final : public app::Processor {
         case Behavior::unknown_exception:
             throw 42; // NOLINT(bugprone-std-exception-baseclass): Exercise catch-all containment.
         default:
-            return app::Processed{.output = "result/result.png"};
+            return app::PublishedImage{.output = "result/result.png"};
         }
     }
 };

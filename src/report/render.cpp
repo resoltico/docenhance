@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <variant>
 namespace docenhance::report {
 namespace {
@@ -86,7 +87,8 @@ Json option_fields(contract::Command command) {
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
-    text += "Implemented: 1/2/4/8-bit grayscale PNG input and 8-bit B03 fixed-threshold output.\n";
+    text += "Implemented: 1/2/4/8-bit grayscale PNG input and 8-bit B02 Sauvola or B03 "
+            "fixed-threshold output.\n";
     text += "Not implemented: other image formats, color handling, batching, presets, and other "
             "methods.\n\n";
     if (help.list_commands) {
@@ -116,14 +118,15 @@ Output text_form(const app::Outcome& outcome) {
             } else if constexpr (std::is_same_v<Payload, app::Version>) {
                 return {
                     .out = "DocEnhance " + std::string(outcome.build.version) +
-                           " (PNG B03 fixed-threshold processing)\n",
+                           " (grayscale PNG binarization)\n",
                     .err = {},
                 };
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {
-                return {
-                    .out = "Implemented methods: B03 fixed-threshold binarization.\n",
-                    .err = {},
-                };
+                std::string text;
+                for (const auto& method : payload.capabilities.methods) {
+                    text += std::string(method.id) + " " + std::string(method.selector) + "\n";
+                }
+                return {.out = std::move(text), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 return {.out = "Wrote " + payload.output + "\n", .err = {}};
             } else {
@@ -159,7 +162,8 @@ Output json_form(const app::Outcome& outcome) {
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 const Json fields = {
-                    {"method", "B03"},
+                    {"method", payload.method.id},
+                    {"method_version", payload.method.method_version},
                     {"output", payload.output},
                     {"publication", "completed"},
                 };

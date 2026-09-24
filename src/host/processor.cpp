@@ -5,16 +5,19 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/exec/concurrency.hpp"
+#include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
-#include "docenhance/methods/fixed_threshold.hpp"
+#include "docenhance/methods/binarization.hpp"
 
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <utility>
 namespace docenhance::host {
-core::Result<app::Processed> Processor::process(const app::ProcessRequest& request) {
+core::Result<app::PublishedImage> Processor::process(const app::ProcessRequest& request) {
     constexpr std::size_t processing_budget_bytes = std::size_t{128} * 1024 * 1024;
     core::Budget budget{processing_budget_bytes};
     auto source = io::load_grayscale_png(request.input(), budget);
@@ -26,8 +29,19 @@ core::Result<app::Processed> Processor::process(const app::ProcessRequest& reque
     if (!destination) {
         return std::unexpected(destination.error());
     }
-    const auto applied = methods::fixed_threshold(source->view().as_const(), destination->view(),
-                                                  request.threshold());
+    const auto scratch = methods::scratch_bytes(request.method(), source->width(), 1);
+    if (!scratch) {
+        return std::unexpected(scratch.error());
+    }
+    const auto concurrency = exec::Concurrency::resolve(std::nullopt, exec::detected_concurrency(),
+                                                        budget.available(), *scratch);
+    if (!concurrency) {
+        return std::unexpected(concurrency.error());
+    }
+    const exec::Scheduler scheduler{*concurrency};
+    const auto applied =
+        methods::binarize(source->view().as_const(), destination->view(), request.method(),
+                          {.scheduler = scheduler, .budget = budget});
     if (!applied) {
         return std::unexpected(applied.error());
     }
@@ -36,6 +50,6 @@ core::Result<app::Processed> Processor::process(const app::ProcessRequest& reque
     if (!published) {
         return std::unexpected(published.error());
     }
-    return app::Processed{.output = std::move(*published)};
+    return app::PublishedImage{.output = std::move(*published)};
 }
 } // namespace docenhance::host

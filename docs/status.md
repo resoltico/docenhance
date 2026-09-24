@@ -1,15 +1,16 @@
 # Status
 
-The executable implements **B03 fixed-threshold binarization of a single grayscale PNG**.
+The executable implements **B02 Sauvola and B03 fixed-threshold binarization of a single grayscale PNG**.
 It is a deliberately limited document-image processor, not a complete restoration suite.
 Unsupported formats and methods fail explicitly; linked dependencies do not count as capabilities.
 
 ## Implemented product path
 
-`process INPUT --out-dir DIRECTORY --binarize fixed [--fixed-threshold T] [--json]` accepts
+`process INPUT --out-dir DIRECTORY --binarize fixed|sauvola [METHOD OPTIONS] [--json]` accepts
 1/2/4/8-bit grayscale PNG without transparency. It preserves stored grayscale sample semantics,
 expands low bit depths, and publishes one 8-bit `result.png` into a new directory without replacing
-an existing destination. The default threshold is 0.5. Input dimensions, file size and shared
+an existing destination. [Typed binarization](binarization.md) specifies both methods, defaults,
+normalized parameters and the bounded rolling-statistics kernel. Input dimensions, file size and shared
 image/codec allocations are bounded. Help, version and method discovery perform no file I/O.
 
 The application validates a typed request; the production host owns execution; the CLI and report
@@ -23,9 +24,9 @@ C++23/CMake target boundaries, a verified offline source lock and isolated nativ
 strict warnings and linters; generated method/argument contracts; deterministic scalar primitives;
 checked aligned planes; budget accounting; bounded indexed scheduling; a box-mean primitive;
 reference/property tests and manifest-declared engine-independent fuzz harnesses, including
-raw PNG decoding and independently generated exact-sample PNG checks. See [fuzzing](fuzzing.md).
+raw PNG decoding, independently generated exact-sample PNG checks and a direct-window Sauvola oracle. See [fuzzing](fuzzing.md).
 
-The box-mean primitive uses the internal scheduler, but the current public CLI does not expose
+Sauvola and the box-mean primitive use the internal scheduler; the public CLI does not expose
 `--threads`, batching or arbitrary recipes. OpenCV, Leptonica, JPEG, TIFF and Little CMS are linked
 and exercised by a development probe, not silently advertised as complete processing support.
 

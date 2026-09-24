@@ -11,6 +11,8 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from method_metadata import metadata_outputs
+
 ROOT = Path(__file__).resolve().parents[1]
 # The option fields, in the order the generated descriptor declares them. "scope" is typed and is
 # therefore rendered separately from the string fields.
@@ -40,7 +42,21 @@ METHODS_PREAMBLE = (
 )
 
 
-FIXED_TOKENS = ("--help", "--json", "--version", "--", "auto", "all", "off", "1-3", "0.5")
+FIXED_TOKENS = (
+    "--help",
+    "--json",
+    "--version",
+    "--",
+    "auto",
+    "all",
+    "off",
+    "1-3",
+    "0.5",
+    "fixed",
+    "sauvola",
+    "31",
+    "0.2",
+)
 
 
 class ContractError(ValueError):
@@ -158,6 +174,7 @@ def outputs() -> dict[Path, str]:
         ROOT / "docs/cli-contract.md": render_reference(contract),
         ROOT / "docs/methods.md": render_methods(methods["methods"]),
         ROOT / "fuzz/dict/cli.dict": render_cli_dictionary(contract),
+        **metadata_outputs(ROOT, methods["methods"], options),
     }
 
 

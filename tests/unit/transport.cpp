@@ -17,9 +17,9 @@ namespace {
 class CountingProcessor final : public app::Processor {
   public:
     unsigned calls = 0;
-    core::Result<app::Processed> process(const app::ProcessRequest& /*request*/) override {
+    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/) override {
         ++calls;
-        return app::Processed{.output = "result/result.png"};
+        return app::PublishedImage{.output = "result/result.png"};
     }
 };
 class RefusingBuffer final : public std::streambuf {

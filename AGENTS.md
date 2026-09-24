@@ -11,8 +11,8 @@ of I/O, process state, allocation expressions, throwing and catching. The CLI ow
 response delivery, never processing rules. `de_app` admits `ProcessRequest`; `de_host` executes it.
 The application contains unreported processing exceptions as unknown publication, not safe retry.
 
-Do not advertise a method or format until its complete contract and tests exist. B03 grayscale-PNG
-processing is implemented; other method entries are plans, not capabilities. Never use no-op/copy
+Do not advertise a method or format until its complete contract and tests exist. B02 Sauvola and B03 fixed-threshold
+grayscale-PNG processing are implemented; other method entries remain plans. Never use no-op/copy
 stubs to manufacture successful processing. `E_NOT_IMPLEMENTED` uses exit 4 and `not_started`;
 `E_PUBLICATION_UNKNOWN` uses exit 7 and `unknown`. An incomplete response is not proof of no effect.
 
@@ -24,7 +24,8 @@ Use locked sources and explicit feature configuration. Do not follow moving refe
 substitute system packages. Do not add neural/OCR/GPU/GUI/network/runtime Python components. Do not
 stamp MIT on upstream code or copy restricted research implementations.
 
-Edit `spec/cli-contract.json` and `spec/method-contract.json`; regenerate with
+Edit `spec/cli-contract.json`, `spec/method-contract.json` and the response schema template
+`spec/command-response.schema.json`; regenerate with
 `python tools/generate_spec.py`. Extend typed admission together with a complete processing method;
 a JSON catalog is not executable validation, and unsupported options must not be silently ignored.
 
@@ -40,3 +41,7 @@ For numerical work implement the specified mathematics, borders, precision, reso
 failures and reference fixtures before optimizing. A charged-buffer budget is not a process-RSS
 limit. Preserve unknown state rather than converting it to success. An enhanced image is not a
 certificate of the original document's meaning or authenticity.
+
+For binarization, read `docs/binarization.md`. Preserve validated method alternatives, strict
+option presence and normalized units. The runtime catalog comes from actual variant types and
+must match reviewed generated metadata; a catalog flag alone does not implement a capability.
