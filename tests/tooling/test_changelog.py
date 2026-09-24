@@ -11,6 +11,7 @@ from pathlib import Path
 from tools_path import ROOT
 
 import changelog
+import project_version
 import publish_source_release
 import release_publication
 
@@ -21,10 +22,17 @@ class ChangelogTests(unittest.TestCase):
     def test_current_release_extracts_exact_markdown(self) -> None:
         """The current stable section is returned verbatim without its heading."""
         text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        self.assertIn(
-            "`process` now performs B03 fixed-threshold binarization",
-            changelog.extract_release(text, "0.2.0"),
+        version = project_version.project_version(ROOT)
+        lines = text.splitlines()
+        start = next(
+            index for index, line in enumerate(lines) if line.startswith(f"## [{version}] - ")
         )
+        end = next(
+            (index for index in range(start + 1, len(lines)) if lines[index].startswith("## [")),
+            len(lines),
+        )
+        expected = "\n".join(lines[start + 1 : end]).strip("\n") + "\n"
+        self.assertEqual(changelog.extract_release(text, version), expected)
 
     def test_rejects_noncurrent_or_undated_release(self) -> None:
         """An older or invalid section cannot become release prose by selection alone."""

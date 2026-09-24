@@ -4,68 +4,32 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-24
+
 ### Added
 
-- Cooperative execution cancellation with typed `E_CANCELLED` responses (exit 130), safe
-  SIGINT/SIGTERM and Windows console interruption, and joined worker/resource cleanup.
-- Deterministic cancellation, codec-cleanup and commit-cutoff tests plus a cancellation fuzz target.
-- B02 Sauvola binarization for the existing grayscale PNG subset, with validated window/k/R
-  options, exact integer local statistics, reflected borders and bounded per-worker scratch.
-- Direct-window, resource-boundary and real-executable conformance tests, a Sauvola fuzz oracle,
-  and an explicitly synthetic uneven-illumination text-mask regression.
+- `process --binarize sauvola` applies B02 local thresholding to a single 1/2/4/8-bit grayscale PNG without transparency and writes an 8-bit black-and-white `result.png`; its odd window, `k`, and normalized `R` options are validated, with reflected borders and bounded scratch storage. Other formats and methods beyond B02/B03 remain unsupported.
+- Processing can be cancelled cooperatively with POSIX SIGINT/SIGTERM or Windows CTRL_C/CTRL_BREAK. A confirmed cancellation returns `E_CANCELLED` (exit 130) and `not_started` or `not_published`; a request after the final precommit check cannot undo an authorized publication. Blocking operations may delay cancellation, and forced termination has no cooperative cleanup guarantee.
 
 ### Changed
 
-- Pass cancellation separately from admitted method settings through the processing port, codecs,
-  scheduler and publication. Late requests cannot erase committed or uncertain output outcomes.
-- Size the nightly campaign job for the manifest-derived ten-target workload and its watchdog
-  margins instead of rejecting the intended 1800-second campaigns before execution.
-- **Breaking:** Replace the single-threshold processing request with validated method alternatives;
-  reject explicitly empty and cross-method options. B03 sample/equality behavior is unchanged.
-- Derive executable capabilities from actual method alternatives and check them against generated
-  reviewed identities. Successful JSON processing now includes `method_version`; `methods ID`
-  selects one capability. Generate the delivered response schema from its authoring template and
-  method catalog, with no compatibility path for the removed request shape.
-
-- Declare fuzz harness sources and links once for engine builds, native replays and complete
-  campaigns. Run bounded child-level parallelism with target-derived timeouts and retained evidence.
-- Share grayscale PNG decoding between bounded file and byte-span readers. Add raw-input and
-  independently constructed exact-sample harnesses, with instrumented libpng/zlib archives.
-- Replace destructive fuzz scratch reuse and implicit corpus merging with exclusive run directories
-  and content-addressed seed/regression staging that preserves every origin.
-
-- **Breaking:** Require well-formed UTF-8 command text and paths without normalization or byte
-  repair. Keep machine-readable identities strict; malformed diagnostics use an explicit fallback.
-- Separate validated application requests from the concrete processing host; inject the execution
-  port explicitly and keep CLI fuzzing entirely free of filesystem authority.
-- Unify production/fuzz target definitions and make full ASan/UBSan and TSan suites independent
-  required PR checks. Scheduled campaigns discover all harnesses through CTest.
-- Close the machine-response schema and validate it with pinned Draft 2020-12 tooling; remove
-  stale capability claims and the terminology ban that obstructed factual design documentation.
+- **Breaking (CLI):** `process` now admits only options for its selected `fixed` or `sauvola` method; explicitly empty numeric values are errors rather than defaults. Existing B03 fixed-threshold sample and equality rules are unchanged.
+- **Breaking (C++ API):** Application dispatch and CLI embedding now require an explicit processing port, and the port receives a validated method request plus cancellation control. Integrators using the previous dispatch or CLI signatures must update their adapters.
+- **Breaking (JSON):** Successful processing responses require `method_version`, and `methods ID` returns only the selected implemented method. Consumers validating responses against the 0.2.0 schema must update to the current schema; `schema_version` remains 1.
+- **Breaking (paths):** Command text and admitted paths must be well-formed UTF-8; invalid bytes and embedded path NULs are rejected without normalization or replacement. Integrators passing arbitrary filesystem bytes must provide valid UTF-8 spelling.
 
 ### Fixed
 
-- Preserve unknown publication when a processor throws after an unreported effect; reserve the
-  fallback outcome before execution instead of misreporting a safe retry or allocating in the catch.
-- Deliver exact serialized bytes regardless of caller width/fill settings, then flush and check
-  the selected response stream; delayed delivery failures cannot report success,
-  and an unused stream cannot invalidate a response or cause processing to repeat.
-- Preserve literal backslashes in POSIX output directory names when reporting the published file.
-- Align agent and design instructions with implemented capabilities and exception ownership.
-- Preserve buffer accounting after its budget owner is destroyed; validate borrowed view extents,
-  reset moved-from plane shapes, and reject empty/overlapping kernel destinations.
-- Contain worker and thread-launch exceptions; bound scheduling counters without integer wrap.
-- Charge PNG codec allocations to the page budget, preserve stored grayscale samples and handle
-  malformed data with destructors outside libpng jump frames.
-- Publish with native atomic no-replace semantics, preserve concurrent destinations/foreign stages,
-  and expose uncertain publication or cleanup instead of incorrectly promising a safe retry.
-- Preserve Unicode filesystem paths and normalize Windows command-line arguments to UTF-8.
-- Make corpus byte conversions explicit, prevent duplicate or unowned architecture declarations,
-  and check direct allocator calls as well as allocation expressions.
-- Bind lint exception fingerprints to the actual suppressed code and reject range-wide NOLINT
-  blocks; replace the native probe's broad allocator suppression with individual C ABI exceptions.
-- Disable unintended C++ module scanning for the header/translation-unit build model without
-  weakening compiler warnings or clang-tidy.
+- **Breaking (publication):** Output commit now uses native atomic no-replace operations, so a destination that appears during processing is refused rather than replaced; cleanup touches only owned staging. Ambiguous commit or cleanup, and an unreported processor exception after execution begins, return `E_PUBLICATION_UNKNOWN` (exit 7, `unknown`). Inspect output before retrying instead of treating these results as proof that nothing was published.
+- Response delivery now writes the rendered bytes once and checks the selected stream after flushing; a write or flush failure returns process exit 5 without rerunning processing. A complete JSON response may still precede that exit, so consumers must consider both the response and process status.
+- PNG decoding now limits encoded input size, charges codec allocations to the page budget, preserves stored grayscale sample values when expanding low bit depths, and rejects malformed input without publishing an incomplete image.
+- Reported output paths retain literal backslashes on POSIX and Unicode spelling on Windows; Windows command-line arguments are converted to UTF-8 before admission.
+- Direct C++ processing now rejects invalid or overlapping plane views, retains buffer accounting when an allocation outlives its budget handle, and contains worker or thread-launch failures after joining started workers.
+
+### Internal
+
+- Source architecture checks now enforce declared target links, headers, allocation and exception boundaries; lint exceptions are tied to specific code, and unintended C++ module scanning is disabled.
+- Native replays and libFuzzer/AFL campaigns share one target manifest, with bounded parallelism, retained corpus provenance and evidence. Required CI independently runs ASan/UBSan and TSan and covers Linux x86-64/ARM64, macOS ARM64/Intel, and Windows x86-64; the nightly budget accommodates all ten targets.
 
 ## [0.2.0] - 2026-09-22
 
