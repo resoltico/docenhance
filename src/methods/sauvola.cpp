@@ -81,7 +81,7 @@ struct Columns {
 struct StripRange {
     std::uint32_t first{};
     std::uint32_t end{};
-    std::reference_wrapper<const core::Cancellation> cancellation;
+    core::Cancellation cancellation;
 };
 struct Strip {
     image::PlaneView<const std::uint8_t> source;
@@ -90,11 +90,11 @@ struct Strip {
     std::uint32_t first;
     std::uint32_t end;
     Columns columns;
-    std::reference_wrapper<const core::Cancellation> cancellation;
+    core::Cancellation cancellation;
 
     Strip(image::PlaneView<const std::uint8_t> source_view,
           image::PlaneView<std::uint8_t> destination_view, const Sauvola& selected,
-          StripRange range, Columns workspace_columns)
+          const StripRange& range, Columns workspace_columns)
         : source(source_view), destination(destination_view), method(selected), first(range.first),
           end(range.end), columns(workspace_columns), cancellation(range.cancellation) {}
 
@@ -103,7 +103,7 @@ struct Strip {
         std::ranges::fill(columns.squares, 0);
         return window_samples(
             0, source.height(), method.get().window(), [&](std::uint32_t row, std::uint64_t count) {
-                if (cancellation.get().requested(core::Checkpoint::initialization)) {
+                if (cancellation.requested(core::Checkpoint::initialization)) {
                     return false;
                 }
                 const auto samples = source.row(row).subspan(columns.first, columns.sums.size());
@@ -150,7 +150,7 @@ struct Strip {
         for (std::uint32_t x = first; x < end; ++x) {
             constexpr std::uint32_t chunk_samples = 1024;
             if ((x - first) % chunk_samples == 0 &&
-                cancellation.get().requested(core::Checkpoint::processing)) {
+                cancellation.requested(core::Checkpoint::processing)) {
                 return false;
             }
             // Exact integer cancellation avoids catastrophic floating mean-square subtraction.
@@ -177,7 +177,7 @@ struct Strip {
             return false;
         }
         for (std::uint32_t row = 0; row < source.height(); ++row) {
-            if (cancellation.get().requested(core::Checkpoint::processing) || !write_row(row)) {
+            if (cancellation.requested(core::Checkpoint::processing) || !write_row(row)) {
                 return false;
             }
             if (row + 1 < source.height()) {
@@ -193,7 +193,7 @@ struct Work {
     std::reference_wrapper<const Sauvola> method;
     image::PlaneView<std::uint64_t> workspace;
     unsigned slots{};
-    std::reference_wrapper<const core::Cancellation> cancellation;
+    core::Cancellation cancellation;
     core::Result<void> operator()(std::size_t slot) const {
         const auto radius = method.get().window() / 2;
         for (auto tile = slot; tile < strip_count(source.width()); tile += slots) {

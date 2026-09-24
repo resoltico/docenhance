@@ -34,7 +34,7 @@ namespace docenhance::tests {
 namespace {
 constexpr std::size_t allocation_limit = std::size_t{4} * 1024 * 1024;
 core::Cancellation stopped_token() {
-    const std::stop_source source;
+    std::stop_source source;
     static_cast<void>(source.request_stop());
     return core::Cancellation{source.get_token()};
 }
@@ -59,7 +59,7 @@ TEST_CASE("Cancellation owns its stop state and prevents application effects", "
     CHECK(processor.calls == 0);
     CHECK(result.exit_code() == core::ExitCode::cancelled);
     const auto& error = std::get<app::Failure>(result.payload).error;
-    CHECK(error.identifier() == "E_CANCELLED");
+    CHECK(std::string(error.identifier()) == "E_CANCELLED");
     CHECK(error.publication == core::Publication::not_started);
     request.binarize = "invalid";
     CHECK(app::dispatch(request, processor, cancellation).exit_code() ==
@@ -108,7 +108,7 @@ TEST_CASE("The scheduler does not call work after a cancellation checkpoint", "[
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(called.load() == 0);
     }
-    const std::stop_source source;
+    std::stop_source source;
     const exec::Scheduler scheduler{workers(1), core::Cancellation{source.get_token()}};
     unsigned called = 0;
     const auto task = [&](std::size_t) {
@@ -121,7 +121,7 @@ TEST_CASE("The scheduler does not call work after a cancellation checkpoint", "[
 }
 TEST_CASE("Real worker failure outranks simultaneous cancellation and all workers join",
           "[cancellation]") {
-    const std::stop_source source;
+    std::stop_source source;
     const exec::Scheduler scheduler{workers(2), core::Cancellation{source.get_token()}};
     std::barrier started{2};
     std::atomic<unsigned> finished{0};
