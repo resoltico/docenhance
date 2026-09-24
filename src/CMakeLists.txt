@@ -34,9 +34,10 @@ de_library(de_image LAYER image
   HEADERS "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
   LINKS de_core)
 de_library(de_methods LAYER methods
-  SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp
+  SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/binarization.cpp methods/sauvola.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
-          "${DE_INCLUDE}/methods/fixed_threshold.hpp"
+          "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
+          "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/method_catalog.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
   SOURCES app/dispatch.cpp app/process.cpp
@@ -63,7 +64,7 @@ if(DE_FUZZ_ONLY)
 endif()
 de_library(de_host LAYER host
   SOURCES host/processor.cpp HEADERS "${DE_INCLUDE}/host/processor.hpp"
-  LINKS de_app de_core de_image de_io de_methods)
+  LINKS de_app de_core de_exec de_image de_io de_methods)
 add_executable(docenhance entry/main.cpp)
 if(MINGW)
   target_link_options(docenhance PRIVATE -municode)

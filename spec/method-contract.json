@@ -127,13 +127,14 @@
       "id": "B02",
       "name": "Sauvola",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--binarize",
         "--sauvola-window",
         "--sauvola-k",
         "--sauvola-r"
-      ]
+      ],
+      "selector": "sauvola"
     },
     {
       "id": "B03",
@@ -143,7 +144,8 @@
       "arguments": [
         "--binarize",
         "--fixed-threshold"
-      ]
+      ],
+      "selector": "fixed"
     },
     {
       "id": "G01",

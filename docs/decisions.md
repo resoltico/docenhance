@@ -29,7 +29,7 @@ not a runtime bypass flag. This preserves realistic command coverage without fil
 Do not prebuild an arbitrary recipe engine or a dependency-injection framework. Extend admission,
 execution and capability reporting together when another complete operation exists. The generated
 catalog describes options and reviewed method definitions; it does not validate a processing plan.
-The B03/PNG operation is real. Unimplemented catalog entries remain unadvertised and return explicit
+The B02/B03 PNG operations are real. Unimplemented catalog entries remain unadvertised and return explicit
 failure rather than a successful copy or no-op placeholder.
 
 ## Exception containment follows authority
@@ -85,7 +85,7 @@ The scheduler owns work partitioning and thread creation, not an imaging depende
 regions keep the numerical kernel independent from worker count; scoped workers join on failure
 and report a deterministic task error. A persistent pool or different scheduler is justified only
 by a measured requirement, not by a desire for more abstraction. The present CLI exposes neither
-`--threads` nor `--memory-mib`; the B03 host uses its documented internal resource ceiling.
+`--threads` nor `--memory-mib`; the binarization host uses its documented internal resource ceiling.
 
 ## Publication is an irreversible boundary
 
@@ -118,3 +118,22 @@ Use the real JSON Schema validator on executable responses. A permissive homemad
 establish conformance to a closed response schema. Generated contract files are byte-checked from
 their reviewed sources. Required GitHub checks establish the submitted commit's CI state; a local
 subset, a historical run or a newly authored workflow cannot establish it.
+
+## Method variants and bounded local statistics
+
+B02 provides a second real operation rather than a reason to build a generic recipe framework.
+The admitted request holds a closed variant of privately constructed validated method values.
+Raw option presence is preserved until admission; empty or wrong-method values cannot disappear
+into defaults. Execution is an exhaustive visitor, and compiled alternatives provide the runtime
+method catalog. A compile-time comparison rejects disagreement with generated reviewed metadata.
+
+Sauvola uses exact integer rolling moments rather than full-page floating intermediates. Fixed
+strips and slot-owned scratch bound auxiliary memory independently of page height and preserve
+worker-count independence. Population variance, normalized R, reflection and equality are explicit
+contracts, not library defaults. The complete mathematics, resource plan and separate design QA
+are in [typed binarization](binarization.md). The existing float box-mean primitive remains useful
+for other operations; it is not forced into a numerically or spatially unsuitable implementation.
+
+The response schema template and method catalog jointly generate the delivered wire schema.
+The application attaches the admitted method's identity to the host's published-image result,
+so report metadata is neither a hard-coded B03 label nor an unchecked adapter claim.

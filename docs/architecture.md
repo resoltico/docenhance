@@ -4,7 +4,7 @@
 
 The application owns meaning; adapters own effects. The command line parses syntax into
 `contract::Invocation`. `de_app` validates it and constructs a private-construction
-`ProcessRequest`. Only that admitted value can cross `app::Processor`, the processing port.
+`ProcessRequest` containing a validated `methods::Binarization` alternative. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
 production composition root: it supplies the concrete host to the CLI. On Windows it converts
 wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
@@ -51,12 +51,12 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_contract` | `de_core` | The command vocabulary, generated option descriptors and strict value parsers |
 | `de_exec` | `de_core` | The schedule: how many workers run a page's independent work items |
 | `de_image` | `de_core` | Checked owning planes, borrowed views and numerical primitives |
-| `de_methods` | `de_core`, `de_exec`, `de_image` | Image operations and the catalog of implemented methods |
+| `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
 | `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
 | `de_app` | `de_contract`, `de_core`, `de_methods` | Validated use cases and the explicit processing port |
 | `de_report` | `de_core`, `de_contract`, `de_app` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
-| `de_host` | `de_app`, `de_core`, `de_image`, `de_io`, `de_methods` | Executes admitted requests using codecs, kernels and publication |
+| `de_host` | `de_app`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods` | Executes admitted requests using codecs, kernels and publication |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 
 Only `de_report` uses nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
@@ -83,7 +83,7 @@ from an owning plane. It does not extend storage lifetime. Rows require in-range
 Kernel entry points reject empty, shape-mismatched and overlapping source/destination storage.
 Full backing spans, including padding, are used for conservative overlap checks.
 
-The B03 host has a 128 MiB charged-buffer limit shared by image planes and libpng/zlib allocations.
+The binarization host has a 128 MiB charged-buffer limit shared by image planes and libpng/zlib allocations.
 This is **not a process-RSS bound**: small standard-library metadata, the accounting ledger, C stream
 buffers, OS thread resources and stacks are outside it. The codec allocator uses a bounded
 registry; exhaustion is a resource failure, never permission to allocate elsewhere. Generic
@@ -91,11 +91,12 @@ registry; exhaustion is a resource failure, never permission to allocate elsewhe
 
 ## PNG codec boundary
 
-B03 accepts one regular PNG file, grayscale without transparency, at 1/2/4/8 bits per sample.
+B02 and B03 accept one regular PNG file, grayscale without transparency, at 1/2/4/8 bits per sample.
 Low-bit-depth input expands to 8-bit stored sample values. Gamma metadata does not change threshold
 semantics. Color, alpha/transparency and 16-bit input are rejected, not silently converted.
 Input is limited to 128 MiB and 40 million pixels; libpng also enforces its dimension and chunk limits.
-Output is a single 8-bit grayscale PNG with black iff `sample / 255 <= threshold`.
+Output is a single 8-bit grayscale PNG. B03 keeps `sample / 255 <= threshold`; B02 uses the
+local population statistics and normalized parameters in [typed binarization](binarization.md).
 
 The codec uses libpng's custom memory callbacks charged to the caller's budget. Error callbacks
 jump only into dedicated C-facing frames with trivial automatic state. All owning C++ objects,
@@ -166,8 +167,10 @@ reason; no blanket waiver or historical-grandfathering path is introduced.
 The top-level CMake project owns versioning. `deps/lock.json` owns source identities;
 `deps/features.json` owns upstream feature policy; `deps/tools.json` owns developer-tool versions.
 `spec/cli-contract.json` and `spec/method-contract.json` generate descriptors, reference docs and
-fuzz dictionaries. `schemas/command-response.schema.json` owns closed response payloads, validated
-by the real Draft 2020-12 implementation against executable output and negative fixtures.
+fuzz dictionaries. `spec/command-response.schema.json` owns the response template; reviewed method
+identities generate its closed alternatives into `schemas/command-response.schema.json`. The real
+Draft 2020-12 validator checks executable output and negative fixtures. The executable catalog is
+built from actual method variant alternatives and must equal the reviewed catalog at compile time.
 
 Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,
 and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target

@@ -95,7 +95,15 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const R
         if (command.command == Command::process) {
             invocation.output_directory = command.options["--out-dir"];
             invocation.binarize = command.options["--binarize"];
-            invocation.fixed_threshold = command.options["--fixed-threshold"];
+            const auto optional_value = [&](const std::string& name) -> std::optional<std::string> {
+                return command.parser->get_option(name)->count() == 0
+                           ? std::nullopt
+                           : std::optional{command.options.at(name)};
+            };
+            invocation.fixed_threshold = optional_value("--fixed-threshold");
+            invocation.sauvola_window = optional_value("--sauvola-window");
+            invocation.sauvola_k = optional_value("--sauvola-k");
+            invocation.sauvola_r = optional_value("--sauvola-r");
         }
         if (root.help || root.json || root.version) {
             return argument_error(invocation, "Root flags cannot be combined with a subcommand; "

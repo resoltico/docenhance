@@ -7,6 +7,8 @@ namespace docenhance::methods {
 struct ImplementedMethod {
     std::string_view id;
     unsigned method_version;
+    std::string_view selector;
+    constexpr bool operator==(const ImplementedMethod&) const = default;
 };
 // Only complete, validated algorithms belong here; the planned ones live in
 // spec/method-contract.json and are not a capability until they are implemented.

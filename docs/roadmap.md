@@ -5,13 +5,13 @@ The work packages below are ordered by dependency. Each one needs its own specif
 | Order | Work package | Exit condition |
 |---|---|---|
 | 0 | Verify the native baseline on GitHub CI | Complete: native GitHub validation runs on Windows/MSVC, Linux ARM64/x86-64 and macOS ARM64/Intel with retained logs and the pinned LLVM 23 toolchain. |
-| 1 | Finish typed request/configuration core | Complete method-option variants; immutable effective configuration; strict RecipeV1 schema and duplicate-key rules; presets and precedence; every cross-option contradiction tested |
+| 1 | Extend typed method execution | B02/B03 are validated alternatives with bounded execution and cross-option tests. Add further alternatives alongside complete methods; introduce recipes/presets only for a demonstrated composition requirement. |
 | 2 | Resource, cancellation and publication primitives | Checked allocation model, ownership-safe cancellation, exclusive platform publication and outcome reconciliation; adversarial filesystem tests |
 | 3 | JPEG/PNG/TIFF and color pipeline | All accepted/rejected encodings and precision/profile/orientation contracts; C longjmp boundaries; malformed-image tests; codec fuzzing; no implicit 8-bit downgrade |
 | 4 | Photometric reference operations | Target-plane conversions, masks, blending and validity semantics; full numerical fixtures; no complete-method advertisement before its tests |
 | 5 | Illumination methods I01/I02 | Specified solvers, automatic-decision criteria, gains and protected-region behavior; tiled/reference equivalence where specified |
 | 6 | Denoising D01/D02 | Exact 16-bit NLM-L1 correction contract and float TV-L1 solver; precision, convergence, cancellation and memory tests |
-| 7 | Contrast, sharpening and binary methods | C01–C03, S01, B01–B03; complete masking, tie, histogram and window edge cases |
+| 7 | Contrast, sharpening and binary methods | C01–C03, S01 and B01; retain the implemented B02/B03 contracts and extend masking/tie/histogram/window fixtures with each new operation |
 | 8 | Deblurring R01 | Known PSF construction/normalization, FFT centering, padding, DC preservation and rejection cases; no blind-kernel or inpainting substitution |
 | 9 | Geometry G01–G05 | Exact orientations/quarter-turns, perspective, deskew and guarded dewarping; one non-orthogonal full-resolution resampling; uncertainty-aware abstention |
 | 10 | App pipeline, batch and reporting | Page discovery/selection, sequential bounded processing, stable per-stage reports and complete bundle publication; failure/cancellation semantics |

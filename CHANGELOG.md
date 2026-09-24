@@ -4,7 +4,21 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Added
+
+- B02 Sauvola binarization for the existing grayscale PNG subset, with validated window/k/R
+  options, exact integer local statistics, reflected borders and bounded per-worker scratch.
+- Direct-window, resource-boundary and real-executable conformance tests, a Sauvola fuzz oracle,
+  and an explicitly synthetic uneven-illumination text-mask regression.
+
 ### Changed
+
+- **Breaking:** Replace the single-threshold processing request with validated method alternatives;
+  reject explicitly empty and cross-method options. B03 sample/equality behavior is unchanged.
+- Derive executable capabilities from actual method alternatives and check them against generated
+  reviewed identities. Successful JSON processing now includes `method_version`; `methods ID`
+  selects one capability. Generate the delivered response schema from its authoring template and
+  method catalog, with no compatibility path for the removed request shape.
 
 - Declare fuzz harness sources and links once for engine builds, native replays and complete
   campaigns. Run bounded child-level parallelism with target-derived timeouts and retained evidence.

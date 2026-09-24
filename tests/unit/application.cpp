@@ -41,8 +41,8 @@ TEST_CASE("Application owns capability discovery", "[app]") {
     const auto outcome = app::dispatch(version, processor);
     const auto* payload = std::get_if<app::Version>(&outcome.payload);
     REQUIRE(payload != nullptr);
-    CHECK(payload->capabilities.methods.size() == 1);
-    CHECK(std::string{payload->capabilities.methods.front().id} == "B03");
+    CHECK(payload->capabilities.methods.size() == 2);
+    CHECK(std::string{payload->capabilities.methods.front().id} == "B02");
     CHECK(payload->capabilities.input_formats.size() == 1);
     CHECK(std::string{payload->capabilities.input_formats.front()} == "png");
 }

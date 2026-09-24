@@ -64,7 +64,7 @@ Method-specific argument references: `--binarize`.
 
 ## B02 — Sauvola
 
-Status: **not-implemented**.
+Status: **implemented**.
 
 Method-specific argument references: `--binarize`, `--sauvola-window`, `--sauvola-k`, `--sauvola-r`.
 

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #pragma once
+#include <optional>
 #include <string>
 #include <string_view>
 namespace docenhance::contract {
@@ -37,7 +38,10 @@ struct Invocation {
     std::string subject;
     std::string output_directory;
     std::string binarize;
-    std::string fixed_threshold;
+    std::optional<std::string> fixed_threshold = std::nullopt;
+    std::optional<std::string> sauvola_window = std::nullopt;
+    std::optional<std::string> sauvola_k = std::nullopt;
+    std::optional<std::string> sauvola_r = std::nullopt;
 };
 [[nodiscard]] constexpr std::string_view command_name(Command command) noexcept {
     switch (command) {

@@ -226,7 +226,7 @@
     },
     "methods": {
       "target": "de_methods",
-      "summary": "Image operations and the catalog of implemented methods",
+      "summary": "Pure image operations and typed executable method catalog",
       "uses": [
         "core",
         "exec",
@@ -417,6 +417,7 @@
       "uses": [
         "app",
         "core",
+        "exec",
         "image",
         "io",
         "methods"

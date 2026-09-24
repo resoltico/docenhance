@@ -8,6 +8,7 @@
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/fixed_threshold.hpp"
 #include "require.hpp"
 
@@ -21,6 +22,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <variant>
 
 namespace docenhance::tests {
 inline void ownership_cases() {
@@ -136,12 +138,13 @@ inline void admission_cases() {
     invocation.output_directory = "output";
     invocation.binarize = "fixed";
     auto accepted = app::prepare_process(invocation);
-    require(accepted.has_value() && accepted->threshold() == 0.5,
+    require(accepted.has_value() &&
+                std::get<methods::FixedThreshold>(accepted->method()).threshold() == 0.5,
             "application admission owns defaults");
     invocation.fixed_threshold = "NaN";
     require(!app::prepare_process(invocation),
             "the processing port cannot receive an invalid threshold");
-    invocation.fixed_threshold.clear();
+    invocation.fixed_threshold.reset();
     invocation.output_directory = std::string{"output\0hidden", 13};
     require(!app::prepare_process(invocation), "paths cannot be silently truncated by C APIs");
 }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "DocEnhance command response",
-  "description": "Generated from spec/command-response.schema.json and spec/method-contract.json. Do not edit.",
+  "description": "Authoring template. tools/generate_spec.py inserts reviewed method identities from spec/method-contract.json; consumers use schemas/command-response.schema.json.",
   "type": "object",
   "required": [
     "schema_version",
@@ -86,9 +86,7 @@
           "items": {
             "$ref": "#/$defs/method"
           },
-          "minItems": 1,
-          "maxItems": 2,
-          "uniqueItems": true
+          "minItems": 1
         },
         "supported_formats": {
           "type": "array",
@@ -130,9 +128,7 @@
           "items": {
             "$ref": "#/$defs/method"
           },
-          "minItems": 1,
-          "maxItems": 2,
-          "uniqueItems": true
+          "minItems": 1
         },
         "supported_formats": {
           "type": "array",
@@ -355,75 +351,7 @@
   ],
   "unevaluatedProperties": false,
   "$defs": {
-    "method": {
-      "type": "object",
-      "required": [
-        "id",
-        "method_version"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "method_version": {
-          "type": "integer"
-        }
-      },
-      "oneOf": [
-        {
-          "properties": {
-            "id": {
-              "const": "B02"
-            },
-            "method_version": {
-              "const": 1
-            }
-          }
-        },
-        {
-          "properties": {
-            "id": {
-              "const": "B03"
-            },
-            "method_version": {
-              "const": 1
-            }
-          }
-        }
-      ]
-    },
-    "completed_method": {
-      "oneOf": [
-        {
-          "properties": {
-            "method": {
-              "const": "B02"
-            },
-            "method_version": {
-              "const": 1
-            }
-          },
-          "required": [
-            "method",
-            "method_version"
-          ]
-        },
-        {
-          "properties": {
-            "method": {
-              "const": "B03"
-            },
-            "method_version": {
-              "const": 1
-            }
-          },
-          "required": [
-            "method",
-            "method_version"
-          ]
-        }
-      ]
-    }
+    "method": {},
+    "completed_method": {}
   }
 }

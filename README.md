@@ -4,10 +4,11 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
 
-> **Capability boundary: one strict image operation is available.**
-> `process` accepts grayscale PNG input without alpha (1, 2, 4, or 8 bits) and performs B03
-> fixed-threshold binarization to a staged 8-bit PNG result directory. Other PNG forms, image formats, methods, batching, presets, and
-> document-restoration workflows are not supported.
+> **Capability boundary: two explicit binarization methods are available.**
+> `process` accepts grayscale PNG without transparency (1/2/4/8 bits) and performs B02 Sauvola
+> or B03 fixed-threshold binarization, publishing an 8-bit PNG into a new result directory.
+> Other formats, color/alpha/16-bit handling, batching, presets and restoration workflows remain
+> unsupported. See [typed binarization](docs/binarization.md) for exact sample and resource semantics.
 
 ## Start here
 
@@ -58,7 +59,7 @@ cmake --workflow --preset fuzz               # strict fuzzing of the parsers and
 clang-tidy 23, clang-format, Ruff with every rule and strict mypy run as errors, never warnings.
 Findings are fixed rather than suppressed: a suppression must name its rule and be registered with a
 reason, file-size limits have no waivers, and no translation unit or target may escape linting.
-Sanitizer builds abort on any report, and four fuzz harnesses check correctness properties against
+Sanitizer builds abort on any report, and manifest-declared fuzz harnesses check correctness properties against
 independent references under libFuzzer and AFL++, with their corpora replayed by every build. See
 [quality gates](docs/quality.md) and [design decisions](docs/decisions.md).
 
@@ -71,7 +72,7 @@ out/dev/app/bin/docenhance methods --json
 out/dev/app/bin/docenhance process --help --json
 ```
 
-`methods` reports B03 fixed-threshold binarization and `version --json` reports PNG as the only
+`methods` reports B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG as the only
 accepted format. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
@@ -81,7 +82,7 @@ strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 src/<layer>/          One directory per layer, with its public headers under
 include/docenhance/   Layers and their allowed edges: spec/architecture.json, docs/architecture.md
 spec/                 Reviewed authoring contracts: the CLI, the planned methods, the layer graph
-schemas/              JSON schema of command responses, enforced by the CLI tests
+schemas/              Generated JSON response schema, enforced by executable tests
 cmake/                Modern native build, isolation, policies, packaging
 cmake/opencv-hooks/   Reject nested OpenCV downloads
 cmake/presets/        Shared schema-12 preset definitions
@@ -95,7 +96,10 @@ docs/                 Status, architecture, decisions, build, quality, CLI and r
 
 ## Verification status
 
-The locked dependency build, the real binary, its tests, the package and its relocated smoke test run on macOS arm64 and, in containers, on Linux arm64, with strict linting, sanitizers and fuzzing. GitHub Actions also runs the source-archive workflow; native runner results are tracked in [status](docs/status.md). The workflows package only for validation; no binary release is published.
+Validation is commit-specific. The required GitHub jobs exercise structural checks, native tests
+and package smoke tests on Linux x86-64/ARM64, macOS Intel/ARM64 and Windows, plus sanitizer and
+fuzz campaigns. See [status](docs/status.md) for capability and verification boundaries. Numerical
+reference agreement is not certification of readability or fidelity on arbitrary real documents.
 
 ## Publishing source
 

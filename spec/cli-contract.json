@@ -1,8 +1,9 @@
 {
   "schema_version": 1,
-  "contract_edition": "3.0",
+  "contract_edition": "4.0",
   "value_grammar": {
-    "decimal": "Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale."
+    "decimal": "Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale.",
+    "window": "Decimal digits only; odd integer in [3,4095]. No sign, whitespace, fraction or exponent."
   },
   "commands": {
     "root": {
@@ -10,7 +11,7 @@
       "scope_symbol": null
     },
     "process": {
-      "usage": "docenhance process INPUT --out-dir DIRECTORY --binarize fixed [--fixed-threshold T] [--json]",
+      "usage": "docenhance process INPUT --out-dir DIRECTORY --binarize METHOD [METHOD OPTIONS] [--json]",
       "scope_symbol": "P"
     },
     "methods": {
@@ -29,7 +30,7 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "Required; a new result directory",
-      "methods": "B03",
+      "methods": "B02,B03",
       "description": "Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. The final directory must not exist; processing writes a staged 8-bit grayscale PNG and publishes the directory only after success."
     },
     {
@@ -37,9 +38,9 @@
       "metavar": "METHOD",
       "scope": "P",
       "group": "Processing arguments",
-      "domain": "Required; `fixed`",
-      "methods": "B03",
-      "description": "Selects B03 fixed-threshold binarization. No other method is accepted."
+      "domain": "Required; `fixed` or `sauvola`",
+      "methods": "B02,B03",
+      "description": "Select B03 fixed threshold or B02 Sauvola. Options of the other method are rejected even when explicitly empty or equal to their default."
     },
     {
       "name": "--fixed-threshold",
@@ -48,7 +49,34 @@
       "group": "Processing arguments",
       "domain": "0.50; finite `[0,1]`",
       "methods": "B03",
-      "description": "Normalized grayscale threshold. A sample is black iff its value is less than or equal to T."
+      "description": "B03 only. Normalized grayscale threshold; black iff sample/255 <= T. Rejected for Sauvola."
+    },
+    {
+      "name": "--sauvola-window",
+      "metavar": "PIXELS",
+      "scope": "P",
+      "group": "Processing arguments",
+      "domain": "31; odd integer `[3,4095]`",
+      "methods": "B02",
+      "description": "B02 only. Centered square window with REFLECT_101 borders; a singleton dimension repeats its sample."
+    },
+    {
+      "name": "--sauvola-k",
+      "metavar": "K",
+      "scope": "P",
+      "group": "Processing arguments",
+      "domain": "0.2; finite `[0,1]`",
+      "methods": "B02",
+      "description": "B02 only. Weight in T=m*(1+k*(s/(255*R)-1)), using population standard deviation in stored byte units."
+    },
+    {
+      "name": "--sauvola-r",
+      "metavar": "R",
+      "scope": "P",
+      "group": "Processing arguments",
+      "domain": "0.5; finite `[1/255,1]`",
+      "methods": "B02",
+      "description": "B02 only. Normalized deviation scale: 0.5 means 127.5 in byte units, not 128. Black iff sample <= T; no threshold rounding or clipping."
     },
     {
       "name": "--json",
