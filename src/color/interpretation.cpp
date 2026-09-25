@@ -22,10 +22,10 @@ constexpr std::uint32_t png_scale_integer = 100000;
 constexpr double png_scale = png_scale_integer;
 constexpr auto srgb_cicp = std::to_array<std::uint8_t>({1, 13, 0, 1});
 cmsCIExyY xy(const std::array<std::uint32_t, image::chromaticity_fields>& values,
-             std::size_t index) noexcept {
+             std::size_t index) {
     return {.x = values.at(index) / png_scale, .y = values.at(index + 1) / png_scale, .Y = 1};
 }
-bool valid_chroma(const std::array<std::uint32_t, image::chromaticity_fields>& values) noexcept {
+bool valid_chroma(const std::array<std::uint32_t, image::chromaticity_fields>& values) {
     for (std::size_t i = 0; i < values.size(); i += 2) {
         if (values.at(i + 1) == 0 || values.at(i) > png_scale || values.at(i + 1) > png_scale ||
             std::uint64_t{values.at(i)} + values.at(i + 1) > png_scale_integer) {
