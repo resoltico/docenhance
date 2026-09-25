@@ -187,11 +187,14 @@ core::Result<std::string> publish_png(const std::string& output_directory,
         image::PlaneView<const std::uint8_t> image;
         std::reference_wrapper<core::Budget> budget;
         std::reference_wrapper<const core::Cancellation> cancellation;
+        BinaryWriter(image::PlaneView<const std::uint8_t> view, core::Budget& owner,
+                     const core::Cancellation& control)
+            : image(view), budget(owner), cancellation(control) {}
     };
     if (image.empty()) {
         return core::failure(core::ErrorCode::argument, "Cannot publish an empty image");
     }
-    BinaryWriter state{.image = image, .budget = budget, .cancellation = cancellation};
+    BinaryWriter state{image, budget, cancellation};
     const PngWriterRef writer{
         .state = &state,
         .write =

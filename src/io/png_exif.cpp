@@ -26,7 +26,7 @@ constexpr unsigned resolution_y_tag = 0x11b;
 constexpr unsigned resolution_unit_tag = 0x128;
 struct Exif {
     std::span<const std::uint8_t> bytes;
-    bool little;
+    bool little{};
     [[nodiscard]] std::uint32_t number(std::size_t offset, std::size_t count) const noexcept {
         std::uint32_t result = 0;
         for (std::size_t i = 0; i < count; ++i) {
