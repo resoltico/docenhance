@@ -20,8 +20,10 @@ core::Result<std::string> publish_png_rows(const std::string& output_directory,
         std::reference_wrapper<image::RowSource> rows;
         std::reference_wrapper<core::Budget> budget;
         std::reference_wrapper<const core::Cancellation> cancellation;
+        RowWriter(image::RowSource& source, core::Budget& owner, const core::Cancellation& control)
+            : rows(source), budget(owner), cancellation(control) {}
     };
-    RowWriter state{.rows = rows, .budget = budget, .cancellation = cancellation};
+    RowWriter state{rows, budget, cancellation};
     const PngWriterRef writer{
         .state = &state,
         .write = [](void* raw, const std::filesystem::path& path) -> core::Result<void> {
