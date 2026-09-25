@@ -366,13 +366,36 @@
               }
             }
           }
+        },
+        "illumination": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/illumination"
+            },
+            {
+              "properties": {
+                "status": {
+                  "enum": [
+                    "disabled",
+                    "no_change",
+                    "skipped",
+                    "applied"
+                  ]
+                },
+                "complete": {
+                  "const": true
+                }
+              }
+            }
+          ]
         }
       },
       "required": [
         "operation",
         "output",
         "publication",
-        "conversion"
+        "conversion",
+        "illumination"
       ]
     },
     {
@@ -396,6 +419,9 @@
         },
         "publication": {
           "type": "string"
+        },
+        "illumination": {
+          "$ref": "#/$defs/illumination"
         }
       },
       "required": [
@@ -582,6 +608,68 @@
               ]
             }
           }
+        },
+        {
+          "properties": {
+            "command": {
+              "const": "process"
+            },
+            "exit_code": {
+              "const": 4
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_METHOD_INAPPLICABLE"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        },
+        {
+          "properties": {
+            "command": {
+              "const": "process"
+            },
+            "exit_code": {
+              "const": 4
+            },
+            "error": {
+              "properties": {
+                "code": {
+                  "const": "E_NUMERICAL"
+                }
+              }
+            },
+            "publication": {
+              "enum": [
+                "not_started",
+                "not_published"
+              ]
+            }
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "illumination"
+            ]
+          },
+          "then": {
+            "properties": {
+              "command": {
+                "const": "process"
+              }
+            }
+          }
         }
       ]
     }
@@ -589,6 +677,543 @@
   "unevaluatedProperties": false,
   "$defs": {
     "method": {},
-    "completed_method": {}
+    "completed_method": {},
+    "illumination": {
+      "type": "object",
+      "required": [
+        "status",
+        "reason",
+        "method",
+        "requested",
+        "resolved_cell",
+        "eligible_samples",
+        "protected_samples",
+        "cells",
+        "measured_cells",
+        "coverage",
+        "solver",
+        "measurements",
+        "auto_predicates",
+        "application",
+        "complete"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "disabled",
+            "no_change",
+            "skipped",
+            "applied",
+            "failed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "none",
+            "zero_strength",
+            "unit_gain",
+            "no_eligible_samples",
+            "insufficient_samples",
+            "insufficient_cells",
+            "automatic_predicates",
+            "no_effect",
+            "processing_failure"
+          ]
+        },
+        "method": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/illumination_method"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "requested": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "mode",
+                "strength",
+                "max_gain",
+                "target",
+                "cell",
+                "quantile",
+                "smooth"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "mode": {
+                  "enum": [
+                    "surface",
+                    "auto"
+                  ]
+                },
+                "strength": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "max_gain": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "target": {
+                  "anyOf": [
+                    {
+                      "const": "source"
+                    },
+                    {
+                      "type": "number",
+                      "minimum": 0.1,
+                      "maximum": 1
+                    }
+                  ]
+                },
+                "cell": {
+                  "anyOf": [
+                    {
+                      "const": "auto"
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 8,
+                      "maximum": 512
+                    }
+                  ]
+                },
+                "quantile": {
+                  "type": "number",
+                  "minimum": 0.75,
+                  "maximum": 0.99
+                },
+                "smooth": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 20
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolved_cell": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 512
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "eligible_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "protected_samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cells": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65536
+        },
+        "measured_cells": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65536
+        },
+        "coverage": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "solver": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "iterations",
+                "residual",
+                "tolerance"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "iterations": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 500
+                },
+                "residual": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "tolerance": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "measurements": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "stride",
+                "count",
+                "fallback",
+                "target",
+                "background_q10",
+                "background_q50",
+                "background_q90",
+                "luminance_q90",
+                "variation",
+                "paper_fraction",
+                "dark_fraction"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "stride": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1048576
+                },
+                "fallback": {
+                  "type": "boolean"
+                },
+                "target": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "background_q10": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "background_q50": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "background_q90": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "luminance_q90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "variation": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "paper_fraction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "dark_fraction": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "auto_predicates": {
+          "type": "object",
+          "required": [
+            "coverage",
+            "bright_quantile",
+            "median_background",
+            "background_variation",
+            "paper_fraction",
+            "dark_fraction"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "coverage": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "bright_quantile": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "median_background": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "background_variation": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "paper_fraction": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dark_fraction": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "application": {
+          "type": "object",
+          "required": [
+            "evaluated_samples",
+            "changed_samples",
+            "gain_capped_samples",
+            "saturated_samples",
+            "min_gain",
+            "max_gain",
+            "gain_capped_fraction",
+            "saturated_fraction"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "evaluated_samples": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "changed_samples": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "gain_capped_samples": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "saturated_samples": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "min_gain": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "max_gain": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "gain_capped_fraction": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "saturated_fraction": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "complete": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "disabled"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "method": {
+                "type": "null"
+              },
+              "requested": {
+                "type": "null"
+              },
+              "reason": {
+                "const": "none"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "method": {
+                "$ref": "#/$defs/illumination_method"
+              },
+              "requested": {
+                "type": "object",
+                "required": [
+                  "mode",
+                  "strength",
+                  "max_gain",
+                  "target",
+                  "cell",
+                  "quantile",
+                  "smooth"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "mode": {
+                    "enum": [
+                      "surface",
+                      "auto"
+                    ]
+                  },
+                  "strength": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                  },
+                  "max_gain": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 4
+                  },
+                  "target": {
+                    "anyOf": [
+                      {
+                        "const": "source"
+                      },
+                      {
+                        "type": "number",
+                        "minimum": 0.1,
+                        "maximum": 1
+                      }
+                    ]
+                  },
+                  "cell": {
+                    "anyOf": [
+                      {
+                        "const": "auto"
+                      },
+                      {
+                        "type": "integer",
+                        "minimum": 8,
+                        "maximum": 512
+                      }
+                    ]
+                  },
+                  "quantile": {
+                    "type": "number",
+                    "minimum": 0.75,
+                    "maximum": 0.99
+                  },
+                  "smooth": {
+                    "type": "number",
+                    "minimum": 0.1,
+                    "maximum": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "applied"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reason": {
+                "const": "none"
+              },
+              "application": {
+                "properties": {
+                  "changed_samples": {
+                    "type": "integer",
+                    "minimum": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "illumination_method": {}
   }
 }

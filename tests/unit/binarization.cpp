@@ -44,8 +44,8 @@ contract::Invocation request(const std::string& selector) {
 class SuccessfulProcessor final : public app::Processor {
   public:
     unsigned calls = 0;
-    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/,
-                                              const core::Cancellation& /*cancellation*/) override {
+    app::ProcessResult process(const app::ProcessRequest& /*request*/,
+                               const core::Cancellation& /*cancellation*/) override {
         ++calls;
         return app::PublishedImage{.output = "output/result.png"};
     }

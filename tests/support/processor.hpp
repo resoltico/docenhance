@@ -9,11 +9,11 @@ namespace docenhance::tests {
 class RejectingProcessor final : public app::Processor {
   public:
     unsigned calls = 0;
-    [[nodiscard]] core::Result<app::PublishedImage>
-    process(const app::ProcessRequest& /*request*/,
-            const core::Cancellation& /*cancellation*/) override {
+    [[nodiscard]] app::ProcessResult process(const app::ProcessRequest& /*request*/,
+                                             const core::Cancellation& /*cancellation*/) override {
         ++calls;
-        return core::failure(core::ErrorCode::unavailable, "No I/O processor in this test");
+        return app::process_failure(
+            {.code = core::ErrorCode::unavailable, .message = "No I/O processor in this test"});
     }
 };
 } // namespace docenhance::tests

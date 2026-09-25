@@ -4,13 +4,14 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
 
-> **Capability boundary: continuous-tone PNG representation and two explicit binarizers.**
+> **Capability boundary: continuous-tone PNG representation, opt-in I01 illumination, and two binarizers.**
 > `process` defaults to color-managed PNG conversion with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
 > and metadata policies. Explicit `--output-mode bw` selects B02/B03 on their narrower stored-gray
 > input domain. All output is published into a new directory. See [PNG processing](docs/png-processing.md)
 > and [typed binarization](docs/binarization.md). Other formats, batch processing, presets and
-> illumination/denoising/restoration methods remain unsupported.
+> denoising/restoration methods remain unsupported. I01 surface/auto illumination and protected
+> regions are specified in [illumination](docs/illumination.md); the default remains off.
 
 ## Start here
 
@@ -74,7 +75,7 @@ out/dev/app/bin/docenhance methods --json
 out/dev/app/bin/docenhance process --help --json
 ```
 
-`methods` reports B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG as the only
+`methods` reports I01 illumination, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG as the only
 accepted format. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 

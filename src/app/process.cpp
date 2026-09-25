@@ -8,6 +8,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "illumination.hpp"
 
 #include <algorithm>
 #include <array>
@@ -182,6 +183,11 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     if (!method) {
         return std::unexpected(method.error());
     }
-    return ProcessRequest{invocation.subject, invocation.output_directory, *method};
+    const auto illumination = prepare_illumination(invocation);
+    if (!illumination) {
+        return std::unexpected(illumination.error());
+    }
+    return ProcessRequest{invocation.subject, invocation.output_directory, *method, *illumination,
+                          invocation.protect_mask};
 }
 } // namespace docenhance::app

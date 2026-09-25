@@ -6,8 +6,15 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/linear.hpp"
+#include "docenhance/image/numeric.hpp"
+#include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/io/continuous_png.hpp"
+#include "docenhance/io/protection_png.hpp"
+#include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/surface.hpp"
+#include "illumination_rows.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
 
@@ -21,6 +28,7 @@
 #include <span>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace docenhance::tests {
@@ -151,5 +159,96 @@ TEST_CASE("Cancellation during continuous verification never commits staged outp
         }
     }
     REQUIRE(completed);
+}
+
+TEST_CASE("I01 failed output verification retains completed stage accounting and refunds",
+          "[surface][io]") {
+    const Directory directory;
+    core::Budget budget{byte_budget};
+    const auto raster = source(budget);
+    auto converter =
+        color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
+    methods::IlluminationReport report;
+    const auto method = methods::Surface::create({.strength = 1, .target = 1}).value();
+    auto const model = methods::SurfaceModel::prepare({.source = *converter, .protection = {}},
+                                                      method, budget, {}, report)
+                           .value();
+    auto block =
+        image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1)
+            .value();
+    const core::Cancellation cancellation;
+    host::IlluminationRows rows{
+        *converter,
+        std::move(block),
+        {.model = model, .protection = {}, .report = report, .cancellation = cancellation}};
+    AlteredRows altered{rows};
+    const auto held = budget.used();
+    const auto result = io::publish_png_rows(spelling(directory.path / "output"), altered, budget);
+    REQUIRE_FALSE(result);
+    CHECK(result.error().code == core::ErrorCode::output_verify);
+    CHECK(report.complete);
+    CHECK(report.status == methods::SurfaceStatus::applied);
+    CHECK(report.evaluated_samples == 64);
+    CHECK(report.changed_samples == 64);
+    CHECK(std::filesystem::is_empty(directory.path));
+    CHECK(budget.used() == held);
+}
+TEST_CASE("I01 cancellation in application versus verification preserves stage truth",
+          "[surface][cancellation][io]") {
+    const Directory directory;
+    core::Budget budget{byte_budget};
+    const auto raster = source(budget);
+    auto converter =
+        color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
+    for (const auto phase : {core::Checkpoint::processing, core::Checkpoint::verification}) {
+        methods::IlluminationReport report;
+        const auto method = methods::Surface::create({.strength = 1, .target = 1}).value();
+        auto const model = methods::SurfaceModel::prepare({.source = *converter, .protection = {}},
+                                                          method, budget, {}, report)
+                               .value();
+        auto block = image::Plane<double>::allocate(
+                         budget, image::linear_block_pixels * image::rgb_channels, 1)
+                         .value();
+        const CheckpointStop stop{phase, 0};
+        const auto cancellation = stop.cancellation();
+        host::IlluminationRows rows{
+            *converter,
+            std::move(block),
+            {.model = model, .protection = {}, .report = report, .cancellation = cancellation}};
+        const auto held = budget.used();
+        const auto result =
+            io::publish_png_rows(spelling(directory.path / "output"), rows, budget, cancellation);
+        REQUIRE_FALSE(result);
+        CHECK(result.error().code == core::ErrorCode::cancelled);
+        CHECK(result.error().publication == core::Publication::not_published);
+        CHECK(report.complete == (phase == core::Checkpoint::verification));
+        const std::uint64_t expected_count = phase == core::Checkpoint::verification ? 64U : 0U;
+        CHECK(report.evaluated_samples == expected_count);
+        CHECK(std::filesystem::is_empty(directory.path));
+        CHECK(budget.used() == held);
+    }
+}
+TEST_CASE("Protection decoding accounts allocations and refunds every partial refusal",
+          "[surface][mask][resources]") {
+    const auto bytes = make_gray_png({
+        .width = 8,
+        .height = 8,
+        .depth = 1,
+        .interlaced = true,
+        .samples = std::vector<std::uint8_t>(64, 1),
+    });
+    for (const auto limit : {std::size_t{0}, std::size_t{64}, std::size_t{4096}, byte_budget}) {
+        core::Budget budget{limit};
+        {
+            auto result = io::decode_protection_png(bytes, {.width = 8, .height = 8}, budget);
+            if (result) {
+                CHECK(result->view().row(0).front() == 1);
+            } else {
+                CHECK(result.error().code == core::ErrorCode::resource);
+            }
+            CHECK((limit != byte_budget || result.has_value()));
+        }
+        CHECK(budget.used() == 0);
+    }
 }
 } // namespace docenhance::tests

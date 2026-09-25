@@ -25,6 +25,7 @@ class MethodMetadataTests(unittest.TestCase):
         return {
             "id": "B02",
             "selector": "sauvola",
+            "family": "binarization",
             "method_version": 1,
             "status": "implemented",
             "arguments": ["--binarize"],
@@ -36,6 +37,7 @@ class MethodMetadataTests(unittest.TestCase):
             {"id": ""},
             {"id": 2},
             {"id": "bad"},
+            {"family": "unsupported"},
             {"method_version": True},
             {"method_version": 0},
             {"method_version": 1.5},
@@ -84,7 +86,12 @@ class MethodMetadataTests(unittest.TestCase):
         }
         for identity in ("B02", "B03"):
             validator.validate(response | {"method": identity})
-        for change in ({"method": "B01"}, {"method_version": 2}, {"method_version": True}):
+        for change in (
+            {"method": "B01"},
+            {"method": "I01"},
+            {"method_version": 2},
+            {"method_version": True},
+        ):
             with self.subTest(change=change):
                 self.assertFalse(validator.is_valid(response | change))
         missing = copy.deepcopy(response)

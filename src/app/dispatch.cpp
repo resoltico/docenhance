@@ -8,6 +8,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/illumination.hpp"
 #include "docenhance/version.hpp"
 
 #include <algorithm>
@@ -48,6 +49,18 @@ Outcome unavailable(const contract::Invocation& invocation, std::string message)
                    {.code = core::ErrorCode::unavailable, .message = std::move(message)});
 }
 
+bool matches(const ProcessRequest& request, const methods::IlluminationReport& report) {
+    if (!report.complete || report.status == methods::SurfaceStatus::failed) {
+        return false;
+    }
+    const auto* const selected = std::get_if<methods::Surface>(&request.illumination());
+    if (selected == nullptr) {
+        return report.status == methods::SurfaceStatus::disabled && !report.requested;
+    }
+    return report.requested && *report.requested == selected->parameters() &&
+           report.status != methods::SurfaceStatus::disabled;
+}
+
 Outcome process(const contract::Invocation& invocation, Processor& processor,
                 const core::Cancellation& cancellation) {
     auto request = prepare_process(invocation);
@@ -70,10 +83,10 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
     try {
         auto result = processor.process(*request, cancellation);
         if (!result) {
-            return failure(invocation, std::move(result.error()));
+            return succeeded(invocation, std::move(result.error()));
         }
         if (const auto* const method = std::get_if<methods::Binarization>(&request->operation())) {
-            if (result->conversion) {
+            if (result->conversion || result->illumination) {
                 return unknown_outcome;
             }
             return succeeded(invocation, Processed{
@@ -81,12 +94,14 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                              .method = methods::describe(*method),
                                          });
         }
-        if (!result->conversion || !result->conversion->verified) {
+        if (!result->conversion || !result->conversion->verified || !result->illumination ||
+            !matches(*request, *result->illumination)) {
             return unknown_outcome;
         }
         return succeeded(invocation, ContinuousProcessed{
                                          .output = std::move(result->output),
                                          .conversion = *result->conversion,
+                                         .illumination = *result->illumination,
                                      });
     } catch (...) {
         return unknown_outcome;

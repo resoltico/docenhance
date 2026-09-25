@@ -5,7 +5,7 @@
       "id": "I01",
       "name": "Quantile log-surface illumination",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--illumination",
         "--background-strength",
@@ -13,8 +13,11 @@
         "--background-target",
         "--background-cell",
         "--background-quantile",
-        "--background-smooth"
-      ]
+        "--background-smooth",
+        "--protect-mask"
+      ],
+      "selector": "surface",
+      "family": "illumination"
     },
     {
       "id": "I02",
@@ -134,7 +137,8 @@
         "--sauvola-k",
         "--sauvola-r"
       ],
-      "selector": "sauvola"
+      "selector": "sauvola",
+      "family": "binarization"
     },
     {
       "id": "B03",
@@ -145,7 +149,8 @@
         "--binarize",
         "--fixed-threshold"
       ],
-      "selector": "fixed"
+      "selector": "fixed",
+      "family": "binarization"
     },
     {
       "id": "G01",

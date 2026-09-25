@@ -112,6 +112,24 @@
         "de_image"
       ],
       "max_len": 65536
+    },
+    "illumination": {
+      "source": "illumination.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_methods"
+      ],
+      "max_len": 512
+    },
+    "protection_png": {
+      "source": "protection_png.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_io"
+      ],
+      "max_len": 65536
     }
   }
 }

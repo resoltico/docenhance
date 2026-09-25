@@ -352,7 +352,8 @@
         "core",
         "contract",
         "app",
-        "image"
+        "image",
+        "methods"
       ],
       "external": [
         "nlohmann_json"

@@ -1,14 +1,17 @@
 # Status
 
 The executable implements **continuous-tone PNG representation**, **B02 Sauvola**, and
-**B03 fixed-threshold binarization**. It is not a complete restoration suite.
+**B03 fixed-threshold binarization**, and opt-in **I01 quantile log-surface illumination**. It is not a complete restoration suite.
 
 ## Implemented product paths
 
 `process INPUT --out-dir DIRECTORY` defaults to preserve-mode continuous-tone PNG conversion, with
-no enhancement filter. Static gray, palette, RGB and alpha PNGs support 8/16-bit precision, bounded
+no enhancement filter by default. Static gray, palette, RGB and alpha PNGs support 8/16-bit precision, bounded
 profile interpretation, linear-light compositing, exact metadata orientation and minimal canonical
 output metadata. Output rows and metadata are independently verified before exclusive publication.
+I01 can be selected explicitly or through its opt-in automatic predicates, with original-depth
+1/8-bit grayscale protection masks in oriented coordinates. Fitting, linear application and output
+verification share explicit resource/cancellation contracts; see [illumination](illumination.md).
 See [PNG processing](png-processing.md) for precise domains, limits and explicit assumptions.
 
 `--output-mode bw` activates B02/B03; default selection is Sauvola. Their existing stored-gray

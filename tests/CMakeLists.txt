@@ -1,8 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
 add_executable(de_tests unit/reference.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp)
-target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io")
+  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/illumination.cpp unit/surface_solver.cpp)
+target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
 target_link_libraries(de_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color Catch2::Catch2WithMain)
 de_apply_options(de_tests)
 # The dependency-free reference runner used by tools/check_reference_suite.py, built, linted and run here too.
@@ -32,6 +32,7 @@ add_test(NAME cli-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOUR
 add_test(NAME png-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_png.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME path-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_paths.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME sauvola-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_sauvola.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME illumination-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_illumination.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME continuous-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_continuous.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME generated-contract COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/generate_spec.py" --check)
 # The compiler-driven architecture rules need GNU-style options (-M, -fsyntax-only) and a pinned
@@ -53,7 +54,7 @@ endif()
 if(DEFINED DE_SUPERBUILD_BINARY)
   add_test(NAME dependency-configuration COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/audit_build.py" --build "${DE_SUPERBUILD_BINARY}")
 endif()
-set_tests_properties(cli-contract png-contract path-contract sauvola-contract continuous-contract PROPERTIES TIMEOUT 90)
+set_tests_properties(cli-contract png-contract path-contract sauvola-contract continuous-contract illumination-contract PROPERTIES TIMEOUT 90)
 
 # A test composition with a handshake, using the exact production interrupt bridge.
 add_executable(de_interrupt_process support/interrupt_process.cpp "${PROJECT_SOURCE_DIR}/src/entry/signals.cpp")

@@ -14,6 +14,8 @@ enum class Checkpoint {
     scheduling,
     initialization,
     processing,
+    measurement,
+    solving,
     decode,
     encode,
     verification,

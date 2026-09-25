@@ -6,6 +6,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 
@@ -39,4 +40,6 @@ struct ConversionState {
 [[nodiscard]] core::Result<void> prepare_conversion(ConversionState& state, core::Budget& budget);
 [[nodiscard]] core::Result<void> convert_row(ConversionState& state, std::uint32_t row,
                                              std::span<std::uint8_t> output, image::RowUse use);
+[[nodiscard]] core::Result<void> read_linear(ConversionState& state, image::RowRange range,
+                                             std::span<double> rgb, image::RowUse use);
 } // namespace docenhance::color

@@ -19,7 +19,7 @@ from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
 SHA256_HEX_LENGTH = 64
-PROCESS_OPTION_COUNT = 12
+PROCESS_OPTION_COUNT = 20
 EXIT_INVOCATION = 2
 EXIT_PROCESSING = 4
 PNG_FILTER_NONE = 0
@@ -138,14 +138,22 @@ def discovery_cases(exe: Path) -> None:
     version = call_json(exe, ["version", "--json"])
     expect(
         version["methods"]
-        == [{"id": "B02", "method_version": 1}, {"id": "B03", "method_version": 1}],
+        == [
+            {"id": "I01", "method_version": 1},
+            {"id": "B02", "method_version": 1},
+            {"id": "B03", "method_version": 1},
+        ],
         "implemented methods advertised",
     )
     expect(version["supported_formats"] == ["png"], "PNG advertised")
     expect(len(version["dependency_lock_sha256"]) == SHA256_HEX_LENGTH, "lock digest")
     expect(
         call_json(exe, ["methods", "--json"])["methods"]
-        == [{"id": "B02", "method_version": 1}, {"id": "B03", "method_version": 1}],
+        == [
+            {"id": "I01", "method_version": 1},
+            {"id": "B02", "method_version": 1},
+            {"id": "B03", "method_version": 1},
+        ],
         "methods list matches implementation",
     )
     for command in HELP_COMMANDS:
@@ -184,7 +192,7 @@ def unavailable_cases(exe: Path) -> None:
         args = ["version", os.fsdecode(b"\x80"), "--json"]
         response = call_json(exe, args, EXIT_INVOCATION)
         expect(response["error"]["code"] == "E_ARGUMENT", "non-UTF-8 argument is an argument error")
-    call(exe, ["methods", "I01"], EXIT_PROCESSING)
+    call(exe, ["methods", "I02"], EXIT_PROCESSING)
 
 
 def processing_case(exe: Path) -> None:

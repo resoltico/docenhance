@@ -32,3 +32,6 @@ contracts and the separate design QA.
 
 [PNG processing](png-processing.md) specifies continuous-tone sample, profile, alpha, orientation,
 resource and verified-publication contracts, separately from binary method mathematics.
+
+[Illumination](illumination.md) specifies I01 fitting/application, original-depth protection masks,
+opt-in applicability, typed diagnostics, resources and independent preservation tests.
