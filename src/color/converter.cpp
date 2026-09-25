@@ -8,6 +8,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/linear.hpp"
 #include "docenhance/image/raster.hpp"
 
 #include <cstdint>
@@ -60,5 +61,12 @@ core::Result<void> Converter::row(std::uint32_t index, std::span<std::uint8_t> b
 }
 image::ConversionReport Converter::report() const noexcept {
     return state_->report;
+}
+image::Extent Converter::extent() const noexcept {
+    return {.width = state_->report.output.width, .height = state_->report.output.height};
+}
+core::Result<void> Converter::read(image::RowRange range, std::span<double> rgb,
+                                   image::RowUse use) {
+    return read_linear(*state_, range, rgb, use);
 }
 } // namespace docenhance::color

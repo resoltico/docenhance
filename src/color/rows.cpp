@@ -5,6 +5,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/raster.hpp"
 
@@ -114,33 +115,52 @@ core::Result<void> quantize(ConversionState& state, RowPart part, std::span<std:
     const auto shape = state.report.output;
     const auto channels = image::components(shape.model);
     const auto bytes = shape.depth / image::byte_bits;
-    const auto maximum = shape.depth == image::word_bits ? image::word_max : image::byte_max;
     for (std::uint32_t i = 0; i < part.count; ++i) {
         auto values = opaque_pixel(state, i, use);
         if (!values) {
             return std::unexpected(values.error());
         }
-        if (channels == 1) {
-            auto luminance = image::luminance(*values);
-            if (!luminance) {
-                return std::unexpected(luminance.error());
-            }
-            values->front() = *luminance;
-        }
-        for (unsigned c = 0; c < channels; ++c) {
-            const auto encoded = image::srgb_encode(values->at(c));
-            if (!encoded) {
-                return std::unexpected(encoded.error());
-            }
-            const auto sample = static_cast<std::uint16_t>(
-                std::floor((std::clamp(*encoded, 0.0, 1.0) * maximum) + 0.5));
-            const auto at = ((std::size_t{part.first + i} * channels) + c) * bytes;
-            image::write_sample(output.subspan(at, bytes), shape.depth, sample);
+        const auto at = std::size_t{part.first + i} * channels * bytes;
+        const auto result = image::quantize_linear(
+            shape, *values, output.subspan(at, std::size_t{channels} * bytes));
+        if (!result) {
+            return result;
         }
     }
     return {};
 }
 } // namespace
+core::Result<void> read_linear(ConversionState& state, image::RowRange range, std::span<double> rgb,
+                               image::RowUse use) {
+    const auto width = state.report.output.width;
+    if (range.row >= state.report.output.height || range.first >= width || rgb.empty() ||
+        rgb.size() % image::rgb_channels != 0 ||
+        rgb.size() / image::rgb_channels > conversion_pixels ||
+        rgb.size() / image::rgb_channels > width - range.first) {
+        return core::failure(core::ErrorCode::argument, "Invalid interpreted linear block");
+    }
+    if (state.cancellation.requested(core::Checkpoint::processing)) {
+        return core::cancelled();
+    }
+    const auto count = static_cast<std::uint32_t>(rgb.size() / image::rgb_channels);
+    const RowPart part{.y = range.row, .first = range.first, .count = count};
+    auto gathered = gather(state, part, use);
+    if (!gathered) {
+        return gathered;
+    }
+    auto interpreted = interpret(state, count);
+    if (!interpreted) {
+        return interpreted;
+    }
+    for (std::uint32_t i = 0; i < count; ++i) {
+        const auto value = opaque_pixel(state, i, use);
+        if (!value) {
+            return std::unexpected(value.error());
+        }
+        std::ranges::copy(*value, rgb.subspan(std::size_t{i} * image::rgb_channels).begin());
+    }
+    return {};
+}
 core::Result<void> convert_row(ConversionState& state, std::uint32_t row,
                                std::span<std::uint8_t> output, image::RowUse use) {
     const auto required = image::raster_row_bytes(state.report.output);

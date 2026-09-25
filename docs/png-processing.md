@@ -1,7 +1,8 @@
 # PNG representation and color processing
 
-This contract defines the no-filter continuous-tone PNG path. It does not implement an illumination,
-denoising, sharpening, restoration, or classification method. The separate B02/B03 stored-sample
+This contract defines the no-filter continuous-tone PNG path. Its default does not apply an enhancement filter. The separately specified opt-in
+[I01 illumination stage](illumination.md) operates after interpretation and before quantization;
+this representation contract does not define denoising, sharpening, restoration or classification. The separate B02/B03 stored-sample
 contract remains in [binarization](binarization.md). Preserve original documents: color conversion,
 alpha flattening, grayscale conversion, and requested quantization can discard information.
 

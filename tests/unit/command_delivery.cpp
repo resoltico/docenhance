@@ -10,7 +10,6 @@
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
-#include <expected>
 #include <ios>
 #include <new>
 #include <ostream>
@@ -52,11 +51,11 @@ class RecordingProcessor final : public app::Processor {
     Behavior behavior = Behavior::success;
     unsigned calls = 0;
     bool effect_observed = false;
-    core::Result<app::PublishedImage> process(const app::ProcessRequest& /*request*/,
-                                              const core::Cancellation& /*cancellation*/) override {
+    app::ProcessResult process(const app::ProcessRequest& /*request*/,
+                               const core::Cancellation& /*cancellation*/) override {
         ++calls;
         if (behavior == Behavior::refusal) {
-            return std::unexpected(core::Error{
+            return app::process_failure(core::Error{
                 .code = core::ErrorCode::resource,
                 .message = "Reported resource refusal",
                 .publication = core::Publication::not_published,

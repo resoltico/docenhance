@@ -4,9 +4,9 @@
 
 ## I01 — Quantile log-surface illumination
 
-Status: **not-implemented**.
+Status: **implemented**.
 
-Method-specific argument references: `--illumination`, `--background-strength`, `--background-max-gain`, `--background-target`, `--background-cell`, `--background-quantile`, `--background-smooth`.
+Method-specific argument references: `--illumination`, `--background-strength`, `--background-max-gain`, `--background-target`, `--background-cell`, `--background-quantile`, `--background-smooth`, `--protect-mask`.
 
 ## I02 — Morphological illumination
 

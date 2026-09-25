@@ -9,7 +9,7 @@ namespace docenhance::host {
 // Composition-root implementation; never linked by pure application tests or CLI fuzzers.
 class Processor final : public app::Processor {
   public:
-    [[nodiscard]] core::Result<app::PublishedImage>
-    process(const app::ProcessRequest& request, const core::Cancellation& cancellation) override;
+    [[nodiscard]] app::ProcessResult process(const app::ProcessRequest& request,
+                                             const core::Cancellation& cancellation) override;
 };
 } // namespace docenhance::host

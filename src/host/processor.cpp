@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/host/processor.hpp"
 
+#include "continuous.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/color/converter.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -11,9 +11,9 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/illumination.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -65,38 +65,32 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
     }
     return app::PublishedImage{.output = std::move(*published)};
 }
-core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
-                                             image::Continuous operation,
-                                             const core::Cancellation& cancellation) {
-    constexpr std::size_t continuous_budget_bytes = std::size_t{1024} * 1024 * 1024;
-    core::Budget budget{continuous_budget_bytes};
-    auto source =
-        io::load_png_raster(request.input(), budget, operation.parameters().profile, cancellation);
-    if (!source) {
-        return std::unexpected(source.error());
-    }
-    auto converter = color::Converter::create(*source, operation, budget, cancellation);
-    if (!converter) {
-        return std::unexpected(converter.error());
-    }
-    auto published =
-        io::publish_png_rows(request.output_directory(), **converter, budget, cancellation);
-    if (!published) {
-        return std::unexpected(published.error());
-    }
-    auto report = (*converter)->report();
-    report.verified = true;
-    return app::PublishedImage{.output = std::move(*published), .conversion = report};
-}
 } // namespace
-core::Result<app::PublishedImage> Processor::process(const app::ProcessRequest& request,
-                                                     const core::Cancellation& cancellation) {
+app::ProcessResult Processor::process(const app::ProcessRequest& request,
+                                      const core::Cancellation& cancellation) {
     if (cancellation.requested(core::Checkpoint::admission)) {
-        return core::cancelled();
+        return app::process_failure(core::cancelled().error());
     }
     if (const auto* const method = std::get_if<methods::Binarization>(&request.operation())) {
-        return binary(request, *method, cancellation);
+        auto result = binary(request, *method, cancellation);
+        if (!result) {
+            return app::process_failure(std::move(result.error()));
+        }
+        return std::move(*result);
     }
-    return continuous(request, std::get<image::Continuous>(request.operation()), cancellation);
+    methods::IlluminationReport report;
+    auto result =
+        continuous(request, std::get<image::Continuous>(request.operation()), cancellation, report);
+    if (!result) {
+        if (report.requested && !report.complete) {
+            report.status = methods::SurfaceStatus::failed;
+            if (report.reason == methods::SurfaceReason::none ||
+                report.reason == methods::SurfaceReason::no_effect) {
+                report.reason = methods::SurfaceReason::processing_failure;
+            }
+        }
+        return app::process_failure(std::move(result.error()), report);
+    }
+    return std::move(*result);
 }
 } // namespace docenhance::host

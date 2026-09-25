@@ -1,5 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
+#include "png_snapshot.hpp"
+
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -21,9 +23,8 @@
 #include <utility>
 
 namespace docenhance::io {
-namespace {
-core::Result<core::Buffer> snapshot(const std::string& input, core::Budget& budget,
-                                    const core::Cancellation& cancellation) {
+core::Result<core::Buffer> read_png_snapshot(const std::string& input, core::Budget& budget,
+                                             const core::Cancellation& cancellation) {
     if (cancellation.requested(core::Checkpoint::decode)) {
         return core::cancelled();
     }
@@ -64,11 +65,10 @@ core::Result<core::Buffer> snapshot(const std::string& input, core::Budget& budg
     }
     return bytes;
 }
-} // namespace
 core::Result<image::Raster> load_png_raster(const std::string& input, core::Budget& budget,
                                             image::ProfilePolicy policy,
                                             const core::Cancellation& cancellation) {
-    auto encoded = snapshot(input, budget, cancellation);
+    auto encoded = read_png_snapshot(input, budget, cancellation);
     if (!encoded) {
         return std::unexpected(encoded.error());
     }

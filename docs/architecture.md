@@ -4,7 +4,8 @@
 
 The application owns meaning; adapters own effects. The command line parses syntax into
 `contract::Invocation`. `de_app` validates it and constructs a private-construction
-`ProcessRequest` containing a validated `methods::Binarization` alternative. Only that admitted value can cross `app::Processor`, the processing port.
+`ProcessRequest` containing a validated binary/continuous operation and a separate closed
+illumination choice. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
 production composition root: it supplies the concrete host to the CLI. On Windows it converts
 wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
@@ -54,7 +55,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
 | `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
 | `de_app` | `de_contract`, `de_core`, `de_methods`, `de_image` | Validated use cases and the explicit processing port |
-| `de_report` | `de_core`, `de_contract`, `de_app`, `de_image` | Renders an outcome as the documented JSON response or as human text |
+| `de_report` | `de_core`, `de_contract`, `de_app`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
 | `de_host` | `de_app`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods`, `de_color` | Executes admitted requests using codecs, kernels and publication |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
@@ -191,3 +192,17 @@ A request-scoped `core::Cancellation` owns its standard stop token and optionall
 interrupt latch. It is execution control, not a method parameter. The scheduler owns the numerical
 operation's observation; codecs and publication receive the same control explicitly. See
 [cancellation](cancellation.md) for checkpoints, signal restrictions, commit cutoff and test coverage.
+
+## Linear interpretation, illumination and row delivery
+
+`image::LinearSource` exposes bounded, interpreted linear RGB blocks without encoded output
+round trips. The color adapter implements this alongside its no-filter row source. `de_methods`
+measures and fits I01 without codec/native types or filesystem authority; `de_host` composes the
+immutable model, oriented protection mask and downstream quantizer. `de_io` keeps exclusive
+ownership of encoding/verification/publication. There is no plugin or generic recipe framework.
+
+`ProcessFailure` is an application result envelope with a core error and optional typed stage
+observations. Successful continuous results require complete matching illumination diagnostics;
+`complete` describes the numerical stage, not a later publication outcome. The generated schema
+and executable catalog distinguish method families. [Illumination](illumination.md) owns the exact
+mathematics, resource phases, separate design QA and verification obligations.

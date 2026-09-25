@@ -227,6 +227,9 @@
     },
     "tests/unit/continuous.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@a86d5712": {
       "explanation": "This negative test deliberately constructs an unnamed value of a scoped enum with fixed underlying int type. C++ permits this representation, while the analyzer intentionally diagnoses unnamed enumerators. The assertion proves Continuous::create rejects it; the exception applies only to this test line, never production validation."
+    },
+    "src/io/png_protection.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@77d893c2": {
+      "explanation": "A single unsigned-byte view borrows the bounded immutable encoded snapshot owned by this call. It permits the same production byte decoder to validate the original mask depth before expansion; there is no lifetime escape or native object reinterpretation. Mask and sanitizer tests cover allocation/refund and malformed inputs."
     }
   }
 }

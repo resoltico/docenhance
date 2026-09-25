@@ -60,6 +60,8 @@ FIXED_TOKENS = (
     "16",
     "fixed",
     "sauvola",
+    "surface",
+    "source",
     "31",
     "0.2",
 )

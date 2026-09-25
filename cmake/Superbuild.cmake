@@ -159,7 +159,9 @@ list(GET de_names 0 de_first)
 add_dependencies(de_dep_${de_first} de_verify_sources)
 if(DE_BUILD_TESTS)
   add_test(NAME native-suite COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${de_inner}" --output-on-failure --no-tests=error)
-  set_tests_properties(native-suite PROPERTIES TIMEOUT 180)
+  # The aggregate also compiles each public header and checks every native AST.
+  # Keep all per-contract limits and checks; allow the expanded graph to finish on CI runners.
+  set_tests_properties(native-suite PROPERTIES TIMEOUT 600)
 endif()
 if(DE_ENABLE_FUZZING)
   add_test(NAME fuzz-suite COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_fuzz_campaign.py"

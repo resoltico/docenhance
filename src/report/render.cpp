@@ -9,6 +9,7 @@
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
+#include "illumination.hpp"
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -90,7 +91,8 @@ std::string help_text(const app::Outcome& outcome, const app::Help& help) {
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
     text += "Implemented: static PNG color-managed continuous-tone 8/16-bit output; explicit "
             "B02/B03 binary output on stored 1/2/4/8-bit grayscale samples.\n";
-    text += "Not implemented: other image formats, enhancement filters, batching or presets.\n\n";
+    text += "Opt-in I01 illumination supports protected regions. Other image formats, denoising, "
+            "batching and presets are not implemented.\n\n";
     if (help.list_commands) {
         text += "Commands: process, methods, version\n\n";
     }
@@ -135,7 +137,8 @@ Output text_form(const app::Outcome& outcome) {
                 return {
                     .out = {},
                     .err = std::string(payload.error.identifier()) + ": " +
-                           std::string(diagnostic(payload.error)) + "\n",
+                           std::string(diagnostic(payload.error)) + "\n" +
+                           (payload.illumination ? illumination_text(*payload.illumination) : ""),
                 };
             }
         },
@@ -177,10 +180,13 @@ Output json_form(const app::Outcome& outcome) {
                     {"code", payload.error.identifier()},
                     {"message", diagnostic(payload.error)},
                 };
-                const Json fields = {
+                Json fields = {
                     {"error", error},
                     {"publication", publication_name(payload.error.publication)},
                 };
+                if (payload.illumination) {
+                    fields.emplace("illumination", illumination_fields(*payload.illumination));
+                }
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             }
         },

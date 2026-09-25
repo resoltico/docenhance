@@ -12,6 +12,20 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def validate_arguments(entry: dict[str, Any], known: set[str]) -> None:
+    """Validate the implemented method's declared CLI dependency set."""
+    identity = entry["id"]
+    arguments = entry.get("arguments")
+    if not isinstance(arguments, list) or not all(
+        isinstance(arg, str) and arg in known for arg in arguments
+    ):
+        msg = f"{identity}: implemented arguments must exist in the command contract"
+        raise ValueError(msg)
+    if len(set(arguments)) != len(arguments):
+        msg = f"{identity}: method arguments must be unique"
+        raise ValueError(msg)
+
+
 def implemented(
     entries: list[dict[str, Any]], options: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -39,6 +53,9 @@ def implemented(
             raise ValueError(msg)
         if entry["status"] != "implemented":
             continue
+        if entry.get("family") not in {"binarization", "illumination"}:
+            msg = f"{identity}: implemented methods require an executable family"
+            raise ValueError(msg)
         selector = entry.get("selector", "")
         if (
             not isinstance(selector, str)
@@ -48,15 +65,7 @@ def implemented(
             msg = f"{identity}: implemented selectors must be unique C++ identifiers"
             raise ValueError(msg)
         selectors.add(selector)
-        arguments = entry.get("arguments")
-        if not isinstance(arguments, list) or not all(
-            isinstance(arg, str) and arg in known for arg in arguments
-        ):
-            msg = f"{identity}: implemented arguments must exist in the command contract"
-            raise ValueError(msg)
-        if len(set(arguments)) != len(arguments):
-            msg = f"{identity}: method arguments must be unique"
-            raise ValueError(msg)
+        validate_arguments(entry, known)
         active.append(entry)
     if not active:
         msg = "The executable must declare at least one implemented method"
@@ -124,7 +133,22 @@ def metadata_outputs(
                 "required": ["method", "method_version"],
             }
             for entry in active
+            if entry["family"] == "binarization"
         ],
+    }
+    schema["$defs"]["illumination_method"] = {
+        "oneOf": [
+            {
+                "properties": {
+                    "id": {"const": entry["id"]},
+                    "method_version": {"const": entry["method_version"]},
+                },
+                "required": ["id", "method_version"],
+                "additionalProperties": False,
+            }
+            for entry in active
+            if entry["family"] == "illumination"
+        ]
     }
     for branch in schema["oneOf"]:
         if "methods" in branch.get("properties", {}):

@@ -7,6 +7,11 @@
 #include <array>
 
 namespace docenhance::methods {
+inline constexpr ImplementedMethod surface_descriptor{
+    .id = "I01",
+    .method_version = 1U,
+    .selector = "surface",
+};
 inline constexpr ImplementedMethod sauvola_descriptor{
     .id = "B02",
     .method_version = 1U,
@@ -18,5 +23,5 @@ inline constexpr ImplementedMethod fixed_descriptor{
     .selector = "fixed",
 };
 inline constexpr auto reviewed_methods =
-    std::to_array<ImplementedMethod>({sauvola_descriptor, fixed_descriptor});
+    std::to_array<ImplementedMethod>({surface_descriptor, sauvola_descriptor, fixed_descriptor});
 } // namespace docenhance::methods

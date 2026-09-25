@@ -104,3 +104,67 @@ Renders help and exits without opening input or creating output.
 **Scope:** Root only. **Domain/default:** N/A.
 
 Human-readable alias of `version`.
+
+## `--illumination MODE`
+
+**Scope:** P. **Domain/default:** off; off|surface|auto.
+
+Select I01 for continuous preserve/gray output only. Off is the default; auto may skip for explicitly reported applicability predicates.
+
+**Applicable methods:** I01.
+
+## `--background-strength A`
+
+**Scope:** P. **Domain/default:** 0.35; finite [0,1].
+
+Exponent controlling I01 gain. Zero is an exact photometric no-op after parameter and mask validation.
+
+**Applicable methods:** I01.
+
+## `--background-max-gain G`
+
+**Scope:** P. **Domain/default:** 1.5; finite [1,4].
+
+Maximum I01 multiplicative gain. One is an exact photometric no-op.
+
+**Applicable methods:** I01.
+
+## `--background-target TARGET`
+
+**Scope:** P. **Domain/default:** source; source or finite [0.1,1].
+
+Linear-light target. Source uses the fitted background nearest-rank 90th percentile, not forced paper white.
+
+**Applicable methods:** I01.
+
+## `--background-cell SIZE`
+
+**Scope:** P. **Domain/default:** auto; auto or integer [8,512].
+
+Cell edge in oriented pixels. Auto is round(min(width,height)/24), clamped to [16,256]. Resource refusal never changes this value.
+
+**Applicable methods:** I01.
+
+## `--background-quantile Q`
+
+**Scope:** P. **Domain/default:** 0.90; finite [0.75,0.99].
+
+Nearest-rank quantile of all eligible cell samples; protected samples are excluded.
+
+**Applicable methods:** I01.
+
+## `--background-smooth BETA`
+
+**Scope:** P. **Domain/default:** 2; finite [0.1,20].
+
+Positive grid-Laplacian weight for fitting the logarithmic background.
+
+**Applicable methods:** I01.
+
+## `--protect-mask PATH`
+
+**Scope:** P. **Domain/default:** Absent.
+
+1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination is disabled.
+
+**Applicable methods:** I01.

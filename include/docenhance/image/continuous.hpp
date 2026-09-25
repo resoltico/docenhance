@@ -51,7 +51,7 @@ struct OutputDescriptor {
     std::span<const std::uint8_t> profile;
     std::optional<Resolution> resolution;
 };
-enum class RowUse { output, verification };
+enum class RowUse { output, verification, measurement };
 // A borrowed row provider. Writers call it outside native jump frames; it never opens files.
 class RowSource {
   public:

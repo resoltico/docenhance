@@ -179,7 +179,7 @@ inline void numerical_cases() {
     require(!image::reflect101(0, 0).has_value(), "empty reflection rejected");
 }
 inline void capabilities_cases() {
-    require(contract::option_catalog.size() == 13, "compiled target contract size");
+    require(contract::option_catalog.size() == 21, "compiled target contract size");
     // The reviewed scope of an option is typed, so no layer has to interpret a scope string.
     const auto& out_dir = contract::option_catalog.front();
     require(out_dir.name == "--out-dir", "the catalog keeps the reviewed order");
@@ -193,10 +193,10 @@ inline void capabilities_cases() {
             "an empty scope holds nothing");
     require(!contract::command_usage(contract::Command::process).empty(),
             "every command has a usage line");
-    require(methods::implemented_methods().size() == 2 &&
-                methods::implemented_methods().front().id == "B02" &&
+    require(methods::implemented_methods().size() == 3 &&
+                methods::implemented_methods().front().id == "I01" &&
                 methods::implemented_methods().back().id == "B03",
-            "Only B02 and B03 are advertised");
+            "Only I01, B02 and B03 are advertised");
     const core::Error unavailable{.code = core::ErrorCode::unavailable, .message = "not ready"};
     require(unavailable.exit_code() == core::ExitCode::processing,
             "unavailable is not publication-unknown");

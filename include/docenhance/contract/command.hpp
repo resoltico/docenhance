@@ -41,6 +41,14 @@ struct Invocation {
     std::optional<std::string> bit_depth = std::nullopt;
     std::optional<std::string> alpha = std::nullopt;
     std::optional<std::string> profile_policy = std::nullopt;
+    std::optional<std::string> illumination = std::nullopt;
+    std::optional<std::string> background_strength = std::nullopt;
+    std::optional<std::string> background_max_gain = std::nullopt;
+    std::optional<std::string> background_target = std::nullopt;
+    std::optional<std::string> background_cell = std::nullopt;
+    std::optional<std::string> background_quantile = std::nullopt;
+    std::optional<std::string> background_smooth = std::nullopt;
+    std::optional<std::string> protect_mask = std::nullopt;
     std::optional<std::string> binarize = std::nullopt;
     std::optional<std::string> fixed_threshold = std::nullopt;
     std::optional<std::string> sauvola_window = std::nullopt;

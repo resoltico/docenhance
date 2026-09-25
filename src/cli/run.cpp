@@ -104,6 +104,14 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const R
             invocation.bit_depth = optional_value("--bit-depth");
             invocation.alpha = optional_value("--alpha");
             invocation.profile_policy = optional_value("--profile-policy");
+            invocation.illumination = optional_value("--illumination");
+            invocation.background_strength = optional_value("--background-strength");
+            invocation.background_max_gain = optional_value("--background-max-gain");
+            invocation.background_target = optional_value("--background-target");
+            invocation.background_cell = optional_value("--background-cell");
+            invocation.background_quantile = optional_value("--background-quantile");
+            invocation.background_smooth = optional_value("--background-smooth");
+            invocation.protect_mask = optional_value("--protect-mask");
             invocation.binarize = optional_value("--binarize");
             invocation.fixed_threshold = optional_value("--fixed-threshold");
             invocation.sauvola_window = optional_value("--sauvola-window");

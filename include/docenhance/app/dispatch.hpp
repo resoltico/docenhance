@@ -35,9 +35,7 @@ struct Version {
 struct Methods {
     Capabilities capabilities;
 };
-struct Failure {
-    core::Error error;
-};
+using Failure = ProcessFailure;
 using Payload = std::variant<Help, Version, Methods, Processed, ContinuousProcessed, Failure>;
 struct Outcome {
     contract::Command command = contract::Command::root;

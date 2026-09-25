@@ -161,3 +161,16 @@ precedence, so native convenience APIs cannot silently override it. The shared p
 commits continuous output only after a separate decoder verifies every integer row and intended
 metadata. Resource limits, deliberate breaks, independent references and design QA are in
 [PNG processing](png-processing.md).
+
+## Opt-in illumination is a measured operation, not a preset
+
+A complete I01 implementation motivates the linear-block interface; a speculative universal
+processing graph does not. Fitting precedes staging and returns one immutable log-grid model.
+Measurement excludes protected samples and application bypasses them at the linear photometric
+boundary. Encoding and independent verification reuse that model but do not count observations
+twice. A shared final quantizer keeps the no-filter and enhanced paths consistent.
+
+Automatic predicates can skip an unsuitable image but cannot turn solver/resource failures into
+successful skips. Keep illumination off by default; the old blueprint's balanced preset is not
+implemented. Preserve B02/B03 stored-sample definitions and reject illumination on that branch.
+See [illumination](illumination.md) for parameters, coverage, actual residual, bounds and tests.

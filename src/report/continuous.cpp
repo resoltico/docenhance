@@ -5,6 +5,7 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "illumination.hpp"
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -45,6 +46,7 @@ nlohmann::ordered_json continuous_fields(const app::ContinuousProcessed& value) 
     }
     return {
         {"operation", "continuous"},
+        {"illumination", illumination_fields(value.illumination)},
         {"output", value.output},
         {"publication", "completed"},
         {
@@ -75,6 +77,7 @@ std::string continuous_text(const app::ContinuousProcessed& value) {
     for (const auto& warning : warnings(report)) {
         text += warning.get<std::string>() + "\n";
     }
+    text += illumination_text(value.illumination);
     return text;
 }
 } // namespace docenhance::report

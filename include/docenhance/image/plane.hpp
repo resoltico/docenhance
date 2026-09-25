@@ -25,6 +25,7 @@ template <typename Sample>
 inline constexpr bool is_sample = std::is_same_v<std::remove_const_t<Sample>, std::uint8_t> ||
                                   std::is_same_v<std::remove_const_t<Sample>, std::uint16_t> ||
                                   std::is_same_v<std::remove_const_t<Sample>, float> ||
+                                  std::is_same_v<std::remove_const_t<Sample>, double> ||
                                   std::is_same_v<std::remove_const_t<Sample>, std::uint64_t>;
 
 struct PlaneShape {
@@ -46,7 +47,8 @@ template <typename Sample> class Plane;
 // A borrowed rectangle of samples. Sample may be const; a view never outlives the plane it names.
 // It holds a span of the whole plane, so every row is a subspan and no pointer arithmetic is done.
 template <typename Sample> class PlaneView {
-    static_assert(is_sample<Sample>, "PlaneView supports uint8, uint16, uint64 and float samples");
+    static_assert(is_sample<Sample>,
+                  "PlaneView supports uint8, uint16, uint64, float and double samples");
 
   public:
     PlaneView() noexcept = default;
@@ -123,7 +125,7 @@ template <typename Left, typename Right>
 // An owning plane. Its memory is charged to the budget that allocated it and refunded when it dies.
 template <typename Sample> class Plane {
     static_assert(is_sample<Sample> && !std::is_const_v<Sample>,
-                  "Plane owns mutable uint8, uint16, uint64 or float samples");
+                  "Plane owns mutable uint8, uint16, uint64, float or double samples");
 
   public:
     Plane() noexcept = default;
