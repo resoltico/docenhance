@@ -11,59 +11,24 @@
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
 #include "publication.hpp"
+#include "temporary_directory.hpp"
 
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <ios>
 #include <iterator>
 #include <span>
 #include <stop_token>
-#include <string>
 #include <system_error>
 #include <vector>
 
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t limit = std::size_t{4} * 1024 * 1024;
-class Directory {
-  public:
-    Directory()
-        : path(std::filesystem::temp_directory_path() /
-               ("docenhance-stop-" +
-                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))) {
-        REQUIRE(std::filesystem::create_directory(path));
-    }
-    Directory(const Directory&) = delete;
-    Directory& operator=(const Directory&) = delete;
-    Directory(Directory&&) = delete;
-    Directory& operator=(Directory&&) = delete;
-    ~Directory() {
-        try {
-            std::error_code error;
-            std::filesystem::remove_all(path, error);
-        } catch (...) {
-            // A failed test cleanup must not silently pass the test process.
-            std::terminate();
-        }
-    }
-    std::filesystem::path path;
-};
-std::string spelling(const std::filesystem::path& path) {
-    std::string value;
-    for (const auto c : path.u8string()) {
-        value.push_back(static_cast<char>(c));
-    }
-    return value;
-}
-bool empty_directory(const std::filesystem::path& path) {
-    return std::filesystem::directory_iterator(path) == std::filesystem::directory_iterator{};
-}
 std::vector<std::uint8_t> png_bytes(bool interlaced) {
     return make_gray_png({
         .width = 8,
@@ -158,12 +123,12 @@ TEST_CASE("Every PNG decoding checkpoint cancels and refunds owned storage",
     }
 }
 TEST_CASE("Every PNG encoding checkpoint cleans unpublished output", "[cancellation][png]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-stop"};
     core::Budget budget{limit};
     auto plane = image::Plane<std::uint8_t>::allocate(budget, 8, 8).value();
     std::ranges::fill(plane.view().storage(), UINT8_MAX);
     const auto held = budget.used();
-    const auto output = spelling(directory.path / "result");
+    const auto output = utf8_spelling(directory.path / "result");
     bool completed = false;
     constexpr std::size_t attempts = 128;
     for (std::size_t after = 0; after < attempts; ++after) {
@@ -188,14 +153,14 @@ TEST_CASE("Every PNG encoding checkpoint cleans unpublished output", "[cancellat
 }
 TEST_CASE("Host cancellation preserves input and never publishes incomplete processing",
           "[cancellation]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-stop"};
     const auto source = directory.path / "source.png";
     const auto bytes = png_bytes(true);
     write_file(source, bytes);
     const contract::Invocation request{
         .command = contract::Command::process,
-        .subject = spelling(source),
-        .output_directory = spelling(directory.path / "output"),
+        .subject = utf8_spelling(source),
+        .output_directory = utf8_spelling(directory.path / "output"),
         .output_mode = "bw",
         .binarize = "sauvola",
     };
@@ -226,11 +191,11 @@ TEST_CASE("Host cancellation preserves input and never publishes incomplete proc
     }
 }
 TEST_CASE("The final commit checkpoint is the cancellation cutoff", "[cancellation][io]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-stop"};
     core::Budget budget{limit};
     auto plane = image::Plane<std::uint8_t>::allocate(budget, 1, 1).value();
     plane.view().row(0).front() = UINT8_MAX;
-    const auto output = spelling(directory.path / "output");
+    const auto output = utf8_spelling(directory.path / "output");
     {
         const CheckpointStop stop{core::Checkpoint::commit, 0};
         const auto result = io::publish_png(output, plane.view().as_const(), budget,
@@ -251,12 +216,12 @@ TEST_CASE("The final commit checkpoint is the cancellation cutoff", "[cancellati
 TEST_CASE("A late cancellation never erases refused or uncertain publication",
           "[cancellation][io]") {
     for (const auto commit : {refused_commit, ambiguous_commit, unclean_commit}) {
-        const Directory directory;
+        const TemporaryDirectory directory{"docenhance-stop"};
         core::Budget budget{limit};
         auto plane = image::Plane<std::uint8_t>::allocate(budget, 1, 1).value();
         plane.view().row(0).front() = UINT8_MAX;
         commit_source() = std::stop_source{};
-        const auto output = spelling(directory.path / "output");
+        const auto output = utf8_spelling(directory.path / "output");
         const auto result =
             io::publish_png(output, plane.view().as_const(), budget,
                             core::Cancellation{commit_source().get_token()}, commit);
