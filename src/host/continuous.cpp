@@ -63,9 +63,9 @@ core::Result<std::string> publish(ContinuousRun run,
         return io::publish_png_rows(run.request.get().output_directory(), run.converter.get(),
                                     run.budget.get(), run.cancellation.get());
     }
-    auto model = methods::SurfaceModel::prepare(
-        {.source = run.converter.get(), .protection = protection}, *surface, run.budget.get(),
-        run.cancellation.get(), run.report.get());
+    auto model =
+        methods::SurfaceModel::prepare({run.converter.get(), protection}, *surface,
+                                       run.budget.get(), run.cancellation.get(), run.report.get());
     if (!model) {
         return std::unexpected(model.error());
     }

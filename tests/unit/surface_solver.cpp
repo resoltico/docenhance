@@ -124,16 +124,16 @@ TEST_CASE("Log-surface zero RHS, cancellation and inadmissible systems are disti
     CheckpointStop const stop{core::Checkpoint::solving, 0};
     auto cancelled =
         methods::solve_surface(system, work.view(), output, report, stop.cancellation());
-    REQUIRE_FALSE(cancelled);
+    REQUIRE(!cancelled);
     CHECK(cancelled.error().code == core::ErrorCode::cancelled);
     work.view().row(0).front() = 0;
     work.view().row(1).front() = 0;
     auto empty = methods::solve_surface(system, work.view(), output, report, {});
-    REQUIRE_FALSE(empty);
+    REQUIRE(!empty);
     CHECK(empty.error().code == core::ErrorCode::method_inapplicable);
     auto bad_system = system;
     bad_system.grid.columns = 0;
-    CHECK_FALSE(methods::apply_surface_system(bad_system, output, output, {}));
+    CHECK(!methods::apply_surface_system(bad_system, output, output, {}));
 }
 
 TEST_CASE("A poorly conditioned measured grid fails its finite iteration contract",
@@ -155,7 +155,7 @@ TEST_CASE("A poorly conditioned measured grid fails its finite iteration contrac
     std::vector<double> output(size);
     methods::SolverReport report;
     const auto result = methods::solve_surface(system, work.view(), output, report, {});
-    REQUIRE_FALSE(result);
+    REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::numerical);
     CHECK(report.iterations == methods::surface_iteration_limit);
     CHECK(std::isfinite(report.residual));

@@ -225,7 +225,7 @@
     "src/io/png_write_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
       "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
     },
-    "tests/unit/continuous.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@a86d5712": {
+    "tests/unit/continuous.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@bb7e43fc": {
       "explanation": "This negative test deliberately constructs an unnamed value of a scoped enum with fixed underlying int type. C++ permits this representation, while the analyzer intentionally diagnoses unnamed enumerators. The assertion proves Continuous::create rejects it; the exception applies only to this test line, never production validation."
     },
     "src/io/png_protection.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@77d893c2": {

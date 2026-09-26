@@ -63,11 +63,11 @@ TEST_CASE("Continuous admission is distinct from binary method admission", "[con
     CHECK(std::get<image::Continuous>(admitted->operation()).parameters().mode ==
           image::ToneMode::preserve);
     invocation.binarize = "fixed";
-    CHECK_FALSE(app::prepare_process(invocation));
+    CHECK(!app::prepare_process(invocation));
     invocation.output_mode = "bw";
     CHECK(app::prepare_process(invocation));
     invocation.bit_depth = "auto";
-    CHECK_FALSE(app::prepare_process(invocation));
+    CHECK(!app::prepare_process(invocation));
 }
 TEST_CASE("Every 16-bit gray level survives the no-filter sRGB path", "[continuous][precision]") {
     core::Budget budget{continuous_budget};
@@ -99,7 +99,7 @@ TEST_CASE("Failed and cancelled color preparation refunds its native allocations
         {
             const auto result =
                 color::Converter::create(source, image::Continuous::create({}).value(), budget);
-            REQUIRE_FALSE(result);
+            REQUIRE(!result);
             CHECK(result.error().code == core::ErrorCode::resource);
         }
         CHECK(budget.used() == 0);
@@ -108,7 +108,7 @@ TEST_CASE("Failed and cancelled color preparation refunds its native allocations
     const CheckpointStop stop{core::Checkpoint::allocation, 0};
     const auto result = color::Converter::create(source, image::Continuous::create({}).value(),
                                                  budget, stop.cancellation());
-    REQUIRE_FALSE(result);
+    REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::cancelled);
     CHECK(budget.used() == 0);
 }
@@ -124,7 +124,7 @@ TEST_CASE("Continuous PNG decoding observes cancellation and releases storage",
             const auto result = io::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded,
                                                       stop.cancellation());
             if (CheckpointStop::stopped()) {
-                REQUIRE_FALSE(result);
+                REQUIRE(!result);
                 CHECK(result.error().code == core::ErrorCode::cancelled);
             } else {
                 REQUIRE(result);
@@ -143,15 +143,15 @@ TEST_CASE("Invalid raw raster descriptors cannot enter color conversion",
     core::Budget budget{continuous_budget};
     image::Raster source;
     const auto operation = image::Continuous::create({}).value();
-    CHECK_FALSE(color::Converter::create(source, operation, budget));
+    CHECK(!color::Converter::create(source, operation, budget));
     source = ramp(budget);
     source.shape.width = 1;
-    CHECK_FALSE(color::Converter::create(source, operation, budget));
+    CHECK(!color::Converter::create(source, operation, budget));
     source.shape.width = ramp_samples;
     source.metadata.orientation = 0;
-    CHECK_FALSE(color::Converter::create(source, operation, budget));
+    CHECK(!color::Converter::create(source, operation, budget));
     // A fixed-underlying enum deliberately carries an unnamed value to test factory rejection.
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
-    CHECK_FALSE(image::Continuous::create({.depth = static_cast<image::OutputDepth>(255)}));
+    CHECK(!image::Continuous::create({.depth = static_cast<image::OutputDepth>(255)}));
 }
 } // namespace docenhance::tests
