@@ -1,0 +1,45 @@
+name: Source export
+on:
+  push:
+    branches: [feat/processing-bundles]
+    paths: [.github/workflows/source-export.yml]
+permissions:
+  contents: read
+jobs:
+  export:
+    if: github.repository == 'resoltico/docenhance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: 8f431f521942faeacabf270ff3827d1337a39f76
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.13'
+      - name: Export the exact source and pinned verification tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = 8f431f521942faeacabf270ff3827d1337a39f76
+          test "$(git rev-parse HEAD^{tree})" = 8c29192c5143f3906ecdee9a9a058ab41e73d08c
+          mkdir -p export/wheels
+          git archive --format=tar HEAD | gzip -n > export/source.tar.gz
+          git ls-tree -rz HEAD > export/tree.bin
+          git cat-file commit HEAD > export/commit.txt
+          python - <<'PY'
+          import json, pathlib, subprocess, sys
+          tools = json.loads(pathlib.Path('deps/tools.json').read_text())
+          names = ('cmake', 'ninja', 'clang_format', 'ruff', 'mypy', 'pre_commit')
+          requirements = [f"{tools[n].get('package', n)}=={tools[n]['version']}" for n in names]
+          requirements += ['jsonschema==4.26.0', 'types-jsonschema==4.26.0.20260518']
+          subprocess.run([sys.executable, '-m', 'pip', 'download', '--only-binary=:all:', '-d', 'export/wheels', *requirements], check=True)
+          PY
+          (cd export && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: docenhance-bundle-inputs
+          path: export/
+          if-no-files-found: error
+          retention-days: 1
