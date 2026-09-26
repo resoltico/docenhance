@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <expected>
 #include <span>
 
 namespace docenhance::methods {
@@ -57,19 +58,6 @@ core::Result<void> initialize(const SurfaceSystem& system, image::PlaneView<doub
     std::ranges::fill(logarithms, sum_values / sum_weights);
     return {};
 }
-void precondition(const SurfaceSystem& system, image::PlaneView<double> work) {
-    const auto r = work.row(residual_row);
-    auto const z = work.row(preconditioned_row);
-    for (std::size_t i = 0; i < r.size(); ++i) {
-        const auto columns = system.grid.columns;
-        const unsigned degree = static_cast<unsigned>(i % columns != 0) +
-                                static_cast<unsigned>((i % columns) + 1 < columns) +
-                                static_cast<unsigned>(i >= columns) +
-                                static_cast<unsigned>(i + columns < r.size());
-        const double diagonal = surface_at(system.weights, i) + (system.smooth * degree);
-        surface_at(z, i) = surface_at(r, i) / diagonal;
-    }
-}
 core::Result<void> residual(const SurfaceSystem& system, image::PlaneView<double> work,
                             std::span<const double> logarithms, SolverReport& report,
                             const core::Cancellation& cancellation) {
@@ -110,7 +98,8 @@ core::Result<void> step(const SurfaceSystem& system, image::PlaneView<double> wo
 } // namespace
 core::Result<void> solve_surface(const SurfaceSystem& system, image::PlaneView<double> work,
                                  std::span<double> logarithms, SolverReport& report,
-                                 const core::Cancellation& cancellation) {
+                                 SolverContext context) {
+    const auto& cancellation = context.cancellation.get();
     auto initialized = initialize(system, work, logarithms);
     if (!initialized) {
         return initialized;
@@ -125,11 +114,21 @@ core::Result<void> solve_surface(const SurfaceSystem& system, image::PlaneView<d
     if (!current || report.residual <= report.tolerance) {
         return current;
     }
-    precondition(system, work);
+    auto hierarchy = SurfaceHierarchy::build(system, context.budget.get());
+    if (!hierarchy) {
+        return std::unexpected(hierarchy.error());
+    }
+    const auto precondition = [&] {
+        return hierarchy->precondition(work.row(residual_row), work.row(preconditioned_row),
+                                       cancellation);
+    };
+    if (auto first = precondition(); !first) {
+        return first;
+    }
     auto const direction = work.row(direction_row);
     std::ranges::copy(work.row(preconditioned_row), direction.begin());
     double rz = dot(work.row(residual_row), work.row(preconditioned_row));
-    for (unsigned iteration = 0; iteration < surface_iteration_limit; ++iteration) {
+    for (unsigned iteration = 0; iteration < system.iteration_limit; ++iteration) {
         auto moved = step(system, work, logarithms, rz, cancellation);
         if (!moved) {
             return moved;
@@ -139,7 +138,9 @@ core::Result<void> solve_surface(const SurfaceSystem& system, image::PlaneView<d
         if (!checked || report.residual <= report.tolerance) {
             return checked;
         }
-        precondition(system, work);
+        if (auto next = precondition(); !next) {
+            return next;
+        }
         const double next_rz = dot(work.row(residual_row), work.row(preconditioned_row));
         const double ratio = next_rz / rz;
         if (!std::isfinite(ratio) || ratio < 0) {

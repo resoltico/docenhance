@@ -170,6 +170,13 @@ Measurement excludes protected samples and application bypasses them at the line
 boundary. Encoding and independent verification reuse that model but do not count observations
 twice. A shared final quantizer keeps the no-filter and enhanced paths consistent.
 
+The fit must succeed on every admitted grid, so the solver's iteration count cannot depend on how
+wide an unmeasured region is. Multigrid-preconditioned CG with exact Galerkin aggregation meets
+that without a second solver, a direct factorization's memory, or a lowered residual bound.
+Dark content is identified by the one scale the method already defines: a cell darker than any
+admissible gain could correct is not illumination evidence, so no new tuning parameter is added.
+Defaults are chosen from measured fixtures, favoring complete correction bounded by the gain cap.
+
 Automatic predicates can skip an unsuitable image but cannot turn solver/resource failures into
 successful skips. Keep illumination off by default; the old blueprint's balanced preset is not
 implemented. Preserve B02/B03 stored-sample definitions and reject illumination on that branch.

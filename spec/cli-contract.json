@@ -155,16 +155,16 @@
       "metavar": "A",
       "scope": "P",
       "group": "Illumination arguments",
-      "domain": "0.35; finite [0,1]",
+      "domain": "1; finite [0,1]",
       "methods": "I01",
-      "description": "Exponent controlling I01 gain. Zero is an exact photometric no-op after parameter and mask validation."
+      "description": "Exponent applied to the I01 gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation."
     },
     {
       "name": "--background-max-gain",
       "metavar": "G",
       "scope": "P",
       "group": "Illumination arguments",
-      "domain": "1.5; finite [1,4]",
+      "domain": "2; finite [1,4]",
       "methods": "I01",
       "description": "Maximum I01 multiplicative gain. One is an exact photometric no-op."
     },
@@ -200,7 +200,7 @@
       "metavar": "BETA",
       "scope": "P",
       "group": "Illumination arguments",
-      "domain": "2; finite [0.1,20]",
+      "domain": "1; finite [0.1,20]",
       "methods": "I01",
       "description": "Positive grid-Laplacian weight for fitting the logarithmic background."
     },

@@ -772,6 +772,8 @@
         "protected_samples",
         "cells",
         "measured_cells",
+        "dark_cells",
+        "background_reference",
         "coverage",
         "solver",
         "measurements",
@@ -914,6 +916,23 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 65536
+        },
+        "dark_cells": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 65536
+        },
+        "background_reference": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "coverage": {
           "anyOf": [

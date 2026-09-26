@@ -13,10 +13,12 @@
 
 namespace docenhance::methods {
 enum class SurfaceMode { explicit_surface, automatic };
-inline constexpr double surface_default_strength = 0.35;
-inline constexpr double surface_default_max_gain = 1.5;
+inline constexpr double surface_default_strength = 1.0;
+inline constexpr double surface_default_max_gain = 2.0;
 inline constexpr double surface_default_quantile = 0.90;
-inline constexpr double surface_default_smooth = 2.0;
+inline constexpr double surface_default_smooth = 1.0;
+// The largest admissible max_gain; no I01 correction can brighten a sample further.
+inline constexpr double surface_gain_limit = 4;
 struct SurfaceParameters {
     SurfaceMode mode = SurfaceMode::explicit_surface;
     double strength = surface_default_strength;
@@ -88,6 +90,9 @@ struct IlluminationReport {
     std::uint64_t protected_samples{};
     std::uint32_t cells{};
     std::uint32_t measured_cells{};
+    // Cells below background_reference / surface_gain_limit, left unmeasured as dark content.
+    std::uint32_t dark_cells{};
+    std::optional<double> background_reference = std::nullopt;
     std::optional<SolverReport> solver = std::nullopt;
     std::optional<SurfaceMeasurements> measurements = std::nullopt;
     std::array<std::optional<bool>, surface_predicates> predicates{};

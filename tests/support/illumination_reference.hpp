@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <vector>
 namespace docenhance::tests {
 struct ReferenceAxis {
@@ -43,6 +44,8 @@ struct LogReference {
     image::Extent extent;
     std::uint32_t cell{};
     std::vector<double> values;
+    std::uint32_t measured_cells{};
+    std::uint32_t dark_cells{};
     [[nodiscard]] double background(std::uint32_t x, std::uint32_t y) const {
         const auto columns = (extent.width + cell - 1) / cell;
         const auto a = reference_interval({.extent = extent.width, .cell = cell}, x);
@@ -80,19 +83,24 @@ inline double sorted_rank(std::vector<double> values, double quantile) {
         static_cast<std::size_t>(std::ceil(quantile * static_cast<double>(values.size())));
     return values.at(rank == 0 ? 0 : rank - 1);
 }
-inline LogReference illumination_reference(LinearFixture& source,
-                                           image::PlaneView<const std::uint8_t> protection,
-                                           std::uint32_t cell) {
+struct ReferenceCells {
+    std::vector<double> weights;
+    std::vector<double> quantiles; // Zero marks an unmeasured cell.
+};
+inline ReferenceCells measure_reference_cells(LinearFixture& source,
+                                              image::PlaneView<const std::uint8_t> protection,
+                                              std::uint32_t cell) {
     const auto extent = source.extent();
     const auto columns = (extent.width + cell - 1) / cell;
     const auto rows = (extent.height + cell - 1) / cell;
-    std::vector<double> weights(std::size_t{columns} * rows);
-    std::vector<double> values(std::size_t{columns} * rows);
+    ReferenceCells cells{
+        .weights = std::vector<double>(std::size_t{columns} * rows),
+        .quantiles = std::vector<double>(std::size_t{columns} * rows),
+    };
     constexpr std::size_t minimum_samples = 16;
     constexpr double quantile = 0.9;
     constexpr double floor = 0.02;
     constexpr double coverage = 0.25;
-    constexpr double beta = 2;
     for (std::uint32_t at = 0; at < columns * rows; ++at) {
         const auto i = at % columns;
         const auto j = at / columns;
@@ -111,22 +119,47 @@ inline LogReference illumination_reference(LinearFixture& source,
             continue;
         }
         const double q = sorted_rank(eligible, quantile);
-        if (q < floor) {
-            continue;
+        if (q >= floor) {
+            cells.weights.at(at) = static_cast<double>(eligible.size()) / static_cast<double>(area);
+            cells.quantiles.at(at) = q;
         }
-        weights.at(at) = static_cast<double>(eligible.size()) / static_cast<double>(area);
-        values.at(at) = std::log(q);
     }
-    return {
-        .extent = extent,
-        .cell = cell,
-        .values = dense_surface_solution({
-            .columns = columns,
-            .rows = rows,
-            .weights = weights,
+    return cells;
+}
+// The fitted field for the given smoothing, after the linear-domain dark-cell rule: a cell below
+// a quarter of the measured cells' 90th-percentile quantile is left unmeasured.
+inline LogReference illumination_reference(LinearFixture& source,
+                                           image::PlaneView<const std::uint8_t> protection,
+                                           std::uint32_t cell, double smooth) {
+    const auto extent = source.extent();
+    auto cells = measure_reference_cells(source, protection, cell);
+    std::vector<double> measured;
+    std::ranges::copy_if(cells.quantiles, std::back_inserter(measured),
+                         [](double q) { return q > 0; });
+    LogReference result{.extent = extent, .cell = cell};
+    constexpr double reference_rank = 0.9;
+    constexpr double gain_limit = 4;
+    const double dark = measured.empty() ? 0 : sorted_rank(measured, reference_rank) / gain_limit;
+    std::vector<double> values(cells.quantiles.size());
+    for (std::size_t at = 0; at < values.size(); ++at) {
+        const double q = cells.quantiles.at(at);
+        if (q > 0 && q < dark) {
+            cells.weights.at(at) = 0;
+            ++result.dark_cells;
+        } else if (q > 0) {
+            values.at(at) = std::log(q);
+            ++result.measured_cells;
+        }
+    }
+    if (result.measured_cells != 0) {
+        result.values = dense_surface_solution({
+            .columns = (extent.width + cell - 1) / cell,
+            .rows = (extent.height + cell - 1) / cell,
+            .weights = cells.weights,
             .measured = values,
-            .smooth = beta,
-        }),
-    };
+            .smooth = smooth,
+        });
+    }
+    return result;
 }
 } // namespace docenhance::tests

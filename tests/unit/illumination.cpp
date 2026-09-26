@@ -37,6 +37,24 @@ methods::Surface options(bool automatic = false) {
                                     })
         .value();
 }
+constexpr double dark_paper = 0.8;
+// Paper with 0.05 dark content: a 2 x 2 block of cells, or every cell outside the first column.
+void paint_dark(LinearFixture& source, bool everywhere) {
+    constexpr double ink = 0.05;
+    source.fill(dark_paper);
+    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
+        for (std::uint32_t x = 0; x < source.extent().width; ++x) {
+            const auto column = x / cell;
+            const auto row = y / cell;
+            const bool dark = everywhere ? column != 0 : column < 2 && row >= 1 && row < 3;
+            if (dark) {
+                std::ranges::fill(source.row(y).subspan(std::size_t{x} * image::rgb_channels,
+                                                        image::rgb_channels),
+                                  ink);
+            }
+        }
+    }
+}
 } // namespace
 TEST_CASE("I01 factory and application admission reject contradictions before I/O",
           "[surface][app]") {
@@ -304,5 +322,30 @@ TEST_CASE("I01 singleton and wholly protected lattice have defined measurements"
         CHECK(report.measurements->stride == 2);
         CHECK(report.measurements->count == width / 2);
     }
+}
+TEST_CASE("Solid dark content is left unmeasured and spanned from surrounding paper",
+          "[surface][dark]") {
+    constexpr image::Extent extent{.width = 48, .height = 32};
+    constexpr std::uint32_t block_cells = 4;
+    constexpr std::uint32_t dark_everywhere = 20; // 6 x 4 cells less the first column.
+    constexpr double field_tolerance = 1e-6;
+    core::Budget budget{surface_budget};
+    LinearFixture source{budget, extent};
+    paint_dark(source, false);
+    methods::IlluminationReport report;
+    const auto model = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
+    REQUIRE(model);
+    REQUIRE(model->active());
+    CHECK(report.dark_cells == block_cells);
+    CHECK(report.measured_cells == report.cells - block_cells);
+    CHECK(std::abs(report.background_reference.value_or(0) - dark_paper) < field_tolerance);
+    CHECK(std::abs(model->background(cell, 2 * cell).value() - dark_paper) < field_tolerance);
+    paint_dark(source, true);
+    methods::IlluminationReport refused_report;
+    const auto refused =
+        methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, refused_report);
+    REQUIRE(!refused);
+    CHECK(refused.error().code == core::ErrorCode::method_inapplicable);
+    CHECK(refused_report.dark_cells == dark_everywhere);
 }
 } // namespace docenhance::tests
