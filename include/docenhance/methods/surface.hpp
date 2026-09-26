@@ -29,6 +29,9 @@ inline constexpr double surface_floor = 0.02;
 struct SurfaceInput {
     std::reference_wrapper<image::LinearSource> source;
     image::PlaneView<const std::uint8_t> protection;
+
+    SurfaceInput(image::LinearSource& linear, image::PlaneView<const std::uint8_t> mask) noexcept
+        : source(linear), protection(mask) {}
 };
 class SurfaceModel {
   public:

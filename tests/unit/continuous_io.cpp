@@ -110,7 +110,7 @@ TEST_CASE("Continuous output verification rejects wrong samples before publicati
     AlteredRows altered{*converter};
     const auto held = budget.used();
     const auto result = io::publish_png_rows(spelling(directory.path / "result"), altered, budget);
-    REQUIRE_FALSE(result);
+    REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(result.error().publication == core::Publication::not_published);
     CHECK(std::filesystem::is_empty(directory.path));
@@ -127,7 +127,7 @@ TEST_CASE("Independent output verification checks metadata not just pixels", "[c
     AlteredRows altered{*converter};
     altered.alter_metadata();
     const auto result = io::verify_png_rows(path, altered, budget, {});
-    REQUIRE_FALSE(result);
+    REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
 }
 TEST_CASE("Cancellation during continuous verification never commits staged output",
@@ -145,7 +145,7 @@ TEST_CASE("Cancellation during continuous verification never commits staged outp
         const auto result = io::publish_png_rows(spelling(directory.path / "output"), *converter,
                                                  budget, stop.cancellation());
         if (CheckpointStop::stopped()) {
-            REQUIRE_FALSE(result);
+            REQUIRE(!result);
             CHECK(result.error().code == core::ErrorCode::cancelled);
             CHECK(result.error().publication == core::Publication::not_published);
             CHECK(std::filesystem::is_empty(directory.path));
@@ -170,9 +170,8 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     methods::IlluminationReport report;
     const auto method = methods::Surface::create({.strength = 1, .target = 1}).value();
-    auto const model = methods::SurfaceModel::prepare({.source = *converter, .protection = {}},
-                                                      method, budget, {}, report)
-                           .value();
+    auto const model =
+        methods::SurfaceModel::prepare({*converter, {}}, method, budget, {}, report).value();
     auto block =
         image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1)
             .value();
@@ -184,7 +183,7 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
     AlteredRows altered{rows};
     const auto held = budget.used();
     const auto result = io::publish_png_rows(spelling(directory.path / "output"), altered, budget);
-    REQUIRE_FALSE(result);
+    REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(report.complete);
     CHECK(report.status == methods::SurfaceStatus::applied);
@@ -203,9 +202,8 @@ TEST_CASE("I01 cancellation in application versus verification preserves stage t
     for (const auto phase : {core::Checkpoint::processing, core::Checkpoint::verification}) {
         methods::IlluminationReport report;
         const auto method = methods::Surface::create({.strength = 1, .target = 1}).value();
-        auto const model = methods::SurfaceModel::prepare({.source = *converter, .protection = {}},
-                                                          method, budget, {}, report)
-                               .value();
+        auto const model =
+            methods::SurfaceModel::prepare({*converter, {}}, method, budget, {}, report).value();
         auto block = image::Plane<double>::allocate(
                          budget, image::linear_block_pixels * image::rgb_channels, 1)
                          .value();
@@ -218,7 +216,7 @@ TEST_CASE("I01 cancellation in application versus verification preserves stage t
         const auto held = budget.used();
         const auto result =
             io::publish_png_rows(spelling(directory.path / "output"), rows, budget, cancellation);
-        REQUIRE_FALSE(result);
+        REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(result.error().publication == core::Publication::not_published);
         CHECK(report.complete == (phase == core::Checkpoint::verification));

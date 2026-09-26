@@ -43,10 +43,10 @@ TEST_CASE("I01 factory and application admission reject contradictions before I/
     static_assert(!std::is_default_constructible_v<methods::Surface>);
     auto params = options().parameters();
     params.strength = std::numeric_limits<double>::quiet_NaN();
-    CHECK_FALSE(methods::Surface::create(params));
+    CHECK(!methods::Surface::create(params));
     params = options().parameters();
     params.cell = 1;
-    CHECK_FALSE(methods::Surface::create(params));
+    CHECK(!methods::Surface::create(params));
     contract::Invocation request{
         .command = contract::Command::process,
         .subject = "input.png",
@@ -55,16 +55,16 @@ TEST_CASE("I01 factory and application admission reject contradictions before I/
     request.illumination = "surface";
     REQUIRE(app::prepare_process(request));
     request.background_cell = "";
-    CHECK_FALSE(app::prepare_process(request));
+    CHECK(!app::prepare_process(request));
     request.background_cell = "008";
     REQUIRE(app::prepare_process(request));
     request.illumination = "off";
-    CHECK_FALSE(app::prepare_process(request));
+    CHECK(!app::prepare_process(request));
     request.background_cell.reset();
     request.protect_mask = "mask.png";
     REQUIRE(app::prepare_process(request));
     request.output_mode = "bw";
-    CHECK_FALSE(app::prepare_process(request));
+    CHECK(!app::prepare_process(request));
 }
 TEST_CASE("Disabled algebra and all-protected input avoid fit allocation exactly",
           "[surface][identity]") {
@@ -75,20 +75,18 @@ TEST_CASE("Disabled algebra and all-protected input avoid fit allocation exactly
     std::ranges::fill(mask.view().storage(), 1);
     core::Budget empty_budget{0};
     methods::IlluminationReport report;
-    auto protected_model =
-        methods::SurfaceModel::prepare({.source = source, .protection = mask.view().as_const()},
-                                       options(), empty_budget, {}, report);
+    auto protected_model = methods::SurfaceModel::prepare({source, mask.view().as_const()},
+                                                          options(), empty_budget, {}, report);
     REQUIRE(protected_model);
-    CHECK_FALSE(protected_model->active());
+    CHECK(!protected_model->active());
     CHECK(report.reason == methods::SurfaceReason::no_eligible_samples);
     CHECK(report.protected_samples == std::uint64_t{page.width} * page.height);
     auto params = options().parameters();
     params.strength = 0;
     auto const zero = methods::Surface::create(params).value();
-    auto model = methods::SurfaceModel::prepare({.source = source, .protection = {}}, zero,
-                                                empty_budget, {}, report);
+    auto model = methods::SurfaceModel::prepare({source, {}}, zero, empty_budget, {}, report);
     REQUIRE(model);
-    CHECK_FALSE(model->active());
+    CHECK(!model->active());
     CHECK(empty_budget.used() == 0);
     std::array<double, image::rgb_channels> pixel{paper, paper, paper};
     REQUIRE(model->apply({}, pixel, {}, report, {}));
@@ -112,8 +110,8 @@ TEST_CASE("I01 measurement, fit, interpolation and application preserve protecte
     const auto held = budget.used();
     {
         methods::IlluminationReport report;
-        auto model = methods::SurfaceModel::prepare(
-            {.source = source, .protection = mask.view().as_const()}, method, budget, {}, report);
+        auto model = methods::SurfaceModel::prepare({source, mask.view().as_const()}, method,
+                                                    budget, {}, report);
         REQUIRE(model);
         REQUIRE(model->active());
         CHECK(report.protected_samples == 1);
@@ -142,22 +140,20 @@ TEST_CASE("I01 automatic skip and explicit inapplicability are not numerical fai
     source.fill(paper);
     methods::IlluminationReport report;
     {
-        auto skipped = methods::SurfaceModel::prepare({.source = source, .protection = {}},
-                                                      options(true), budget, {}, report);
+        auto skipped =
+            methods::SurfaceModel::prepare({source, {}}, options(true), budget, {}, report);
         REQUIRE(skipped);
-        CHECK_FALSE(skipped->active());
+        CHECK(!skipped->active());
         CHECK(report.status == methods::SurfaceStatus::skipped);
         CHECK(report.reason == methods::SurfaceReason::automatic_predicates);
         REQUIRE(report.predicates.at(3).has_value());
         CHECK(report.predicates.at(3) == false);
     }
     source.fill(0);
-    auto refused = methods::SurfaceModel::prepare({.source = source, .protection = {}}, options(),
-                                                  budget, {}, report);
-    REQUIRE_FALSE(refused);
+    auto refused = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
+    REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::method_inapplicable);
-    auto skipped = methods::SurfaceModel::prepare({.source = source, .protection = {}},
-                                                  options(true), budget, {}, report);
+    auto skipped = methods::SurfaceModel::prepare({source, {}}, options(true), budget, {}, report);
     REQUIRE(skipped);
     CHECK(report.status == methods::SurfaceStatus::skipped);
 }
@@ -167,29 +163,27 @@ TEST_CASE("I01 resource refusal and phase cancellation refund scratch", "[surfac
     source.fill(paper);
     methods::IlluminationReport report;
     core::Budget empty{0};
-    auto refused = methods::SurfaceModel::prepare({.source = source, .protection = {}}, options(),
-                                                  empty, {}, report);
-    REQUIRE_FALSE(refused);
+    auto refused = methods::SurfaceModel::prepare({source, {}}, options(), empty, {}, report);
+    REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::resource);
     CHECK(empty.used() == 0);
     for (const auto phase : {core::Checkpoint::measurement, core::Checkpoint::solving}) {
         core::Budget budget{surface_budget};
         CheckpointStop const stop{phase, 0};
-        auto cancelled = methods::SurfaceModel::prepare(
-            {.source = source, .protection = {}}, options(), budget, stop.cancellation(), report);
-        REQUIRE_FALSE(cancelled);
+        auto cancelled = methods::SurfaceModel::prepare({source, {}}, options(), budget,
+                                                        stop.cancellation(), report);
+        REQUIRE(!cancelled);
         CHECK(cancelled.error().code == core::ErrorCode::cancelled);
         CHECK(budget.used() == 0);
     }
     core::Budget budget{surface_budget};
-    auto model = methods::SurfaceModel::prepare({.source = source, .protection = {}}, options(),
-                                                budget, {}, report);
+    auto model = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
     REQUIRE(model);
-    CheckpointStop const stop{core::Checkpoint::processing, 0};
+    const CheckpointStop stop{core::Checkpoint::processing, 0};
     const image::RowRange origin;
     std::array<double, image::rgb_channels> pixel{paper, paper, paper};
-    auto cancelled = model->apply(origin, pixel, {}, report, stop.cancellation());
-    REQUIRE_FALSE(cancelled);
+    const auto cancelled = model->apply(origin, pixel, {}, report, stop.cancellation());
+    REQUIRE(!cancelled);
     CHECK(pixel.front() == paper);
 }
 TEST_CASE("I01 automatic predicates each carry their independent decision", "[surface][auto]") {
@@ -231,7 +225,7 @@ TEST_CASE("I01 automatic predicates each carry their independent decision", "[su
             candidate.measurements->dark_fraction = 0;
             break;
         }
-        CHECK_FALSE(methods::surface_eligible(candidate));
+        CHECK(!methods::surface_eligible(candidate));
         REQUIRE(candidate.predicates.at(i).has_value());
         CHECK(candidate.predicates.at(i) == false);
     }
@@ -247,8 +241,8 @@ TEST_CASE("I01 exact required budget succeeds and one-byte-short refusal refunds
         bool success = false;
         {
             methods::IlluminationReport report;
-            auto result = methods::SurfaceModel::prepare({.source = source, .protection = {}},
-                                                         options(), budget, {}, report);
+            auto result =
+                methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
             success = result.has_value();
             if (!success) {
                 CHECK(result.error().code == core::ErrorCode::resource);
@@ -270,7 +264,7 @@ TEST_CASE("I01 exact required budget succeeds and one-byte-short refusal refunds
     }
     REQUIRE(lower > 0);
     CHECK(fits(lower));
-    CHECK_FALSE(fits(lower - 1));
+    CHECK(!fits(lower - 1));
     CHECK(source.row(0).front() == paper);
 }
 
@@ -281,8 +275,8 @@ TEST_CASE("I01 singleton and wholly protected lattice have defined measurements"
         LinearFixture singleton{budget, {.width = 1, .height = 1}};
         singleton.fill(paper);
         methods::IlluminationReport report;
-        const auto model = methods::SurfaceModel::prepare({.source = singleton, .protection = {}},
-                                                          options(), budget, {}, report);
+        const auto model =
+            methods::SurfaceModel::prepare({singleton, {}}, options(), budget, {}, report);
         REQUIRE(model);
         CHECK(model->background(0, 0).value() == paper);
         REQUIRE(report.measurements);
@@ -300,9 +294,9 @@ TEST_CASE("I01 singleton and wholly protected lattice have defined measurements"
     auto params = options().parameters();
     params.cell = 32;
     methods::IlluminationReport report;
-    const auto result = methods::SurfaceModel::prepare(
-        {.source = source, .protection = mask.view().as_const()},
-        methods::Surface::create(params).value(), budget, {}, report);
+    const auto result = methods::SurfaceModel::prepare({source, mask.view().as_const()},
+                                                       methods::Surface::create(params).value(),
+                                                       budget, {}, report);
     REQUIRE(result);
     REQUIRE(report.measurements);
     if (report.measurements) {

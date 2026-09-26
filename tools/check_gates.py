@@ -132,6 +132,26 @@ def suppression_errors(root: Path = ROOT, registry_path: Path = REGISTRY) -> lis
     return errors
 
 
+# Catch2 builds these from an out-of-range ResultDisposition::Flags combination, which clang-tidy's
+# analyzer rejects with libc++ and MSVC but not libstdc++; write CHECK(!expr) instead.
+NEGATED_ASSERTION = re.compile(r"\b(?:CHECK|REQUIRE)_FALSE\s*\(")
+
+
+def negated_assertion_errors(root: Path = ROOT) -> list[str]:
+    """Reject Catch2 negated-assertion macros in first-party C++ tests."""
+    errors = []
+    for path, rel, kind in code_files(root):
+        if kind != "cxx" or PurePosixPath(rel).parts[0] not in TEST_ROOTS:
+            continue
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if NEGATED_ASSERTION.search(line):
+                errors.append(
+                    f"{rel}:{number}: use CHECK(!expr)/REQUIRE(!expr); Catch2's _FALSE macros "
+                    "fail clang-tidy EnumCastOutOfRange on libc++ and MSVC"
+                )
+    return errors
+
+
 def cmake_files(root: Path = ROOT) -> dict[Path, str]:
     """Map each CMake file to its text."""
     return {
@@ -197,6 +217,7 @@ def check_gates(root: Path = ROOT) -> list[str]:
         *suppression_errors(root, root / "tests" / "exceptions" / "registry.json"),
         *build_coverage_errors(root),
         *target_option_errors(root),
+        *negated_assertion_errors(root),
         *config_gates.check(
             root,
             list(iter_files(root)),

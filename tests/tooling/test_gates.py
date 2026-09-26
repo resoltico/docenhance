@@ -143,6 +143,20 @@ class CoverageTests(GateTestCase):
         self.assertEqual(errors, ["src/CMakeLists.txt: target bad lacks de_apply_options(bad)"])
 
 
+class NegatedAssertionTests(GateTestCase):
+    """Test assertions avoid a Catch2 macro that clang-tidy rejects on some standard libraries."""
+
+    def test_false_macros_are_rejected_only_in_tests(self) -> None:
+        """CHECK_FALSE/REQUIRE_FALSE fail in tests and fuzzers; CHECK(!expr) and src pass."""
+        write(self.root, "tests/unit/a.cpp", "CHECK(!ok);\nREQUIRE_FALSE(ok);\n")
+        write(self.root, "fuzz/b.cpp", "CHECK_FALSE (ok);\n")
+        write(self.root, "src/c.cpp", "// CHECK_FALSE(x) is documented here\n")
+        errors = check_gates.negated_assertion_errors(self.root)
+        self.assertEqual(
+            [error.split(": ", 1)[0] for error in errors], ["fuzz/b.cpp:1", "tests/unit/a.cpp:2"]
+        )
+
+
 class ConfigGateTests(GateTestCase):
     """Configuration cannot quietly relax the linters."""
 

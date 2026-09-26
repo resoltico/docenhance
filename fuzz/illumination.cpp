@@ -84,8 +84,7 @@ void compare(docenhance::tests::LinearFixture& source,
     using docenhance::fuzz::require;
     const auto method = methods::Surface::create({.cell = cell}).value();
     methods::IlluminationReport report;
-    auto model = methods::SurfaceModel::prepare({.source = source, .protection = mask}, method,
-                                                budget, {}, report);
+    auto model = methods::SurfaceModel::prepare({source, mask}, method, budget, {}, report);
     require(model.has_value() && model->active(), "bounded valid I01 fit");
     const auto reference = docenhance::tests::illumination_reference(source, mask, cell);
     std::vector<double> backgrounds;
