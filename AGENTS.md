@@ -1,4 +1,6 @@
-# Instructions for implementation agents
+# Coding-agent instructions
+
+## Instructions
 
 Read `docs/status.md`, `docs/architecture.md`, `docs/decisions.md` and the reviewed contracts under
 `spec/`. The roadmap describes planned work; inspect current capability contracts before choosing
@@ -57,3 +59,9 @@ For illumination read `docs/illumination.md`. Keep the operation opt-in and its 
 coordinates. Fit once on eligible linear samples, verify the true solver residual and reuse the same
 immutable model during output verification. Do not change binary semantics, refit on verification,
 double-count observations, downsample on resource refusal or call numerical failure an automatic skip.
+
+## Name by meaning, not development history
+
+Name files, directories, and all identifiers—including functions, types, variables, tests, and configuration keys—for what they actually represent or do. Use precise, consistent domain terminology and idiomatic project conventions. Do not encode product maturity, implementation-plan stages, task provenance, temporary development status, or replacement history. Distinguish alternatives by meaningful differences, not vague labels or unsupported quality claims.
+Apply this semantically, not as a word blacklist. States, stages, versions, and ordering are valid when intrinsic to the domain, algorithm, contract, or artifact. Planning and historical records may identify the work they document.
+Review names you introduce or change. Keep renames within scope, update affected references, and honor external naming and compatibility requirements.
