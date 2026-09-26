@@ -17,52 +17,20 @@
 #include "illumination_rows.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
+#include "temporary_directory.hpp"
 
 #include <catch2/catch_test_macros.hpp>
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
 #include <filesystem>
 #include <functional>
 #include <span>
-#include <string>
-#include <system_error>
 #include <utility>
 #include <vector>
 
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t byte_budget = std::size_t{32} * 1024 * 1024;
-class Directory {
-  public:
-    Directory()
-        : path(std::filesystem::temp_directory_path() /
-               ("docenhance-color-" +
-                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))) {
-        REQUIRE(std::filesystem::create_directory(path));
-    }
-    Directory(const Directory&) = delete;
-    Directory& operator=(const Directory&) = delete;
-    Directory(Directory&&) = delete;
-    Directory& operator=(Directory&&) = delete;
-    ~Directory() {
-        try {
-            std::error_code error;
-            std::filesystem::remove_all(path, error);
-        } catch (...) {
-            std::terminate();
-        }
-    }
-    std::filesystem::path path;
-};
-std::string spelling(const std::filesystem::path& path) {
-    std::string result;
-    for (const auto byte : path.u8string()) {
-        result.push_back(static_cast<char>(byte));
-    }
-    return result;
-}
 image::Raster source(core::Budget& budget) {
     const auto bytes = make_gray_png({
         .width = 8,
@@ -102,25 +70,26 @@ class AlteredRows final : public image::RowSource {
 } // namespace
 TEST_CASE("Continuous output verification rejects wrong samples before publication",
           "[continuous][io]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-color"};
     core::Budget budget{byte_budget};
     const auto raster = source(budget);
-    auto converter =
+    const auto converter =
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     AlteredRows altered{*converter};
     const auto held = budget.used();
-    const auto result = io::publish_png_rows(spelling(directory.path / "result"), altered, budget);
+    const auto result =
+        io::publish_png_rows(utf8_spelling(directory.path / "result"), altered, budget);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(result.error().publication == core::Publication::not_published);
-    CHECK(std::filesystem::is_empty(directory.path));
+    CHECK(empty_directory(directory.path));
     CHECK(budget.used() == held);
 }
 TEST_CASE("Independent output verification checks metadata not just pixels", "[continuous][io]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-color"};
     core::Budget budget{byte_budget};
     const auto raster = source(budget);
-    auto converter =
+    const auto converter =
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     const auto path = directory.path / "encoded.png";
     REQUIRE(io::encode_png_rows(path, *converter, budget, {}));
@@ -132,23 +101,23 @@ TEST_CASE("Independent output verification checks metadata not just pixels", "[c
 }
 TEST_CASE("Cancellation during continuous verification never commits staged output",
           "[continuous][cancellation]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-color"};
     core::Budget budget{byte_budget};
     const auto raster = source(budget);
-    auto converter =
+    const auto converter =
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     const auto held = budget.used();
     bool completed = false;
     constexpr std::size_t attempts = 256;
     for (std::size_t after = 0; after < attempts; ++after) {
         const CheckpointStop stop{core::Checkpoint::verification, after};
-        const auto result = io::publish_png_rows(spelling(directory.path / "output"), *converter,
-                                                 budget, stop.cancellation());
+        const auto result = io::publish_png_rows(utf8_spelling(directory.path / "output"),
+                                                 *converter, budget, stop.cancellation());
         if (CheckpointStop::stopped()) {
             REQUIRE(!result);
             CHECK(result.error().code == core::ErrorCode::cancelled);
             CHECK(result.error().publication == core::Publication::not_published);
-            CHECK(std::filesystem::is_empty(directory.path));
+            CHECK(empty_directory(directory.path));
         } else {
             REQUIRE(result);
             completed = true;
@@ -163,10 +132,10 @@ TEST_CASE("Cancellation during continuous verification never commits staged outp
 
 TEST_CASE("I01 failed output verification retains completed stage accounting and refunds",
           "[surface][io]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-color"};
     core::Budget budget{byte_budget};
     const auto raster = source(budget);
-    auto converter =
+    const auto converter =
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     methods::IlluminationReport report;
     const auto method = methods::Surface::create({.strength = 1, .target = 1}).value();
@@ -182,22 +151,23 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
         {.model = model, .protection = {}, .report = report, .cancellation = cancellation}};
     AlteredRows altered{rows};
     const auto held = budget.used();
-    const auto result = io::publish_png_rows(spelling(directory.path / "output"), altered, budget);
+    const auto result =
+        io::publish_png_rows(utf8_spelling(directory.path / "output"), altered, budget);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(report.complete);
     CHECK(report.status == methods::SurfaceStatus::applied);
     CHECK(report.evaluated_samples == 64);
     CHECK(report.changed_samples == 64);
-    CHECK(std::filesystem::is_empty(directory.path));
+    CHECK(empty_directory(directory.path));
     CHECK(budget.used() == held);
 }
 TEST_CASE("I01 cancellation in application versus verification preserves stage truth",
           "[surface][cancellation][io]") {
-    const Directory directory;
+    const TemporaryDirectory directory{"docenhance-color"};
     core::Budget budget{byte_budget};
     const auto raster = source(budget);
-    auto converter =
+    const auto converter =
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     for (const auto phase : {core::Checkpoint::processing, core::Checkpoint::verification}) {
         methods::IlluminationReport report;
@@ -214,15 +184,15 @@ TEST_CASE("I01 cancellation in application versus verification preserves stage t
             std::move(block),
             {.model = model, .protection = {}, .report = report, .cancellation = cancellation}};
         const auto held = budget.used();
-        const auto result =
-            io::publish_png_rows(spelling(directory.path / "output"), rows, budget, cancellation);
+        const auto result = io::publish_png_rows(utf8_spelling(directory.path / "output"), rows,
+                                                 budget, cancellation);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(result.error().publication == core::Publication::not_published);
         CHECK(report.complete == (phase == core::Checkpoint::verification));
         const std::uint64_t expected_count = phase == core::Checkpoint::verification ? 64U : 0U;
         CHECK(report.evaluated_samples == expected_count);
-        CHECK(std::filesystem::is_empty(directory.path));
+        CHECK(empty_directory(directory.path));
         CHECK(budget.used() == held);
     }
 }

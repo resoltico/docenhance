@@ -90,9 +90,6 @@
     "tests/support/architecture_cases.hpp:clang-tidy/clang-analyzer-cplusplus.Move@91525f20": {
       "explanation": "Plane has an explicit post-move contract: empty dimensions and empty owned storage. This test deliberately inspects that specified empty state and checks kernel rejection. Generic move checkers treat calls other than empty() as invalid without modeling the custom contract; sanitizer/reference suites verify the actual lifetime and shape behavior."
     },
-    "tests/unit/io.cpp:clang-tidy/bugprone-exception-escape@fab36d73": {
-      "explanation": "The temporary-directory test cleanup uses the error-code remove_all overload and is explicitly noexcept. MSVC's filesystem implementation still exposes allocation paths through its headers; cleanup failures are intentionally ignored after a test and cannot escape the destructor."
-    },
     "tests/unit/transport.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@306e5491": {
       "explanation": "std::ios::iostate is a standard-library bitmask enum. Clang's analyzer rejects the valid combination of badbit and failbit used only to configure the test's refusing stream; the test verifies the resulting output-failure behavior."
     },
