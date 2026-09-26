@@ -25,7 +25,7 @@ void attempt(std::span<const std::uint8_t> profile, docenhance::image::SampleMod
         source.pixels = de::image::Plane<std::uint8_t>::allocate(
                             budget, de::image::raster_row_bytes(source.shape).value(), 1)
                             .value();
-        std::ranges::fill(source.pixels.view().row(0), 127);
+        std::ranges::fill(source.pixels.view().row(0), std::uint8_t{127});
         if (!profile.empty()) {
             source.metadata.icc = budget.allocate(profile.size()).value();
             std::memcpy(source.metadata.icc.bytes().data(), profile.data(), profile.size());
