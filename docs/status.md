@@ -1,7 +1,8 @@
 # Status
 
-The executable implements **continuous-tone PNG representation**, **B02 Sauvola**, and
-**B03 fixed-threshold binarization**, and opt-in **I01 quantile log-surface illumination**. It is not a complete restoration suite.
+The executable implements **continuous-tone PNG representation** with opt-in **I01 quantile
+log-surface illumination**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
+It is not a complete restoration suite.
 
 ## Implemented product paths
 
