@@ -38,7 +38,7 @@ de_library(de_image LAYER image
 de_library(de_methods LAYER methods
   SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/binarization.cpp methods/sauvola.cpp
           methods/illumination.cpp methods/surface_detail.hpp methods/surface_grid.cpp
-          methods/surface_measure.cpp methods/surface_system.cpp methods/surface_solve.cpp
+          methods/surface_measure.cpp methods/surface_system.cpp methods/surface_multigrid.cpp methods/surface_solve.cpp
           methods/surface_samples.cpp methods/surface_fit.cpp methods/surface_apply.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"

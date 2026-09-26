@@ -20,13 +20,21 @@ sample meaning. No I02 fallback or automatic preset is introduced.
 
 | Option | Default | Domain |
 |---|---|---|
-| `--background-strength` | 0.35 | finite [0,1] |
-| `--background-max-gain` | 1.5 | finite [1,4] |
+| `--background-strength` | 1 | finite [0,1] |
+| `--background-max-gain` | 2 | finite [1,4] |
 | `--background-target` | source | source or finite [0.1,1] |
 | `--background-cell` | auto | auto or integer [8,512] |
 | `--background-quantile` | 0.90 | finite [0.75,0.99] |
-| `--background-smooth` | 2 | finite [0.1,20] |
+| `--background-smooth` | 1 | finite [0.1,20] |
 | `--protect-mask` | absent | nonempty well-formed UTF-8 path, no embedded NUL |
+
+The defaults correct the fitted background completely (`strength` 1) up to a doubling of any
+sample (`max-gain` 2), with moderate smoothing. On synthetic shaded, book-gutter and photograph
+pages they reduced paper-luminance variation by 68–86% while retaining at least 99.7% of local mark
+contrast; a conservative 0.35/1.5/2 setting reduced it by only 19–30%. A solid black block is
+brightened only by the local illumination correction. A photograph brighter than a quarter of the
+paper reference is treated as shaded paper and can be brightened up to the gain cap; protect it
+with a mask. These synthetic measurements are not a real-document benchmark.
 
 Numeric spelling uses the existing finite-decimal grammar; cell integers use ASCII digits only.
 Missing values may default; explicitly empty or wrong-operation values fail before input I/O.
@@ -66,7 +74,13 @@ No eligible samples is a defined no-change operation.
 A cell of actual area A is measured only when its unprotected count n is at least
 `max(min(16,A),ceil(A/4))`. Use all its eligible luminances, not a subsampling shortcut. The
 nearest-rank quantile is the sorted element at `max(ceil(q*n)-1,0)`. A quantile below 0.02 is
-unmeasured. Otherwise `b_i = log(q_i)` and `w_i = n_i/A_i`; missing cells use `w_i=b_i=0`.
+unmeasured. The **background reference** R is the nearest-rank 90th percentile of the remaining
+cell quantiles. A cell with `log(q_i) < log(R) - log(4)` is also unmeasured and counted as a
+**dark cell**: it is darker than any admissible gain (at most 4) could correct, so it is dark
+content such as a solid fill or dark photograph rather than evidence of illumination. The fitted
+field spans it from surrounding paper, so dark content receives the local illumination correction
+instead of the gain cap. Otherwise `b_i = log(q_i)` and `w_i = n_i/A_i`; missing cells use
+`w_i=b_i=0`.
 Require measured-cell coverage of at least 25% in explicit mode and 60% in automatic mode.
 Explicit insufficiency returns `E_METHOD_INAPPLICABLE`; automatic insufficiency records a skip.
 
@@ -78,8 +92,25 @@ L z at cell i = sum(z_i - z_j) over existing grid neighbors j
 ```
 
 There are no wrapped neighbors, ghost edges, or penalties outside the actual grid. This connected
-Laplacian plus at least one positive data weight is positive definite. Use matrix-free, binary64,
-Jacobi-preconditioned conjugate gradients, starting with the weighted mean of measured logarithms.
+Laplacian plus at least one positive data weight is positive definite. Use matrix-free, binary64
+conjugate gradients, starting with the weighted mean of measured logarithms, preconditioned by one
+symmetric multigrid V-cycle per iteration:
+
+- Levels aggregate 2 x 2 cells (clipped at odd edges) until one cell remains; a 1 x 65,536 grid
+  has the most, 17. Coarse operators are the exact Galerkin products `P^T A P` for piecewise-constant
+  `P`, which keep the weighted four-neighbor form: coarse data weights and edge weights are sums of
+  the fine ones, and edges inside an aggregate vanish.
+- Each level applies two damped-Jacobi sweeps (damping 0.8) before restriction and two after
+  prolongation; the coarse correction is scaled by 1.6. The single-cell level is solved exactly.
+
+Jacobi preconditioning alone needs iterations proportional to the width of an unmeasured region:
+a 200-cell protected square took 471 iterations and a 1 x 65,536 grid did not converge in 20,000.
+With the V-cycle these took 18–30 iterations in two dimensions and under 100 in one dimension,
+even at the largest smoothing. Symmetry and positive definiteness are checked by factorizing the
+cycle's dense matrix on small grids. A scale in (0,2) keeps an exact two-level correction
+non-expansive in the energy norm; dense checks of the whole cycle cover scales from 1 to 2, and
+1.6 conditioned best.
+
 Reductions have fixed row-major order. Recompute the actual `rhs-A*z` residual after every step;
 do not certify convergence from the recurrence residual alone. The stopping rule is
 `norm(rhs-A*z) <= 1e-8 * max(norm(rhs),1e-12)`, with at most 500 iterations. Zero initial residual
@@ -144,7 +175,8 @@ change automatic decisions or double-count stage/color observations. Source and 
 
 The existing continuous 1 GiB charged-buffer ceiling remains unchanged. Plane allocations charge
 actual aligned row bytes, with normal ownership refunds on all returns. Retained log coefficients
-cost at most 512 KiB; seven solver vectors plus those coefficients cost at most 4 MiB. Cell-selection
+cost at most 512 KiB; seven solver vectors plus those coefficients cost at most 4 MiB. The multigrid
+hierarchy adds six vectors over at most twice the cell count, at most 6 MiB. Cell-selection
 scratch is at most 2 MiB plus one at-most-512-pixel RGB row. Global lattice storage is at most 16 MiB,
 plus a 96 KiB linear block. These phases do not hold their transient workspaces simultaneously.
 The optional retained mask costs one byte per sample plus row padding; decoding also accounts for
@@ -167,7 +199,8 @@ unknown publication and cleanup semantics are unchanged; no automatic retry or r
 
 Continuous success requires an `illumination` record, including `disabled` for the default path.
 A requested I01 stage carries method identity/version, requested parameters, resolved cell size,
-eligible/protected counts, measured coverage, solver iterations/true residual/tolerance, global
+eligible/protected counts, measured coverage, dark cells and the background reference (null when no
+cell was measured), solver iterations/true residual/tolerance, global
 measurements, target, six optional predicate decisions and application counters. Gain extrema refer
 to g before the strength exponent; capped samples include equality at max_gain; saturation counts
 raw target above one. Fractions with no evaluated samples are null.
@@ -201,6 +234,9 @@ Design and a separate QA pass preceded implementation. The review rejected these
 | Low memory changes the algorithm. | Charged phase scratch, refusal/refund and exact-budget boundary tests. |
 | A good-looking background erases marks. | Protected identities, already-good no-op and independent synthetic contrast measurements. |
 | Fault after a completed stage falsely labels its numerical work as failed. | Stage completion is distinct from command publication and delivery. |
+| Solid fills or dark photographs measured as background receive the full gain cap. | Cells below the background reference divided by the largest admissible gain are dark content, left unmeasured, spanned from surrounding paper and reported. |
+| Solver iterations grow with the width of unmeasured regions, refusing admissible grids. | Multigrid-preconditioned CG; symmetric positive definite checks and bounded iteration counts on the widest admitted gaps. |
+| Conservative defaults leave most shading in place. | Full-strength defaults chosen from measured fixtures; the gain cap bounds the change to any sample. |
 
 Unit and raw-mask/model fuzz tests exercise independent dense solves and interpolation, no-ops,
 partial cells, missing measurements, bounds, failure, resources, protection and cancellation.
@@ -218,5 +254,8 @@ and platforms separately; CI or benchmark success is not implied by these obliga
 The supplied DocEnhance implementation blueprint (September 17, 2026), I01 and protection/photometric
 contracts, informs the method. Its planned presets and unrelated features are not reinstated.
 The matrix solver is independently written; algorithmic background is the SIAM/Netlib
-*Templates for the Solution of Linear Systems*, https://www.netlib.org/templates/templates.html.
+*Templates for the Solution of Linear Systems*, https://www.netlib.org/templates/templates.html,
+U. Trottenberg, C. W. Oosterlee and A. Schüller, *Multigrid* (Academic Press, 2001), and
+D. Braess, "Towards algebraic multigrid for elliptic problems of second order", *Computing* 55
+(1995), for over-scaled piecewise-constant coarse corrections.
 Color interpretation and scalar luminance transport retain the reviewed project definitions.

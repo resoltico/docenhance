@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from continuous_fixtures import GRAY_ALPHA, RGB, Fixture, decode_output, exif
-from illumination_reference import quantile, surface
+from illumination_reference import Plane, quantile, surface
 from test_cli import call_json, expect
 from test_continuous import transfer_decode
 
@@ -26,6 +26,7 @@ ORIENTATIONS = 8
 QUALITY_WIDTH = 192
 QUALITY_HEIGHT = 96
 MODEL_TOLERANCE = 3e-5
+MODEL_SMOOTH = 2
 BACKGROUND_REDUCTION = 0.40
 CONTRAST_RETENTION = 0.75
 LINEAR = ((b"gAMA", struct.pack(">I", 100000)),)
@@ -146,13 +147,15 @@ def independent_model(exe: Path, root: Path) -> None:
             "1",
             "--background-max-gain",
             "3",
+            "--background-smooth",
+            str(MODEL_SMOOTH),
             "--protect-mask",
             str(mask),
         ],
     )
     output = require_output(output)
     linear = source_values(fixture)
-    background = surface(linear, width, height, cell, protected)
+    background = surface(Plane(linear, width, height, protected), cell, MODEL_SMOOTH)
     target = quantile([b for b, p in zip(background, protected, strict=True) if not p], 0.9)
     expected = [
         y if p else min(1, y * min(3, max(1, target / max(b, 0.02))))

@@ -124,6 +124,11 @@ nlohmann::ordered_json illumination_fields(const methods::IlluminationReport& r)
         {"protected_samples", r.protected_samples},
         {"cells", r.cells},
         {"measured_cells", r.measured_cells},
+        {"dark_cells", r.dark_cells},
+        {
+            "background_reference",
+            r.background_reference ? Json(*r.background_reference) : Json(nullptr),
+        },
         {"coverage", fraction(r.measured_cells, r.cells)},
         {"solver", solver},
         {"measurements", r.measurements ? measurements(*r.measurements) : Json(nullptr)},

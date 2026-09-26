@@ -5,8 +5,11 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
 
 BACKGROUND_FLOOR = 0.02
+GAIN_LIMIT = 4
+REFERENCE_RANK = 0.9
 
 
 def quantile(values: list[float], p: float) -> float:
@@ -48,14 +51,22 @@ def interval(centers: list[float], x: int) -> tuple[int, int, float]:
     return len(centers) - 1, len(centers) - 1, 0
 
 
-def surface(
-    pixels: list[float], width: int, height: int, cell: int, protected: list[bool]
-) -> list[float]:
-    """Reference background: beta=2 and q=.9; exact actual-cell eligibility."""
+@dataclass(frozen=True)
+class Plane:
+    """Linear luminance samples in row-major order and their protection flags."""
+
+    pixels: list[float]
+    width: int
+    height: int
+    protected: list[bool]
+
+
+def surface(plane: Plane, cell: int, smooth: float) -> list[float]:
+    """Reference background at q=.9: exact actual-cell eligibility and dark-cell exclusion."""
+    pixels, width, height, protected = plane.pixels, plane.width, plane.height, plane.protected
     columns, rows = math.ceil(width / cell), math.ceil(height / cell)
     n = columns * rows
-    matrix = [[0.0] * n for _ in range(n)]
-    rhs = [0.0] * n
+    measured: dict[int, tuple[float, float]] = {}
     for j in range(n):
         x0, y0 = (j % columns) * cell, (j // columns) * cell
         x1, y1 = min(width, x0 + cell), min(height, y0 + cell)
@@ -68,17 +79,26 @@ def surface(
         area = (x1 - x0) * (y1 - y0)
         q = quantile(eligible, 0.9) if eligible else 0
         if len(eligible) >= max(1, min(16, area), math.ceil(0.25 * area)) and q >= BACKGROUND_FLOOR:
-            weight = len(eligible) / area
+            measured[j] = (len(eligible) / area, math.log(q))
+    if measured:
+        reference = quantile([value for _, value in measured.values()], REFERENCE_RANK)
+        dark = reference - math.log(GAIN_LIMIT)
+        measured = {j: m for j, m in measured.items() if m[1] >= dark}
+    matrix = [[0.0] * n for _ in range(n)]
+    rhs = [0.0] * n
+    for j in range(n):
+        if j in measured:
+            weight, value = measured[j]
             matrix[j][j] += weight
-            rhs[j] += weight * math.log(q)
+            rhs[j] += weight * value
         for neighbor in (
             *([j + 1] if j % columns + 1 < columns else []),
             *([j + columns] if j + columns < n else []),
         ):
-            matrix[j][j] += 2
-            matrix[neighbor][neighbor] += 2
-            matrix[j][neighbor] -= 2
-            matrix[neighbor][j] -= 2
+            matrix[j][j] += smooth
+            matrix[neighbor][neighbor] += smooth
+            matrix[j][neighbor] -= smooth
+            matrix[neighbor][j] -= smooth
     grid = solve(matrix, rhs)
     xs = [(x + min(x + cell, width) - 1) / 2 for x in range(0, width, cell)]
     ys = [(y + min(y + cell, height) - 1) / 2 for y in range(0, height, cell)]

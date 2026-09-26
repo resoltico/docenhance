@@ -10,6 +10,7 @@
 #include "surface_detail.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -93,6 +94,33 @@ core::Result<bool> should_fit(FitContext context) {
                           std::min(minimum_samples, std::uint64_t{extent.width} * extent.height),
                       SurfaceReason::insufficient_samples, context);
 }
+// A cell darker than the paper reference divided by the largest admissible gain is beyond any
+// illumination I01 could correct. It is dark content such as a solid fill or dark photograph, not
+// evidence of lighting, so it stays unmeasured and the fitted field spans it from nearby paper.
+void exclude_dark_cells(image::PlaneView<double> work, IlluminationReport& report) {
+    const auto weights = work.row(0);
+    const auto logs = work.row(1);
+    const auto scratch = work.row(2); // The right-hand side is assembled after this step.
+    std::size_t measured = 0;
+    for (std::size_t i = 0; i < weights.size(); ++i) {
+        if (surface_at(weights, i) > 0) {
+            surface_at(scratch, measured++) = surface_at(logs, i);
+        }
+    }
+    if (measured == 0) {
+        return;
+    }
+    const double reference = select_quantile(scratch.first(measured), surface_reference_rank);
+    report.background_reference = std::exp(reference);
+    const double floor = reference - std::log(surface_gain_limit);
+    for (std::size_t i = 0; i < weights.size(); ++i) {
+        if (surface_at(weights, i) > 0 && surface_at(logs, i) < floor) {
+            surface_at(weights, i) = 0;
+            surface_at(logs, i) = 0;
+            ++report.dark_cells;
+        }
+    }
+}
 core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext context) {
     auto& report = context.report.get();
     report.cell = grid.cell;
@@ -115,6 +143,7 @@ core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext 
     if (!measured) {
         return std::unexpected(measured.error());
     }
+    exclude_dark_cells(work->view(), report);
     report.measured_cells = static_cast<std::uint32_t>(
         std::ranges::count_if(work->view().row(0), [](double w) { return w > 0; }));
     constexpr double explicit_coverage = 0.25;
@@ -139,7 +168,7 @@ core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext 
         .smooth = context.method.get().parameters().smooth,
     };
     auto solved = solve_surface(system, work->view(), logs->view().row(0), *report.solver,
-                                context.cancellation.get());
+                                {.budget = context.budget, .cancellation = context.cancellation});
     if (!solved) {
         return std::unexpected(solved.error());
     }

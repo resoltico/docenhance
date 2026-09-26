@@ -3,6 +3,7 @@
 #include "docenhance/methods/illumination.hpp"
 
 #include "docenhance/core/memory.hpp"
+#include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
@@ -25,15 +26,25 @@ constexpr double scale = 255, tolerance = 1e-6;
 std::uint8_t byte_at(std::span<const std::uint8_t> bytes, std::size_t i) {
     return i < bytes.size() ? bytes.subspan(i, 1).front() : 0;
 }
+// Bright paper samples, with whole cells of dark content chosen by bytes after the pixel bytes.
 void fill(docenhance::tests::LinearFixture& source, docenhance::image::PlaneView<std::uint8_t> mask,
           std::span<const std::uint8_t> bytes) {
     namespace image = docenhance::image;
     constexpr unsigned bright_floor = 128;
     constexpr unsigned bright_choices = 127;
+    constexpr unsigned dark_floor = 3;
+    constexpr unsigned dark_choices = 28;
+    constexpr unsigned dark_period = 8;
+    const auto width = source.extent().width;
+    const auto columns = (width + cell - 1) / cell;
+    const auto cell_bytes = 2 + (std::size_t{width} * source.extent().height);
     for (std::uint32_t y = 0; y < source.extent().height; ++y) {
-        for (std::uint32_t x = 0; x < source.extent().width; ++x) {
-            const auto v = byte_at(bytes, 2 + (std::size_t{y} * source.extent().width) + x);
-            const double value = (bright_floor + (v % bright_choices)) / scale;
+        for (std::uint32_t x = 0; x < width; ++x) {
+            const auto v = byte_at(bytes, 2 + (std::size_t{y} * width) + x);
+            const auto cell_index = (std::size_t{y / cell} * columns) + (x / cell);
+            const bool dark = byte_at(bytes, cell_bytes + cell_index) % dark_period == 1;
+            const double value = dark ? (dark_floor + (v % dark_choices)) / scale
+                                      : (bright_floor + (v % bright_choices)) / scale;
             std::ranges::fill(
                 source.row(y).subspan(std::size_t{x} * image::rgb_channels, image::rgb_channels),
                 value);
@@ -85,8 +96,18 @@ void compare(docenhance::tests::LinearFixture& source,
     const auto method = methods::Surface::create({.cell = cell}).value();
     methods::IlluminationReport report;
     auto model = methods::SurfaceModel::prepare({source, mask}, method, budget, {}, report);
+    const auto reference =
+        docenhance::tests::illumination_reference(source, mask, cell, method.parameters().smooth);
+    require(report.dark_cells == reference.dark_cells, "independent dark-cell count");
+    constexpr double explicit_coverage = 0.25;
+    const auto cells = static_cast<double>(report.cells);
+    if (reference.measured_cells == 0 || reference.measured_cells / cells < explicit_coverage) {
+        require(!model.has_value() &&
+                    model.error().code == docenhance::core::ErrorCode::method_inapplicable,
+                "insufficient measured cells are refused");
+        return;
+    }
     require(model.has_value() && model->active(), "bounded valid I01 fit");
-    const auto reference = docenhance::tests::illumination_reference(source, mask, cell);
     std::vector<double> backgrounds;
     for (std::uint32_t y = 0; y < source.extent().height; ++y) {
         for (std::uint32_t x = 0; x < source.extent().width; ++x) {

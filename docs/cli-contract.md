@@ -115,15 +115,15 @@ Select I01 for continuous preserve/gray output only. Off is the default; auto ma
 
 ## `--background-strength A`
 
-**Scope:** P. **Domain/default:** 0.35; finite [0,1].
+**Scope:** P. **Domain/default:** 1; finite [0,1].
 
-Exponent controlling I01 gain. Zero is an exact photometric no-op after parameter and mask validation.
+Exponent applied to the I01 gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation.
 
 **Applicable methods:** I01.
 
 ## `--background-max-gain G`
 
-**Scope:** P. **Domain/default:** 1.5; finite [1,4].
+**Scope:** P. **Domain/default:** 2; finite [1,4].
 
 Maximum I01 multiplicative gain. One is an exact photometric no-op.
 
@@ -155,7 +155,7 @@ Nearest-rank quantile of all eligible cell samples; protected samples are exclud
 
 ## `--background-smooth BETA`
 
-**Scope:** P. **Domain/default:** 2; finite [0.1,20].
+**Scope:** P. **Domain/default:** 1; finite [0.1,20].
 
 Positive grid-Laplacian weight for fitting the logarithmic background.
 
