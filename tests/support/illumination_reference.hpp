@@ -136,7 +136,7 @@ inline LogReference illumination_reference(LinearFixture& source,
     std::vector<double> measured;
     std::ranges::copy_if(cells.quantiles, std::back_inserter(measured),
                          [](double q) { return q > 0; });
-    LogReference result{.extent = extent, .cell = cell};
+    LogReference result{.extent = extent, .cell = cell, .values = {}};
     constexpr double reference_rank = 0.9;
     constexpr double gain_limit = 4;
     const double dark = measured.empty() ? 0 : sorted_rank(measured, reference_rank) / gain_limit;
