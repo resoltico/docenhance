@@ -6,6 +6,7 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
+#include "png_rows.hpp"
 #include "publication.hpp"
 #include "temporary_directory.hpp"
 
@@ -18,6 +19,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <iterator>
 #include <string>
 #include <system_error>
 #include <thread>
@@ -64,6 +66,40 @@ TEST_CASE("Codec allocations share the caller budget and refund on every path", 
         }
         CHECK(constrained.used() == 0);
     }
+}
+
+TEST_CASE("Binary output is read back and compared before it is published", "[io][png]") {
+    const TemporaryDirectory temporary{"docenhance-binary-verify"};
+    core::Budget budget{mebibyte};
+    auto image = image::Plane<std::uint8_t>::allocate(budget, 8, 4);
+    REQUIRE(image);
+    for (std::uint32_t y = 0; y < image->height(); ++y) {
+        std::ranges::fill(image->view().row(y), y % 2 == 0 ? 0 : UINT8_MAX);
+    }
+    const auto published = temporary.path / "verified";
+    REQUIRE(io::publish_grayscale_png(utf8_spelling(published), image->view().as_const(), budget));
+
+    // What the verifier compares against, and what it does when the file disagrees with it. A
+    // single flipped byte inside the compressed data must be a refusal, not a published result.
+    const auto result = published / "result.png";
+    std::string bytes;
+    {
+        std::ifstream reading{result, std::ios::binary};
+        bytes.assign(std::istreambuf_iterator<char>{reading}, std::istreambuf_iterator<char>{});
+    }
+    REQUIRE(bytes.size() > 40);
+    const auto tampered = temporary.path / "tampered.png";
+    {
+        std::string damaged = bytes;
+        auto& byte = damaged.at(damaged.size() - 12);
+        byte = static_cast<char>(static_cast<std::uint8_t>(byte) ^ 0xFFU);
+        std::ofstream writing{tampered, std::ios::binary};
+        writing.write(damaged.data(), static_cast<std::streamsize>(damaged.size()));
+    }
+    CHECK(io::verify_png_image(result, image->view().as_const(), budget));
+    const auto refused = io::verify_png_image(tampered, image->view().as_const(), budget);
+    REQUIRE(!refused);
+    CHECK(refused.error().code == core::ErrorCode::output_verify);
 }
 
 TEST_CASE("The native commit refuses even an existing empty directory", "[io]") {
