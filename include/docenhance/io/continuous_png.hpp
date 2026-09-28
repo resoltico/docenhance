@@ -27,6 +27,10 @@ struct IdentifiedRaster {
 [[nodiscard]] core::Result<IdentifiedRaster>
 load_png_raster(const std::string& input, core::Budget& budget, image::ProfilePolicy policy,
                 const core::Cancellation& cancellation = {});
+// Encode into an existing directory, close, reopen and verify every integer row and the metadata.
+[[nodiscard]] core::Result<void>
+write_verified_png_rows(const BundleSlot& slot, image::RowSource& rows, core::Budget& budget,
+                        const core::Cancellation& cancellation = {});
 // Encode, close, independently reopen and verify all integer rows and metadata, then use
 // the same exclusive publication transaction and cancellation cutoff as binary output.
 [[nodiscard]] core::Result<std::string>

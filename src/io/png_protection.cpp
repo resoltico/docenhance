@@ -8,6 +8,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/io/continuous_png.hpp"
+#include "docenhance/io/digest.hpp"
 #include "docenhance/io/protection_png.hpp"
 #include "png_metadata.hpp"
 #include "png_snapshot.hpp"
@@ -89,16 +90,24 @@ decode_protection_png(std::span<const std::uint8_t> bytes, image::Extent extent,
     }
     return std::move(*mask);
 }
-core::Result<image::Plane<std::uint8_t>>
-load_protection_png(const std::string& path, image::Extent extent, core::Budget& budget,
-                    const core::Cancellation& cancellation) {
+core::Result<IdentifiedMask> load_protection_png(const std::string& path, image::Extent extent,
+                                                 core::Budget& budget,
+                                                 const core::Cancellation& cancellation) {
     auto bytes = read_png_snapshot(path, budget, cancellation);
     if (!bytes) {
         return std::unexpected(bytes.error());
     }
+    auto source = identify(bytes->bytes());
+    if (!source) {
+        return std::unexpected(source.error());
+    }
     // Observe immutable encoded bytes; the backing Buffer owns the lifetime.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     const auto* data = reinterpret_cast<const std::uint8_t*>(bytes->bytes().data());
-    return decode_protection_png({data, bytes->size()}, extent, budget, cancellation);
+    auto mask = decode_protection_png({data, bytes->size()}, extent, budget, cancellation);
+    if (!mask) {
+        return std::unexpected(mask.error());
+    }
+    return IdentifiedMask{.mask = std::move(*mask), .source = std::move(*source)};
 }
 } // namespace docenhance::io

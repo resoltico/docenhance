@@ -10,11 +10,22 @@
 #include "publication.hpp"
 
 #include <cstdint>
-#include <filesystem>
 #include <functional>
 #include <string>
 
 namespace docenhance::io {
+core::Result<void> write_verified_png(const BundleSlot& slot,
+                                      image::PlaneView<const std::uint8_t> image,
+                                      core::Budget& budget,
+                                      const core::Cancellation& cancellation) {
+    auto encoded = encode_png(slot.path, image, budget, cancellation);
+    if (!encoded) {
+        return encoded;
+    }
+    // Earn the claim the same way continuous output does: reopen what was written and compare it
+    // against the intended samples and metadata.
+    return verify_png_image(slot.path, image, budget, cancellation);
+}
 core::Result<std::string> publish_png(const std::string& output_directory,
                                       image::PlaneView<const std::uint8_t> image,
                                       core::Budget& budget, const core::Cancellation& cancellation,
@@ -33,17 +44,10 @@ core::Result<std::string> publish_png(const std::string& output_directory,
     BinaryWriter state{image, budget, cancellation};
     const PngWriterRef writer{
         .state = &state,
-        .write = [](void* raw, const std::filesystem::path& path) -> core::Result<void> {
+        .write = [](void* raw, const BundleSlot& slot) -> core::Result<void> {
             auto const& value = *static_cast<BinaryWriter*>(raw);
-            auto encoded =
-                encode_png(path, value.image, value.budget.get(), value.cancellation.get());
-            if (!encoded) {
-                return encoded;
-            }
-            // Earn the claim the same way continuous output does: reopen what was written
-            // and compare it against the intended samples and metadata.
-            return verify_png_image(path, value.image, value.budget.get(),
-                                    value.cancellation.get());
+            return write_verified_png(slot, value.image, value.budget.get(),
+                                      value.cancellation.get());
         },
     };
     return publish_generated_png(output_directory, writer, cancellation, commit);

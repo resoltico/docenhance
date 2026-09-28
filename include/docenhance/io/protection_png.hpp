@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/digest.hpp"
 
 #include <cstdint>
 #include <span>
@@ -16,7 +17,13 @@ namespace docenhance::io {
 [[nodiscard]] core::Result<image::Plane<std::uint8_t>>
 decode_protection_png(std::span<const std::uint8_t> bytes, image::Extent extent,
                       core::Budget& budget, const core::Cancellation& cancellation = {});
-[[nodiscard]] core::Result<image::Plane<std::uint8_t>>
+// The mask as supplied, and the identity of the bytes that were read. The canonical plane the
+// decoder produces is what excluded samples; the identity describes the file it came from.
+struct IdentifiedMask {
+    image::Plane<std::uint8_t> mask;
+    core::ContentIdentity source;
+};
+[[nodiscard]] core::Result<IdentifiedMask>
 load_protection_png(const std::string& path, image::Extent extent, core::Budget& budget,
                     const core::Cancellation& cancellation = {});
 } // namespace docenhance::io

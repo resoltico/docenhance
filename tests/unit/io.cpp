@@ -4,6 +4,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
@@ -111,15 +112,12 @@ struct TextFile {
     std::string content;
     bool fail = false;
 };
-core::Result<void> write_text(void* const state, const std::filesystem::path& path) {
-    auto& file = *static_cast<TextFile*>(state);
+core::Result<void> write_text(void* const state, const io::BundleSlot& slot) {
+    const auto& file = *static_cast<TextFile*>(state);
     if (file.fail) {
         return core::failure(core::ErrorCode::output, "This file refuses to be written");
     }
-    std::ofstream writing{path, std::ios::binary};
-    writing.write(file.content.data(), static_cast<std::streamsize>(file.content.size()));
-    return writing ? core::Result<void>{}
-                   : core::failure(core::ErrorCode::output, "The file could not be written");
+    return io::write_bytes(slot, file.content);
 }
 std::vector<io::BundleFile> declared(std::span<TextFile> files) {
     std::vector<io::BundleFile> bundle;

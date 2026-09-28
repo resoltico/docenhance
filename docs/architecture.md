@@ -58,7 +58,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_app` | `de_contract`, `de_core`, `de_methods`, `de_image` | Validated use cases and the explicit processing port |
 | `de_report` | `de_app`, `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
-| `de_host` | `de_app`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods`, `de_color` | Executes admitted requests using codecs, kernels and publication |
+| `de_host` | `de_app`, `de_bundle`, `de_color`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods` | Executes admitted requests using codecs, kernels and publication |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 | `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
 

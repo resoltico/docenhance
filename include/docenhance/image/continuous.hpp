@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 
 #include <cstdint>
@@ -64,5 +65,17 @@ class RowSource {
     [[nodiscard]] virtual OutputDescriptor descriptor() const noexcept = 0;
     [[nodiscard]] virtual core::Result<void> row(std::uint32_t index, std::span<std::uint8_t> bytes,
                                                  RowUse use) = 0;
+};
+// A plane presented as rows. Binary output carries no colour interpretation and no resolution,
+// and saying so is part of what a verifier compares against.
+class PlaneRows final : public RowSource {
+  public:
+    explicit PlaneRows(PlaneView<const std::uint8_t> image) noexcept : image_(image) {}
+    [[nodiscard]] OutputDescriptor descriptor() const noexcept override;
+    [[nodiscard]] core::Result<void> row(std::uint32_t index, std::span<std::uint8_t> bytes,
+                                         RowUse use) override;
+
+  private:
+    PlaneView<const std::uint8_t> image_;
 };
 } // namespace docenhance::image

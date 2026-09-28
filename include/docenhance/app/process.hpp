@@ -3,6 +3,7 @@
 #pragma once
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/methods/binarization.hpp"
@@ -52,15 +53,24 @@ struct PublishedImage {
     std::string output;
     std::optional<image::ConversionReport> conversion = std::nullopt;
     std::optional<methods::IlluminationReport> illumination = std::nullopt;
+    // What identifies the bundle this image was published in: the run, and the record's own
+    // digest. The record on disk asserts nothing about publication, so these are what a later
+    // reconciliation matches against whatever is there.
+    std::string run;
+    core::ContentIdentity record;
 };
 struct ContinuousProcessed {
     std::string output;
     image::ConversionReport conversion;
     methods::IlluminationReport illumination;
+    std::string run;
+    core::ContentIdentity record;
 };
 struct Processed {
     std::string output;
     methods::ImplementedMethod method;
+    std::string run;
+    core::ContentIdentity record;
 };
 struct ProcessFailure {
     core::Error error;

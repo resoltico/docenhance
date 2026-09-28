@@ -5,6 +5,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "docenhance/io/digest.hpp"
 
 #include <cstddef>
@@ -37,6 +38,13 @@ struct PngLimits {
 [[nodiscard]] core::Result<image::Plane<std::uint8_t>>
 decode_grayscale_png(std::span<const std::uint8_t> input, core::Budget& budget,
                      PngLimits limits = PngLimits(), const core::Cancellation& cancellation = {});
+
+// Encode a binary image into an existing directory and read it back against the intended samples
+// and metadata. Used by a publication transaction, which owns the directory and the commit.
+[[nodiscard]] core::Result<void> write_verified_png(const BundleSlot& slot,
+                                                    image::PlaneView<const std::uint8_t> image,
+                                                    core::Budget& budget,
+                                                    const core::Cancellation& cancellation = {});
 
 // Publish result.png in a new directory. A native no-replace rename is the commit point; no
 // fallback may overwrite an existing file, directory or symlink. The parent must be trusted

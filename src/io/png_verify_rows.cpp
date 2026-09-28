@@ -106,44 +106,11 @@ bool read_output_end(PngContext const& context) {
     png_read_end(context.png, context.info);
     return true;
 }
-// The binary image, presented as rows. Binary output carries no colour interpretation, and
-// saying so is what the verifier compares against: a file that gained a profile or a resolution
-// would not be the output that was intended.
-class PlaneRows final : public image::RowSource {
-  public:
-    explicit PlaneRows(image::PlaneView<const std::uint8_t> image) noexcept : image_(image) {}
-    [[nodiscard]] image::OutputDescriptor descriptor() const noexcept override {
-        return {
-            .shape =
-                {
-                    .width = image_.width(),
-                    .height = image_.height(),
-                    .model = image::SampleModel::gray,
-                    .depth = byte_depth,
-                },
-            .profile = {},
-            .resolution = std::nullopt,
-        };
-    }
-    [[nodiscard]] core::Result<void> row(std::uint32_t index, std::span<std::uint8_t> bytes,
-                                         image::RowUse /*use*/) override {
-        const auto samples = image_.row(index);
-        if (bytes.size() != samples.size()) {
-            return core::failure(core::ErrorCode::invariant,
-                                 "A binary output row does not match its encoded width");
-        }
-        std::ranges::copy(samples, bytes.begin());
-        return {};
-    }
-
-  private:
-    image::PlaneView<const std::uint8_t> image_;
-};
 } // namespace
 core::Result<void> verify_png_image(const std::filesystem::path& path,
                                     image::PlaneView<const std::uint8_t> image,
                                     core::Budget& budget, const core::Cancellation& cancellation) {
-    PlaneRows rows{image};
+    image::PlaneRows rows{image};
     return verify_png_rows(path, rows, budget, cancellation);
 }
 core::Result<void> verify_png_rows(const std::filesystem::path& path, image::RowSource& source,

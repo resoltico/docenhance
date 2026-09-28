@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "png_context.hpp"
 #include "publication.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <cstdio>
 #include <expected>
 #include <filesystem>
 #include <new>
@@ -177,7 +179,8 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
             if (!path) {
                 return std::unexpected(abandon(stage, std::move(path.error())));
             }
-            auto written = file.write(file.state, *path);
+            const BundleSlot slot{.path = std::move(*path)};
+            auto written = file.write(file.state, slot);
             if (!written) {
                 return std::unexpected(abandon(stage, std::move(written.error())));
             }
@@ -218,6 +221,28 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
     }
 }
 
+core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content) {
+    const auto file = open_for_writing(slot.path);
+    if (file == nullptr) {
+        return core::failure(core::ErrorCode::output, "Cannot create a file inside the bundle");
+    }
+    if (!content.empty() &&
+        std::fwrite(content.data(), 1, content.size(), file.get()) != content.size()) {
+        return core::failure(core::ErrorCode::output, "A bundle file could not be written");
+    }
+    return std::fflush(file.get()) == 0
+               ? core::Result<void>{}
+               : core::failure(core::ErrorCode::output, "A bundle file could not be completed");
+}
+std::string file_name(const std::string& path) {
+    const auto name = utf8_path(path).filename().string();
+    return name.empty() ? path : name;
+}
+core::Result<std::string> publish_bundle(const std::string& output_directory,
+                                         std::span<const BundleFile> files,
+                                         const core::Cancellation& cancellation) {
+    return publish_bundle(output_directory, files, cancellation, rename_exclusive);
+}
 core::Result<std::string> publish_generated_png(const std::string& output_directory,
                                                 PngWriterRef writer,
                                                 const core::Cancellation& cancellation,

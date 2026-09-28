@@ -83,6 +83,12 @@ class MethodMetadataTests(unittest.TestCase):
             "method_version": 1,
             "output": "result/result.png",
             "publication": "completed",
+            "record": {
+                "run": "0" * 32,
+                "path": "run.json",
+                "sha256": "0" * 64,
+                "bytes": 512,
+            },
         }
         for identity in ("B02", "B03"):
             validator.validate(response | {"method": identity})

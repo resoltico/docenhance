@@ -5,6 +5,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/bundle.hpp"
 
 #include <cstdint>
 #include <filesystem>
@@ -14,6 +15,10 @@
 #include <system_error>
 
 namespace docenhance::io {
+// The reserved place a bundle file occupies while the transaction owns it.
+struct BundleSlot {
+    std::filesystem::path path;
+};
 // A single native operation. Unsupported filesystems fail closed, never check-then-rename.
 [[nodiscard]] std::error_code rename_exclusive(const std::filesystem::path& source,
                                                const std::filesystem::path& target) noexcept;
@@ -25,18 +30,10 @@ using PublishRename = std::error_code (*)(const std::filesystem::path&,
 // Borrowed writer operation: encoding and verification run before the one commit cutoff.
 struct PngWriterRef {
     void* state;
-    core::Result<void> (*write)(void*, const std::filesystem::path&);
+    core::Result<void> (*write)(void*, const BundleSlot&);
 };
-// A file this transaction places in the bundle. The owner writes it into the path supplied, and
-// the files are written in the order declared, so one that describes the others comes last.
-struct BundleFile {
-    std::string_view relative;
-    void* state;
-    core::Result<void> (*write)(void*, const std::filesystem::path&);
-};
-// Writes every file into an owned staging directory, observes the one cancellation cutoff, and
-// commits the complete directory with a single exclusive rename. A failure anywhere publishes
-// nothing, and cleanup removes only what this invocation created.
+// The same transaction with the commit operation supplied, so tests can coordinate cancellation
+// around the native call without timing races.
 [[nodiscard]] core::Result<std::string> publish_bundle(const std::string& output_directory,
                                                        std::span<const BundleFile> files,
                                                        const core::Cancellation& cancellation,
