@@ -1,5 +1,16 @@
 # Current CLI behavior
 
+Published bundles can be read back:
+
+```sh
+docenhance verify RESULT
+docenhance verify RESULT --json
+```
+
+Verification checks that a bundle holds exactly what its record declares, after the directory has
+been moved if need be. It is read-only, executes nothing it finds, and establishes agreement rather
+than authenticity; see [processing bundles](bundles.md).
+
 ## Implemented operations
 
 `docenhance process` defaults to continuous-tone PNG representation with no enhancement filter:
@@ -13,7 +24,9 @@ docenhance process INPUT.png --out-dir FIXED --output-mode bw --binarize fixed -
 
 `preserve` keeps the decoded color/gray category, not file bytes, original profile, alpha or arbitrary
 metadata. Static PNG supports gray/palette/RGB/alpha layouts and 8/16-bit continuous output under
-[PNG processing](png-processing.md). Profile assumptions, alpha flattening, requested depth reduction,
+[PNG processing](png-processing.md). Each result is published as a
+[processing bundle](bundles.md): the image, a `run.json` recording what produced it, and the
+canonical protection mask when one was supplied. Profile assumptions, alpha flattening, requested depth reduction,
 orientation and verified output descriptors are reported. JPEG, TIFF, animation, recipes, presets
 and enhancement methods other than I01 remain unsupported.
 
