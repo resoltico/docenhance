@@ -50,7 +50,7 @@ de_library(de_app LAYER app
   SOURCES app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
           "${DE_INCLUDE}/app/verify.hpp"
-  LINKS de_bundle de_core de_contract de_methods de_image)
+  LINKS de_core de_contract de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_bundle LAYER bundle
   SOURCES bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp

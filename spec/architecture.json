@@ -354,7 +354,6 @@
       "target": "de_app",
       "summary": "Validated use cases and the explicit processing and verification ports",
       "uses": [
-        "bundle",
         "contract",
         "core",
         "image",
