@@ -54,10 +54,24 @@ def source_kind(path: Path) -> str | None:
     return None
 
 
+def nested_checkout(directory: Path) -> bool:
+    """Whether this directory is a repository of its own: a clone or a linked worktree."""
+    return (directory / ".git").exists()
+
+
 def iter_files(root: Path = ROOT) -> Iterator[Path]:
-    """Yield every file below root, pruning build products and caches."""
+    """Yield every file of this checkout below root.
+
+    Build products and caches are pruned by name. A directory that carries its own .git is a
+    separate checkout — a nested clone, or a worktree placed inside the tree — and its files
+    belong to that checkout, not this one.
+    """
     for directory, dirnames, filenames in os.walk(root):
-        dirnames[:] = sorted(d for d in dirnames if d not in SKIPPED_DIRS)
+        dirnames[:] = sorted(
+            name
+            for name in dirnames
+            if name not in SKIPPED_DIRS and not nested_checkout(Path(directory) / name)
+        )
         for filename in sorted(filenames):
             yield Path(directory) / filename
 
