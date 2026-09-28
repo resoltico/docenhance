@@ -20,6 +20,11 @@ struct ContentIdentity {
     std::string sha256; // 64 lowercase hexadecimal characters
     std::uint64_t bytes = 0;
 };
+// A file named relative to a directory, and the identity of what it holds.
+struct NamedContent {
+    std::string name;
+    ContentIdentity identity;
+};
 // The number of characters a rendered digest always has.
 inline constexpr std::size_t sha256_hex_length = 64;
 

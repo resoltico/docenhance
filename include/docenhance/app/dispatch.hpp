@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/app/process.hpp"
+#include "docenhance/app/verify.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
@@ -30,7 +31,8 @@ struct Methods {
     Capabilities capabilities;
 };
 using Failure = ProcessFailure;
-using Payload = std::variant<Help, Version, Methods, Processed, ContinuousProcessed, Failure>;
+using Payload =
+    std::variant<Help, Version, Methods, Processed, ContinuousProcessed, Verified, Failure>;
 struct Outcome {
     contract::Command command = contract::Command::root;
     // Every response identifies the build that produced it, whatever the payload.
@@ -42,6 +44,6 @@ struct Outcome {
     }
 };
 [[nodiscard]] Outcome dispatch(const contract::Invocation& invocation, Processor& processor,
-                               const core::Cancellation& cancellation = {});
+                               Verifier& verifier, const core::Cancellation& cancellation = {});
 [[nodiscard]] Outcome failure(const contract::Invocation& invocation, core::Error error);
 } // namespace docenhance::app

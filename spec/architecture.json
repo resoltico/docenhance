@@ -352,12 +352,13 @@
     },
     "app": {
       "target": "de_app",
-      "summary": "Validated use cases and the explicit processing port",
+      "summary": "Validated use cases and the explicit processing and verification ports",
       "uses": [
+        "bundle",
         "contract",
         "core",
-        "methods",
-        "image"
+        "image",
+        "methods"
       ],
       "external": [],
       "forbidden_headers": [

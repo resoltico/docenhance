@@ -216,6 +216,9 @@
     "tests/unit/transport.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@306e5491": {
       "explanation": "std::ios::iostate is a standard-library bitmask enum. Clang's analyzer rejects the valid combination of badbit and failbit used only to configure the test's refusing stream; the test verifies the resulting output-failure behavior."
     },
+    "tests/unit/verify.cpp:clang-tidy/*-reinterpret-cast@e8f3480f": {
+      "explanation": "The fixture writes encoded PNG bytes through a narrow-character stream, which is the same view of the same buffer the production reader takes. No object's lifetime or value changes, and the length written comes from the buffer itself."
+    },
     "tools/dep_acquire.py:ruff/S310@2d788465": {
       "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written."
     },

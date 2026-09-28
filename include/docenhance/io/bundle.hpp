@@ -2,11 +2,15 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/identity.hpp"
+#include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 
+#include <cstddef>
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace docenhance::io {
 // Where a bundle file goes. The transaction owns the location; a writer receives this and hands
@@ -30,6 +34,23 @@ struct BundleFile {
 // it. An absolute path is never recorded, and a name can still carry personal information, so a
 // bundle is not described as anonymized.
 [[nodiscard]] std::string file_name(const std::string& path);
+
+// Reading a bundle somebody else wrote. Every entry is inspected without following it: a symbolic
+// link, a directory where a file belongs, or any other special entry is a refusal rather than
+// something to resolve. The walk is bounded, because an unbounded directory is itself a refusal.
+inline constexpr std::size_t bundle_max_entries = 64;
+inline constexpr std::size_t bundle_max_file_bytes = std::size_t{256} * 1024 * 1024;
+// Every regular file in the bundle, named relative to its root and identified. Directories are
+// reported separately, because a record permits exactly the ones its declared paths imply.
+struct BundleContents {
+    std::vector<core::NamedContent> files;
+    std::vector<std::string> directories;
+};
+[[nodiscard]] core::Result<BundleContents> inspect_bundle(const std::string& directory);
+// The bytes of one bundle file, refused if larger than the limit given.
+[[nodiscard]] core::Result<core::Buffer> read_bundle_file(const std::string& directory,
+                                                          std::string_view relative,
+                                                          std::size_t limit, core::Budget& budget);
 [[nodiscard]] core::Result<std::string> publish_bundle(const std::string& output_directory,
                                                        std::span<const BundleFile> files,
                                                        const core::Cancellation& cancellation = {});

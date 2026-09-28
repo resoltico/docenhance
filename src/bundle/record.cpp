@@ -103,7 +103,7 @@ Json identity_fields(const core::ContentIdentity& identity) {
     return {{"sha256", identity.sha256}, {"bytes", identity.bytes}};
 }
 Json artifact_fields(const Artifact& artifact) {
-    Json fields = {{"path", artifact.path}};
+    Json fields = {{"path", artifact.name}};
     fields.update(identity_fields(artifact.identity));
     return fields;
 }

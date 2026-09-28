@@ -14,6 +14,10 @@
       "usage": "docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]",
       "scope_symbol": "P"
     },
+    "verify": {
+      "usage": "docenhance verify DIRECTORY [--json]",
+      "scope_symbol": null
+    },
     "methods": {
       "usage": "docenhance methods [ID] [--json]",
       "scope_symbol": null

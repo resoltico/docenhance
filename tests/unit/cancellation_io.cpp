@@ -11,6 +11,7 @@
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
 #include "publication.hpp"
+#include "stub_verifier.hpp"
 #include "temporary_directory.hpp"
 
 #include <algorithm>
@@ -27,6 +28,9 @@
 #include <vector>
 
 namespace docenhance::tests {
+namespace {
+UnusedVerifier verifier;
+} // namespace
 namespace {
 constexpr std::size_t limit = std::size_t{4} * 1024 * 1024;
 std::vector<std::uint8_t> png_bytes(bool interlaced) {
@@ -176,7 +180,7 @@ TEST_CASE("Host cancellation preserves input and never publishes incomplete proc
              core::Checkpoint::commit,
          }) {
         const CheckpointStop stop{phase, 0};
-        const auto result = app::dispatch(request, processor, stop.cancellation());
+        const auto result = app::dispatch(request, processor, verifier, stop.cancellation());
         REQUIRE(result.exit_code() == core::ExitCode::cancelled);
         const auto& error = std::get<app::Failure>(result.payload).error;
         const auto staged = phase == core::Checkpoint::encode || phase == core::Checkpoint::commit;

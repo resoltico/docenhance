@@ -35,10 +35,7 @@ struct RunContext {
 };
 
 // A file this bundle carries, named relative to the bundle root.
-struct Artifact {
-    std::string path;
-    core::ContentIdentity identity;
-};
+using Artifact = core::NamedContent;
 
 struct SourceFacts {
     core::ContentIdentity identity;

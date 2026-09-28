@@ -3,7 +3,6 @@
 #include "docenhance/cli/run.hpp"
 
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/app/process.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/utf8.hpp"
@@ -142,8 +141,8 @@ std::optional<Outcome> apply_root_flags(const CLI::App& cli, const RootFlags& ro
     }
     return std::nullopt;
 }
-Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation,
-                           app::Processor& processor, const core::Cancellation& cancellation) {
+Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation, Ports ports,
+                           const core::Cancellation& cancellation) {
     if (std::ranges::any_of(args, [](const char* arg) { return !contract::valid_utf8(arg); })) {
         return argument_error(invocation, "Arguments must be well-formed UTF-8");
     }
@@ -157,6 +156,7 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
     // Braced-list elements are evaluated in order, so subcommands register in this order.
     auto commands = std::to_array<ParsedCommand>({
         {Command::process, cli.add_subcommand("process")},
+        {Command::verify, cli.add_subcommand("verify")},
         {Command::methods, cli.add_subcommand("methods")},
         {Command::version, cli.add_subcommand("version")},
     });
@@ -177,7 +177,8 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
             return std::move(*rejected);
         }
     }
-    return docenhance::app::dispatch(invocation, processor, cancellation);
+    return docenhance::app::dispatch(invocation, ports.processor.get(), ports.verifier.get(),
+                                     cancellation);
 }
 // Transfer rendered bytes without inheriting an embedding caller's width/fill formatting.
 // Standard stream ties and exception masks remain the caller's; only direct access is selected.
@@ -201,24 +202,13 @@ int emit(const Outcome& outcome, bool json, std::ostream& out, std::ostream& err
     }
     return static_cast<int>(outcome.exit_code());
 }
-} // namespace
-int run(std::span<const char* const> args, app::Processor& processor, std::ostream& out,
-        std::ostream& err, const core::Cancellation& cancellation) {
-    Invocation invocation;
-    // argv pointers and its program name are caller-owned; reject an invalid API invocation.
-    if (args.empty() || args.size() > static_cast<std::size_t>(std::numeric_limits<int>::max()) ||
-        std::ranges::any_of(args, [](const char* arg) { return arg == nullptr; })) {
-        return static_cast<int>(core::ExitCode::invocation);
-    }
-    const auto options = args | std::views::drop(1) | std::views::take_while([](const char* arg) {
-                             return std::string_view(arg) != "--";
-                         });
-    invocation.json = std::ranges::any_of(
-        options, [](const char* arg) { return std::string_view(arg) == "--json"; });
-    // Nothing has been emitted yet. Error mapping here cannot write a second response.
+// Everything the adapter can meet before a response exists, turned into one outcome. The CLI is
+// the single boundary an exception crosses; below it every failure is already a value.
+Outcome contained(std::span<const char* const> args, Invocation& invocation, Ports ports,
+                  const core::Cancellation& cancellation) {
     std::optional<Outcome> outcome;
     try {
-        outcome = parse_and_dispatch(args, invocation, processor, cancellation);
+        outcome = parse_and_dispatch(args, invocation, ports, cancellation);
     } catch (const CLI::ParseError& error) {
         outcome = argument_error(invocation, error.what());
     } catch (const std::bad_alloc&) {
@@ -234,9 +224,35 @@ int run(std::span<const char* const> args, app::Processor& processor, std::ostre
                                                .message = "Unknown non-standard exception",
                                            });
     }
+    return std::move(*outcome);
+}
+// An argument vector this adapter can work with at all: caller-owned, countable, no null entry.
+bool usable(std::span<const char* const> args) {
+    return !args.empty() &&
+           args.size() <= static_cast<std::size_t>(std::numeric_limits<int>::max()) &&
+           std::ranges::none_of(args, [](const char* arg) { return arg == nullptr; });
+}
+// Error presentation honours an exact --json token even when parsing later fails. Arguments after
+// "--" are operands, never options.
+bool asked_for_json(std::span<const char* const> args) {
+    const auto options = args | std::views::drop(1) | std::views::take_while([](const char* arg) {
+                             return std::string_view(arg) != "--";
+                         });
+    return std::ranges::any_of(options,
+                               [](const char* arg) { return std::string_view(arg) == "--json"; });
+}
+} // namespace
+int run(std::span<const char* const> args, Ports ports, std::ostream& out, std::ostream& err,
+        const core::Cancellation& cancellation) {
+    if (!usable(args)) {
+        return static_cast<int>(core::ExitCode::invocation);
+    }
+    Invocation invocation;
+    invocation.json = asked_for_json(args);
+    const auto outcome = contained(args, invocation, ports, cancellation);
     // Publication may already be completed. Never retry rendering or claim it did not start.
     try {
-        return emit(*outcome, invocation.json, out, err);
+        return emit(outcome, invocation.json, out, err);
     } catch (...) {
         return static_cast<int>(core::ExitCode::output);
     }

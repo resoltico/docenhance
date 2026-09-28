@@ -18,6 +18,7 @@
       "enum": [
         "root",
         "process",
+        "verify",
         "methods",
         "version"
       ]
@@ -456,6 +457,62 @@
         "output",
         "publication",
         "record"
+      ]
+    },
+    {
+      "properties": {
+        "command": {
+          "const": "verify"
+        },
+        "exit_code": {
+          "const": 0
+        },
+        "directory": {
+          "type": "string"
+        },
+        "run": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "recorded": {
+          "type": "string"
+        },
+        "confirmed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "path",
+              "sha256",
+              "bytes"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "path": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "establishes": {
+          "const": "artifacts_agree_with_record"
+        }
+      },
+      "required": [
+        "command",
+        "directory",
+        "run",
+        "recorded",
+        "confirmed",
+        "establishes"
       ]
     },
     {

@@ -4,6 +4,7 @@
 #include "docenhance/cli/run.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "stub_verifier.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -14,6 +15,9 @@
 #include <streambuf>
 
 namespace docenhance::tests {
+namespace {
+UnusedVerifier verifier;
+} // namespace
 namespace {
 class CountingProcessor final : public app::Processor {
   public:
@@ -39,12 +43,15 @@ TEST_CASE("Invalid invocations never reach processing", "[cli]") {
     std::ostringstream out;
     std::ostringstream err;
     const auto args = std::to_array<const char*>({"docenhance", "process", "input.png", "--json"});
-    CHECK(cli::run(args, processor, out, err) == static_cast<int>(core::ExitCode::invocation));
+    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
+          static_cast<int>(core::ExitCode::invocation));
     CHECK(processor.calls == 0);
     CHECK(err.str().empty());
-    CHECK(cli::run({}, processor, out, err) == static_cast<int>(core::ExitCode::invocation));
+    CHECK(cli::run({}, {.processor = processor, .verifier = verifier}, out, err) ==
+          static_cast<int>(core::ExitCode::invocation));
     const auto invalid = std::to_array<const char*>({"docenhance", nullptr});
-    CHECK(cli::run(invalid, processor, out, err) == static_cast<int>(core::ExitCode::invocation));
+    CHECK(cli::run(invalid, {.processor = processor, .verifier = verifier}, out, err) ==
+          static_cast<int>(core::ExitCode::invocation));
 }
 TEST_CASE("Output stream failure cannot repeat processing or render another outcome", "[cli]") {
     CountingProcessor processor;
@@ -67,7 +74,8 @@ TEST_CASE("Output stream failure cannot repeat processing or render another outc
         "fixed",
         "--json",
     });
-    CHECK(cli::run(args, processor, out, err) == static_cast<int>(core::ExitCode::output));
+    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
+          static_cast<int>(core::ExitCode::output));
     CHECK(processor.calls == 1);
     CHECK(err.str().empty());
 }

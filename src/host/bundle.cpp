@@ -68,7 +68,7 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
         composed.conversion = run.observe_conversion(run.conversion_state);
     }
     composed.output = {
-        .artifact = {.path = bundle::image_name, .identity = std::move(*identity)},
+        .artifact = {.name = bundle::image_name, .identity = std::move(*identity)},
         .shape = descriptor.shape,
         .profile_embedded = !descriptor.profile.empty(),
         .resolution = descriptor.resolution,
@@ -97,7 +97,7 @@ core::Result<void> write_mask(void* const state, const io::BundleSlot& slot) {
     }
     composed.protection = bundle::ProtectionFacts{
         .original = run.mask->supplied,
-        .stored = {.path = bundle::mask_name, .identity = std::move(*identity)},
+        .stored = {.name = bundle::mask_name, .identity = std::move(*identity)},
         .width = canonical.width(),
         .height = canonical.height(),
     };

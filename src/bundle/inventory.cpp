@@ -107,7 +107,7 @@ constexpr std::size_t max_path_length = 128;
         return std::unexpected(rejected("declares a digest that is not a SHA-256"));
     }
     return Artifact{
-        .path = spelling,
+        .name = spelling,
         .identity = {.sha256 = sha256, .bytes = bytes->get<std::uint64_t>()},
     };
 }
@@ -142,6 +142,52 @@ constexpr std::size_t max_path_length = 128;
     return inventory;
 }
 } // namespace
+
+namespace {
+// The directories a set of declared paths implies, and nothing else: assets/ is permitted because
+// assets/protect-mask.png is declared.
+[[nodiscard]] bool implied_directory(const DeclaredBundle& declared, std::string_view name) {
+    return std::ranges::any_of(declared.inventory, [name](const Artifact& artifact) {
+        return artifact.name.size() > name.size() && artifact.name.starts_with(name) &&
+               artifact.name.at(name.size()) == '/';
+    });
+}
+} // namespace
+
+core::Result<void> agrees(const DeclaredBundle& declared,
+                          std::span<const core::NamedContent> present,
+                          std::span<const std::string> directories) {
+    for (const auto& artifact : declared.inventory) {
+        const auto found = std::ranges::find(present, artifact.name, &core::NamedContent::name);
+        if (found == present.end()) {
+            return std::unexpected(rejected("declares " + artifact.name + ", which is not here"));
+        }
+        if (found->identity.bytes != artifact.identity.bytes) {
+            return std::unexpected(rejected("holds a " + artifact.name + " of another size"));
+        }
+        if (found->identity.sha256 != artifact.identity.sha256) {
+            return std::unexpected(
+                rejected("holds a " + artifact.name + " that is not the one recorded"));
+        }
+    }
+    for (const auto& file : present) {
+        const bool declared_here =
+            file.name == record_name ||
+            std::ranges::any_of(declared.inventory, [&file](const Artifact& artifact) {
+                return artifact.name == file.name;
+            });
+        if (!declared_here) {
+            return std::unexpected(rejected("holds " + file.name + ", which it does not declare"));
+        }
+    }
+    for (const auto& directory : directories) {
+        if (!implied_directory(declared, directory)) {
+            return std::unexpected(
+                rejected("holds a " + directory + " directory that no declared file needs"));
+        }
+    }
+    return {};
+}
 
 core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes) {
     if (bytes.size() > record_max_bytes) {

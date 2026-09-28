@@ -8,6 +8,7 @@ P = process.
 
 - `root` — `docenhance COMMAND [OPTIONS]`
 - `process` — `docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]`
+- `verify` — `docenhance verify DIRECTORY [--json]`
 - `methods` — `docenhance methods [ID] [--json]`
 - `version` — `docenhance version [--json]`
 

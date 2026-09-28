@@ -16,6 +16,7 @@
 #include "docenhance/methods/fixed_threshold.hpp"
 #include "docenhance/methods/sauvola.hpp"
 #include "processor.hpp"
+#include "stub_verifier.hpp"
 
 #include <algorithm>
 #include <array>
@@ -31,6 +32,9 @@
 #include <string>
 
 namespace docenhance::tests {
+namespace {
+UnusedVerifier verifier;
+} // namespace
 namespace {
 constexpr std::size_t allocation_limit = std::size_t{4} * 1024 * 1024;
 void request_stop(std::stop_source& source) noexcept { // NOLINT(misc-const-correctness)
@@ -60,17 +64,18 @@ TEST_CASE("Cancellation owns its stop state and prevents application effects", "
     CHECK(cancellation.requested(core::Checkpoint::admission));
     RejectingProcessor processor;
     auto request = invocation();
-    const auto result = app::dispatch(request, processor, cancellation);
+    const auto result = app::dispatch(request, processor, verifier, cancellation);
     CHECK(processor.calls == 0);
     CHECK(result.exit_code() == core::ExitCode::cancelled);
     const auto& error = std::get<app::Failure>(result.payload).error;
     CHECK(std::string(error.identifier()) == "E_CANCELLED");
     CHECK(error.publication == core::Publication::not_started);
     request.binarize = "invalid";
-    CHECK(app::dispatch(request, processor, cancellation).exit_code() ==
+    CHECK(app::dispatch(request, processor, verifier, cancellation).exit_code() ==
           core::ExitCode::invocation);
     request.help = true;
-    CHECK(app::dispatch(request, processor, cancellation).exit_code() == core::ExitCode::success);
+    CHECK(app::dispatch(request, processor, verifier, cancellation).exit_code() ==
+          core::ExitCode::success);
     CHECK(processor.calls == 0);
 }
 TEST_CASE("Cancelled CLI processing produces one normal JSON response", "[cancellation]") {
@@ -89,14 +94,16 @@ TEST_CASE("Cancelled CLI processing produces one normal JSON response", "[cancel
     RejectingProcessor processor;
     std::ostringstream out;
     std::ostringstream err;
-    CHECK(cli::run(args, processor, out, err, stopped_token()) == 130);
+    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err,
+                   stopped_token()) == 130);
     CHECK(processor.calls == 0);
     CHECK(err.str().empty());
     CHECK(out.str().contains("E_CANCELLED"));
     CHECK(out.str().contains("not_started"));
     out.str("");
     out.setstate(std::ios::badbit);
-    CHECK(cli::run(args, processor, out, err, stopped_token()) == 5);
+    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err,
+                   stopped_token()) == 5);
     CHECK(processor.calls == 0);
     CHECK(err.str().empty());
 }

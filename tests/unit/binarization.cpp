@@ -14,6 +14,7 @@
 #include "docenhance/methods/sauvola.hpp"
 #include "require.hpp"
 #include "sauvola_reference.hpp"
+#include "stub_verifier.hpp"
 
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
@@ -26,6 +27,9 @@
 #include <variant>
 
 namespace docenhance::tests {
+namespace {
+UnusedVerifier verifier;
+} // namespace
 namespace {
 constexpr std::size_t memory_limit = std::size_t{4} * 1024 * 1024;
 constexpr std::uint8_t untouched = 42;
@@ -143,7 +147,7 @@ TEST_CASE("Application admits only options belonging to the selected method", "[
     CHECK(method.window() == 31);
     CHECK(method.k() == 0.2);
     CHECK(method.r() == 0.5);
-    auto outcome = app::dispatch(value, processor);
+    auto outcome = app::dispatch(value, processor, verifier);
     CHECK(std::string(std::get<app::Processed>(outcome.payload).method.id) == "B02");
     CHECK(processor.calls == 1);
     value.fixed_threshold = "";
@@ -152,7 +156,7 @@ TEST_CASE("Application admits only options belonging to the selected method", "[
     CHECK(!app::prepare_process(value));
     value = request("fixed");
     value.sauvola_k = "0.2";
-    outcome = app::dispatch(value, processor);
+    outcome = app::dispatch(value, processor, verifier);
     CHECK(std::holds_alternative<app::Failure>(outcome.payload));
     CHECK(processor.calls == 1);
     value.sauvola_k.reset();
