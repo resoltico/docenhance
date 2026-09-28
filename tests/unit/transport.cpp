@@ -25,7 +25,7 @@ class CountingProcessor final : public app::Processor {
     app::ProcessResult process(const app::ProcessRequest& /*request*/,
                                const core::Cancellation& /*cancellation*/) override {
         ++calls;
-        return app::PublishedImage{.output = "result/result.png"};
+        return app::PublishedImage{.output = "result/result.png", .run = {}, .record = {}};
     }
 };
 class RefusingBuffer final : public std::streambuf {
