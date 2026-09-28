@@ -308,6 +308,47 @@
       ],
       "may_catch": true
     },
+    "bundle": {
+      "target": "de_bundle",
+      "summary": "The persistent run record: one written form for the facts an execution produced",
+      "uses": [
+        "core",
+        "image",
+        "methods"
+      ],
+      "external": [
+        "nlohmann_json"
+      ],
+      "forbidden_headers": [
+        "condition_variable",
+        "execution",
+        "filesystem",
+        "fstream",
+        "future",
+        "iostream",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ],
+      "forbidden_calls": [
+        "aligned_alloc",
+        "calloc",
+        "fopen",
+        "free",
+        "getenv",
+        "malloc",
+        "popen",
+        "posix_memalign",
+        "realloc",
+        "secure_getenv",
+        "strdup",
+        "system"
+      ],
+      "interface_packages": [
+        "nlohmann_json"
+      ]
+    },
     "app": {
       "target": "de_app",
       "summary": "Validated use cases and the explicit processing port",
@@ -350,9 +391,10 @@
       "target": "de_report",
       "summary": "Renders an outcome as the documented JSON response or as human text",
       "uses": [
-        "core",
-        "contract",
         "app",
+        "bundle",
+        "contract",
+        "core",
         "image",
         "methods"
       ],

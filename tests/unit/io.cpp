@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
+#include "docenhance/core/identity.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
@@ -189,7 +189,7 @@ TEST_CASE("File and memory PNG sources use identical decoding and error policy",
                 CHECK(from_file->image.height() == from_memory->height());
                 CHECK(
                     std::ranges::equal(from_file->image.view().row(0), from_memory->view().row(0)));
-                CHECK(from_file->source.sha256.size() == io::sha256_hex_length);
+                CHECK(from_file->source.sha256.size() == core::sha256_hex_length);
                 CHECK(from_file->source.bytes == bytes.size());
             }
         }

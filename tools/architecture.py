@@ -58,6 +58,10 @@ class Manifest:
         """The packages this layer may include and link directly."""
         return set(self.layers[layer]["external"])
 
+    def interface_packages(self, layer: str) -> set[str]:
+        """The packages this layer may name in its public headers, which is normally none."""
+        return set(self.layers[layer].get("interface_packages", []))
+
     def reach(self, layer: str) -> set[str]:
         """Every layer this one may reach, directly or through the layers it uses."""
         seen: set[str] = set()
@@ -189,9 +193,16 @@ def file_errors(manifest: Manifest, layer: str, text: str, *, public: bool) -> l
     errors = []
     for spelled in INCLUDE_DIRECTIVE.findall(text):
         reasons = directive_errors(manifest, layer, spelled)
-        if not reasons and public and manifest.package_of_header(spelled) is not None:
-            # A package may be used, but never in the types a layer hands to its callers.
-            reasons = [f"a public header may not name the third-party header {spelled}"]
+        package = manifest.package_of_header(spelled)
+        if not reasons and public and package is not None:
+            # A package may be used, but it reaches a layer's callers only where the manifest
+            # says so: an interface package is a reviewed decision, not an oversight.
+            allowed = package in manifest.interface_packages(layer)
+            reasons = (
+                []
+                if allowed
+                else [f"a public header may not name the third-party header {spelled}"]
+            )
         errors += reasons
     return errors
 

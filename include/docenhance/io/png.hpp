@@ -17,7 +17,7 @@ namespace docenhance::io {
 // the immutable snapshot the decoder consumed, so it cannot describe a later state of that path.
 struct IdentifiedImage {
     image::Plane<std::uint8_t> image;
-    ContentIdentity source;
+    core::ContentIdentity source;
 };
 // UTF-8 paths. Stored grayscale samples are expanded to 8 bits without gamma/color transforms.
 // Images, libpng and zlib allocations share the supplied byte budget. Metadata and OS resources
