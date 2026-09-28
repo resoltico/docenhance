@@ -11,6 +11,7 @@
 #include <cstdio>
 #include <expected>
 #include <filesystem>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -29,6 +30,19 @@ namespace {
                                         const std::filesystem::path& entry) {
     auto relative = entry.lexically_relative(root).generic_string();
     return relative;
+}
+// The length of an open file, taken from the stream itself and leaving it positioned to read from
+// the beginning. A file whose end is past what a stream position can express is reported as no
+// length at all, because this reads only files that are bounded anyway.
+[[nodiscard]] std::optional<std::size_t> file_position_at_end(std::FILE* file) {
+    if (std::fseek(file, 0, SEEK_END) != 0) {
+        return std::nullopt;
+    }
+    const auto end = std::ftell(file);
+    if (end < 0 || std::fseek(file, 0, SEEK_SET) != 0) {
+        return std::nullopt;
+    }
+    return static_cast<std::size_t>(end);
 }
 } // namespace
 
@@ -65,12 +79,10 @@ core::Result<BundleContents> inspect_bundle(const std::string& directory) {
         if (!std::filesystem::is_regular_file(status)) {
             return std::unexpected(refused("holds " + name + ", which is not a regular file"));
         }
-        const auto size = std::filesystem::file_size(walk->path(), error);
-        if (error || size > bundle_max_file_bytes) {
-            return std::unexpected(refused("holds " + name + ", which cannot be measured"));
-        }
         const BundleSlot slot{.path = walk->path()};
-        auto identity = identify_slot(slot);
+        // Size and digest both come from this one reading, so no entry is recorded at a size that
+        // a separate measurement claimed.
+        auto identity = identify_slot(slot, bundle_max_file_bytes);
         if (!identity) {
             return std::unexpected(refused("holds " + name + ", which cannot be read"));
         }
@@ -86,20 +98,20 @@ core::Result<core::Buffer> read_bundle_file(const std::string& directory, std::s
     if (!std::filesystem::is_regular_file(std::filesystem::symlink_status(path, error)) || error) {
         return std::unexpected(refused("does not contain " + std::string(relative)));
     }
-    const auto size = std::filesystem::file_size(path, error);
-    if (error) {
-        return std::unexpected(refused("cannot measure " + std::string(relative)));
-    }
-    if (size > limit) {
-        return std::unexpected(refused("holds a " + std::string(relative) + " that is too large"));
-    }
-    auto bytes = budget.allocate(static_cast<std::size_t>(size));
-    if (!bytes) {
-        return std::unexpected(bytes.error());
-    }
     const auto file = open_for_reading(path);
     if (file == nullptr) {
         return std::unexpected(refused("cannot open " + std::string(relative)));
+    }
+    // Measured through the handle this reads from, so the size belongs to the file being read
+    // rather than to whatever the path named a moment earlier. A file past the bound reports no
+    // position this can use, which is the same refusal as one that is simply too large.
+    const auto measured = file_position_at_end(file.get());
+    if (!measured || *measured > limit) {
+        return std::unexpected(refused("holds a " + std::string(relative) + " that is too large"));
+    }
+    auto bytes = budget.allocate(*measured);
+    if (!bytes) {
+        return std::unexpected(bytes.error());
     }
     const auto remaining = bytes->bytes();
     if (!remaining.empty() &&

@@ -23,7 +23,9 @@ invocation created, never a foreign entry and never a directory it did not make.
 
 The record comes last because it carries the digests of the files before it. A `run.json` therefore
 exists only if the image — and the mask, when there is one — was written, verified and identified
-first.
+first. Each file is identified by reading it back under the same bound verification applies, so
+what this program publishes is something it can read: an artifact larger than a bundle may hold is
+refused before the commit point rather than published into a bundle `verify` would reject.
 
 ## What the record says
 
@@ -85,6 +87,7 @@ The inventory is closed in both directions:
 |---|---|
 | A declared file is missing | Refused |
 | A declared file's size or digest differs | Refused |
+| A file is larger than a bundle may hold | Refused without reading past the bound |
 | A file is present that the record does not declare | Refused |
 | A directory exists that no declared path implies | Refused |
 | An entry is a symbolic link or any other special file | Refused without following it |

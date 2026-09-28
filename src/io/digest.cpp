@@ -18,11 +18,10 @@
 #include <utility>
 
 namespace docenhance::io {
-core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot) {
+core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::uint64_t limit) {
     const auto file = open_for_reading(slot.path);
     if (file == nullptr) {
-        return core::failure(core::ErrorCode::output,
-                             "Cannot reopen a written file to identify it");
+        return core::failure(core::ErrorCode::output, "Cannot open a bundle file to identify it");
     }
     constexpr std::size_t transfer = std::size_t{64} * 1024;
     std::array<std::uint8_t, transfer> buffer{};
@@ -33,12 +32,17 @@ core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot) {
         if (read == 0) {
             break;
         }
+        total += read;
+        // Stopping here reads no further: the bound is on what this reads, not on what a
+        // measurement taken beforehand promised.
+        if (total > limit) {
+            return core::failure(core::ErrorCode::input, "A bundle file is larger than its bound");
+        }
         const auto part = std::span{buffer}.first(read);
         hasher.process(part.begin(), part.end());
-        total += read;
     }
     if (std::ferror(file.get()) != 0) {
-        return core::failure(core::ErrorCode::output, "A written file could not be read back");
+        return core::failure(core::ErrorCode::output, "A bundle file could not be read back");
     }
     hasher.finish();
     try {

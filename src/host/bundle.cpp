@@ -59,7 +59,7 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
     if (!written) {
         return written;
     }
-    auto identity = io::identify_slot(slot);
+    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes);
     if (!identity) {
         return std::unexpected(identity.error());
     }
@@ -90,7 +90,7 @@ core::Result<void> write_mask(void* const state, const io::BundleSlot& slot) {
     if (!written) {
         return written;
     }
-    auto identity = io::identify_slot(slot);
+    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes);
     if (!identity) {
         return std::unexpected(identity.error());
     }
