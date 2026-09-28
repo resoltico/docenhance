@@ -22,7 +22,7 @@ decode_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
                   PngLimits limits = {});
 struct IdentifiedRaster {
     image::Raster raster;
-    ContentIdentity source;
+    core::ContentIdentity source;
 };
 [[nodiscard]] core::Result<IdentifiedRaster>
 load_png_raster(const std::string& input, core::Budget& budget, image::ProfilePolicy policy,

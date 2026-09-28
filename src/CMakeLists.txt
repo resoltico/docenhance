@@ -19,7 +19,7 @@ endfunction()
 
 de_library(de_core LAYER core
   SOURCES core/memory.cpp
-  HEADERS "${DE_INCLUDE}/core/memory.hpp" "${DE_INCLUDE}/core/result.hpp"
+  HEADERS "${DE_INCLUDE}/core/identity.hpp" "${DE_INCLUDE}/core/memory.hpp" "${DE_INCLUDE}/core/result.hpp"
           "${DE_INCLUDE}/core/cancellation.hpp")
 de_library(de_contract LAYER contract
   SOURCES contract/parse.cpp
@@ -50,9 +50,13 @@ de_library(de_app LAYER app
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
   LINKS de_core de_contract de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
+de_library(de_bundle LAYER bundle
+  SOURCES bundle/fields.cpp
+  HEADERS "${DE_INCLUDE}/bundle/fields.hpp"
+  LINKS de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_report LAYER report
   SOURCES report/render.cpp report/continuous.cpp report/continuous.hpp report/illumination.cpp report/illumination.hpp HEADERS "${DE_INCLUDE}/report/render.hpp"
-  LINKS de_app de_contract de_core de_image de_methods nlohmann_json::nlohmann_json)
+  LINKS de_app de_bundle de_contract de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_cli LAYER cli
   SOURCES cli/run.cpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
   LINKS de_app de_contract de_core de_report CLI11::CLI11)

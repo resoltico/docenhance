@@ -5,6 +5,7 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
@@ -21,7 +22,7 @@
 #include <variant>
 namespace docenhance::app {
 namespace {
-BuildFacts build_facts() noexcept {
+core::BuildFacts build_facts() noexcept {
     return {
         .version = application_version,
         .platform = build_platform,

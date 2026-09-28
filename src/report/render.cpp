@@ -5,6 +5,7 @@
 #include "continuous.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
+#include "docenhance/bundle/fields.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/utf8.hpp"
@@ -185,7 +186,8 @@ Output json_form(const app::Outcome& outcome) {
                     {"publication", publication_name(payload.error.publication)},
                 };
                 if (payload.illumination) {
-                    fields.emplace("illumination", illumination_fields(*payload.illumination));
+                    fields.emplace("illumination",
+                                   bundle::illumination_fields(*payload.illumination));
                 }
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             }
