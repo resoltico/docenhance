@@ -7,6 +7,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/illumination.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
@@ -31,6 +32,7 @@ std::span<const std::byte> as_bytes(std::string_view text) {
 bundle::RunRecord binarized_record() {
     const auto method = methods::Sauvola::create();
     REQUIRE(method);
+    const methods::IlluminationReport illumination;
     return {
         .context =
             {
@@ -69,6 +71,11 @@ bundle::RunRecord binarized_record() {
                 .resolution = std::nullopt,
                 .verification = bundle::Verification::decoded_and_compared,
             },
+        // A binarized run with no mask and no continuous conversion says so, rather than
+        // leaving the record's optional sections to whatever a default would be.
+        .protection = std::nullopt,
+        .conversion = std::nullopt,
+        .illumination = illumination,
     };
 }
 } // namespace
