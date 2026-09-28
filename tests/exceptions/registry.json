@@ -201,6 +201,9 @@
     "tests/support/interrupt_process.cpp:clang-tidy/misc-include-cleaner@ee70c5ba": {
       "explanation": "The Windows SDK umbrella header is required for the native console-test driver. Include-cleaner cannot attribute its console ABI through SDK layering even though the driver uses it directly."
     },
+    "tests/support/interrupt_process.cpp:clang-tidy/modernize-deprecated-headers@6c5b764d": {
+      "explanation": "The disposition check reads back the same sigaction state the entry bridge saves and restores, and struct sigaction and sa_handler are declared by the native signal.h provider rather than the standard C++ csignal interface. Comparing through std::signal instead would report an interposing runtime's wrapper, not the restored handler."
+    },
     "tests/support/standalone_main.cpp:clang-tidy/bugprone-exception-escape@6b355d85": {
       "explanation": "The standalone reference-test main catches failures and reports its exit status; MSVC's throwing expected accessors otherwise look like an escaping path to clang-tidy."
     },
