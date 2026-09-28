@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #pragma once
-#include "docenhance/bundle/record.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
@@ -35,7 +34,7 @@ struct Verified {
     std::string directory;
     std::string run;
     std::string recorded;
-    std::vector<bundle::Artifact> confirmed;
+    std::vector<core::NamedContent> confirmed;
 };
 
 // A deliberate effect boundary, like the processing port. Verification is read-only: it opens no

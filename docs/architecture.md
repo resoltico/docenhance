@@ -55,7 +55,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
 | `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
 | `de_bundle` | `de_core`, `de_image`, `de_methods` | The persistent run record: one written form for the facts an execution produced |
-| `de_app` | `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Validated use cases and the explicit processing and verification ports |
+| `de_app` | `de_contract`, `de_core`, `de_image`, `de_methods` | Validated use cases and the explicit processing and verification ports |
 | `de_report` | `de_app`, `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
 | `de_host` | `de_app`, `de_bundle`, `de_color`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods` | Executes admitted requests using codecs, kernels and publication |
