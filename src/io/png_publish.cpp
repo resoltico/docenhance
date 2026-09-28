@@ -6,6 +6,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_context.hpp"
+#include "png_rows.hpp"
 #include "publication.hpp"
 
 #include <cstdint>
@@ -197,11 +198,18 @@ core::Result<std::string> publish_png(const std::string& output_directory,
     BinaryWriter state{image, budget, cancellation};
     const PngWriterRef writer{
         .state = &state,
-        .write =
-            [](void* raw, const std::filesystem::path& path) {
-                auto const& value = *static_cast<BinaryWriter*>(raw);
-                return encode_png(path, value.image, value.budget.get(), value.cancellation.get());
-            },
+        .write = [](void* raw, const std::filesystem::path& path) -> core::Result<void> {
+            auto const& value = *static_cast<BinaryWriter*>(raw);
+            auto encoded =
+                encode_png(path, value.image, value.budget.get(), value.cancellation.get());
+            if (!encoded) {
+                return encoded;
+            }
+            // Earn the claim the same way continuous output does: reopen what was written
+            // and compare it against the intended samples and metadata.
+            return verify_png_image(path, value.image, value.budget.get(),
+                                    value.cancellation.get());
+        },
     };
     return publish_generated_png(output_directory, writer, cancellation, commit);
 }
