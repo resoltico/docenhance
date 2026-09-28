@@ -347,7 +347,8 @@
       ],
       "interface_packages": [
         "nlohmann_json"
-      ]
+      ],
+      "may_catch": true
     },
     "app": {
       "target": "de_app",

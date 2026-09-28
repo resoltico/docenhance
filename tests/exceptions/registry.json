@@ -15,6 +15,9 @@
     "include/docenhance/image/plane.hpp:clang-tidy/*-reinterpret-cast@180d663e": {
       "explanation": "The one boundary where a plane's raw storage becomes samples, in a single private function. core::Buffer is over-aligned for every supported sample type, those types are implicit-lifetime, and the span covers whole rows, so no other cast is needed anywhere else in the project."
     },
+    "src/bundle/inventory.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@65d26e5a": {
+      "explanation": "One narrow-character view of the same immutable bytes, so the parser can read a range of characters. No object's lifetime or value changes, and the span supplies the length, so the parser cannot read past the record that was handed to it."
+    },
     "src/cli/run.cpp:clang-tidy/bugprone-exception-escape@140fdeff": {
       "explanation": "CLI11 parsing allocates standard containers, and parse_and_dispatch is called inside the adapter's sole exception boundary; MSVC's STL model otherwise attributes those caught allocation failures to this local record declaration."
     },
@@ -200,6 +203,9 @@
     },
     "tests/unit/continuous.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@bb7e43fc": {
       "explanation": "This negative test deliberately constructs an unnamed value of a scoped enum with fixed underlying int type. C++ permits this representation, while the analyzer intentionally diagnoses unnamed enumerators. The assertion proves Continuous::create rejects it; the exception applies only to this test line, never production validation."
+    },
+    "tests/unit/record.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@2da7e622": {
+      "explanation": "The test hands written record text to the byte-oriented reader, which is the same view of the same storage the production caller supplies from a file buffer."
     },
     "tests/unit/transport.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@306e5491": {
       "explanation": "std::ios::iostate is a standard-library bitmask enum. Clang's analyzer rejects the valid combination of badbit and failbit used only to configure the test's refusing stream; the test verifies the resulting output-failure behavior."
