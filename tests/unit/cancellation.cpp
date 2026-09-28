@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
-#include <barrier>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -30,6 +29,7 @@
 #include <sstream>
 #include <stop_token>
 #include <string>
+#include <thread>
 
 namespace docenhance::tests {
 namespace {
@@ -58,6 +58,25 @@ contract::Invocation invocation() {
 exec::Concurrency workers(unsigned count) {
     return exec::Concurrency::resolve(count, count, 0, 0).value();
 }
+// A meeting point every task reaches before any of them returns, so simultaneity is arranged
+// rather than hoped for. It is written out of one atomic because libc++ settles a standard
+// barrier inside an uninstrumented library function: ThreadSanitizer cannot see the ordering that
+// function establishes, so it reports the barrier's own bookkeeping as a race and the test says
+// nothing about the scheduler underneath it.
+class Rendezvous {
+  public:
+    explicit Rendezvous(unsigned expected) noexcept : expected_(expected) {}
+    void arrive_and_wait() noexcept {
+        arrived_.fetch_add(1, std::memory_order_acq_rel);
+        while (arrived_.load(std::memory_order_acquire) < expected_) {
+            std::this_thread::yield();
+        }
+    }
+
+  private:
+    unsigned expected_;
+    std::atomic<unsigned> arrived_{0};
+};
 } // namespace
 TEST_CASE("Cancellation owns its stop state and prevents application effects", "[cancellation]") {
     const auto cancellation = stopped_token();
@@ -137,7 +156,7 @@ TEST_CASE("Real worker failure outranks simultaneous cancellation and all worker
           "[cancellation]") {
     std::stop_source source;
     const exec::Scheduler scheduler{workers(2), core::Cancellation{source.get_token()}};
-    std::barrier started{2};
+    Rendezvous started{2};
     std::atomic<unsigned> finished{0};
     const auto task = [&](std::size_t index) -> core::Result<void> {
         started.arrive_and_wait();
