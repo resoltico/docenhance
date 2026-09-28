@@ -5,6 +5,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/digest.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -12,10 +13,16 @@
 #include <string>
 
 namespace docenhance::io {
+// A decoded image and the identity of the encoded bytes it came from. The identity is taken from
+// the immutable snapshot the decoder consumed, so it cannot describe a later state of that path.
+struct IdentifiedImage {
+    image::Plane<std::uint8_t> image;
+    ContentIdentity source;
+};
 // UTF-8 paths. Stored grayscale samples are expanded to 8 bits without gamma/color transforms.
 // Images, libpng and zlib allocations share the supplied byte budget. Metadata and OS resources
 // have separate fixed limits; this is not a process-RSS guarantee.
-[[nodiscard]] core::Result<image::Plane<std::uint8_t>>
+[[nodiscard]] core::Result<IdentifiedImage>
 load_grayscale_png(const std::string& input, core::Budget& budget,
                    const core::Cancellation& cancellation = {});
 

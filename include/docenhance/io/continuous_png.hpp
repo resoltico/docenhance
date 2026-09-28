@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 
 #include <cstdint>
@@ -19,7 +20,11 @@ namespace docenhance::io {
 decode_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
                   image::ProfilePolicy policy, const core::Cancellation& cancellation = {},
                   PngLimits limits = {});
-[[nodiscard]] core::Result<image::Raster>
+struct IdentifiedRaster {
+    image::Raster raster;
+    ContentIdentity source;
+};
+[[nodiscard]] core::Result<IdentifiedRaster>
 load_png_raster(const std::string& input, core::Budget& budget, image::ProfilePolicy policy,
                 const core::Cancellation& cancellation = {});
 // Encode, close, independently reopen and verify all integer rows and metadata, then use

@@ -100,12 +100,13 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
         illumination.status = methods::SurfaceStatus::failed;
         illumination.requested = method->parameters();
     }
-    auto source =
+    auto decoded =
         io::load_png_raster(request.input(), budget, operation.parameters().profile, cancellation);
-    if (!source) {
-        return std::unexpected(source.error());
+    if (!decoded) {
+        return std::unexpected(decoded.error());
     }
-    auto converter = color::Converter::create(*source, operation, budget, cancellation);
+    const auto& source = decoded->raster;
+    auto converter = color::Converter::create(source, operation, budget, cancellation);
     if (!converter) {
         return std::unexpected(converter.error());
     }
