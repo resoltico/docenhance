@@ -6,6 +6,21 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Added
 
+- Every published result is a processing bundle: the image, a `run.json` recording the build, the
+  identified source bytes, the admitted request, the execution observations, the protection in
+  force and the verified output, and the canonical protection mask when one was supplied. The
+  files are committed together with one exclusive rename, so there is no result that succeeded
+  while its record failed. See [processing bundles](docs/bundles.md).
+- `docenhance verify DIRECTORY [--json]` reads a bundle back and checks that it holds exactly what
+  its record declares. The inventory is closed in both directions, entries are inspected without
+  being followed, the record is read within its own bounds and parsed without exceptions, and
+  nothing found is executed. A disagreement is an input failure at exit 3.
+- Input, output and mask bytes are identified with SHA-256 where those bytes are in hand: a source
+  digest describes the snapshot that was decoded, and an output digest the file that was verified.
+- A fuzz harness for the record reader, the one parser that reads a document this program did not
+  write; whatever it accepts must be within the bounds the reader claims to enforce.
+
+
 - Continuous-tone PNG conversion accepts static grayscale, indexed, RGB and alpha images, retaining 16-bit sample precision unless reduction is explicitly requested. Profile interpretation, linear-light alpha compositing, grayscale luminance, exact EXIF orientation and physical-resolution handling are explicit and reported.
 - Continuous-tone output is independently decoded and checked against every intended integer sample and required metadata before publication. Verification failure returns `E_OUTPUT_VERIFY` (exit 5), without publishing an incomplete result.
 - Bounded PNG/color-profile fuzz harnesses exercise the same production adapters; isolated campaigns verify instrumentation of the actual libpng, zlib and Little CMS archives.
@@ -14,6 +29,13 @@ Notable changes to this project are documented in this file. The format is based
 - Independent dense-system, real-PNG, preservation, resource/cancellation and model/mask fuzz tests cover I01. A failed fit returns `E_METHOD_INAPPLICABLE` or `E_NUMERICAL` (exit 4), not a fabricated correction or silent fallback.
 
 ### Changed
+
+- Binary output is read back and compared against the intended samples and metadata before it is
+  published, as continuous-tone output already was. The two paths now make the same promise, which
+  is what lets one record state it. No sample changes.
+- `verified` in a response is derived from the comparison that ran rather than set once publication
+  returned.
+
 
 - **Breaking (CLI):** `process` defaults to `--output-mode preserve`, with no enhancement filter. Binary processing now requires explicit `--output-mode bw`; an absent binarizer in that mode defaults to Sauvola. B02/B03 retain their released stored-grayscale sample semantics and input domain. There is no inference or compatibility alias.
 - **Breaking (API/JSON):** Validated processing alternatives distinguish binary methods from continuous output. Continuous success reports `operation: continuous` and typed conversion descriptors, assumptions and warnings, without a fabricated method ID. Continuous results now include a complete typed illumination-stage record; processing errors retain available stage observations. The generated command-contract edition is 7.0.

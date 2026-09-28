@@ -97,7 +97,7 @@ deps/                 Immutable source lock and explicit feature policy
 tests/                Unit, numeric, CLI and acquisition/security tests
 fuzz/                 Strict fuzz harnesses, corpora and regressions (libFuzzer, AFL++)
 tools/                Build-only standard-library Python automation
-docs/                 Status, architecture, decisions, build, quality, CLI and roadmap
+docs/                 Status, architecture, decisions, build, quality, CLI, bundles and roadmap
 .github/              CI, source packaging, issue/PR templates and updates
 ```
 

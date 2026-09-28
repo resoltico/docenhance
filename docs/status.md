@@ -24,6 +24,14 @@ layers own transport and presentation. Buffer lifetime, borrowed views, schedule
 codec allocations and exclusive publication have explicit contracts and regression tests.
 Cooperative cancellation is carried through the pipeline, with native interrupt handling and a
 publication cutoff; see [cancellation](cancellation.md).
+
+Each result is published as a bundle: the image, a `run.json` recording the build, the identified
+source bytes, the admitted request, the execution observations, the protection in force and the
+verified output, and the canonical mask when one was supplied. The files are committed together, so
+no result is published without its record. `docenhance verify DIRECTORY` reads one back against a
+closed inventory without executing anything it finds. Binary output is now read back and compared
+before publication, as continuous output already was. Agreement between artifacts and their record
+is not authenticity; see [processing bundles](bundles.md).
 See [architecture](architecture.md) for exact limits and the publication trust/durability boundary.
 
 ## Reusable components
