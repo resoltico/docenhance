@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/bundle/fields.hpp"
 
+#include "docenhance/bundle/record.hpp"
+#include "docenhance/core/identity.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/illumination.hpp"
@@ -11,6 +13,7 @@
 #include <cstdint>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 namespace docenhance::bundle {
@@ -183,6 +186,14 @@ Json warnings(const image::ConversionReport& value) {
     return result;
 }
 } // namespace
+nlohmann::ordered_json record_fields(const std::string& run, const core::ContentIdentity& record) {
+    return {
+        {"run", run},
+        {"path", record_name},
+        {"sha256", record.sha256},
+        {"bytes", record.bytes},
+    };
+}
 nlohmann::ordered_json conversion_fields(const image::ConversionReport& report) {
     Json resolution = nullptr;
     if (report.resolution) {

@@ -2,8 +2,10 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/host/processor.hpp"
 
+#include "bundle.hpp"
 #include "continuous.hpp"
 #include "docenhance/app/process.hpp"
+#include "docenhance/bundle/record.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -11,6 +13,7 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
@@ -25,7 +28,8 @@ namespace docenhance::host {
 namespace {
 core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
                                          const methods::Binarization& method,
-                                         const core::Cancellation& cancellation) {
+                                         const core::Cancellation& cancellation,
+                                         const bundle::RunContext& context) {
     if (cancellation.requested(core::Checkpoint::admission)) {
         return core::cancelled();
     }
@@ -59,12 +63,29 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
     if (!applied) {
         return std::unexpected(applied.error());
     }
-    auto published = io::publish_grayscale_png(
-        request.output_directory(), destination->view().as_const(), budget, cancellation);
+    const methods::IlluminationReport none;
+    auto published = publish_run({
+        .output_directory = request.output_directory(),
+        .artwork = destination->view().as_const(),
+        .budget = budget,
+        .cancellation = cancellation,
+        .context = context,
+        .source = loaded->source,
+        .source_name = io::file_name(request.input()),
+        .operation = method,
+        .mask = std::nullopt,
+        .observe_conversion = nullptr,
+        .conversion_state = nullptr,
+        .illumination = none,
+    });
     if (!published) {
         return std::unexpected(published.error());
     }
-    return app::PublishedImage{.output = std::move(*published)};
+    return app::PublishedImage{
+        .output = std::move(published->output),
+        .run = std::move(published->run),
+        .record = std::move(published->record),
+    };
 }
 } // namespace
 app::ProcessResult Processor::process(const app::ProcessRequest& request,
@@ -73,15 +94,15 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
         return app::process_failure(core::cancelled().error());
     }
     if (const auto* const method = std::get_if<methods::Binarization>(&request.operation())) {
-        auto result = binary(request, *method, cancellation);
+        auto result = binary(request, *method, cancellation, context_);
         if (!result) {
             return app::process_failure(std::move(result.error()));
         }
         return std::move(*result);
     }
     methods::IlluminationReport report;
-    auto result =
-        continuous(request, std::get<image::Continuous>(request.operation()), cancellation, report);
+    auto result = continuous(request, std::get<image::Continuous>(request.operation()),
+                             cancellation, context_, report);
     if (!result) {
         if (report.requested && !report.complete) {
             report.status = methods::SurfaceStatus::failed;

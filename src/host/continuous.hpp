@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/app/process.hpp"
+#include "docenhance/bundle/record.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
@@ -9,5 +10,6 @@
 namespace docenhance::host {
 [[nodiscard]] core::Result<app::PublishedImage>
 continuous(const app::ProcessRequest& request, image::Continuous operation,
-           const core::Cancellation& cancellation, methods::IlluminationReport& illumination);
+           const core::Cancellation& cancellation, const bundle::RunContext& context,
+           methods::IlluminationReport& illumination);
 } // namespace docenhance::host

@@ -30,4 +30,7 @@ struct BuildFacts {
     std::string_view compiler;
     std::string_view dependency_lock_sha256;
 };
+// What the build wrote down about itself. One reader, so a response and a record cannot describe
+// two different builds.
+[[nodiscard]] BuildFacts build_facts() noexcept;
 } // namespace docenhance::core

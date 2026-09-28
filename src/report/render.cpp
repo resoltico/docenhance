@@ -172,6 +172,7 @@ Output json_form(const app::Outcome& outcome) {
                     {"method_version", payload.method.method_version},
                     {"output", payload.output},
                     {"publication", "completed"},
+                    {"record", bundle::record_fields(payload.run, payload.record)},
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {

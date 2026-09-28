@@ -93,6 +93,8 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
             return succeeded(invocation, Processed{
                                              .output = std::move(result->output),
                                              .method = methods::describe(*method),
+                                             .run = std::move(result->run),
+                                             .record = std::move(result->record),
                                          });
         }
         if (!result->conversion || !result->conversion->verified || !result->illumination ||
@@ -103,6 +105,8 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                          .output = std::move(result->output),
                                          .conversion = *result->conversion,
                                          .illumination = *result->illumination,
+                                         .run = std::move(result->run),
+                                         .record = std::move(result->record),
                                      });
     } catch (...) {
         return unknown_outcome;

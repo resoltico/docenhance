@@ -75,6 +75,9 @@
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@1bb56840": {
       "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
     },
+    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@2a132410": {
+      "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
+    },
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@bc0db12c": {
       "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
     },
@@ -85,6 +88,9 @@
       "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
     },
     "src/io/png_context.cpp:clang-tidy/misc-include-cleaner@4420a099": {
+      "explanation": "MSVC exposes the Windows-only _wfopen_s C runtime extension through implementation internals that clang's include cleaner cannot attribute to a usable direct header. This narrow adapter call is the sole native wide-path file-opening boundary; the Windows package and Unicode-path checks exercise it."
+    },
+    "src/io/png_context.cpp:clang-tidy/misc-include-cleaner@915e5ad2": {
       "explanation": "MSVC exposes the Windows-only _wfopen_s C runtime extension through implementation internals that clang's include cleaner cannot attribute to a usable direct header. This narrow adapter call is the sole native wide-path file-opening boundary; the Windows package and Unicode-path checks exercise it."
     },
     "src/io/png_context.cpp:clang-tidy/misc-include-cleaner@b67b9f80": {

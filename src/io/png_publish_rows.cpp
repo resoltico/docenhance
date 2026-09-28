@@ -8,11 +8,19 @@
 #include "png_rows.hpp"
 #include "publication.hpp"
 
-#include <filesystem>
 #include <functional>
 #include <string>
 
 namespace docenhance::io {
+core::Result<void> write_verified_png_rows(const BundleSlot& slot, image::RowSource& rows,
+                                           core::Budget& budget,
+                                           const core::Cancellation& cancellation) {
+    auto encoded = encode_png_rows(slot.path, rows, budget, cancellation);
+    if (!encoded) {
+        return encoded;
+    }
+    return verify_png_rows(slot.path, rows, budget, cancellation);
+}
 core::Result<std::string> publish_png_rows(const std::string& output_directory,
                                            image::RowSource& rows, core::Budget& budget,
                                            const core::Cancellation& cancellation) {
@@ -26,15 +34,10 @@ core::Result<std::string> publish_png_rows(const std::string& output_directory,
     RowWriter state{rows, budget, cancellation};
     const PngWriterRef writer{
         .state = &state,
-        .write = [](void* raw, const std::filesystem::path& path) -> core::Result<void> {
+        .write = [](void* raw, const BundleSlot& slot) -> core::Result<void> {
             auto const& value = *static_cast<RowWriter*>(raw);
-            auto encoded = encode_png_rows(path, value.rows.get(), value.budget.get(),
+            return write_verified_png_rows(slot, value.rows.get(), value.budget.get(),
                                            value.cancellation.get());
-            if (!encoded) {
-                return encoded;
-            }
-            return verify_png_rows(path, value.rows.get(), value.budget.get(),
-                                   value.cancellation.get());
         },
     };
     return publish_generated_png(output_directory, writer, cancellation, rename_exclusive);

@@ -21,6 +21,7 @@ nlohmann::ordered_json continuous_fields(const app::ContinuousProcessed& value) 
         {"output", value.output},
         {"publication", "completed"},
         {"conversion", bundle::conversion_fields(value.conversion)},
+        {"record", bundle::record_fields(value.run, value.record)},
     };
 }
 std::string continuous_text(const app::ContinuousProcessed& value) {

@@ -473,12 +473,13 @@
       "summary": "Executes admitted requests using codecs, kernels and publication",
       "uses": [
         "app",
+        "bundle",
+        "color",
         "core",
         "exec",
         "image",
         "io",
-        "methods",
-        "color"
+        "methods"
       ],
       "external": [],
       "forbidden_headers": [

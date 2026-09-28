@@ -31,6 +31,8 @@ struct FileCloser {
 using FileHandle = std::unique_ptr<std::FILE, FileCloser>;
 // Opens a file for reading without building a codec context, for callers that only need bytes.
 [[nodiscard]] FileHandle open_for_reading(const std::filesystem::path& path);
+// Creates a file, never replacing one: the transaction owns an empty staging directory.
+[[nodiscard]] FileHandle open_for_writing(const std::filesystem::path& path);
 struct PngMemory {
     PngMemory(core::Budget& owner, core::Cancellation control)
         : budget(owner), cancellation(std::move(control)) {}

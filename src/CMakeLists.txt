@@ -18,9 +18,10 @@ function(de_library name)
 endfunction()
 
 de_library(de_core LAYER core
-  SOURCES core/memory.cpp
+  SOURCES core/memory.cpp core/identity.cpp
   HEADERS "${DE_INCLUDE}/core/identity.hpp" "${DE_INCLUDE}/core/memory.hpp" "${DE_INCLUDE}/core/result.hpp"
           "${DE_INCLUDE}/core/cancellation.hpp")
+target_include_directories(de_core PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_contract LAYER contract
   SOURCES contract/parse.cpp
   HEADERS "${DE_INCLUDE}/contract/command.hpp" "${DE_INCLUDE}/contract/cli_contract.hpp"
@@ -31,7 +32,7 @@ de_library(de_exec LAYER exec
   HEADERS "${DE_INCLUDE}/exec/concurrency.hpp" "${DE_INCLUDE}/exec/scheduler.hpp"
   LINKS de_core)
 de_library(de_image LAYER image
-  SOURCES image/numeric.cpp image/plane.cpp image/raster.cpp image/continuous.cpp image/linear.cpp
+  SOURCES image/numeric.cpp image/plane_rows.cpp image/plane.cpp image/raster.cpp image/continuous.cpp image/linear.cpp
   HEADERS "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
           "${DE_INCLUDE}/image/raster.hpp" "${DE_INCLUDE}/image/continuous.hpp" "${DE_INCLUDE}/image/linear.hpp"
   LINKS de_core)
@@ -84,9 +85,9 @@ if(DE_FUZZ_ONLY)
   return()
 endif()
 de_library(de_host LAYER host
-  SOURCES host/processor.cpp host/continuous.cpp host/continuous.hpp
+  SOURCES host/bundle.cpp host/bundle.hpp host/context.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
           host/illumination_rows.cpp host/illumination_rows.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp"
-  LINKS de_app de_core de_exec de_image de_io de_methods de_color)
+  LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)
 if(MINGW)
   target_link_options(docenhance PRIVATE -municode)

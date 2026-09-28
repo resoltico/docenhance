@@ -4,9 +4,13 @@
 
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
+#include "png_context.hpp"
+#include "publication.hpp"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <new>
 #include <picosha2.h>
 #include <span>
@@ -14,6 +18,40 @@
 #include <utility>
 
 namespace docenhance::io {
+core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot) {
+    const auto file = open_for_reading(slot.path);
+    if (file == nullptr) {
+        return core::failure(core::ErrorCode::output,
+                             "Cannot reopen a written file to identify it");
+    }
+    constexpr std::size_t transfer = std::size_t{64} * 1024;
+    std::array<std::uint8_t, transfer> buffer{};
+    picosha2::hash256_one_by_one hasher;
+    std::uint64_t total = 0;
+    while (true) {
+        const auto read = std::fread(buffer.data(), 1, buffer.size(), file.get());
+        if (read == 0) {
+            break;
+        }
+        const auto part = std::span{buffer}.first(read);
+        hasher.process(part.begin(), part.end());
+        total += read;
+    }
+    if (std::ferror(file.get()) != 0) {
+        return core::failure(core::ErrorCode::output, "A written file could not be read back");
+    }
+    hasher.finish();
+    try {
+        std::string hex;
+        picosha2::get_hash_hex_string(hasher, hex);
+        if (hex.size() != core::sha256_hex_length) {
+            return core::failure(core::ErrorCode::invariant, "A digest was not fully rendered");
+        }
+        return core::ContentIdentity{.sha256 = std::move(hex), .bytes = total};
+    } catch (const std::bad_alloc&) {
+        return core::failure(core::ErrorCode::resource, "Identifying content exhausted memory");
+    }
+}
 core::Result<core::ContentIdentity> identify(std::span<const std::byte> content) {
     // uint8_t is the unsigned-byte view of the same immutable storage.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
