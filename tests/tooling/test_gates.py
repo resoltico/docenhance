@@ -71,6 +71,17 @@ class GodFileTests(GateTestCase):
         write(self.root, "include/x/deps/big.hpp", "x\n" * 400)
         self.assertEqual(len(check_gates.god_file_errors(self.root)), 2)
 
+    def test_a_nested_checkout_is_not_this_repository(self) -> None:
+        """Files of a clone or worktree placed inside the tree belong to that checkout."""
+        over = "x\n" * (check_gates.LINE_LIMITS["production"] + 1)
+        write(self.root, "src/big.cpp", over)
+        write(self.root, ".claude/worktrees/other/.git", "gitdir: /elsewhere\n")
+        write(self.root, ".claude/worktrees/other/src/big.cpp", over)
+        write(self.root, "vendor/clone/.git/HEAD", "ref: refs/heads/main\n")
+        write(self.root, "vendor/clone/src/big.cpp", over)
+        flagged = sorted(e.split()[2] for e in check_gates.god_file_errors(self.root))
+        self.assertEqual(flagged, ["src/big.cpp"])
+
     def test_uncommon_extensions_are_code(self) -> None:
         """New C++ extensions and CMake templates cannot dodge the gates."""
         for name in ("a.cc", "a.cxx", "a.hh", "a.ipp", "a.inl", "a.hpp.in", "CMakeLists.txt"):
