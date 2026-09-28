@@ -29,15 +29,29 @@
 #include <windows.h> // NOLINT(misc-include-cleaner)
 #else
 #include <csignal>
+#include <signal.h> // NOLINT(modernize-deprecated-headers): POSIX sigaction provider.
+#ifdef __APPLE__
+#include <sys/signal.h>
+#endif
 #endif
 
 namespace {
 #ifndef _WIN32
 extern "C" void prior_handler(int /*signal*/) noexcept {}
+// The bridge saves and restores sigaction dispositions, so this check reads them back the same
+// way. Asking through std::signal would compare against whatever a second API reports, which
+// under an interposing runtime is that runtime's own wrapper rather than the restored handler.
+bool set_disposition(int signal, void (*const handler)(int)) noexcept {
+    struct sigaction action{};
+    action.sa_handler = handler;
+    return sigemptyset(&action.sa_mask) == 0 && sigaction(signal, &action, nullptr) == 0;
+}
+bool disposition_is(int signal, void (*const handler)(int)) noexcept {
+    struct sigaction current{};
+    return sigaction(signal, nullptr, &current) == 0 && current.sa_handler == handler;
+}
 int check_dispositions() {
-    const auto old_interrupt = std::signal(SIGINT, SIG_IGN);
-    const auto old_term = std::signal(SIGTERM, prior_handler);
-    if (old_interrupt == SIG_ERR || old_term == SIG_ERR) {
+    if (!set_disposition(SIGINT, SIG_IGN) || !set_disposition(SIGTERM, prior_handler)) {
         return 2;
     }
     {
@@ -48,9 +62,7 @@ int check_dispositions() {
             return 2;
         }
     }
-    const auto restored_term = std::signal(SIGTERM, old_term);
-    const auto restored_interrupt = std::signal(SIGINT, old_interrupt);
-    return restored_term == prior_handler && restored_interrupt == SIG_IGN ? 0 : 2;
+    return disposition_is(SIGTERM, prior_handler) && disposition_is(SIGINT, SIG_IGN) ? 0 : 2;
 }
 #endif
 #ifdef _WIN32
