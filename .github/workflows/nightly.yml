@@ -77,6 +77,7 @@ jobs:
           python tools/deps.py fetch --dependency cli11
           python tools/deps.py fetch --dependency json
           python tools/deps.py fetch --dependency lcms
+          python tools/deps.py fetch --dependency picosha2
       - name: Build fuzzers
         env:
           CC: ${{ matrix.cc }}

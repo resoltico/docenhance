@@ -69,6 +69,8 @@ python tools/deps.py fetch --dependency zlib
 python tools/deps.py fetch --dependency png
 python tools/deps.py fetch --dependency cli11
 python tools/deps.py fetch --dependency json
+python tools/deps.py fetch --dependency lcms
+python tools/deps.py fetch --dependency picosha2
 CC=clang-23 CXX=clang++-23 cmake --workflow --preset fuzz
 ```
 
