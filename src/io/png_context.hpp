@@ -28,6 +28,9 @@ inline constexpr int byte_depth = 8;
 struct FileCloser {
     void operator()(std::FILE* file) const noexcept;
 };
+using FileHandle = std::unique_ptr<std::FILE, FileCloser>;
+// Opens a file for reading without building a codec context, for callers that only need bytes.
+[[nodiscard]] FileHandle open_for_reading(const std::filesystem::path& path);
 struct PngMemory {
     PngMemory(core::Budget& owner, core::Cancellation control)
         : budget(owner), cancellation(std::move(control)) {}
@@ -58,7 +61,7 @@ class PngContext {
     PngMemory memory;
     png_structp png = nullptr;
     png_infop info = nullptr;
-    std::unique_ptr<std::FILE, FileCloser> file;
+    FileHandle file;
     int passes = 1;
     bool writing;
 };

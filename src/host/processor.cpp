@@ -31,19 +31,20 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
     }
     constexpr std::size_t processing_budget_bytes = std::size_t{128} * 1024 * 1024;
     core::Budget budget{processing_budget_bytes};
-    auto source = io::load_grayscale_png(request.input(), budget, cancellation);
-    if (!source) {
-        return std::unexpected(source.error());
+    auto loaded = io::load_grayscale_png(request.input(), budget, cancellation);
+    if (!loaded) {
+        return std::unexpected(loaded.error());
     }
+    auto& source = loaded->image;
     if (cancellation.requested(core::Checkpoint::allocation)) {
         return core::cancelled();
     }
     auto destination =
-        image::Plane<std::uint8_t>::allocate(budget, source->width(), source->height());
+        image::Plane<std::uint8_t>::allocate(budget, source.width(), source.height());
     if (!destination) {
         return std::unexpected(destination.error());
     }
-    const auto scratch = methods::scratch_bytes(method, source->width(), 1);
+    const auto scratch = methods::scratch_bytes(method, source.width(), 1);
     if (!scratch) {
         return std::unexpected(scratch.error());
     }
@@ -53,7 +54,7 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
         return std::unexpected(concurrency.error());
     }
     const exec::Scheduler scheduler{*concurrency, cancellation};
-    const auto applied = methods::binarize(source->view().as_const(), destination->view(), method,
+    const auto applied = methods::binarize(source.view().as_const(), destination->view(), method,
                                            {.scheduler = scheduler, .budget = budget});
     if (!applied) {
         return std::unexpected(applied.error());

@@ -279,6 +279,7 @@
         "image"
       ],
       "external": [
+        "picosha2",
         "png",
         "zlib"
       ],

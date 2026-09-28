@@ -3,6 +3,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
 #include "publication.hpp"
@@ -148,9 +149,12 @@ TEST_CASE("File and memory PNG sources use identical decoding and error policy",
                 CHECK(from_file.error().code == core::ErrorCode::input);
             } else {
                 REQUIRE(from_file);
-                CHECK(from_file->width() == from_memory->width());
-                CHECK(from_file->height() == from_memory->height());
-                CHECK(std::ranges::equal(from_file->view().row(0), from_memory->view().row(0)));
+                CHECK(from_file->image.width() == from_memory->width());
+                CHECK(from_file->image.height() == from_memory->height());
+                CHECK(
+                    std::ranges::equal(from_file->image.view().row(0), from_memory->view().row(0)));
+                CHECK(from_file->source.sha256.size() == io::sha256_hex_length);
+                CHECK(from_file->source.bytes == bytes.size());
             }
         }
         CHECK(file_budget.used() == 0);

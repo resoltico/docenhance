@@ -63,9 +63,10 @@ de_library(de_io LAYER io
           io/png_metadata.cpp io/png_metadata.hpp io/png_profile.cpp io/png_exif.cpp
           io/png_raster.cpp io/png_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
           io/png_inventory.cpp io/png_verify_rows.cpp io/png_publish_rows.cpp
-          io/png_protection.cpp io/png_snapshot.hpp
-  HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp" "${DE_INCLUDE}/io/protection_png.hpp"
-  LINKS de_core de_image DE::png DE::zlib)
+          io/png_protection.cpp io/png_snapshot.hpp io/digest.cpp
+  HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp"
+          "${DE_INCLUDE}/io/protection_png.hpp" "${DE_INCLUDE}/io/digest.hpp"
+  LINKS de_core de_image DE::png DE::zlib DE::picosha2)
 de_library(de_color LAYER color
   SOURCES color/context.cpp color/context.hpp color/profiles.cpp color/interpretation.cpp
           color/converter.cpp color/conversion.hpp color/prepare.cpp color/rows.cpp

@@ -94,6 +94,20 @@ void FileCloser::operator()(std::FILE* file) const noexcept {
     // Best-effort cleanup. Success is possible only after close_output explicitly checks fclose.
     static_cast<void>(std::fclose(file)); // NOLINT(cppcoreguidelines-owning-memory)
 }
+FileHandle open_for_reading(const std::filesystem::path& path) {
+#ifdef _WIN32
+    std::FILE* opened = nullptr;
+    // NOLINTNEXTLINE(misc-include-cleaner): MSVC exposes _wfopen_s through C runtime internals.
+    if (_wfopen_s(&opened, path.c_str(), L"rb") != 0) {
+        return {};
+    }
+    return FileHandle{opened};
+#else
+    // The handle immediately takes ownership of the C stream.
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
+    return FileHandle{std::fopen(path.c_str(), "rb")};
+#endif
+}
 bool PngContext::open(const std::filesystem::path& path) {
     if (png == nullptr || info == nullptr) {
         memory.exhausted = true;
