@@ -130,6 +130,16 @@
         "de_io"
       ],
       "max_len": 65536
+    },
+    "record": {
+      "max_len": 4300,
+      "source": "record.cpp",
+      "links": [
+        "de_bundle",
+        "de_core",
+        "de_image",
+        "de_methods"
+      ]
     }
   }
 }

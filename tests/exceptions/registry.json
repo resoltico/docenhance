@@ -3,6 +3,9 @@
     "cmake/ProjectOptions.cmake:compiler/-Wno-unknown-warning-option@7fb1d038": {
       "explanation": "Applies to clang-tidy's own parse of GCC compile commands, where the GCC-only warning flags would otherwise be hard errors under -Werror. The compilers themselves still reject unknown options."
     },
+    "fuzz/record.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@2da7e622": {
+      "explanation": "One narrow-character view of the same immutable bytes, so the harness can hand written record text to the byte-oriented reader exactly as a file buffer reaches it. No object's lifetime or value changes, and the span carries the length."
+    },
     "fuzz/support/replay_main.cpp:clang-tidy/bugprone-exception-escape@2d07a17a": {
       "explanation": "The standalone replay boundary catches every standard and non-standard exception, writes an explicit diagnostic, and returns a failure status. MSVC's filesystem implementation exposes throws through its declarations but clang-tidy does not follow this local catch boundary."
     },
