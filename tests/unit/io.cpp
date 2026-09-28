@@ -20,9 +20,11 @@
 #include <fstream>
 #include <ios>
 #include <iterator>
+#include <span>
 #include <string>
 #include <system_error>
 #include <thread>
+#include <vector>
 
 namespace docenhance::tests {
 namespace {
@@ -100,6 +102,68 @@ TEST_CASE("Binary output is read back and compared before it is published", "[io
     const auto refused = io::verify_png_image(tampered, image->view().as_const(), budget);
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::output_verify);
+}
+
+namespace {
+// A bundle file whose bytes are known, so a test can check what was published.
+struct TextFile {
+    std::string_view relative;
+    std::string content;
+    bool fail = false;
+};
+core::Result<void> write_text(void* const state, const std::filesystem::path& path) {
+    auto& file = *static_cast<TextFile*>(state);
+    if (file.fail) {
+        return core::failure(core::ErrorCode::output, "This file refuses to be written");
+    }
+    std::ofstream writing{path, std::ios::binary};
+    writing.write(file.content.data(), static_cast<std::streamsize>(file.content.size()));
+    return writing ? core::Result<void>{}
+                   : core::failure(core::ErrorCode::output, "The file could not be written");
+}
+std::vector<io::BundleFile> declared(std::span<TextFile> files) {
+    std::vector<io::BundleFile> bundle;
+    for (auto& file : files) {
+        bundle.push_back({.relative = file.relative, .state = &file, .write = write_text});
+    }
+    return bundle;
+}
+} // namespace
+
+TEST_CASE("A bundle is published whole or not at all", "[io]") {
+    const TemporaryDirectory temporary{"docenhance-bundle"};
+    std::array<TextFile, 3> files{
+        TextFile{.relative = "result.png", .content = "image"},
+        TextFile{.relative = "assets/protect-mask.png", .content = "mask"},
+        TextFile{.relative = "run.json", .content = "{}"},
+    };
+
+    SECTION("every declared file, including one in a directory the bundle owns") {
+        const auto output = temporary.path / "complete";
+        const auto published =
+            io::publish_bundle(utf8_spelling(output), declared(files), {}, io::rename_exclusive);
+        REQUIRE(published);
+        CHECK(std::filesystem::exists(output / "result.png"));
+        CHECK(std::filesystem::exists(output / "assets" / "protect-mask.png"));
+        CHECK(std::filesystem::exists(output / "run.json"));
+    }
+
+    SECTION("a file that cannot be written publishes nothing and leaves nothing behind") {
+        files.back().fail = true;
+        const auto output = temporary.path / "refused";
+        const auto published =
+            io::publish_bundle(utf8_spelling(output), declared(files), {}, io::rename_exclusive);
+        REQUIRE(!published);
+        CHECK(published.error().publication == core::Publication::not_published);
+        CHECK(!std::filesystem::exists(output));
+        // Staging is removed with the directories it created, and nothing else is touched.
+        std::size_t entries = 0;
+        for ([[maybe_unused]] const auto& entry :
+             std::filesystem::directory_iterator{temporary.path}) {
+            ++entries;
+        }
+        CHECK(entries == 0);
+    }
 }
 
 TEST_CASE("The native commit refuses even an existing empty directory", "[io]") {

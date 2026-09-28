@@ -63,7 +63,7 @@ de_library(de_cli LAYER cli
   LINKS de_app de_contract de_core de_report CLI11::CLI11)
 
 de_library(de_io LAYER io
-  SOURCES io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_publish.cpp
+  SOURCES io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_publish.cpp io/bundle_publish.cpp
           io/publication.cpp io/png_context.hpp io/png_reader.hpp io/publication.hpp
           io/png_metadata.cpp io/png_metadata.hpp io/png_profile.cpp io/png_exif.cpp
           io/png_raster.cpp io/png_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
