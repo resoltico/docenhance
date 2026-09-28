@@ -6,6 +6,7 @@
 // token (before any "--") is present; identical results on repeated runs.
 #include "docenhance/cli/run.hpp"
 #include "processor.hpp"
+#include "stub_verifier.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
@@ -64,7 +65,9 @@ Outcome invoke(const std::vector<std::string>& args) {
     std::ostringstream out;
     std::ostringstream err;
     docenhance::tests::RejectingProcessor processor;
-    const int code = docenhance::cli::run(argv, processor, out, err);
+    docenhance::tests::UnusedVerifier verifier;
+    const int code =
+        docenhance::cli::run(argv, {.processor = processor, .verifier = verifier}, out, err);
     return {.code = code, .out = out.str(), .err = err.str()};
 }
 

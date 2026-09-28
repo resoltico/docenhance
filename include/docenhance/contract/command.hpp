@@ -5,8 +5,8 @@
 #include <string>
 #include <string_view>
 namespace docenhance::contract {
-enum class Command : unsigned { root, process, methods, version };
-inline constexpr unsigned command_count = 4;
+enum class Command : unsigned { root, process, verify, methods, version };
+inline constexpr unsigned command_count = 5;
 // Which commands an option belongs to, as a typed set rather than a scope string every caller has
 // to interpret. spec/cli-contract.json states the scope; tools/generate_spec.py builds the sets.
 class CommandSet {
@@ -61,6 +61,8 @@ struct Invocation {
         return "root";
     case Command::process:
         return "process";
+    case Command::verify:
+        return "verify";
     case Command::methods:
         return "methods";
     case Command::version:

@@ -7,6 +7,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/report/render.hpp"
+#include "stub_verifier.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -18,6 +19,9 @@
 #include <string>
 
 namespace docenhance::tests {
+namespace {
+UnusedVerifier verifier;
+} // namespace
 namespace {
 class RecordingBuffer final : public std::stringbuf {
   public:
@@ -104,7 +108,7 @@ TEST_CASE("Response delivery flushes only its owned stream") {
     RecordingBuffer diagnostic;
     std::ostream out{&output};
     std::ostream err{&diagnostic};
-    REQUIRE(cli::run(process_args, processor, out, err) == 0);
+    REQUIRE(cli::run(process_args, {.processor = processor, .verifier = verifier}, out, err) == 0);
     REQUIRE(processor.calls == 1);
     REQUIRE(output.synchronizations == 1);
     REQUIRE(diagnostic.writes == 0);
@@ -117,7 +121,7 @@ TEST_CASE("Response bytes ignore and preserve caller formatting state") {
     constexpr std::streamsize field_width = 4096;
     out.fill('x');
     out.width(field_width);
-    REQUIRE(cli::run(process_args, processor, out, err) == 0);
+    REQUIRE(cli::run(process_args, {.processor = processor, .verifier = verifier}, out, err) == 0);
     REQUIRE(out.str().starts_with('{'));
     REQUIRE(out.str().ends_with("}\n"));
     REQUIRE(out.width() == field_width);
@@ -138,7 +142,8 @@ TEST_CASE("Delayed and throwing flush failures never rerun processing") {
             if (exceptions) {
                 out.exceptions(std::ios::badbit);
             }
-            REQUIRE(cli::run(process_args, processor, out, err) == 5);
+            REQUIRE(cli::run(process_args, {.processor = processor, .verifier = verifier}, out,
+                             err) == 5);
             REQUIRE(processor.calls == 1);
             REQUIRE(processor.effect_observed);
             REQUIRE(output.writes == 1);
@@ -158,13 +163,13 @@ TEST_CASE("An unusable unselected stream is irrelevant") {
     std::ostream out{&output};
     std::ostream err{&diagnostic};
     err.setstate(std::ios::badbit);
-    REQUIRE(cli::run(process_args, processor, out, err) == 0);
+    REQUIRE(cli::run(process_args, {.processor = processor, .verifier = verifier}, out, err) == 0);
     REQUIRE(diagnostic.writes == 0);
     REQUIRE(diagnostic.synchronizations == 0);
     err.clear();
     out.setstate(std::ios::badbit);
     const auto rejected = std::to_array<const char*>({"docenhance", "unknown-command"});
-    REQUIRE(cli::run(rejected, processor, out, err) == 2);
+    REQUIRE(cli::run(rejected, {.processor = processor, .verifier = verifier}, out, err) == 2);
     REQUIRE(processor.calls == 1);
     REQUIRE(output.writes == 1);
     REQUIRE(output.synchronizations == 1);
@@ -178,7 +183,7 @@ TEST_CASE("An unreported processing effect has unknown publication") {
          }) {
         RecordingProcessor processor;
         processor.behavior = behavior;
-        const auto outcome = app::dispatch(request(), processor);
+        const auto outcome = app::dispatch(request(), processor, verifier);
         REQUIRE(processor.calls == 1);
         REQUIRE(processor.effect_observed);
         REQUIRE(outcome.exit_code() == core::ExitCode::publication_unknown);
@@ -186,7 +191,8 @@ TEST_CASE("An unreported processing effect has unknown publication") {
                 core::Publication::unknown);
         std::ostringstream out;
         std::ostringstream err;
-        REQUIRE(cli::run(process_args, processor, out, err) == 7);
+        REQUIRE(cli::run(process_args, {.processor = processor, .verifier = verifier}, out, err) ==
+                7);
         REQUIRE(processor.calls == 2);
         REQUIRE(out.str().contains("E_PUBLICATION_UNKNOWN"));
         REQUIRE(!out.str().contains("not_started"));
@@ -196,7 +202,7 @@ TEST_CASE("An unreported processing effect has unknown publication") {
 TEST_CASE("Reported processing errors retain their known publication state") {
     RecordingProcessor processor;
     processor.behavior = Behavior::refusal;
-    const auto outcome = app::dispatch(request(), processor);
+    const auto outcome = app::dispatch(request(), processor, verifier);
     REQUIRE(outcome.exit_code() == core::ExitCode::processing);
     const auto& error = std::get<app::Failure>(outcome.payload).error;
     REQUIRE(error.publication == core::Publication::not_published);
@@ -209,7 +215,7 @@ TEST_CASE("Malformed UTF-8 cannot cross command or direct application admission"
     args.at(2) = malformed.c_str();
     std::ostringstream out;
     std::ostringstream err;
-    REQUIRE(cli::run(args, processor, out, err) == 2);
+    REQUIRE(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) == 2);
     REQUIRE(processor.calls == 0);
     REQUIRE(out.str().contains("E_ARGUMENT"));
     REQUIRE(err.str().empty());
@@ -217,7 +223,7 @@ TEST_CASE("Malformed UTF-8 cannot cross command or direct application admission"
         for (const bool input : std::array{false, true}) {
             auto invocation = request();
             (input ? invocation.subject : invocation.output_directory) = invalid;
-            const auto outcome = app::dispatch(invocation, processor);
+            const auto outcome = app::dispatch(invocation, processor, verifier);
             REQUIRE(outcome.exit_code() == core::ExitCode::invocation);
             REQUIRE(std::get<app::Failure>(outcome.payload).error.publication ==
                     core::Publication::not_started);
@@ -234,7 +240,7 @@ TEST_CASE("Diagnostic replacement cannot rewrite a machine-readable identity") {
         REQUIRE((rendered.out + rendered.err).contains("The diagnostic was not well-formed UTF-8"));
     }
     RecordingProcessor processor;
-    auto outcome = app::dispatch(request(), processor);
+    auto outcome = app::dispatch(request(), processor, verifier);
     std::get<app::Processed>(outcome.payload).output = malformed;
     REQUIRE_THROWS(static_cast<void>(report::render(outcome, report::Format::json)));
 }

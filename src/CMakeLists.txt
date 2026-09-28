@@ -47,9 +47,10 @@ de_library(de_methods LAYER methods
           "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
-  SOURCES app/dispatch.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
+  SOURCES app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
-  LINKS de_core de_contract de_methods de_image)
+          "${DE_INCLUDE}/app/verify.hpp"
+  LINKS de_bundle de_core de_contract de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_bundle LAYER bundle
   SOURCES bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp
@@ -64,7 +65,7 @@ de_library(de_cli LAYER cli
   LINKS de_app de_contract de_core de_report CLI11::CLI11)
 
 de_library(de_io LAYER io
-  SOURCES io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_publish.cpp io/bundle_publish.cpp
+  SOURCES io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_publish.cpp io/bundle_publish.cpp io/bundle_inspect.cpp
           io/publication.cpp io/png_context.hpp io/png_reader.hpp io/publication.hpp
           io/png_metadata.cpp io/png_metadata.hpp io/png_profile.cpp io/png_exif.cpp
           io/png_raster.cpp io/png_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
@@ -85,8 +86,8 @@ if(DE_FUZZ_ONLY)
   return()
 endif()
 de_library(de_host LAYER host
-  SOURCES host/bundle.cpp host/bundle.hpp host/context.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
-          host/illumination_rows.cpp host/illumination_rows.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp"
+  SOURCES host/bundle.cpp host/bundle.hpp host/context.cpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
+          host/illumination_rows.cpp host/illumination_rows.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
   LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)
 if(MINGW)

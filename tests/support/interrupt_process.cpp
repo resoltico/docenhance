@@ -5,6 +5,7 @@
 #include "docenhance/cli/run.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/host/processor.hpp"
+#include "docenhance/host/verifier.hpp"
 #include "signals.hpp"
 
 #include <array>
@@ -125,7 +126,9 @@ int run(std::span<char* const> args) {
         "--json",
     });
     docenhance::host::Processor processor;
-    return docenhance::cli::run(invocation, processor, std::cout, std::cerr, control);
+    docenhance::host::Verifier verifier;
+    return docenhance::cli::run(invocation, {.processor = processor, .verifier = verifier},
+                                std::cout, std::cerr, control);
 }
 } // namespace
 int main(int argc, char** const argv) { // NOLINT(misc-const-correctness)

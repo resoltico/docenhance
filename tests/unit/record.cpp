@@ -55,7 +55,7 @@ bundle::RunRecord binarized_record() {
             {
                 .artifact =
                     {
-                        .path = bundle::image_name,
+                        .name = bundle::image_name,
                         .identity = {.sha256 = std::string(other_digest), .bytes = 2048},
                     },
                 .shape =
@@ -81,7 +81,7 @@ TEST_CASE("A written record declares what the bundle contains", "[bundle]") {
     CHECK(declared->version == bundle::record_version);
     CHECK(declared->run == "0123456789abcdef0123456789abcdef");
     REQUIRE(declared->inventory.size() == 1);
-    CHECK(declared->inventory.front().path == bundle::image_name);
+    CHECK(declared->inventory.front().name == bundle::image_name);
     CHECK(declared->inventory.front().identity.sha256 == std::string(other_digest));
     CHECK(declared->inventory.front().identity.bytes == 2048);
 

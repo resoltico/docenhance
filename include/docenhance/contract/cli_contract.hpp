@@ -15,6 +15,8 @@ namespace docenhance::contract {
     case Command::process:
         return "docenhance process INPUT --out-dir DIRECTORY [--output-mode "
                "preserve|gray|bw] [OPTIONS]";
+    case Command::verify:
+        return "docenhance verify DIRECTORY [--json]";
     case Command::methods:
         return "docenhance methods [ID] [--json]";
     case Command::version:

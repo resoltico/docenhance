@@ -3,6 +3,7 @@
 #include "docenhance/app/dispatch.hpp"
 
 #include "docenhance/app/process.hpp"
+#include "docenhance/app/verify.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
@@ -120,7 +121,22 @@ Outcome failure(const contract::Invocation& invocation, core::Error error) {
         .payload = Failure{.error = std::move(error)},
     };
 }
-Outcome dispatch(const contract::Invocation& invocation, Processor& processor,
+namespace {
+Outcome verify(const contract::Invocation& invocation, Verifier& verifier,
+               const core::Cancellation& cancellation) {
+    auto request = prepare_verify(invocation);
+    if (!request) {
+        return failure(invocation, std::move(request.error()));
+    }
+    auto verified = verifier.verify(*request, cancellation);
+    if (!verified) {
+        return failure(invocation, std::move(verified.error()));
+    }
+    return succeeded(invocation, std::move(*verified));
+}
+} // namespace
+
+Outcome dispatch(const contract::Invocation& invocation, Processor& processor, Verifier& verifier,
                  const core::Cancellation& cancellation) {
     const bool bare_root =
         invocation.command == contract::Command::root && !invocation.root_version;
@@ -131,6 +147,9 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor,
     }
     if (invocation.command == contract::Command::process) {
         return process(invocation, processor, cancellation);
+    }
+    if (invocation.command == contract::Command::verify) {
+        return verify(invocation, verifier, cancellation);
     }
     if (invocation.command == contract::Command::version || invocation.root_version) {
         auto outcome = succeeded(invocation, Version{.capabilities = capabilities()});

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/bundle/record.hpp"
+#include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 
 #include <cstddef>
@@ -32,4 +33,15 @@ struct DeclaredBundle {
 };
 
 [[nodiscard]] core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes);
+
+// Whether what a bundle contains is what its record declares. The inventory is closed in both
+// directions: a declared file that is absent and a present file that is undeclared are different
+// disagreements, and neither is a pass. The record itself is expected to be present and is not
+// identified against itself.
+//
+// Agreement is not authenticity. Digests detect disagreement with expected bytes; anyone able to
+// rewrite an artifact and its record can produce another internally consistent bundle.
+[[nodiscard]] core::Result<void> agrees(const DeclaredBundle& declared,
+                                        std::span<const core::NamedContent> present,
+                                        std::span<const std::string> directories);
 } // namespace docenhance::bundle

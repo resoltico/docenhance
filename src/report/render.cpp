@@ -5,6 +5,7 @@
 #include "continuous.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
+#include "docenhance/app/verify.hpp"
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
@@ -134,6 +135,15 @@ Output text_form(const app::Outcome& outcome) {
                 return {.out = "Wrote " + payload.output + "\n", .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {
                 return {.out = continuous_text(payload), .err = {}};
+            } else if constexpr (std::is_same_v<Payload, app::Verified>) {
+                std::string text = "Bundle agrees with its record: " + payload.directory + "\n";
+                text += "run " + payload.run + " recorded " + payload.recorded + "\n";
+                for (const auto& artifact : payload.confirmed) {
+                    text += artifact.name + " " + artifact.identity.sha256 + "\n";
+                }
+                text += "Agreement is not authenticity: a digest detects disagreement with "
+                        "expected bytes, it does not identify who produced them.\n";
+                return {.out = std::move(text), .err = {}};
             } else {
                 return {
                     .out = {},
@@ -177,6 +187,23 @@ Output json_form(const app::Outcome& outcome) {
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {
                 return {.out = dump(envelope(outcome, continuous_fields(payload))), .err = {}};
+            } else if constexpr (std::is_same_v<Payload, app::Verified>) {
+                Json confirmed = Json::array();
+                for (const auto& artifact : payload.confirmed) {
+                    confirmed.push_back({
+                        {"path", artifact.name},
+                        {"sha256", artifact.identity.sha256},
+                        {"bytes", artifact.identity.bytes},
+                    });
+                }
+                const Json fields = {
+                    {"directory", payload.directory},
+                    {"run", payload.run},
+                    {"recorded", payload.recorded},
+                    {"confirmed", confirmed},
+                    {"establishes", "artifacts_agree_with_record"},
+                };
+                return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else {
                 const Json error = {
                     {"code", payload.error.identifier()},
