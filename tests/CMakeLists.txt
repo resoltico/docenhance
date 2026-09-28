@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
 add_executable(de_tests unit/reference.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/illumination.cpp unit/surface_solver.cpp)
+  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/illumination.cpp unit/surface_solver.cpp unit/record.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
-target_link_libraries(de_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color Catch2::Catch2WithMain)
+target_link_libraries(de_tests PRIVATE de_app de_bundle de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color Catch2::Catch2WithMain)
 de_apply_options(de_tests)
 # The dependency-free reference runner used by tools/check_reference_suite.py, built, linted and run here too.
 add_executable(de_reference_tests support/standalone_main.cpp)
