@@ -12,7 +12,6 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <functional>
