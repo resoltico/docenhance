@@ -3,6 +3,7 @@
 #include "docenhance/app/verify.hpp"
 
 #include "docenhance/app/process.hpp"
+#include "docenhance/bundle/inventory.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
@@ -113,6 +114,13 @@ TEST_CASE("A bundle that disagrees with its record is refused", "[verify]") {
     SECTION("a record this build cannot read") {
         const auto bundle = published_bundle(temporary, "malformed");
         std::ofstream{bundle / bundle::record_name, std::ios::binary | std::ios::trunc} << "{";
+        CHECK(!read_back(bundle));
+    }
+    SECTION("a record past the bound it is read under") {
+        const auto bundle = published_bundle(temporary, "oversized");
+        std::ofstream padding{bundle / bundle::record_name, std::ios::binary | std::ios::trunc};
+        padding << std::string(bundle::record_max_bytes + 1, ' ');
+        padding.close();
         CHECK(!read_back(bundle));
     }
 }
