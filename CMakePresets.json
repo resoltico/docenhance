@@ -133,7 +133,8 @@
       "name": "release",
       "configurePreset": "release",
       "output": {
-        "outputOnFailure": true
+        "outputOnFailure": true,
+        "verbosity": "verbose"
       },
       "execution": {
         "noTestsAction": "error",
@@ -144,7 +145,8 @@
       "name": "sanitize",
       "configurePreset": "sanitize",
       "output": {
-        "outputOnFailure": true
+        "outputOnFailure": true,
+        "verbosity": "verbose"
       },
       "execution": {
         "noTestsAction": "error",
@@ -192,7 +194,8 @@
       "name": "tsan",
       "configurePreset": "tsan",
       "output": {
-        "outputOnFailure": true
+        "outputOnFailure": true,
+        "verbosity": "verbose"
       },
       "execution": {
         "noTestsAction": "error",
