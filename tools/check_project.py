@@ -48,6 +48,8 @@ REQUIRED_CI_COMMANDS = (
     "python tools/run_fuzz_campaign.py --plan",
 )
 SANITIZED_TEST_PRESETS = ("sanitize", "tsan", "fuzz", "fuzz-afl")
+# The workflows whose jobs must name the pinned compiler rather than the runner's default.
+PINNED_COMPILER_WORKFLOWS = (".github/workflows/ci.yml", ".github/workflows/nightly.yml")
 
 
 def read_json(relative: str) -> dict[str, Any]:
@@ -138,7 +140,16 @@ def toolchain_errors() -> list[str]:
     )
     if tools.get("cxx", {}).get("standard") != CXX_STANDARD:
         errors.append("deps/tools.json C++ standard must match cxx_std_23")
+    # The compiler, its sanitizer runtimes and the analysis tools come from one LLVM release,
+    # so the fuzzing major cannot drift away from the pin cmake/CompilerPolicy.cmake reads.
+    if str(tools.get("fuzzing", {}).get("llvm_major")) != pinned_llvm_major(tools):
+        errors.append("deps/tools.json fuzzing LLVM major must equal the pinned clang-tidy major")
     return errors
+
+
+def pinned_llvm_major(tools: dict[str, Any]) -> str:
+    """The LLVM major every preset with the pinned compiler contract requires."""
+    return str(tools["clang_tidy"]["version"]).split(".")[0]
 
 
 def wiring_errors() -> list[str]:
@@ -161,6 +172,22 @@ def wiring_errors() -> list[str]:
     errors.extend(
         f"CI does not run {command}" for command in REQUIRED_CI_COMMANDS if command not in ci
     )
+    errors.extend(compiler_pin_errors())
+    return errors
+
+
+def compiler_pin_errors() -> list[str]:
+    """Sanitized and fuzzing jobs name the pinned compiler instead of the runner's default."""
+    major = pinned_llvm_major(read_json("deps/tools.json"))
+    expected = (f"CC: clang-{major}", f"CXX: clang++-{major}")
+    errors: list[str] = []
+    for workflow in PINNED_COMPILER_WORKFLOWS:
+        text = (ROOT / workflow).read_text(encoding="utf-8")
+        errors.extend(
+            f"{workflow} does not pin the compiler with {name}"
+            for name in expected
+            if name not in text
+        )
     return errors
 
 

@@ -13,7 +13,7 @@
     {
       "name": "dev",
       "inherits": "base",
-      "displayName": "Development + tests",
+      "displayName": "Development + tests; set CC/CXX to the pinned LLVM clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -21,15 +21,16 @@
     {
       "name": "release",
       "inherits": "base",
-      "displayName": "Release + tests + package",
+      "displayName": "Release + tests + package (the platform's own toolchain)",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "DE_TOOLCHAIN": "platform"
       }
     },
     {
       "name": "sanitize",
       "inherits": "base",
-      "displayName": "ASan + UBSan (first-party code)",
+      "displayName": "ASan + UBSan (first-party code); set CC/CXX to the pinned LLVM clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "DE_ENABLE_ASAN": true,
@@ -44,7 +45,7 @@
     {
       "name": "fuzz",
       "inherits": "base",
-      "displayName": "Strict fuzzing (libFuzzer + ASan + UBSan); set CC/CXX to LLVM clang 23",
+      "displayName": "Strict fuzzing (libFuzzer + ASan + UBSan); set CC/CXX to the pinned LLVM clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "DE_BUILD_TESTS": false,
@@ -71,7 +72,7 @@
     {
       "name": "tsan",
       "inherits": "base",
-      "displayName": "ThreadSanitizer (the schedule)",
+      "displayName": "ThreadSanitizer (the schedule); set CC/CXX to the pinned LLVM clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "DE_ENABLE_TSAN": true,

@@ -38,6 +38,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
   "${PROJECT_SOURCE_DIR}/tools/fuzz_manifest.py")
 find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
 include(Options)
+include(CompilerPolicy)
 include(CTest)
 if(DE_SUPERBUILD)
   include(Superbuild)

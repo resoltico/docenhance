@@ -3,17 +3,8 @@
 # Fuzz targets (docs/quality.md). The harnesses are engine-agnostic LLVMFuzzerTestOneInput
 # entry points, built here for libFuzzer or AFL++; tests/CMakeLists.txt also replays their corpora
 # in every normal build. Fuzz builds are strict: ASan and UBSan with every report fatal.
-if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR MSVC)
-  message(FATAL_ERROR "Fuzzing requires LLVM clang, or AFL++'s afl-clang-fast++ which wraps it; "
-    "set CC and CXX when configuring the fuzz preset (docs/build.md)")
-endif()
-file(READ "${PROJECT_SOURCE_DIR}/deps/tools.json" de_tools_json)
-string(JSON de_fuzz_llvm_major GET "${de_tools_json}" fuzzing llvm_major)
-string(REGEX MATCH "^[0-9]+" de_fuzz_cxx_major "${CMAKE_CXX_COMPILER_VERSION}")
-if(NOT de_fuzz_cxx_major STREQUAL de_fuzz_llvm_major)
-  message(FATAL_ERROR "Fuzzing uses LLVM clang ${de_fuzz_llvm_major} (deps/tools.json); "
-    "found ${CMAKE_CXX_COMPILER} ${CMAKE_CXX_COMPILER_VERSION}")
-endif()
+# cmake/CompilerPolicy.cmake already required the pinned LLVM clang, which AFL++'s
+# afl-clang-fast++ wraps. Fuzzing additionally needs its libFuzzer/sanitizer runtimes.
 if(NOT DE_ENABLE_ASAN OR NOT DE_ENABLE_UBSAN)
   message(FATAL_ERROR "Fuzz builds require DE_ENABLE_ASAN and DE_ENABLE_UBSAN; use the fuzz preset")
 endif()

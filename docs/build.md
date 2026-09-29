@@ -4,7 +4,7 @@
 
 The build is CMake + Ninja. Python scripts are **development tools**, never runtime workers. Git is used only during explicit acquisition and local source-integrity checks. There is no package-manager dependency at runtime.
 
-Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including floating-point `std::from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. Verification is commit-specific; use the relevant CI checks rather than inferring support from a compiler version.
+Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including floating-point `std::from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. The `dev`, `sanitize` and `tsan` presets require the pinned LLVM clang rather than whatever `c++` resolves to; see [the compiler contract](#the-compiler-contract-every-preset-states) below. Verification is commit-specific; use the relevant CI checks rather than inferring support from a compiler version.
 
 An optional developer installation route uses an isolated Python environment:
 
@@ -51,6 +51,48 @@ The workflow expands to configure, build and test. Sources are verified at confi
 
 Projects are built serially, each with two workers by default. This deliberately avoids six upstream projects each spawning an unrestricted set of compiler processes. Override `DE_BUILD_JOBS` in a local user preset if justified; the value must be 1–64. Changing it is not an application memory limit.
 
+## The compiler contract every preset states
+
+Every shared preset names the toolchain it is validated with in `DE_TOOLCHAIN`, and
+`cmake/CompilerPolicy.cmake` rejects any other compiler at configure time. Nothing falls back to
+whatever `c++` happens to resolve to: Apple clang implements fewer `-Wextra` diagnostics than the
+pinned LLVM clang and GCC, so a local analysis run could otherwise pass on code that the required
+CI jobs reject.
+
+| Contract | Presets | Required compiler |
+| --- | --- | --- |
+| `pinned` | `dev`, `sanitize`, `tsan`, `fuzz`, `fuzz-afl` | LLVM clang at the `deps/tools.json` major (MSVC on Windows) |
+| `platform` | `release` | The platform's own release toolchain: GCC, Clang/AppleClang or MSVC |
+
+`release` builds the shipped binary, so it deliberately uses each platform's own toolchain — GCC
+on Linux, Apple clang on macOS, MSVC on Windows — exactly as the five required native CI jobs do.
+It still refuses a compiler outside those families. On Windows the pinned contract also resolves
+to MSVC: there is no validated LLVM-clang build of the dependency superbuild, and required CI
+builds and packages Windows with `cl.exe`.
+
+Install the pinned compiler with `python tools/install_llvm.py --compiler` (Homebrew `llvm` on
+macOS, apt.llvm.org on Linux), then name it before configuring a **fresh** build directory. On
+macOS, where `c++` is Apple clang:
+
+```sh
+export CC="$(brew --prefix llvm)/bin/clang" CXX="$(brew --prefix llvm)/bin/clang++"
+cmake --workflow --preset dev
+cmake --workflow --preset sanitize
+cmake --workflow --preset tsan
+```
+
+On Linux, where apt.llvm.org installs versioned names:
+
+```sh
+export CC=clang-23 CXX=clang++-23
+cmake --workflow --preset sanitize
+```
+
+Substitute the major recorded in `deps/tools.json` for `23`. Never change compilers inside an
+existing build directory. A configure that reports `DE_TOOLCHAIN=pinned requires LLVM clang` is
+naming the actual compiler CMake found; install or select the pinned one rather than relaxing the
+contract.
+
 ## Selecting compilers and personal settings
 
 Do not modify shared presets to accommodate one machine. Create ignored `CMakeUserPresets.json`:
@@ -64,8 +106,8 @@ Do not modify shared presets to accommodate one machine. Create ignored `CMakeUs
       "inherits": "dev",
       "binaryDir": "${sourceDir}/out/my-clang",
       "cacheVariables": {
-        "CMAKE_C_COMPILER": "clang",
-        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
         "DE_BUILD_JOBS": "4"
       }
     }
@@ -73,7 +115,7 @@ Do not modify shared presets to accommodate one machine. Create ignored `CMakeUs
 }
 ```
 
-Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --test-dir out/my-clang --output-on-failure`. Never switch compilers, architecture, build type or CRT inside an existing build directory. The x86-64 baseline does not use `-march=native`; ARM64 builds use their corresponding baseline. Cross-compilation is not part of the validated workflow. Native-per-architecture builds are intended.
+Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --test-dir out/my-clang --output-on-failure`. A personal preset selects *where* the pinned compiler lives; it inherits the preset's `DE_TOOLCHAIN` contract and cannot substitute another compiler for it. Never switch compilers, architecture, build type or CRT inside an existing build directory. The x86-64 baseline does not use `-march=native`; ARM64 builds use their corresponding baseline. Cross-compilation is not part of the validated workflow. Native-per-architecture builds are intended.
 
 ## Optimization options
 
@@ -109,11 +151,13 @@ This creates a deterministic source archive, with sorted entries, normalized own
 python tools/check_project.py
 python -m unittest discover -s tests/tooling -v
 python tools/check_reference_suite.py --compiler g++
-python tools/check_reference_suite.py --compiler clang++
+python tools/check_reference_suite.py --compiler clang++-23
 python tools/check_reference_suite.py --compiler g++ --sanitize
 ```
 
-The last three commands compile the same first-party reference cases used by Catch2. They are **not** a second application build framework or evidence that the native CLI/dependencies build. They are useful for rapid numerical and parser validation while dependency acquisition is unavailable.
+The last three commands compile the same first-party reference cases used by Catch2. Name the
+compiler explicitly, as the required jobs do: `--compiler` otherwise defaults to the host `c++`,
+which on macOS is Apple clang. Use `"$(brew --prefix llvm)/bin/clang++"` there for the pinned one. They are **not** a second application build framework or evidence that the native CLI/dependencies build. They are useful for rapid numerical and parser validation while dependency acquisition is unavailable.
 
 ## Recovery and diagnostic evidence
 

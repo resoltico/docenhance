@@ -12,6 +12,13 @@ portability obligations without resolving a demonstrated runtime requirement. Or
 units therefore do not enable automatic module scanning. Dependencies are acquired explicitly;
 a normal build verifies the cache rather than downloading or substituting host packages.
 
+Every shared preset also names the compiler it is validated with, in `DE_TOOLCHAIN`. The host
+`c++` is a moving reference: Apple clang implements fewer `-Wextra` diagnostics than the pinned
+LLVM clang and GCC, so an unpinned analysis preset would pass locally on code that the required
+jobs reject. The analysis presets therefore require the pinned LLVM release, and `release`
+declares the platform's own toolchain because it builds the shipped binary. Neither contract
+falls back to another compiler; configure fails instead.
+
 `deps/lock.json` owns source identities, `deps/features.json` upstream feature policy and
 `deps/tools.json` tool versions and deployment floors. Exact pins and receipts detect changed
 inputs; they do not prove that upstream code is trustworthy. Source/licence review and package

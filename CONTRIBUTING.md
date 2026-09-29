@@ -14,9 +14,15 @@ Before submitting:
 
 ```sh
 python tools/install_build_tools.py --lint   # once, in a virtual environment
+python tools/install_llvm.py --compiler      # the pinned clang, its runtimes and clang-tidy
 pre-commit run --all-files                   # every gate, linter and tooling test
+export CC=clang-23 CXX=clang++-23            # macOS: "$(brew --prefix llvm)/bin/clang[++]"
 cmake --workflow --preset dev                # the real build, tests and clang-tidy
 ```
+
+The analysis presets require the pinned compiler and refuse the host `c++`, so a local run
+cannot pass on code that the required jobs reject; see
+[the compiler contract](docs/build.md#the-compiler-contract-every-preset-states).
 
 `pre-commit run --all-files` is the single local command: `.pre-commit-config.yaml` holds the
 authoritative list, and `tools/check_project.py` keeps it aligned with the GitHub quality workflow.
