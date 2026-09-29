@@ -249,56 +249,68 @@ TEST_CASE("The multigrid V-cycle is a symmetric positive definite preconditioner
         }
     }
 }
-TEST_CASE("Multigrid PCG converges within a small bound on wide unmeasured regions",
-          "[surface][solver]") {
-    struct Hole {
-        std::uint32_t columns;
-        std::uint32_t rows;
-        std::uint32_t left;
-        std::uint32_t right;
-        std::uint32_t top;
-        std::uint32_t bottom;
-    };
-    // Square hole, full-height band and a single-row grid: Jacobi needed 500 to 20000+ iterations.
-    constexpr auto holes = std::to_array<Hole>({
-        {.columns = 256, .rows = 256, .left = 28, .right = 228, .top = 28, .bottom = 228},
-        {.columns = 512, .rows = 128, .left = 66, .right = 446, .top = 0, .bottom = 128},
-        {.columns = 65536, .rows = 1, .left = 8000, .right = 56000, .top = 0, .bottom = 1},
-    });
+namespace {
+// A grid whose measured samples surround one unmeasured rectangle. Jacobi needed 500 to 20000+
+// iterations on these shapes, which is why each is held to a small bound.
+struct Hole {
+    std::uint32_t columns;
+    std::uint32_t rows;
+    std::uint32_t left;
+    std::uint32_t right;
+    std::uint32_t top;
+    std::uint32_t bottom;
+};
+
+void converges_within_a_small_bound(const Hole& hole) {
     constexpr unsigned bounded_iterations = 120;
     constexpr double maximum_smooth = 20;
-    for (const auto& hole : holes) {
-        const auto n = hole.columns * hole.rows;
-        core::Budget budget{std::size_t{32} * 1024 * 1024};
-        const core::Cancellation none;
-        auto work = image::Plane<double>::allocate(budget, n, solver_rows).value();
-        std::ranges::fill(work.view().storage(), 0);
-        for (std::uint32_t i = 0; i < n; ++i) {
-            const auto x = i % hole.columns;
-            const auto y = i / hole.columns;
-            const bool missing =
-                x >= hole.left && x < hole.right && y >= hole.top && y < hole.bottom;
-            if (!missing) {
-                work.view().row(0).subspan(i, 1).front() = 0.25 + (0.75 * ((i * 7) % 11) / 10);
-                work.view().row(1).subspan(i, 1).front() = -0.1 - (0.9 * ((i * 5) % 13) / 12);
-            }
+    const auto n = hole.columns * hole.rows;
+    core::Budget budget{std::size_t{32} * 1024 * 1024};
+    const core::Cancellation none;
+    auto work = image::Plane<double>::allocate(budget, n, solver_rows).value();
+    std::ranges::fill(work.view().storage(), 0);
+    for (std::uint32_t i = 0; i < n; ++i) {
+        const auto x = i % hole.columns;
+        const auto y = i / hole.columns;
+        const bool missing = x >= hole.left && x < hole.right && y >= hole.top && y < hole.bottom;
+        if (!missing) {
+            work.view().row(0).subspan(i, 1).front() = 0.25 + (0.75 * ((i * 7) % 11) / 10);
+            work.view().row(1).subspan(i, 1).front() = -0.1 - (0.9 * ((i * 5) % 13) / 12);
         }
-        const methods::SurfaceSystem system{
-            .grid =
-                {
-                    .extent = {.width = hole.columns, .height = hole.rows},
-                    .columns = hole.columns,
-                    .rows = hole.rows,
-                },
-            .weights = work.view().row(0),
-            .smooth = maximum_smooth,
-        };
-        std::vector<double> output(n);
-        methods::SolverReport report;
-        REQUIRE(methods::solve_surface(system, work.view(), output, report,
-                                       {.budget = budget, .cancellation = none}));
-        CHECK(report.iterations <= bounded_iterations);
-        CHECK(report.residual <= report.tolerance);
     }
+    const methods::SurfaceSystem system{
+        .grid =
+            {
+                .extent = {.width = hole.columns, .height = hole.rows},
+                .columns = hole.columns,
+                .rows = hole.rows,
+            },
+        .weights = work.view().row(0),
+        .smooth = maximum_smooth,
+    };
+    std::vector<double> output(n);
+    methods::SolverReport report;
+    REQUIRE(methods::solve_surface(system, work.view(), output, report,
+                                   {.budget = budget, .cancellation = none}));
+    CHECK(report.iterations <= bounded_iterations);
+    CHECK(report.residual <= report.tolerance);
+}
+} // namespace
+
+// Three shapes, three cases: they are independent, and a solve is the longest thing this suite
+// does, so a runner with several cores can overlap them.
+TEST_CASE("Multigrid PCG converges within a small bound on a square hole", "[surface][solver]") {
+    converges_within_a_small_bound(
+        {.columns = 256, .rows = 256, .left = 28, .right = 228, .top = 28, .bottom = 228});
+}
+TEST_CASE("Multigrid PCG converges within a small bound on a full-height band",
+          "[surface][solver]") {
+    converges_within_a_small_bound(
+        {.columns = 512, .rows = 128, .left = 66, .right = 446, .top = 0, .bottom = 128});
+}
+TEST_CASE("Multigrid PCG converges within a small bound on a single-row grid",
+          "[surface][solver]") {
+    converges_within_a_small_bound(
+        {.columns = 65536, .rows = 1, .left = 8000, .right = 56000, .top = 0, .bottom = 1});
 }
 } // namespace docenhance::tests

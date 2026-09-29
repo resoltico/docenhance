@@ -5,21 +5,19 @@
 #include <chrono>
 #include <exception>
 #include <filesystem>
+#include <random>
 #include <string>
 #include <string_view>
 #include <system_error>
 
 namespace docenhance::tests {
 // A newly created, uniquely named directory below the system temporary directory; the test owns
-// it and everything inside it is removed afterwards.
+// it and everything inside it is removed afterwards. Concurrent test processes may share a prefix,
+// so the name is not trusted to be unique: creating a directory is atomic and reports whether this
+// call made it, and a name that already exists is simply tried again with a different suffix.
 class TemporaryDirectory {
   public:
-    explicit TemporaryDirectory(std::string_view prefix)
-        : path(std::filesystem::temp_directory_path() /
-               (std::string{prefix} + "-" +
-                std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()))) {
-        REQUIRE(std::filesystem::create_directory(path));
-    }
+    explicit TemporaryDirectory(std::string_view prefix) : path(create(prefix)) {}
     TemporaryDirectory(const TemporaryDirectory&) = delete;
     TemporaryDirectory& operator=(const TemporaryDirectory&) = delete;
     TemporaryDirectory(TemporaryDirectory&&) = delete;
@@ -34,6 +32,25 @@ class TemporaryDirectory {
         }
     }
     std::filesystem::path path;
+
+  private:
+    static std::filesystem::path create(std::string_view prefix) {
+        std::random_device entropy;
+        constexpr int attempts = 64;
+        for (int attempt = 0; attempt < attempts; ++attempt) {
+            auto candidate =
+                std::filesystem::temp_directory_path() /
+                (std::string{prefix} + "-" +
+                 std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()) + "-" +
+                 std::to_string(entropy()));
+            std::error_code error;
+            if (std::filesystem::create_directory(candidate, error)) {
+                return candidate;
+            }
+        }
+        FAIL("No unique temporary directory could be created for " << prefix);
+        return {};
+    }
 };
 // Compares iterators rather than calling std::filesystem::is_empty, whose MSVC implementation
 // combines internal stat flags that clang-analyzer reports as out-of-range enum values.
