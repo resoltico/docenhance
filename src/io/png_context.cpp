@@ -7,6 +7,7 @@
 #include "docenhance/core/result.hpp"
 
 #include <algorithm>
+#include <concepts>
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
@@ -145,11 +146,19 @@ bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept {
     return memory.cancelled;
 }
 std::filesystem::path utf8_path(std::string_view value) {
-    std::u8string utf8;
-    utf8.reserve(value.size());
-    for (const char byte : value) {
-        utf8.push_back(static_cast<char8_t>(static_cast<unsigned char>(byte)));
+    // The admitted spelling is already UTF-8 bytes. Where a path stores char those bytes are its
+    // native representation, so they are kept verbatim; only a wchar_t path (Windows) needs the
+    // char8_t overload, which decodes them instead of applying the active code page. Neither
+    // branch normalizes or repairs the identity bytes.
+    if constexpr (std::same_as<std::filesystem::path::value_type, char>) {
+        return std::filesystem::path{std::string{value}};
+    } else {
+        std::u8string utf8;
+        utf8.reserve(value.size());
+        for (const char byte : value) {
+            utf8.push_back(static_cast<char8_t>(static_cast<unsigned char>(byte)));
+        }
+        return std::filesystem::path{utf8};
     }
-    return std::filesystem::path{utf8};
 }
 } // namespace docenhance::io

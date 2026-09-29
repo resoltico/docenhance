@@ -19,6 +19,10 @@ Notable changes to this project are documented in this file. The format is based
 - **Breaking (API/JSON):** Validated processing alternatives distinguish binary methods from continuous output. Continuous success reports `operation: continuous` and typed conversion descriptors, assumptions and warnings, without a fabricated method ID. Continuous results now include a complete typed illumination-stage record; processing errors retain available stage observations. The generated command-contract edition is 7.0.
 - Continuous processing uses a 1 GiB charged-buffer ceiling and bounded conversion rows; the binary ceiling remains 128 MiB. Neither ceiling is a process-RSS guarantee. JPEG/TIFF input, presets and recipes remain unsupported.
 
+### Fixed
+
+- UTF-8 output and input paths are now handed to `std::filesystem::path` as their own bytes wherever a path stores `char`, instead of being copied through `char8_t` first. The admitted spelling is unchanged on every platform; the removed conversion was reported by UndefinedBehaviorSanitizer's implicit-conversion check inside libc++ for any byte above 0x7F, which failed the macOS sanitizer suite on non-ASCII filenames.
+
 ## [0.3.0] - 2026-09-24
 
 ### Added
