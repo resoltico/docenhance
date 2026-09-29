@@ -24,11 +24,17 @@ def main() -> int:
     """Check the architecture rules against the sources and, when given one, against a build."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, default=None)
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=1,
+        help="workers for the checks that run one compiler process per file (default: 1)",
+    )
     args = parser.parse_args()
     try:
         errors = source_violations()
         if args.build is not None:
-            errors += build_violations(load_manifest(), args.build.resolve())
+            errors += build_violations(load_manifest(), args.build.resolve(), args.jobs)
     except (OSError, ArchitectureError) as exc:
         print(f"Architecture rules could not be checked: {exc}", file=sys.stderr)
         return 1

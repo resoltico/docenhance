@@ -40,6 +40,7 @@ from compile_db import (
     run_compiler,
 )
 from deps import ROOT
+from parallel import ordered_map
 
 FIRST_PARTY = "/(src|include/docenhance)"
 SUMMARY = re.compile(r"^(\d+) match(?:es)?\.$", re.MULTILINE)
@@ -208,17 +209,22 @@ def link_violations(manifest: Manifest, build: Path) -> list[str]:
     return errors
 
 
-def self_containment_violations(manifest: Manifest, entries: list[dict[str, str]]) -> list[str]:
+def self_containment_violations(
+    manifest: Manifest, entries: list[dict[str, str]], jobs: int = 1
+) -> list[str]:
     """Every public header compiles on its own, and twice in the same translation unit."""
-    errors = []
+    headers = sorted((ROOT / "include/docenhance").rglob("*.hpp"))
     with tempfile.TemporaryDirectory() as directory:
-        probe = Path(directory) / "header_probe.cpp"
-        for header in sorted((ROOT / "include/docenhance").rglob("*.hpp")):
+
+        def check(item: tuple[int, Path]) -> list[str]:
+            index, header = item
             relative = header.relative_to(ROOT / "include").as_posix()
             layer = layer_of(manifest, header.as_posix())
             entry = next(
                 (item for item in entries if layer_of(manifest, item["file"]) == layer), entries[0]
             )
+            # One probe per header, so checks running side by side never share a file.
+            probe = Path(directory) / f"header_probe_{index}.cpp"
             probe.write_text(f'#include "{relative}"\n#include "{relative}"\n', encoding="utf-8")
             try:
                 run_compiler(
@@ -227,8 +233,11 @@ def self_containment_violations(manifest: Manifest, entries: list[dict[str, str]
                     f"{relative} does not compile on its own",
                 )
             except ArchitectureError as exc:
-                errors.append(str(exc))
-    return errors
+                return [str(exc)]
+            return []
+
+        found = ordered_map(check, list(enumerate(headers)), jobs)
+    return [error for group in found for error in group]
 
 
 def find_clang_query() -> str:
@@ -266,16 +275,24 @@ def find_clang_query() -> str:
     raise ArchitectureError(msg)
 
 
-def build_violations(manifest: Manifest, build: Path) -> list[str]:
-    """Every architecture rule that needs a configured build."""
+def entry_violations(
+    manifest: Manifest, entry: dict[str, str], build: Path, clang_query: str
+) -> list[str]:
+    """Reach and API rules for one translation unit."""
+    reached, present = reach_violations(manifest, entry, build)
+    return reached + api_violations(clang_query, build, entry, matchers(manifest, present))
+
+
+def build_violations(manifest: Manifest, build: Path, jobs: int = 1) -> list[str]:
+    """Every architecture rule that needs a configured build, on at most `jobs` workers."""
     entries = compilation_database(manifest, build)
     if not entries:
         msg = f"The compilation database at {build} contains no first-party sources"
         raise ArchitectureError(msg)
     clang_query = find_clang_query()
     errors = link_violations(manifest, build)
-    for entry in entries:
-        reached, present = reach_violations(manifest, entry, build)
-        errors += reached
-        errors += api_violations(clang_query, build, entry, matchers(manifest, present))
-    return errors + self_containment_violations(manifest, entries)
+    for found in ordered_map(
+        lambda entry: entry_violations(manifest, entry, build, clang_query), entries, jobs
+    ):
+        errors += found
+    return errors + self_containment_violations(manifest, entries, jobs)

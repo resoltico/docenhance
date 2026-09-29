@@ -66,7 +66,7 @@ add_custom_target(check-spec
   VERBATIM)
 add_custom_target(check-architecture
   COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_architecture.py"
-          --build "${PROJECT_BINARY_DIR}"
+          --build "${PROJECT_BINARY_DIR}" --jobs "${DE_BUILD_JOBS}"
   VERBATIM)
 add_custom_target(check-project
   COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_project.py"
