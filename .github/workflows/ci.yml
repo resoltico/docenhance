@@ -85,6 +85,14 @@ jobs:
           path: ~/.cache/docenhance/llvm-23.1.1-macos-x86_64
           key: llvm-23.1.1-macos-x86_64-source-ebe9be46fe8756d-v2
       - run: cmake -P cmake/AcquireDependencies.cmake
+      # The hosted Intel runner has cores the default of two workers leaves idle, and it is the
+      # slowest required job. Every other platform keeps the default until it is measured.
+      - name: Use the Intel runner's cores for the native builds
+        if: matrix.platform == 'macos-x86_64'
+        run: |
+          cores="$(sysctl -n hw.ncpu)"
+          echo "The runner reports ${cores} logical cores"
+          echo "DE_BUILD_JOBS=${cores}" >> "$GITHUB_ENV"
       - name: Build, test and package
         if: runner.os != 'Windows'
         run: cmake --workflow --preset release
