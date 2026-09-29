@@ -49,7 +49,7 @@ cmake --build out/dev --target check-architecture
 
 The workflow expands to configure, build and test. Sources are verified at configure time and before every outer build. Each upstream project has its own binary directory and shares only a **configuration-private** installation prefix. The application is configured afterwards in `out/dev/app/`. IDEs should use the outer preset to prepare dependencies and read `out/dev/app/compile_commands.json` for first-party source navigation.
 
-Projects are built serially, each with two workers by default. This deliberately avoids six upstream projects each spawning an unrestricted set of compiler processes. Override `DE_BUILD_JOBS` in a local user preset if justified; the value must be 1–64. Changing it is not an application memory limit.
+Projects are built serially, each with two workers by default. This deliberately avoids six upstream projects each spawning an unrestricted set of compiler processes. Set `DE_BUILD_JOBS` in the environment, or override it in a local user preset, if justified; an explicit `-DDE_BUILD_JOBS` or preset value takes precedence over the environment. The value must be 1–64. Changing it is not an application memory limit.
 
 ## The compiler contract every preset states
 

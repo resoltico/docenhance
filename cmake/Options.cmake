@@ -35,7 +35,17 @@ option(DE_ENABLE_IPO "Enable supported interprocedural optimization" OFF)
 option(DE_ENABLE_CLANG_TIDY "Run clang-tidy 23+ in warnings-as-errors mode on first-party targets" ON)
 set(DE_SOURCE_CACHE "${PROJECT_SOURCE_DIR}/.cache/deps" CACHE PATH "Verified source acquisition cache")
 set(DE_DEPENDENCY_PREFIX "${PROJECT_BINARY_DIR}/prefix" CACHE PATH "Isolated dependency install prefix")
-set(DE_BUILD_JOBS "2" CACHE STRING "Bounded worker count for each external build")
+# Two unless the environment names another count. A runner that knows how many cores it has states
+# it there; an explicit -DDE_BUILD_JOBS (or a preset that sets it) still takes precedence.
+set(de_build_jobs_default "2")
+# Expanded only once it is known to exist: an unset variable used in a condition is an error here.
+if(DEFINED ENV{DE_BUILD_JOBS})
+  set(de_build_jobs_environment "$ENV{DE_BUILD_JOBS}")
+  if(NOT de_build_jobs_environment STREQUAL "")
+    set(de_build_jobs_default "${de_build_jobs_environment}")
+  endif()
+endif()
+set(DE_BUILD_JOBS "${de_build_jobs_default}" CACHE STRING "Bounded worker count for each external build")
 if(NOT DE_BUILD_JOBS MATCHES "^[1-9][0-9]*$" OR DE_BUILD_JOBS GREATER 64)
   message(FATAL_ERROR "DE_BUILD_JOBS must be in [1,64]")
 endif()
