@@ -43,6 +43,9 @@ else()
   # One compiler process per source and per public header, so the worker bound is the same one every
   # other external process in this project honors.
   add_test(NAME architecture COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_architecture.py" --build "${PROJECT_BINARY_DIR}" --jobs "${DE_BUILD_JOBS}")
+  # It runs that many compiler processes at once, so CTest must count them and not schedule the
+  # rest of the suite on top of them.
+  set_tests_properties(architecture PROPERTIES PROCESSORS "${DE_BUILD_JOBS}")
 endif()
 add_test(NAME project-structure COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_project.py")
 add_test(NAME tooling COMMAND "${Python3_EXECUTABLE}" -m unittest discover -s "${CMAKE_CURRENT_SOURCE_DIR}/tooling" -v)
