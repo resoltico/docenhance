@@ -18,6 +18,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -44,6 +45,22 @@ bool hexadecimal(std::string_view text) {
            });
 }
 
+// Where a declared name leads, resolved the way a reader of the bundle would: each step names one
+// entry further down, so a step back up, a step that names nothing, and a name with no steps at
+// all are the three ways out of a bundle. A dot pair inside a name, as in "run..json", is an
+// ordinary character in an ordinary name and steps nowhere.
+bool inside_bundle(std::string_view name) {
+    std::size_t steps = 0;
+    for (const auto part : std::views::split(name, '/')) {
+        const std::string_view step{part};
+        if (step.empty() || step == "." || step == "..") {
+            return false;
+        }
+        ++steps;
+    }
+    return steps > 0;
+}
+
 // Whatever a reader accepts, it must have checked. These are the claims the bundle layer makes
 // about what it returns, restated where a fuzzer can attack them.
 void accepted_records_are_usable(const bundle::DeclaredBundle& declared) {
@@ -54,7 +71,7 @@ void accepted_records_are_usable(const bundle::DeclaredBundle& declared) {
     for (const auto& artifact : declared.inventory) {
         require(!artifact.name.empty(), "an accepted artifact is named");
         require(artifact.name.front() != '/', "an accepted artifact is named relatively");
-        require(!artifact.name.contains(".."), "an accepted artifact stays inside the bundle");
+        require(inside_bundle(artifact.name), "an accepted artifact stays inside the bundle");
         require(!artifact.name.contains('\\'), "an accepted artifact uses one separator");
         require(hexadecimal(artifact.identity.sha256), "an accepted artifact carries a digest");
     }
