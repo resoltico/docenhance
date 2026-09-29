@@ -69,6 +69,11 @@ class PngContext {
 };
 [[nodiscard]] bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept;
 [[nodiscard]] std::filesystem::path utf8_path(std::string_view value);
+// The UTF-8 bytes of a path. Where a platform spells paths in bytes those bytes are returned
+// unchanged, so a name is recorded exactly as it was admitted; where it spells them in wide
+// characters they are converted, never through the active code page, which cannot express the
+// characters a document's name is most likely to carry.
+[[nodiscard]] std::string utf8_spelling(const std::filesystem::path& value);
 [[nodiscard]] core::Result<void> encode_png(const std::filesystem::path& output,
                                             image::PlaneView<const std::uint8_t> view,
                                             core::Budget& budget,

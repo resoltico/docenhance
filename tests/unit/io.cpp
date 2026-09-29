@@ -259,4 +259,15 @@ TEST_CASE("File and memory PNG sources use identical decoding and error policy",
         CHECK(memory_budget.used() == 0);
     }
 }
+
+TEST_CASE("A recorded name keeps the bytes the path was admitted with", "[io]") {
+    // A document's name is the one part of a bundle that carries the original's own characters,
+    // and a platform that spells paths in wide characters must not hand them back through an
+    // encoding that cannot express them.
+    const std::string admitted = "dokuments-\u0101-\u6587.png";
+    CHECK(io::file_name("folder/" + admitted) == admitted);
+    CHECK(io::file_name(admitted) == admitted);
+    // A path that names no file at all is reported as it was given, not as an empty name.
+    CHECK(io::file_name("").empty());
+}
 } // namespace docenhance::tests
