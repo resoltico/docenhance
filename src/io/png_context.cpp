@@ -16,6 +16,7 @@
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace docenhance::io {
@@ -172,6 +173,17 @@ bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept {
         memory.cancelled = true;
     }
     return memory.cancelled;
+}
+std::string utf8_spelling(const std::filesystem::path& value) {
+    if constexpr (std::is_same_v<std::filesystem::path::value_type, char>) {
+        return value.native();
+    } else {
+        std::string bytes;
+        for (const char8_t unit : value.u8string()) {
+            bytes.push_back(static_cast<char>(unit));
+        }
+        return bytes;
+    }
 }
 std::filesystem::path utf8_path(std::string_view value) {
     // The admitted spelling is already UTF-8 bytes. Where a path stores char those bytes are its

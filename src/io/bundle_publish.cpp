@@ -235,7 +235,7 @@ core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content)
                : core::failure(core::ErrorCode::output, "A bundle file could not be completed");
 }
 std::string file_name(const std::string& path) {
-    const auto name = utf8_path(path).filename().string();
+    const auto name = utf8_spelling(utf8_path(path).filename());
     return name.empty() ? path : name;
 }
 core::Result<std::string> publish_bundle(const std::string& output_directory,
