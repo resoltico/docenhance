@@ -85,14 +85,16 @@ jobs:
           path: ~/.cache/docenhance/llvm-23.1.1-macos-x86_64
           key: llvm-23.1.1-macos-x86_64-source-ebe9be46fe8756d-v2
       - run: cmake -P cmake/AcquireDependencies.cmake
-      # The hosted Intel runner has cores the default of two workers leaves idle, and it is the
-      # slowest required job. Every other platform keeps the default until it is measured.
-      - name: Use the Intel runner's cores for the native builds
-        if: matrix.platform == 'macos-x86_64'
+      # A hosted runner has cores the default of two workers leaves idle. Each job states how many
+      # it has, and that one count bounds every external build and the architecture check.
+      - name: Give the native builds the runner's cores
+        shell: python
         run: |
-          cores="$(sysctl -n hw.ncpu)"
-          echo "The runner reports ${cores} logical cores"
-          echo "DE_BUILD_JOBS=${cores}" >> "$GITHUB_ENV"
+          import os
+          cores = os.cpu_count()
+          print(f"The runner reports {cores} logical cores")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"DE_BUILD_JOBS={cores}\n")
       - name: Build, test and package
         if: runner.os != 'Windows'
         run: cmake --workflow --preset release
@@ -185,6 +187,14 @@ jobs:
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
       - run: cmake -P cmake/AcquireDependencies.cmake
+      - name: Give the sanitized builds the runner's cores
+        shell: python
+        run: |
+          import os
+          cores = os.cpu_count()
+          print(f"The runner reports {cores} logical cores")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"DE_BUILD_JOBS={cores}\n")
       - name: Build and test every suite with the selected sanitizer
         env:
           CC: clang-23
