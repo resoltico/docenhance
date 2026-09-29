@@ -93,7 +93,7 @@ The inventory is closed in both directions:
 | An entry is a symbolic link or any other special file | Refused without following it |
 | The record is malformed, oversized, too deeply nested, or of an unsupported version | Refused |
 
-Every refusal is `E_ARGUMENT` at exit 3: the bundle is this command's input. Exit 5 keeps its
+Every refusal is `E_INPUT` at exit 3: the bundle is this command's input. Exit 5 keeps its
 meaning of a run's own output failing its decode-back comparison.
 
 Verification never executes the recorded request, never reruns a method, and never opens a path the
