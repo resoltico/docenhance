@@ -86,7 +86,7 @@ if(DE_FUZZ_ONLY)
   return()
 endif()
 de_library(de_host LAYER host
-  SOURCES host/bundle.cpp host/bundle.hpp host/context.cpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
+  SOURCES host/bundle.cpp host/bundle.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
           host/illumination_rows.cpp host/illumination_rows.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
   LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)
