@@ -4,47 +4,34 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-29
+
 ### Added
 
-- Every published result is a processing bundle: the image, a `run.json` recording the build, the
-  identified source bytes, the admitted request, the execution observations, the protection in
-  force and the verified output, and the canonical protection mask when one was supplied. The
-  files are committed together with one exclusive rename, so there is no result that succeeded
-  while its record failed. See [processing bundles](docs/bundles.md).
-- `docenhance verify DIRECTORY [--json]` reads a bundle back and checks that it holds exactly what
-  its record declares. The inventory is closed in both directions, entries are inspected without
-  being followed, the record is read within its own bounds and parsed without exceptions, and
-  nothing found is executed. A disagreement is an input failure at exit 3.
-- Input, output and mask bytes are identified with SHA-256 where those bytes are in hand: a source
-  digest describes the snapshot that was decoded, and an output digest the file that was verified.
-- A fuzz harness for the record reader, the one parser that reads a document this program did not
-  write; whatever it accepts must be within the bounds the reader claims to enforce.
-
-
-- Continuous-tone PNG conversion accepts static grayscale, indexed, RGB and alpha images, retaining 16-bit sample precision unless reduction is explicitly requested. Profile interpretation, linear-light alpha compositing, grayscale luminance, exact EXIF orientation and physical-resolution handling are explicit and reported.
-- Continuous-tone output is independently decoded and checked against every intended integer sample and required metadata before publication. Verification failure returns `E_OUTPUT_VERIFY` (exit 5), without publishing an incomplete result.
-- Bounded PNG/color-profile fuzz harnesses exercise the same production adapters; isolated campaigns verify instrumentation of the actual libpng, zlib and Little CMS archives.
-- Opt-in I01 surface illumination uses eligible linear-luminance quantiles, a log-grid fit solved by multigrid-preconditioned conjugate gradients with a checked true residual, a source-relative or numeric target and capped gain. Cells darker than any admissible gain could correct are treated as dark content and spanned from surrounding paper, so solid fills are not brightened to the gain cap. Defaults correct the fitted background completely up to a doubling of any sample. `--illumination auto` records explicit applicability predicates; default illumination remains off.
-- Original-depth 1/8-bit grayscale PNG protection masks exclude samples from measurement and preserve their values entering the photometric stage. Masks use oriented source coordinates and are validated even for no-op processing.
-- Independent dense-system, real-PNG, preservation, resource/cancellation and model/mask fuzz tests cover I01. A failed fit returns `E_METHOD_INAPPLICABLE` or `E_NUMERICAL` (exit 4), not a fabricated correction or silent fallback.
+- `process` converts continuous-tone PNG images without an enhancement filter. Static grayscale, indexed, RGB and alpha images are accepted, including Adam7-interlaced files, and 16-bit sample precision is kept unless `--bit-depth 8` asks for reduction. New options select `--output-mode preserve|gray`, `--bit-depth auto|8|16`, `--alpha white|black|reject` and `--profile-policy embedded|srgb`. Profile interpretation (cICP, ICC, sRGB, gAMA/cHRM), linear-light alpha compositing, grayscale luminance, EXIF orientation and physical resolution are handled explicitly, and every assumption, warning and depth reduction is reported in the response. Animated PNG, malformed or unsupported color declarations, and unknown critical chunks are rejected. See [PNG processing](docs/png-processing.md).
+- Continuous-tone output is decoded again and compared with every intended sample and required metadata before it is published. A mismatch returns `E_OUTPUT_VERIFY` (exit 5) and publishes nothing.
+- `process --illumination surface|auto` applies opt-in I01 surface illumination correction to continuous-tone output; illumination stays off by default, and `methods` and `version --json` now list I01. A background surface is fitted to eligible linear-luminance samples and its true residual is checked. The `--background-strength`, `--background-max-gain`, `--background-target`, `--background-cell`, `--background-quantile` and `--background-smooth` options tune it. By default the fitted background is corrected completely, up to a doubling of any sample. Cells darker than any admissible gain could correct are treated as dark content, so solid fills are not brightened to the gain cap. `auto` may skip an unsuitable image and records the applicability predicates it used. If a fit cannot be completed the command returns `E_METHOD_INAPPLICABLE` or `E_NUMERICAL` (exit 4) instead of a fabricated correction or a silent fallback. See [illumination](docs/illumination.md).
+- `--protect-mask PATH` takes a 1-bit or 8-bit grayscale PNG that excludes samples from the illumination measurement and keeps their values unchanged. The mask uses oriented source coordinates and is validated even when illumination is off or has no effect.
+- Every published result is a processing bundle: `result.png`, a `run.json` record and, when `--protect-mask` was given, `assets/protect-mask.png`. The record states the build, the identified source bytes, the admitted request, the execution observations, the protection in force and the verified output. The files are committed together with one exclusive rename, so no result is published without its record. Input, output and mask bytes are identified with SHA-256, and the response reports the run identity and the record's digest. See [processing bundles](docs/bundles.md).
+- `docenhance verify DIRECTORY [--json]` reads a bundle back, including after it has been moved, and checks that it holds exactly what its record declares. Missing, altered, oversized, undeclared and symbolic-link entries, and malformed records, are refused as an input failure at exit 3, and nothing found is executed. Agreement between a bundle and its record is not authentication of the document or of who produced it.
 
 ### Changed
 
-- Binary output is read back and compared against the intended samples and metadata before it is
-  published, as continuous-tone output already was. The two paths now make the same promise, which
-  is what lets one record state it. No sample changes.
-- `verified` in a response is derived from the comparison that ran rather than set once publication
-  returned.
+- **Breaking (CLI):** `process` defaults to `--output-mode preserve`, which converts the image without any enhancement filter. Binary output now requires an explicit `--output-mode bw`, and `--binarize` is rejected in the other modes; with `bw`, an absent `--binarize` means Sauvola. Scripts that relied on `--binarize` alone must add `--output-mode bw`. B02 and B03 keep their released sample semantics and their 1/2/4/8-bit grayscale-without-transparency input domain, and no alias infers the old behavior.
+- **Breaking (output layout):** A result directory now holds `run.json` (and `assets/protect-mask.png` when a mask was supplied) alongside `result.png`. Consumers that assumed `result.png` was the only entry must accommodate the additional files.
+- **Breaking (API/JSON):** Responses distinguish binary from continuous-tone results. A continuous success reports `operation: continuous`, typed `conversion` descriptors, assumptions and warnings and a complete `illumination` stage record, with no method ID; a binary success still reports `method` and `method_version`. Successful `process` responses gain a `record` object. Processing errors retain the stage observations available at the time of failure. The generated command-contract edition is 7.0 and `schema_version` remains 1. Consumers validating against the 0.3.0 schema must update to the current one.
+- Binary output is now decoded again and compared with the intended samples and metadata before it is published, as continuous-tone output is. No output sample changes. `verified` in a response is derived from the comparison that ran rather than set once publication returned.
+- Continuous-tone processing has a 1 GiB charged-buffer ceiling and converts bounded rows; the binary ceiling remains 128 MiB. Neither is a process-RSS guarantee. JPEG and TIFF input, presets and recipes remain unsupported.
+- **Breaking (build):** Every shared CMake preset now declares the compiler it is validated with. `dev`, `sanitize`, `tsan` and the fuzz presets require the LLVM clang release pinned in `deps/tools.json`; `release` declares the platform's own toolchain and still refuses a family outside GCC, Clang/AppleClang and MSVC. Configuring with any other compiler fails instead of silently producing a build with weaker diagnostics than the required CI jobs run. Set `CC` and `CXX` for a fresh build directory as [build and developer workflows](docs/build.md) describes.
+- `DE_BUILD_JOBS` can now be set in the environment. One count bounds the external dependency builds, the architecture check and the number of tests run at once; an explicit `-DDE_BUILD_JOBS` or preset value still takes precedence.
 
+### Internal
 
-- **Breaking (CLI):** `process` defaults to `--output-mode preserve`, with no enhancement filter. Binary processing now requires explicit `--output-mode bw`; an absent binarizer in that mode defaults to Sauvola. B02/B03 retain their released stored-grayscale sample semantics and input domain. There is no inference or compatibility alias.
-- **Breaking (API/JSON):** Validated processing alternatives distinguish binary methods from continuous output. Continuous success reports `operation: continuous` and typed conversion descriptors, assumptions and warnings, without a fabricated method ID. Continuous results now include a complete typed illumination-stage record; processing errors retain available stage observations. The generated command-contract edition is 7.0.
-- Every shared CMake preset now declares the compiler it is validated with. `dev`, `sanitize`, `tsan` and the fuzz presets require the LLVM clang release pinned in `deps/tools.json`; `release` declares the platform's own toolchain and still refuses a family outside GCC, Clang/AppleClang and MSVC. Configuring with any other compiler now fails instead of silently producing a build with weaker diagnostics than the required CI jobs run. Set `CC`/`CXX` for a fresh build directory as [build and developer workflows](docs/build.md) describes.
-- Continuous processing uses a 1 GiB charged-buffer ceiling and bounded conversion rows; the binary ceiling remains 128 MiB. Neither ceiling is a process-RSS guarantee. JPEG/TIFF input, presets and recipes remain unsupported.
-
-### Fixed
-
-- UTF-8 output and input paths are now handed to `std::filesystem::path` as their own bytes wherever a path stores `char`, instead of being copied through `char8_t` first. The admitted spelling is unchanged on every platform; the removed conversion was reported by UndefinedBehaviorSanitizer's implicit-conversion check inside libc++ for any byte above 0x7F, which failed the macOS sanitizer suite on non-ASCII filenames.
+- A fuzz harness covers the run-record reader, the one parser that reads a document this program did not write, and asserts that whatever it accepts is within the bounds the reader claims to enforce. Further bounded harnesses cover PNG metadata and pixels, ICC profiles, protection-mask PNGs and illumination, and isolated fuzz campaigns instrument the actual libpng, zlib and Little CMS archives. Regression reproducers are retained.
+- Independent dense-system, real-PNG, preservation, resource, cancellation and model/mask tests cover I01.
+- The architecture manifest gained `de_bundle` and `de_color` layers and the checker builds each source file and public header in parallel while reporting in serial order.
+- UTF-8 paths are handed to `std::filesystem::path` as their own bytes wherever a path stores `char`, instead of being copied through `char8_t` first. The admitted spelling is unchanged on every platform; the removed conversion tripped UndefinedBehaviorSanitizer's implicit-conversion check inside libc++ on non-ASCII filenames.
+- CI gives each native and sanitized job the runner's cores, the suite's tests can run as concurrent processes, and the nightly fuzz campaign is budgeted for its fifteen targets. Actions were updated to newer pinned releases.
 
 ## [0.3.0] - 2026-09-24
 
