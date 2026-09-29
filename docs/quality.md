@@ -9,12 +9,20 @@ neither workflow publishes binary artifacts. The reasoning behind the strictness
 ```sh
 python tools/install_build_tools.py          # pinned CMake, Ninja and test dependencies
 python tools/install_build_tools.py --lint   # pinned Ruff, mypy, clang-format, pre-commit
+python tools/install_llvm.py --compiler      # the pinned clang, its runtimes and clang-tidy
 python tools/check_all.py                    # structure, gates, format, lint, types, tests
+export CC=clang-23 CXX=clang++-23            # macOS: "$(brew --prefix llvm)/bin/clang[++]"
 cmake --workflow --preset dev                # build and test, clang-tidy on every target
 cmake --workflow --preset sanitize           # the suite under ASan and UBSan
 cmake --workflow --preset tsan               # the suite under ThreadSanitizer
 cmake --workflow --preset fuzz               # strict complete fuzz campaign, including PNG
 ```
+
+These presets declare `DE_TOOLCHAIN=pinned`, so configure fails rather than falling back to the
+host `c++`. That matters most on macOS, where `c++` is Apple clang and implements fewer `-Wextra`
+diagnostics than the compilers the required jobs use. Only `release` builds with the platform's
+own toolchain; [build and developer workflows](build.md#the-compiler-contract-every-preset-states)
+has the contract and the per-platform commands.
 
 The build also runs the [architecture rules](architecture.md#enforced-boundaries-not-just-a-diagram) as the
 `architecture` test, over the real include graph, the real abstract syntax tree, the links the build
@@ -27,7 +35,7 @@ and a forbidden link fails the configure step before anything is compiled.
 cmake --workflow --preset sanitize
 ```
 
-The sanitizer preset is for GCC and Clang on Linux and macOS, and instruments **first-party code**, not the whole dependency graph; it makes no claim of complete codec instrumentation. Every AddressSanitizer or UndefinedBehaviorSanitizer report is fatal, so undefined behavior fails a test instead of printing and continuing, and the build adds implicit-conversion, bounds and hardened standard-library checks. Both sanitizer presets run independently over the whole suite in required PR jobs and in the nightly workflow.
+The sanitizer preset requires the pinned LLVM clang on Linux and macOS, and instruments **first-party code**, not the whole dependency graph; it makes no claim of complete codec instrumentation. Every AddressSanitizer or UndefinedBehaviorSanitizer report is fatal, so undefined behavior fails a test instead of printing and continuing, and the build adds implicit-conversion, bounds and hardened standard-library checks. Both sanitizer presets run independently over the whole suite in required PR jobs and in the nightly workflow.
 
 ## The tools
 

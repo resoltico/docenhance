@@ -30,13 +30,16 @@ OpenCV 5 changed its dependency graph: `photo` requires `geometry`, which requir
 
 ## Build
 
-Prerequisites: a current C++23 compiler and standard library, Git, Python 3.12 or later **for development tooling only**, CMake 4.4 or later, and Ninja 1.13 or later. Native packages do not require Python. NASM is optional for libjpeg-turbo's x86 SIMD; the upstream non-SIMD fallback is permitted.
+Prerequisites: a current C++23 compiler and standard library, Git, Python 3.12 or later **for development tooling only**, CMake 4.4 or later, and Ninja 1.13 or later. `dev`, `sanitize` and `tsan` require the LLVM clang release pinned in `deps/tools.json` rather than the host `c++`; install it with `python tools/install_llvm.py --compiler` and name it in `CC`/`CXX`. `release` builds with the platform's own toolchain. Native packages do not require Python. NASM is optional for libjpeg-turbo's x86 SIMD; the upstream non-SIMD fallback is permitted.
 
 With the prerequisites available, run from the repository root:
 
 ```sh
 # Explicit, separately authorized online acquisition; checks immutable release pins.
 cmake -P cmake/AcquireDependencies.cmake
+
+# The pinned compiler; on macOS use "$(brew --prefix llvm)/bin/clang[++]".
+export CC=clang-23 CXX=clang++-23
 
 # Offline configure → isolated native dependency build → application → tests.
 cmake --workflow --preset dev
@@ -54,6 +57,7 @@ source-archive workflow; neither workflow publishes a binary release:
 
 ```sh
 python tools/install_build_tools.py --lint   # once, in a virtual environment
+python tools/install_llvm.py --compiler      # the pinned clang, its runtimes and clang-tidy
 python tools/check_all.py                    # structure, gates, format, lint, types, tooling tests
 cmake --workflow --preset dev                # build and test, with clang-tidy on every target
 cmake --workflow --preset fuzz               # strict fuzzing of the parsers and the command line

@@ -17,6 +17,7 @@
         "DE_BUILD_TESTS": true,
         "DE_WARNINGS_AS_ERRORS": true,
         "DE_ENABLE_CLANG_TIDY": true,
+        "DE_TOOLCHAIN": "pinned",
         "DE_BUILD_JOBS": "2"
       },
       "warnings": {

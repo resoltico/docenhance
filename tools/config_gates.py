@@ -50,6 +50,10 @@ ROOT_ONLY_CONFIGS = (
     "mypy.ini",
 )
 GUARDED_CACHE_VARIABLES = ("DE_ENABLE_CLANG_TIDY", "DE_WARNINGS_AS_ERRORS")
+# Every shared preset states the compiler it is validated with; cmake/CompilerPolicy.cmake
+# rejects any other at configure time, so an unpinned host `c++` cannot weaken a build.
+TOOLCHAIN_VARIABLE = "DE_TOOLCHAIN"
+TOOLCHAIN_CONTRACTS = frozenset({"pinned", "platform"})
 
 
 def tidy_checks(text: str) -> list[str]:
@@ -167,7 +171,7 @@ def nested_config_errors(root: Path, files: list[Path]) -> list[str]:
 
 
 def preset_errors(root: Path) -> list[str]:
-    """No shared preset may disable clang-tidy or warnings-as-errors; the base enables both."""
+    """No shared preset disables clang-tidy or warnings-as-errors, or leaves its compiler open."""
     errors = []
     for path in [root / "CMakePresets.json", *sorted((root / "cmake" / "presets").glob("*.json"))]:
         presets = json.loads(path.read_text(encoding="utf-8")).get("configurePresets", [])
@@ -179,7 +183,22 @@ def preset_errors(root: Path) -> list[str]:
                     errors.append(f"{path.name}: preset {preset['name']} sets {name} to {value!r}")
                 elif preset.get("name") == "base" and name not in variables:
                     errors.append(f"{path.name}: the base preset must set {name} to true")
+            errors.extend(toolchain_errors(path, preset, variables))
     return errors
+
+
+def toolchain_errors(path: Path, preset: dict[str, Any], variables: dict[str, Any]) -> list[str]:
+    """The base preset names a compiler contract and every preset names a defined one."""
+    contract = variables.get(TOOLCHAIN_VARIABLE)
+    if contract is None:
+        if preset.get("name") == "base":
+            return [f"{path.name}: the base preset must set {TOOLCHAIN_VARIABLE}"]
+        return []
+    if contract not in TOOLCHAIN_CONTRACTS:
+        named = ", ".join(sorted(TOOLCHAIN_CONTRACTS))
+        unknown = f"sets {TOOLCHAIN_VARIABLE}={contract!r}, which is not one of {named}"
+        return [f"{path.name}: preset {preset['name']} {unknown}"]
+    return []
 
 
 def warning_sync_errors(root: Path) -> list[str]:

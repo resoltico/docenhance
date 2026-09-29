@@ -208,12 +208,36 @@ class ConfigGateTests(GateTestCase):
         """No preset may turn off clang-tidy or warnings-as-errors."""
         presets = {
             "configurePresets": [
-                {"name": "base", "cacheVariables": {"DE_ENABLE_CLANG_TIDY": True}},
+                {
+                    "name": "base",
+                    "cacheVariables": {"DE_ENABLE_CLANG_TIDY": True, "DE_TOOLCHAIN": "pinned"},
+                },
                 {"name": "quick", "cacheVariables": {"DE_WARNINGS_AS_ERRORS": False}},
             ]
         }
         write(self.root, "CMakePresets.json", json.dumps(presets))
         self.assertEqual(len(config_gates.preset_errors(self.root)), 2)
+
+    def test_presets_name_a_defined_compiler_contract(self) -> None:
+        """The base preset states DE_TOOLCHAIN and no preset invents another value."""
+        presets = {
+            "configurePresets": [
+                {
+                    "name": "base",
+                    "cacheVariables": {
+                        "DE_ENABLE_CLANG_TIDY": True,
+                        "DE_WARNINGS_AS_ERRORS": True,
+                    },
+                },
+                {"name": "loose", "cacheVariables": {"DE_TOOLCHAIN": "whatever-is-on-path"}},
+                {"name": "release", "cacheVariables": {"DE_TOOLCHAIN": "platform"}},
+            ]
+        }
+        write(self.root, "CMakePresets.json", json.dumps(presets))
+        errors = config_gates.preset_errors(self.root)
+        self.assertEqual(len(errors), 2)
+        self.assertTrue(any("the base preset must set DE_TOOLCHAIN" in error for error in errors))
+        self.assertTrue(any("whatever-is-on-path" in error for error in errors))
 
 
 class HygieneTests(GateTestCase):
