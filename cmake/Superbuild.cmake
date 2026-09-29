@@ -159,7 +159,9 @@ add_custom_target(de_verify_sources ALL ${de_verify_commands} VERBATIM)
 list(GET de_names 0 de_first)
 add_dependencies(de_dep_${de_first} de_verify_sources)
 if(DE_BUILD_TESTS)
-  add_test(NAME native-suite COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${de_inner}" --output-on-failure --no-tests=error)
+  # The suite's tests are independent processes with their own temporary directories, so the same
+  # bound that limits every other external process also sets how many run at once.
+  add_test(NAME native-suite COMMAND "${CMAKE_CTEST_COMMAND}" --test-dir "${de_inner}" --parallel "${DE_BUILD_JOBS}" --output-on-failure --no-tests=error)
   # The aggregate also compiles each public header and checks every native AST.
   # Keep all per-contract limits and checks; allow the expanded graph to finish on CI runners.
   set_tests_properties(native-suite PROPERTIES TIMEOUT 600)
