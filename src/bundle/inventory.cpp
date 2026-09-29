@@ -82,12 +82,21 @@ constexpr std::size_t max_path_length = 128;
     return true;
 }
 
+// Found by walking the object rather than by a lookup that orders the keys. Ordering a stored
+// name against a wanted one subtracts the two lengths and reads the difference as signed, which
+// for a stored name that is shorter reverses its meaning; the sanitizers this is built under
+// refuse that conversion, and a document can choose the lengths. Comparing lengths first and
+// contents only when they agree asks the same question and never subtracts them.
 [[nodiscard]] const Json* member(const Json& parent, std::string_view name) {
     if (!parent.is_object()) {
         return nullptr;
     }
-    const auto found = parent.find(name);
-    return found == parent.end() ? nullptr : &*found;
+    for (const auto& entry : parent.items()) {
+        if (std::string_view{entry.key()} == name) {
+            return &entry.value();
+        }
+    }
+    return nullptr;
 }
 
 [[nodiscard]] core::Result<Artifact> artifact_of(const Json& value) {
