@@ -16,7 +16,6 @@
 #include <ranges>
 #include <string>
 #include <string_view>
-#include <type_traits>
 #include <utility>
 
 namespace docenhance::io {
@@ -69,6 +68,20 @@ void fail_png(png_structp png, png_const_charp message) noexcept {
 void warn_png(png_structp png, png_const_charp message) noexcept {
     // Corrupt/truncated metadata is not silently accepted as a successfully decoded document.
     fail_png(png, message);
+}
+// A template so that only the branch for this platform's path type is ever instantiated: in a
+// plain function the other branch would still have to type-check, and returning a wide string as
+// a narrow one does not.
+template <typename Path> std::string spelled_in_utf8(const Path& value) {
+    if constexpr (std::same_as<typename Path::value_type, char>) {
+        return value.native();
+    } else {
+        std::string bytes;
+        for (const char8_t unit : value.u8string()) {
+            bytes.push_back(static_cast<char>(unit));
+        }
+        return bytes;
+    }
 }
 } // namespace
 
@@ -175,15 +188,7 @@ bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept {
     return memory.cancelled;
 }
 std::string utf8_spelling(const std::filesystem::path& value) {
-    if constexpr (std::is_same_v<std::filesystem::path::value_type, char>) {
-        return value.native();
-    } else {
-        std::string bytes;
-        for (const char8_t unit : value.u8string()) {
-            bytes.push_back(static_cast<char>(unit));
-        }
-        return bytes;
-    }
+    return spelled_in_utf8(value);
 }
 std::filesystem::path utf8_path(std::string_view value) {
     // The admitted spelling is already UTF-8 bytes. Where a path stores char those bytes are its
