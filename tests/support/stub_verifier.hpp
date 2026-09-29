@@ -16,4 +16,15 @@ class UnusedVerifier final : public app::Verifier {
         return core::failure(core::ErrorCode::invariant, "This case does not verify a bundle");
     }
 };
+
+// For the cases that reach `verify` with whatever an operand may be, and only need the command to
+// answer the way a bundle that cannot be read back does. It reads nothing and confirms nothing.
+class RefusingVerifier final : public app::Verifier {
+  public:
+    [[nodiscard]] core::Result<app::Verified>
+    verify(const app::VerifyRequest& /*request*/,
+           const core::Cancellation& /*cancellation*/) override {
+        return core::failure(core::ErrorCode::input, "The bundle cannot be read back");
+    }
+};
 } // namespace docenhance::tests

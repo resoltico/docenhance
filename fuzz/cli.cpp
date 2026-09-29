@@ -65,7 +65,7 @@ Outcome invoke(const std::vector<std::string>& args) {
     std::ostringstream out;
     std::ostringstream err;
     docenhance::tests::RejectingProcessor processor;
-    docenhance::tests::UnusedVerifier verifier;
+    docenhance::tests::RefusingVerifier verifier;
     const int code =
         docenhance::cli::run(argv, {.processor = processor, .verifier = verifier}, out, err);
     return {.code = code, .out = out.str(), .err = err.str()};
