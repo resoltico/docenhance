@@ -56,6 +56,13 @@ std::filesystem::path published_bundle(const TemporaryDirectory& temporary,
     return temporary.path / name;
 }
 
+// MSVC gives openmode a signed underlying type, so the flags are combined as unsigned values.
+std::ios::openmode binary_with(std::ios::openmode extra) {
+    // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
+    return static_cast<std::ios::openmode>(static_cast<unsigned>(std::ios::binary) |
+                                           static_cast<unsigned>(extra));
+}
+
 core::Result<app::Verified> read_back(const std::filesystem::path& directory) {
     contract::Invocation invocation;
     invocation.command = contract::Command::verify;
@@ -89,7 +96,7 @@ TEST_CASE("A bundle that disagrees with its record is refused", "[verify]") {
     SECTION("an artifact that is not the one recorded") {
         const auto bundle = published_bundle(temporary, "tampered");
         {
-            std::ofstream appending{bundle / bundle::image_name, std::ios::binary | std::ios::app};
+            std::ofstream appending{bundle / bundle::image_name, binary_with(std::ios::app)};
             appending.put('\0');
         }
         const auto refused = read_back(bundle);
@@ -113,12 +120,12 @@ TEST_CASE("A bundle that disagrees with its record is refused", "[verify]") {
     }
     SECTION("a record this build cannot read") {
         const auto bundle = published_bundle(temporary, "malformed");
-        std::ofstream{bundle / bundle::record_name, std::ios::binary | std::ios::trunc} << "{";
+        std::ofstream{bundle / bundle::record_name, binary_with(std::ios::trunc)} << "{";
         CHECK(!read_back(bundle));
     }
     SECTION("a record past the bound it is read under") {
         const auto bundle = published_bundle(temporary, "oversized");
-        std::ofstream padding{bundle / bundle::record_name, std::ios::binary | std::ios::trunc};
+        std::ofstream padding{bundle / bundle::record_name, binary_with(std::ios::trunc)};
         padding << std::string(bundle::record_max_bytes + 1, ' ');
         padding.close();
         CHECK(!read_back(bundle));

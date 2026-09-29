@@ -225,6 +225,9 @@
     "tests/unit/verify.cpp:clang-tidy/*-reinterpret-cast@e8f3480f": {
       "explanation": "The fixture writes encoded PNG bytes through a narrow-character stream, which is the same view of the same buffer the production reader takes. No object's lifetime or value changes, and the length written comes from the buffer itself."
     },
+    "tests/unit/verify.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@35f9720c": {
+      "explanation": "std::ios::openmode is a standard-library bitmask type whose underlying type is signed on MSVC, so the fixture combines binary with one further flag through their unsigned values and converts the result back. Clang's analyzer rejects that combination because it names no single enumerator; the tests it opens files for exercise the refusals this bundle verification must make."
+    },
     "tools/dep_acquire.py:ruff/S310@2d788465": {
       "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written."
     },
