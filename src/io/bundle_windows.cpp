@@ -5,10 +5,9 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "png_context.hpp"
-#include "windows_sdk.hpp"
+#include "windows_sdk.hpp" // NOLINT(misc-include-cleaner): Native SDK prerequisite types precede direct API headers.
 
 #include <corecrt_io.h>
-#include <corecrt_stdio.h>
 #include <cstdint>
 #include <errhandlingapi.h>
 #include <expected>
@@ -17,11 +16,14 @@
 #include <filesystem>
 #include <handleapi.h>
 #include <iterator>
+#include <minwinbase.h>
 #include <minwindef.h>
+#include <stdio.h> // NOLINT(modernize-deprecated-headers): Native CRT _fdopen/_fileno declarations require stdio.h.
 #include <string>
 #include <utility>
 #include <vector>
 #include <winbase.h>
+#include <winerror.h>
 #include <winnt.h>
 namespace docenhance::io {
 namespace {
@@ -115,18 +117,17 @@ core::Result<std::vector<std::string>> BundleDirectory::entries() const {
     std::vector<std::string> names;
     bool failed = false;
     try {
-        while (true) {
+        bool more = true;
+        while (more) {
             const auto name = utf8_spelling(std::filesystem::path{std::begin(data.cFileName)});
-            if (name != "." && name != "..") {
-                if (names.size() == bundle_max_entries) {
-                    failed = true;
-                    break;
-                }
-                names.push_back(name);
-            }
-            if (FindNextFileW(search, &data) == 0) {
+            if (name != "." && name != ".." && names.size() == bundle_max_entries) {
+                failed = true;
                 break;
             }
+            if (name != "." && name != "..") {
+                names.push_back(name);
+            }
+            more = FindNextFileW(search, &data) != 0;
         }
         failed = failed || GetLastError() != ERROR_NO_MORE_FILES;
     } catch (...) {

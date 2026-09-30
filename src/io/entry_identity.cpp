@@ -7,13 +7,13 @@
 #include <filesystem>
 #include <optional>
 #ifdef _WIN32
-#include "windows_sdk.hpp"
+#include "windows_sdk.hpp" // NOLINT(misc-include-cleaner): Native SDK prerequisite types precede direct API headers.
 
 #include <corecrt_io.h>
-#include <corecrt_stdio.h>
 #include <fileapi.h>
 #include <handleapi.h>
 #include <minwindef.h>
+#include <stdio.h> // NOLINT(modernize-deprecated-headers): Native CRT _fdopen/_fileno declarations require stdio.h.
 #include <winbase.h>
 #include <winnt.h>
 #else

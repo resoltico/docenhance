@@ -99,6 +99,12 @@
     "src/io/bundle_windows.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@8835979c": {
       "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
     },
+    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@ead70b70": {
+      "explanation": "The private SDK prerequisite wrapper includes Windows.h before individual public SDK headers. It supplies required declaration context rather than a separately referenced symbol; this narrow inclusion exception retains standalone public API header ownership."
+    },
+    "src/io/bundle_windows.cpp:clang-tidy/modernize-deprecated-headers@a28a8819": {
+      "explanation": "The native CRT _fdopen and _fileno declarations are specified in the public stdio.h interface. The explicit native header avoids nonexistent or implementation-specific CRT header assumptions and does not replace the standard C++ stream abstraction elsewhere."
+    },
     "src/io/digest.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@ac5c6e27": {
       "explanation": "One byte-view boundary: the hash reads the same immutable storage the caller already holds, as unsigned bytes, without changing any object's lifetime or value. The span it builds carries the original size, so the read stays inside the buffer that was consumed."
     },
@@ -108,8 +114,14 @@
     "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@458195cb": {
       "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
     },
+    "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@ead70b70": {
+      "explanation": "The private SDK prerequisite wrapper includes Windows.h before individual public SDK headers. It supplies required declaration context rather than a separately referenced symbol; this narrow inclusion exception retains standalone public API header ownership."
+    },
     "src/io/entry_identity.cpp:clang-tidy/modernize-deprecated-headers@97815d08": {
       "explanation": "POSIX fileno is declared by the C stdio.h native interface, not by the ISO C++ cstdio contract. The explicit public native header avoids depending on transitive or platform-private declarations."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/modernize-deprecated-headers@a28a8819": {
+      "explanation": "The native CRT _fdopen and _fileno declarations are specified in the public stdio.h interface. The explicit native header avoids nonexistent or implementation-specific CRT header assumptions and does not replace the standard C++ stream abstraction elsewhere."
     },
     "src/io/entry_identity.cpp:clang-tidy/performance-no-int-to-ptr@dd6ab30e": {
       "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
