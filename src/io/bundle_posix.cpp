@@ -44,7 +44,7 @@ BundleDirectory& BundleDirectory::operator=(BundleDirectory&& other) noexcept {
 }
 void BundleDirectory::close() noexcept {
     if (handle_ != -1) {
-        static_cast<void>(::close(static_cast<int>(handle_)));
+        static_cast<void>(::close(handle_));
         handle_ = -1;
     }
 }
@@ -65,7 +65,7 @@ core::Result<BundleDirectory> BundleDirectory::open(const std::filesystem::path&
 core::Result<BundleDirectory> BundleDirectory::child(const std::string& name) const {
     // Native openat ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    const auto descriptor = openat(static_cast<int>(handle_), name.c_str(), directory_flags);
+    const auto descriptor = openat(handle_, name.c_str(), directory_flags);
     if (descriptor < 0) {
         return std::unexpected(refused());
     }
@@ -77,7 +77,7 @@ core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
     constexpr int flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK;
     // Native openat ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    const auto descriptor = openat(static_cast<int>(handle_), name.c_str(), flags);
+    const auto descriptor = openat(handle_, name.c_str(), flags);
     if (descriptor < 0) {
         return std::unexpected(refused());
     }
@@ -100,7 +100,7 @@ core::Result<std::vector<std::string>> BundleDirectory::entries() const {
     // A new descriptor gives this enumeration its own directory offset.
     // Native openat ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    const auto descriptor = openat(static_cast<int>(handle_), ".", directory_flags);
+    const auto descriptor = openat(handle_, ".", directory_flags);
     if (descriptor < 0) {
         return std::unexpected(refused());
     }

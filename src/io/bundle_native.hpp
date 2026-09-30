@@ -4,7 +4,6 @@
 #include "docenhance/core/result.hpp"
 #include "png_context.hpp"
 
-#include <cstdint>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -26,7 +25,11 @@ class BundleDirectory {
 
   private:
     void close() noexcept;
-    std::intptr_t handle_ = -1;
+#ifdef _WIN32
+    void* handle_ = nullptr;
+#else
+    int handle_ = -1;
+#endif
     std::filesystem::path path_;
 };
 } // namespace docenhance::io

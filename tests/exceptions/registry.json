@@ -81,14 +81,14 @@
     "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@0012caf4": {
       "explanation": "Native POSIX open/openat use a variadic ABI even for read-only access. These calls pass no creation flags or mode arguments and immediately retain the returned descriptor for handle-relative non-following bundle access."
     },
-    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@19e55574": {
-      "explanation": "Native POSIX open/openat use a variadic ABI even for read-only access. These calls pass no creation flags or mode arguments and immediately retain the returned descriptor for handle-relative non-following bundle access."
+    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@0d9f5483": {
+      "explanation": "POSIX openat uses a variadic native ABI even for read-only access. These calls pass only a retained directory descriptor, relative entry name and explicit non-following flags; no creation-mode varargs are passed."
     },
-    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@2d03060e": {
-      "explanation": "Native POSIX open/openat use a variadic ABI even for read-only access. These calls pass no creation flags or mode arguments and immediately retain the returned descriptor for handle-relative non-following bundle access."
+    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@3f2a88fd": {
+      "explanation": "POSIX openat uses a variadic native ABI even for read-only access. These calls pass only a retained directory descriptor, relative entry name and explicit non-following flags; no creation-mode varargs are passed."
     },
-    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@61fd2fae": {
-      "explanation": "Native POSIX open/openat use a variadic ABI even for read-only access. These calls pass no creation flags or mode arguments and immediately retain the returned descriptor for handle-relative non-following bundle access."
+    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@c767dc27": {
+      "explanation": "POSIX openat uses a variadic native ABI even for read-only access. These calls pass only a retained directory descriptor, relative entry name and explicit non-following flags; no creation-mode varargs are passed."
     },
     "src/io/bundle_posix.cpp:clang-tidy/misc-include-cleaner@3571ea43": {
       "explanation": "POSIX fdopen is exposed by the supported public stdio.h header through macOS SDK internal declarations. The adapter uses that public header rather than the nonportable _stdio.h implementation header; this exception is limited to the native ABI declaration and immutable descriptor-to-stream ownership transfer."
@@ -96,65 +96,23 @@
     "src/io/bundle_posix.cpp:clang-tidy/modernize-deprecated-headers@a708f244": {
       "explanation": "POSIX fdopen is exposed by the supported public stdio.h header through macOS SDK internal declarations. The adapter uses that public header rather than the nonportable _stdio.h implementation header; this exception is limited to the native ABI declaration and immutable descriptor-to-stream ownership transfer."
     },
-    "src/io/bundle_windows.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@1c9201f0": {
-      "explanation": "The native Windows HANDLE ABI is stored in intptr_t for the platform-neutral move-only owner. These casts preserve the opaque handle representation, never dereference it as memory, and pair ownership transfer with exactly one native or CRT close."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@59b756f5": {
-      "explanation": "The native Windows HANDLE ABI is stored in intptr_t for the platform-neutral move-only owner. These casts preserve the opaque handle representation, never dereference it as memory, and pair ownership transfer with exactly one native or CRT close."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@72492209": {
-      "explanation": "The native Windows HANDLE ABI is stored in intptr_t for the platform-neutral move-only owner. These casts preserve the opaque handle representation, never dereference it as memory, and pair ownership transfer with exactly one native or CRT close."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@08cbf64c": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@31b9c6fd": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@51779555": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@5560b6a2": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@59b756f5": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@65f60cf0": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@8ec83e61": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@963d8566": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@aa9115d2": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/bundle_windows.cpp:clang-tidy/misc-include-cleaner@f4484273": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
+    "src/io/bundle_windows.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@8835979c": {
+      "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
     },
     "src/io/digest.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@ac5c6e27": {
       "explanation": "One byte-view boundary: the hash reads the same immutable storage the caller already holds, as unsigned bytes, without changing any object's lifetime or value. The span it builds carries the original size, so the read stays inside the buffer that was consumed."
     },
-    "src/io/entry_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@b24989e4": {
-      "explanation": "The native Windows HANDLE ABI is stored in intptr_t for the platform-neutral move-only owner. These casts preserve the opaque handle representation, never dereference it as memory, and pair ownership transfer with exactly one native or CRT close."
-    },
-    "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@28bcd27a": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
+    "src/io/entry_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@dd6ab30e": {
+      "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
     },
     "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@458195cb": {
       "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
     },
-    "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@65f60cf0": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
-    "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@93ebc848": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
     "src/io/entry_identity.cpp:clang-tidy/modernize-deprecated-headers@97815d08": {
       "explanation": "POSIX fileno is declared by the C stdio.h native interface, not by the ISO C++ cstdio contract. The explicit public native header avoids depending on transitive or platform-private declarations."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/performance-no-int-to-ptr@dd6ab30e": {
+      "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
     },
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@1bb56840": {
       "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
@@ -251,6 +209,9 @@
     },
     "src/io/publication.cpp:clang-tidy/modernize-deprecated-headers@16943187": {
       "explanation": "The GNU renameat2/RENAME_NOREPLACE and Darwin renamex_np/RENAME_EXCL extensions are declared by the native stdio.h, not by the standard C++ <cstdio> interface. Including the actual native provider is required by include-cleaner and deliberately confines this OS API dependency to the private publication adapter."
+    },
+    "src/io/windows_sdk.hpp:clang-tidy/misc-include-cleaner@ee70c5ba": {
+      "explanation": "The Windows SDK umbrella establishes prerequisite native types and configuration before individual public API headers are included. Those direct headers own the referenced declarations; the umbrella itself has no separately referenced symbol, so this exception is restricted to its required inclusion."
     },
     "src/methods/box_mean.cpp:clang-tidy/*-unchecked-container-access@550d11ea": {
       "explanation": "The kernel's innermost read, reached by a coordinate that image::reflect101_folded has already folded into the plane, so it is in range by construction. A checked access here is on the hot path of every filtered sample; the sanitize, tsan and fuzz presets run the whole suite with a hardened standard library, which checks exactly this access."
