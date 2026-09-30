@@ -67,8 +67,8 @@ struct JpegContext {
     [[nodiscard]] core::Error error() const;
 };
 [[nodiscard]] JpegContext& jpeg_context(j_common_ptr decoder) noexcept;
-[[noreturn]] void jpeg_failure(j_common_ptr decoder) noexcept;
-void jpeg_checkpoint(j_common_ptr decoder) noexcept;
+[[noreturn]] void jpeg_failure(j_common_ptr decoder);
+void jpeg_checkpoint(j_common_ptr decoder);
 void install_jpeg_memory(JpegContext& context) noexcept;
 void install_jpeg_source(JpegContext& context, std::span<const std::uint8_t> bytes) noexcept;
 [[nodiscard]] bool jpeg_header(JpegContext& context, std::span<const std::uint8_t> bytes);

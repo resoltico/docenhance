@@ -44,7 +44,7 @@ void* allocate(JpegContext& context, int pool, std::size_t size) noexcept {
     context.exhausted = true;
     return nullptr;
 }
-void* native_allocate(j_common_ptr decoder, int pool, std::size_t size) noexcept {
+void* native_allocate(j_common_ptr decoder, int pool, std::size_t size) {
     jpeg_checkpoint(decoder);
     auto* const result = allocate(jpeg_context(decoder), pool, size);
     if (result == nullptr) {
@@ -52,7 +52,7 @@ void* native_allocate(j_common_ptr decoder, int pool, std::size_t size) noexcept
     }
     return result;
 }
-std::size_t product(j_common_ptr decoder, std::size_t a, std::size_t b) noexcept {
+std::size_t product(j_common_ptr decoder, std::size_t a, std::size_t b) {
     if (a != 0 && b > std::numeric_limits<std::size_t>::max() / a) {
         jpeg_context(decoder).exhausted = true;
         jpeg_failure(decoder);
@@ -60,7 +60,7 @@ std::size_t product(j_common_ptr decoder, std::size_t a, std::size_t b) noexcept
     return a * b;
 }
 // Native SIMD routines need aligned rows and safe padding at the right edge.
-std::size_t stride(j_common_ptr decoder, std::size_t width, std::size_t element) noexcept {
+std::size_t stride(j_common_ptr decoder, std::size_t width, std::size_t element) {
     const auto bytes = product(decoder, width, element);
     constexpr auto alignment = core::buffer_alignment;
     if (bytes > std::numeric_limits<std::size_t>::max() - alignment) {
@@ -68,7 +68,7 @@ std::size_t stride(j_common_ptr decoder, std::size_t width, std::size_t element)
     }
     return ((bytes + alignment - 1) / alignment) * alignment;
 }
-void zero(j_common_ptr decoder, std::span<std::byte> bytes) noexcept {
+void zero(j_common_ptr decoder, std::span<std::byte> bytes) {
     constexpr std::size_t transfer = std::size_t{64} * 1024;
     while (!bytes.empty()) {
         jpeg_checkpoint(decoder);
@@ -77,7 +77,7 @@ void zero(j_common_ptr decoder, std::span<std::byte> bytes) noexcept {
         bytes = bytes.subspan(part.size());
     }
 }
-JSAMPARRAY samples(j_common_ptr decoder, int pool, JDIMENSION width, JDIMENSION height) noexcept {
+JSAMPARRAY samples(j_common_ptr decoder, int pool, JDIMENSION width, JDIMENSION height) {
     const auto pitch = stride(decoder, width, sizeof(JSAMPLE));
     auto* const pointers = static_cast<JSAMPROW*>(
         native_allocate(decoder, pool, product(decoder, height, sizeof(JSAMPROW))));
@@ -92,7 +92,7 @@ JSAMPARRAY samples(j_common_ptr decoder, int pool, JDIMENSION width, JDIMENSION 
     }
     return pointers;
 }
-JBLOCKARRAY blocks(j_common_ptr decoder, int pool, JDIMENSION width, JDIMENSION height) noexcept {
+JBLOCKARRAY blocks(j_common_ptr decoder, int pool, JDIMENSION width, JDIMENSION height) {
     const auto pitch = stride(decoder, width, sizeof(JBLOCK));
     auto* const pointers = static_cast<JBLOCKROW*>(
         native_allocate(decoder, pool, product(decoder, height, sizeof(JBLOCKROW))));
@@ -110,7 +110,7 @@ JBLOCKARRAY blocks(j_common_ptr decoder, int pool, JDIMENSION width, JDIMENSION 
 // Fixed six-argument callback signature in libjpeg's public memory-manager ABI.
 // NOLINTNEXTLINE(readability-function-size)
 jvirt_barray_ptr virtual_blocks(j_common_ptr decoder, int pool, boolean /*pre_zero*/,
-                                JDIMENSION width, JDIMENSION height, JDIMENSION access) noexcept {
+                                JDIMENSION width, JDIMENSION height, JDIMENSION access) {
     auto& context = jpeg_context(decoder);
     if (pool != JPOOL_IMAGE || context.memory.block_count == jpeg_virtual_slots) {
         jpeg_failure(decoder);
@@ -130,7 +130,7 @@ jvirt_barray_ptr virtual_blocks(j_common_ptr decoder, int pool, boolean /*pre_ze
 // Fixed six-argument callback signature in libjpeg's public memory-manager ABI.
 // NOLINTNEXTLINE(readability-function-size)
 jvirt_sarray_ptr virtual_samples(j_common_ptr decoder, int pool, boolean /*pre_zero*/,
-                                 JDIMENSION width, JDIMENSION height, JDIMENSION access) noexcept {
+                                 JDIMENSION width, JDIMENSION height, JDIMENSION access) {
     auto& context = jpeg_context(decoder);
     if (pool != JPOOL_IMAGE || context.memory.sample_count == jpeg_virtual_slots) {
         jpeg_failure(decoder);
@@ -145,12 +145,12 @@ jvirt_sarray_ptr virtual_samples(j_common_ptr decoder, int pool, boolean /*pre_z
     }
     return &control;
 }
-void realize(j_common_ptr decoder) noexcept {
+void realize(j_common_ptr decoder) {
     // Virtual arrays are fully charged and allocated at request time, before entropy work.
     jpeg_checkpoint(decoder);
 }
 JBLOCKARRAY access_blocks(j_common_ptr decoder, jvirt_barray_ptr control, JDIMENSION start,
-                          JDIMENSION count, boolean /*writable*/) noexcept {
+                          JDIMENSION count, boolean /*writable*/) {
     if (control == nullptr || count > control->access || start > control->height ||
         count > control->height - start) {
         jpeg_failure(decoder);
@@ -159,7 +159,7 @@ JBLOCKARRAY access_blocks(j_common_ptr decoder, jvirt_barray_ptr control, JDIMEN
     return std::span{control->rows, control->height}.subspan(start).data();
 }
 JSAMPARRAY access_samples(j_common_ptr decoder, jvirt_sarray_ptr control, JDIMENSION start,
-                          JDIMENSION count, boolean /*writable*/) noexcept {
+                          JDIMENSION count, boolean /*writable*/) {
     if (control == nullptr || count > control->access || start > control->height ||
         count > control->height - start) {
         jpeg_failure(decoder);

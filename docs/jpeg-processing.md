@@ -100,7 +100,10 @@ bookkeeping and OS resources are not a claim of charged process RSS.
 
 A native-call wrapper contains only borrowed/trivial views and scalar state. Raster/profile/buffer
 owners live outside its nonlocal-jump frame. Allocation helpers complete exception handling and
-destroy temporary owners before a jump; no C++ exception crosses a native callback. Destruction
+destroy temporary owners before a jump; no C++ exception crosses a native callback. Jump-capable
+callbacks deliberately have no `noexcept` specification: Windows CRT long jumps use stack-unwind
+semantics, and an optimizer-dependent `noexcept` boundary can terminate instead of returning the
+typed cancellation result. Nonjumping allocation/free helpers retain their ordinary guarantees. Destruction
 releases both charged pools and the upstream bootstrap on success or failure. Native diagnostics
 never print or terminate the program. Memory/scan refusal, cancellation and input corruption retain
 distinct typed outcomes; real observed failures take precedence over a pending stop.

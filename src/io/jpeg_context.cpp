@@ -18,7 +18,7 @@ namespace docenhance::io {
 JpegContext& jpeg_context(j_common_ptr decoder) noexcept {
     return *static_cast<JpegContext*>(decoder->client_data);
 }
-[[noreturn]] void jpeg_failure(j_common_ptr decoder) noexcept {
+[[noreturn]] void jpeg_failure(j_common_ptr decoder) {
     if (decoder->err->msg_code == JERR_OUT_OF_MEMORY) {
         jpeg_context(decoder).exhausted = true;
     }
@@ -26,7 +26,7 @@ JpegContext& jpeg_context(j_common_ptr decoder) noexcept {
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
     std::longjmp(std::begin(jpeg_context(decoder).jump.get()), 1);
 }
-void jpeg_checkpoint(j_common_ptr decoder) noexcept {
+void jpeg_checkpoint(j_common_ptr decoder) {
     auto& context = jpeg_context(decoder);
     if (context.cancellation.get().requested(core::Checkpoint::decode)) {
         context.cancelled = true;
@@ -39,7 +39,7 @@ j_common_ptr common(j_decompress_ptr decoder) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     return reinterpret_cast<j_common_ptr>(decoder);
 }
-void warning(j_common_ptr decoder, int level) noexcept {
+void warning(j_common_ptr decoder, int level) {
     if (level < 0) {
         jpeg_failure(decoder);
     }
@@ -47,7 +47,7 @@ void warning(j_common_ptr decoder, int level) noexcept {
 void silent(j_common_ptr /*decoder*/) noexcept {
     // Error delivery belongs to the typed result, never native stderr.
 }
-void monitor(j_common_ptr decoder) noexcept {
+void monitor(j_common_ptr decoder) {
     jpeg_checkpoint(decoder);
     auto& context = jpeg_context(decoder);
     if (std::cmp_greater(context.decoder.input_scan_number, context.scan_limit)) {
@@ -58,7 +58,7 @@ void monitor(j_common_ptr decoder) noexcept {
 void begin_source(j_decompress_ptr /*decoder*/) noexcept {
     // The immutable source is initialized by the enclosing native-call wrapper.
 }
-boolean fill_source(j_decompress_ptr decoder) noexcept {
+boolean fill_source(j_decompress_ptr decoder) {
     auto& context = *static_cast<JpegContext*>(decoder->client_data);
     // libjpeg's memory source fabricates an EOI at EOF. This source never repairs input.
     if (context.remaining.empty()) {
@@ -72,8 +72,7 @@ boolean fill_source(j_decompress_ptr decoder) noexcept {
     context.remaining = context.remaining.subspan(part.size());
     return TRUE;
 }
-void skip_source(j_decompress_ptr decoder,
-                 decltype(jpeg_progress_mgr::pass_counter) count) noexcept {
+void skip_source(j_decompress_ptr decoder, decltype(jpeg_progress_mgr::pass_counter) count) {
     if (count <= 0) {
         return;
     }
