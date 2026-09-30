@@ -3,13 +3,13 @@
 #include "bundle_stage.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/bundle.hpp"
+#include "file_contents.hpp"
 #include "publication.hpp"
 #include "temporary_directory.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <filesystem>
 #include <fstream>
-#include <string>
 #include <system_error>
 namespace docenhance::tests {
 TEST_CASE("Bundle cleanup preserves replacement files and directories", "[bundle][publication]") {
@@ -37,7 +37,7 @@ TEST_CASE("Bundle cleanup preserves replacement files and directories", "[bundle
         CHECK(failure.publication == core::Publication::unknown);
         CHECK(stage.retained);
     }
-    CHECK(std::filesystem::file_size(stage_path / "run.json") == std::string("foreign").size());
+    CHECK(file_contents(stage_path / "run.json") == "foreign");
 }
 TEST_CASE("Bundle cleanup refuses a link replacement without touching its target",
           "[bundle][publication]") {
@@ -60,7 +60,7 @@ TEST_CASE("Bundle cleanup refuses a link replacement without touching its target
         io::abandon(stage, {.code = core::ErrorCode::output, .message = "Stop before commit"});
     CHECK(failure.publication == core::Publication::unknown);
     CHECK(std::filesystem::is_symlink(*file));
-    CHECK(std::filesystem::file_size(outside) == std::string("preserve").size());
+    CHECK(file_contents(outside) == "preserve");
 }
 TEST_CASE("Bundle cleanup does not traverse a replaced assets directory", "[bundle][publication]") {
     const TemporaryDirectory temporary{"docenhance-bundle-cleanup-assets"};
@@ -80,7 +80,7 @@ TEST_CASE("Bundle cleanup does not traverse a replaced assets directory", "[bund
     const auto failure =
         io::abandon(stage, {.code = core::ErrorCode::output, .message = "Stop before commit"});
     CHECK(failure.publication == core::Publication::unknown);
-    CHECK(std::filesystem::file_size(retained / "protect-mask.png") == std::string("owned").size());
+    CHECK(file_contents(retained / "protect-mask.png") == "owned");
     CHECK(std::filesystem::is_symlink(stage.directory / "assets"));
 }
 } // namespace docenhance::tests

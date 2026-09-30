@@ -36,6 +36,13 @@ If verification reports that a cached source changed on macOS, check for `.DS_St
 
 Acquisition is single-writer. Do not run two acquisition processes against one cache concurrently. Build workers may read a completely acquired cache. A failed acquisition removes only its own staging directory. Cached material is verified, not silently repaired or upgraded. A network error is a build-preparation error, not permission to use whatever system library happens to be present.
 
+## Local Linux gate
+
+On macOS/Windows, start Docker and run `python tools/check_all.py`; it includes the full Linux
+release workflow with isolated cached native state. Use `python tools/check_linux.py` for that
+gate alone. The image/tool/source pins, retained log and precise coverage are described in
+[local Linux verification](quality.md#local-linux-verification-with-docker).
+
 ## Everyday commands
 
 ```sh

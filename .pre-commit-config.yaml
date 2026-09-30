@@ -5,7 +5,7 @@ repos:
   - repo: local
     hooks:
       - id: docenhance-checks
-        name: Structure, gates, formatting, linting, typing and tooling tests
+        name: Source gates and Docker Linux native verification
         entry: python tools/check_all.py
         language: system
         pass_filenames: false

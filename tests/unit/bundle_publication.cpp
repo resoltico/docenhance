@@ -10,6 +10,7 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "file_contents.hpp"
 #include "png_fixture.hpp"
 #include "publication.hpp"
 #include "temporary_directory.hpp"
@@ -245,8 +246,7 @@ TEST_CASE("Another run at the destination is preserved during reconciliation",
     const auto result = publish(output, written, occupied_after_gate);
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
-    CHECK(std::filesystem::file_size(output / bundle::record_name) ==
-          std::string("another run").size());
+    CHECK(file_contents(output / bundle::record_name) == "another run");
     CHECK(host::verify_bundle(utf8_spelling(temporary.path / "result.staging-0"), {}));
 }
 TEST_CASE("Manifest writer completion and staged reread failures prevent publication",
