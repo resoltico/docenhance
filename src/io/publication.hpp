@@ -6,8 +6,11 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/bundle.hpp"
+#include "entry_identity.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <filesystem>
 #include <span>
 #include <string>
@@ -18,7 +21,17 @@ namespace docenhance::io {
 // The reserved place a bundle file occupies while the transaction owns it.
 struct BundleSlot {
     std::filesystem::path path;
+    std::optional<EntryIdentity>* created = nullptr;
 };
+// Private stream-operation seam for deterministic write, flush and close failure tests.
+// A close operation consumes the stream even when it reports an error.
+struct BundleStream {
+    std::size_t (*write)(const void*, std::size_t, std::size_t, std::FILE*) = std::fwrite;
+    int (*flush)(std::FILE*) = std::fflush;
+    int (*close)(std::FILE*) = std::fclose;
+};
+[[nodiscard]] core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
+                                             BundleStream operations);
 // A single native operation. Unsupported filesystems fail closed, never check-then-rename.
 [[nodiscard]] std::error_code rename_exclusive(const std::filesystem::path& source,
                                                const std::filesystem::path& target) noexcept;
@@ -37,7 +50,8 @@ struct PngWriterRef {
 [[nodiscard]] core::Result<std::string> publish_bundle(const std::string& output_directory,
                                                        std::span<const BundleFile> files,
                                                        const core::Cancellation& cancellation,
-                                                       PublishRename commit);
+                                                       PublishRename commit,
+                                                       BundleValidation validation = {});
 [[nodiscard]] core::Result<std::string>
 publish_generated_png(const std::string& output_directory, PngWriterRef writer,
                       const core::Cancellation& cancellation, PublishRename commit);

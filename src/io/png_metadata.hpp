@@ -16,6 +16,7 @@ namespace docenhance::io {
 inline constexpr std::size_t png_signature_bytes = 8;
 inline constexpr std::size_t png_integer_bytes = 4;
 inline constexpr std::size_t png_chunk_overhead = 12;
+inline constexpr std::size_t png_max_chunks = 65536;
 inline constexpr std::uint32_t chunk_ihdr = 0x49484452;
 inline constexpr std::uint32_t chunk_plte = 0x504c5445;
 inline constexpr std::uint32_t chunk_idat = 0x49444154;
@@ -27,10 +28,19 @@ struct PngScan {
     image::RasterShape shape;
     image::PngMetadata metadata;
 };
+enum class PngContent { source, result };
+struct PngReadPolicy {
+    image::ProfilePolicy profile = image::ProfilePolicy::embedded;
+    PngLimits limits{};
+    PngContent content = PngContent::source;
+};
 [[nodiscard]] core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes,
-                                             core::Budget& budget, image::ProfilePolicy policy,
-                                             const core::Cancellation& cancellation,
-                                             PngLimits limits);
+                                             core::Budget& budget, PngReadPolicy policy,
+                                             const core::Cancellation& cancellation);
+// Result artifacts have a separately bounded encoded domain; source admission remains unchanged.
+[[nodiscard]] core::Result<image::Raster>
+decode_result_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
+                         const core::Cancellation& cancellation);
 [[nodiscard]] core::Result<core::Buffer> inflate_profile(std::span<const std::uint8_t> bytes,
                                                          core::Budget& budget);
 [[nodiscard]] core::Result<void> parse_exif(std::span<const std::uint8_t> bytes,

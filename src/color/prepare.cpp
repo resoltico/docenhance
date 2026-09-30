@@ -119,7 +119,7 @@ core::Result<void> prepare_conversion(ConversionState& state, core::Budget& budg
     if (state.cancellation.requested(core::Checkpoint::processing)) {
         return core::cancelled();
     }
-    auto profile = output_profile(state.context, budget, gray);
+    auto profile = output_profile(state.context, budget, gray, state.cancellation);
     if (!profile) {
         return std::unexpected(profile.error());
     }

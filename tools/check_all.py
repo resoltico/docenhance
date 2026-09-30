@@ -5,9 +5,10 @@
 
 This is the one place the local check set is defined. `.pre-commit-config.yaml` invokes this
 script. The GitHub source-archive workflow deliberately runs only the checks that do not need a
-native dependency build; the full local gate remains the contributor standard. The native build,
-its clang-tidy pass and fuzzing are separate, because they need a configured build tree:
-`cmake --workflow --preset dev` and `--preset fuzz`.
+native dependency build; the full local gate remains the contributor standard. Non-Linux
+developer hosts also run the real Linux release workflow through Docker. Linux hosts avoid
+container recursion; their native CI workflows remain authoritative. Fuzzing and
+additional sanitizer workflows remain explicit commands.
 
 Every check runs even when an earlier one fails, so one command reports every problem.
 """
@@ -16,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import platform
 import subprocess
 import sys
 import time
@@ -33,6 +35,13 @@ CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("mypy", ("-m", "mypy")),
     ("tooling tests", ("-m", "unittest", "discover", "-s", "tests/tooling")),
 )
+
+
+def local_checks(system: str) -> tuple[tuple[str, tuple[str, ...]], ...]:
+    """Non-Linux developer hosts also verify Linux's compiler/STL before committing."""
+    if system == "Linux":
+        return CHECKS
+    return (*CHECKS, ("Linux native workflow (Docker)", ("tools/check_linux.py",)))
 
 
 def missing_tool(arguments: tuple[str, ...]) -> str | None:
@@ -68,11 +77,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quiet", action="store_true", help="Show only the pass/fail summary")
     args = parser.parse_args()
-    failed = [name for name, arguments in CHECKS if not run(name, arguments, quiet=args.quiet)]
+    checks = local_checks(platform.system())
+    failed = [name for name, arguments in checks if not run(name, arguments, quiet=args.quiet)]
     if failed:
         print(f"FAILED: {', '.join(failed)}", file=sys.stderr)
         return 1
-    print(f"PASS: {len(CHECKS)} local checks", file=sys.stderr)
+    print(f"PASS: {len(checks)} local checks", file=sys.stderr)
     return 0
 
 

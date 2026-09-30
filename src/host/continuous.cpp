@@ -160,7 +160,7 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
         .illumination = illumination,
     });
     if (!published) {
-        return std::unexpected(published.error());
+        return std::unexpected(std::move(published.error()));
     }
     // The conversion the record states, so the response and the record cannot disagree.
     auto report = published->conversion.value_or((*converter)->report());

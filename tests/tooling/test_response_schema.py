@@ -75,6 +75,21 @@ class ResponseSchemaTests(unittest.TestCase):
         self.assertFalse(validator.is_valid(response | {"exit_code": 5}))
         self.assertFalse(validator.is_valid(response | {"publication": "completed"}))
 
+    def test_integrity_failure_can_retain_known_publication(self) -> None:
+        """A failed postcommit inspection cannot erase an observed successful rename."""
+        response = {
+            "schema_version": 1,
+            "command": "process",
+            "version": "0.3.0",
+            "exit_code": 5,
+            "publication": "completed",
+            "error": {"code": "E_OUTPUT_VERIFY", "message": "Inspect the published bundle"},
+        }
+        validator = Draft202012Validator(SCHEMA)
+        validator.validate(response)
+        self.assertFalse(validator.is_valid(response | {"publication": "unknown"}))
+        self.assertFalse(validator.is_valid(response | {"command": "verify"}))
+
     def test_help_options_are_typed(self) -> None:
         """Every option item has the complete closed descriptor shape."""
         response = {

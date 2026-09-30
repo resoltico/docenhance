@@ -5,6 +5,7 @@
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/raster.hpp"
 
 #include <cstddef>
 #include <span>
@@ -22,6 +23,14 @@ struct BundleFile {
     std::string_view relative;
     void* state;
     core::Result<void> (*write)(void*, const BundleSlot&);
+};
+enum class BundleObservation { consistent, integrity_failure, other_or_absent, unobservable };
+// Processing meaning stays in the host. The I/O transaction invokes the supplied validator
+// before commit and observes this invocation's identity afterward; it never parses a record.
+struct BundleValidation {
+    void* state = nullptr;
+    core::Result<void> (*prepare)(void*, const std::string&, const core::Cancellation&) = nullptr;
+    BundleObservation (*observe)(void*, const std::string&) = nullptr;
 };
 // Writes every declared file into an owned staging directory, observes the one cancellation
 // cutoff, then commits the complete directory with a single exclusive rename. A failure anywhere
@@ -42,10 +51,35 @@ inline constexpr std::size_t bundle_max_entries = 64;
 inline constexpr std::size_t bundle_max_file_bytes = std::size_t{256} * 1024 * 1024;
 // Every regular file in the bundle, named relative to its root and identified. Directories are
 // reported separately, because a record permits exactly the ones its declared paths imply.
+inline constexpr std::size_t bundle_snapshot_budget = std::size_t{1} * 1024 * 1024 * 1024;
 struct BundleContents {
     std::vector<core::NamedContent> files;
     std::vector<std::string> directories;
 };
+struct PngArtifact {
+    image::RasterShape shape;
+    bool profile_embedded = false;
+    core::Buffer profile;
+    std::optional<image::Resolution> resolution;
+    bool binary_samples = true;
+    bool mask_samples = true;
+    std::uint64_t protected_samples = 0;
+};
+[[nodiscard]] core::Result<PngArtifact> observe_bundle_png(std::span<const std::byte> bytes,
+                                                           core::Budget& budget,
+                                                           const core::Cancellation& cancellation);
+// All observations describe these immutable snapshots, never a later pathname reopening.
+struct BundleSnapshot {
+    core::Buffer record;
+    core::Buffer image;
+    core::Buffer mask;
+    BundleContents contents;
+};
+// The host supplies the record grammar's byte bound; I/O supplies the artifact bound.
+[[nodiscard]] core::Result<BundleSnapshot> read_bundle(const std::string& directory,
+                                                       core::Budget& budget,
+                                                       const core::Cancellation& cancellation,
+                                                       std::size_t record_limit);
 [[nodiscard]] core::Result<BundleContents> inspect_bundle(const std::string& directory);
 // The bytes of one bundle file, refused if larger than the limit given.
 [[nodiscard]] core::Result<core::Buffer> read_bundle_file(const std::string& directory,
@@ -53,5 +87,6 @@ struct BundleContents {
                                                           std::size_t limit, core::Budget& budget);
 [[nodiscard]] core::Result<std::string> publish_bundle(const std::string& output_directory,
                                                        std::span<const BundleFile> files,
-                                                       const core::Cancellation& cancellation = {});
+                                                       const core::Cancellation& cancellation = {},
+                                                       BundleValidation validation = {});
 } // namespace docenhance::io

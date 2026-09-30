@@ -10,7 +10,7 @@ neither workflow publishes binary artifacts. The reasoning behind the strictness
 python tools/install_build_tools.py          # pinned CMake, Ninja and test dependencies
 python tools/install_build_tools.py --lint   # pinned Ruff, mypy, clang-format, pre-commit
 python tools/install_llvm.py --compiler      # the pinned clang, its runtimes and clang-tidy
-python tools/check_all.py                    # structure, gates, format, lint, types, tests
+python tools/check_all.py                    # source checks + Docker Linux native gate on macOS/Windows
 export CC=clang-23 CXX=clang++-23            # macOS: "$(brew --prefix llvm)/bin/clang[++]"
 cmake --workflow --preset dev                # build and test, clang-tidy on every target
 cmake --workflow --preset sanitize           # the suite under ASan and UBSan
@@ -28,6 +28,34 @@ The build also runs the [architecture rules](architecture.md#enforced-boundaries
 `architecture` test, over the real include graph, the real abstract syntax tree, the links the build
 declares and every public header on its own. The rules that need no build run in `check_all.py` too,
 and a forbidden link fails the configure step before anything is compiled.
+
+## Local Linux verification with Docker
+
+On macOS and Windows, `python tools/check_all.py` and the local Git hook now require the Linux
+Docker gate. Run it separately with `python tools/check_linux.py`. Missing Docker, an unavailable
+daemon, image preparation failure or any failed native check fails the gate; none is a skipped pass.
+Linux hosts keep the source check list without recursively starting another container.
+
+The base image is digest-pinned in `deps/tools.json`. A content-addressed development image installs
+the repository's pinned CMake/Ninja/test/lint tools and the fingerprint-checked LLVM major through
+the existing installers. The native workflow uses GCC/libstdc++, compiler warnings as errors,
+clang-tidy on every target, the compiler-backed architecture checks, real executable/reference
+suites and native packaging. It also runs the relocated-package smoke test. Imaging libraries
+come from the verified source lock and explicit feature configuration, never system substitutes.
+
+The first run prepares the development image and acquires missing locked sources explicitly;
+the ensuing CMake workflow remains offline. Existing host source receipts may seed a read-only
+cache, and are verified again before use. Persistent Docker volumes isolate Linux `out`, `.cache`
+and `dist` from host build products. Cache names include the checkout and tool/source/feature pins;
+changing those pins selects fresh native state. Incremental runs reuse validated sources and native
+builds, while always rerunning the checks. The current working tree, including uncommitted edits,
+is what gets tested.
+
+Complete diagnostics are retained in `.cache/linux-gate/latest.log`. The output identifies that
+file on failure. This checks the Docker engine's native Linux architecture; it does not establish
+Windows, the other Linux architecture, signing, old-OS execution or sanitizer/fuzz campaigns.
+Those CI jobs remain required. Docker is development infrastructure, never an application runtime
+dependency.
 
 ## Sanitizers
 

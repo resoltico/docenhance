@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #include "context.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
@@ -40,7 +41,8 @@ core::Result<core::Buffer> serialize(const Context& context, void* const profile
     }
     return storage;
 }
-core::Result<Profile> gray_profile(const Context& context, core::Budget& budget) {
+core::Result<Profile> gray_profile(const Context& context, core::Budget& budget,
+                                   const core::Cancellation& cancellation) {
     constexpr std::uint32_t entries = 65530; // Largest table supported by the pinned Little CMS.
     constexpr double rounding_half = 0.5;
     auto table = image::Plane<std::uint16_t>::allocate(budget, entries, 1);
@@ -48,7 +50,11 @@ core::Result<Profile> gray_profile(const Context& context, core::Budget& budget)
         return std::unexpected(table.error());
     }
     auto const values = table->view().row(0);
+    constexpr std::uint32_t poll = 1024;
     for (std::uint32_t i = 0; i < entries; ++i) {
+        if (i % poll == 0 && cancellation.requested(core::Checkpoint::verification)) {
+            return core::cancelled();
+        }
         const auto value = image::srgb_decode(static_cast<double>(i) / (entries - 1));
         if (!value) {
             return std::unexpected(value.error());
@@ -77,8 +83,12 @@ Profile linear_rgb_profile(const Context& context) {
     std::array<cmsToneCurve*, image::rgb_channels> curves{curve.get(), curve.get(), curve.get()};
     return Profile{cmsCreateRGBProfileTHR(context.get(), &d65, &primaries, curves.data())};
 }
-core::Result<core::Buffer> output_profile(const Context& context, core::Budget& budget, bool gray) {
-    auto profile = gray ? gray_profile(context, budget)
+core::Result<core::Buffer> output_profile(const Context& context, core::Budget& budget, bool gray,
+                                          const core::Cancellation& cancellation) {
+    if (cancellation.requested(core::Checkpoint::verification)) {
+        return core::cancelled();
+    }
+    auto profile = gray ? gray_profile(context, budget, cancellation)
                         : core::Result<Profile>{Profile{cmsCreate_sRGBProfileTHR(context.get())}};
     if (!profile) {
         return std::unexpected(profile.error());

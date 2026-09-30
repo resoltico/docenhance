@@ -7,6 +7,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "docenhance/io/png.hpp"
 
 #include <algorithm>
@@ -35,7 +36,6 @@ constexpr std::uint32_t chunk_fdat = 0x66644154;
 constexpr std::uint32_t ancillary_bit = 0x20000000;
 constexpr std::size_t crc_bytes = png_integer_bytes;
 constexpr std::size_t transfer_bytes = std::size_t{64} * 1024;
-constexpr std::size_t max_chunks = 65536;
 struct Chunk {
     std::uint32_t type{};
     std::span<const std::uint8_t> data;
@@ -252,9 +252,10 @@ bool pixel_chunk(std::uint32_t type) noexcept {
            type == chunk_trns;
 }
 core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes, core::Budget& budget,
-                               image::ProfilePolicy policy, const core::Cancellation& cancellation,
-                               PngLimits limits) {
-    if (bytes.size() > std::min(png_max_encoded_bytes, limits.encoded_bytes)) {
+                               PngReadPolicy policy, const core::Cancellation& cancellation) {
+    const auto maximum =
+        policy.content == PngContent::source ? png_max_encoded_bytes : bundle_max_file_bytes;
+    if (bytes.size() > std::min(maximum, policy.limits.encoded_bytes)) {
         return core::failure(core::ErrorCode::resource, "PNG exceeds the encoded byte ceiling");
     }
     if (bytes.size() < signature.size() ||
@@ -263,8 +264,8 @@ core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes, core::Budget
     }
     bytes = bytes.subspan(signature.size());
     ScanState state;
-    state.pixel_limit = std::min(png_max_pixels, limits.pixels);
-    for (std::size_t count = 0; count < max_chunks && !bytes.empty(); ++count) {
+    state.pixel_limit = std::min(png_max_pixels, policy.limits.pixels);
+    for (std::size_t count = 0; count < png_max_chunks && !bytes.empty(); ++count) {
         auto chunk = take_chunk(bytes, cancellation);
         if (!chunk) {
             return std::unexpected(chunk.error());
@@ -273,7 +274,7 @@ core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes, core::Budget
         if (!order) {
             return std::unexpected(order.error());
         }
-        auto meta = declaration(state, *chunk, budget, policy);
+        auto meta = declaration(state, *chunk, budget, policy.profile);
         if (!meta) {
             return std::unexpected(meta.error());
         }

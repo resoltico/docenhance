@@ -5,6 +5,7 @@
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
+#include "read_fields.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -12,6 +13,7 @@
 #include <expected>
 #include <new>
 #include <nlohmann/json.hpp>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -115,10 +117,42 @@ constexpr std::size_t max_path_length = 128;
     if (!hexadecimal(sha256)) {
         return std::unexpected(rejected("declares a digest that is not a SHA-256"));
     }
+    const auto count = bytes->get<std::uint64_t>();
+    constexpr std::uint64_t artifact_limit = std::uint64_t{256} * 1024 * 1024;
+    if (count == 0 || count > artifact_limit) {
+        return std::unexpected(rejected("declares an artifact outside its byte domain"));
+    }
     return Artifact{
         .name = spelling,
         .identity = {.sha256 = sha256, .bytes = bytes->get<std::uint64_t>()},
     };
+}
+
+Json parse_record(std::string_view text) {
+    std::vector<std::set<std::string>> keys;
+    bool duplicate = false;
+    std::size_t events = 0;
+    constexpr std::size_t event_limit = 1024;
+    const auto callback = [&](int, Json::parse_event_t event, Json& value) {
+        ++events;
+        if (event == Json::parse_event_t::object_start) {
+            keys.emplace_back();
+        }
+        if (event == Json::parse_event_t::key) {
+            duplicate =
+                (events <= event_limit && !keys.back().insert(value.get<std::string>()).second) ||
+                duplicate;
+        }
+        if (event == Json::parse_event_t::object_end) {
+            keys.pop_back();
+        }
+        return events <= event_limit;
+    };
+    auto document = Json::parse(text, callback, false);
+    if (duplicate || events > event_limit) {
+        return {Json::value_t::discarded};
+    }
+    return document;
 }
 
 // Every artifact a record declares, in the order the record lists them.
@@ -211,7 +245,7 @@ core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         const std::string_view text{reinterpret_cast<const char*>(bytes.data()), bytes.size()};
         // Parsed without exceptions: a malformed document comes back discarded, not thrown.
-        const auto document = Json::parse(text, nullptr, false);
+        const auto document = parse_record(text);
         if (document.is_discarded()) {
             return std::unexpected(rejected("is not well-formed JSON"));
         }
@@ -223,7 +257,7 @@ core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes) {
             !run->is_string() || recorded == nullptr || !recorded->is_string()) {
             return std::unexpected(rejected("has no identifying header"));
         }
-        if (version->get<unsigned>() != record_version) {
+        if (version->get<std::uint64_t>() != record_version) {
             return std::unexpected(
                 rejected("was written in a version this build does not support"));
         }
@@ -231,12 +265,19 @@ core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes) {
         if (!inventory) {
             return std::unexpected(inventory.error());
         }
-        return DeclaredBundle{
+        DeclaredBundle declared{
             .version = version->get<unsigned>(),
             .run = run->get<std::string>(),
             .recorded = recorded->get<std::string>(),
             .inventory = std::move(*inventory),
         };
+        auto valid = validate_record_claims(document, declared);
+        if (!valid) {
+            return std::unexpected(valid.error());
+        }
+        return declared;
+    } catch (const Json::exception&) {
+        return std::unexpected(rejected("contains invalid field types or domains"));
     } catch (const std::bad_alloc&) {
         return core::failure(core::ErrorCode::resource, "Reading the run record exhausted memory");
     }

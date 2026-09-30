@@ -1,123 +1,155 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
+#include "bundle_native.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/digest.hpp"
 #include "png_context.hpp"
-#include "publication.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdio>
 #include <expected>
-#include <filesystem>
-#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <utility>
-#include <vector>
-
 namespace docenhance::io {
 namespace {
-[[nodiscard]] core::Error refused(std::string detail) {
-    return {.code = core::ErrorCode::input, .message = "The bundle " + std::move(detail)};
-}
-
-// The path a bundle names, relative to its root, with forward slashes on every platform.
-[[nodiscard]] std::string relative_name(const std::filesystem::path& root,
-                                        const std::filesystem::path& entry) {
-    auto relative = entry.lexically_relative(root).generic_string();
-    return relative;
-}
-// The length of an open file, taken from the stream itself and leaving it positioned to read from
-// the beginning. A file whose end is past what a stream position can express is reported as no
-// length at all, because this reads only files that are bounded anyway.
-[[nodiscard]] std::optional<std::size_t> file_position_at_end(std::FILE* file) {
-    if (std::fseek(file, 0, SEEK_END) != 0) {
-        return std::nullopt;
+core::Result<core::Buffer> snapshot(FileHandle file, std::size_t limit, core::Budget& budget,
+                                    const core::Cancellation& cancellation) {
+    if (std::fseek(file.get(), 0, SEEK_END) != 0) {
+        return core::failure(core::ErrorCode::input, "Cannot inspect bundle file size");
     }
-    const auto end = std::ftell(file);
-    if (end < 0 || std::fseek(file, 0, SEEK_SET) != 0) {
-        return std::nullopt;
+    const auto length = std::ftell(file.get());
+    if (length < 0 || std::cmp_greater(length, limit) || std::fseek(file.get(), 0, SEEK_SET) != 0) {
+        return core::failure(core::ErrorCode::input, "Bundle file exceeds its byte bound");
     }
-    return static_cast<std::size_t>(end);
-}
-} // namespace
-
-core::Result<BundleContents> inspect_bundle(const std::string& directory) {
-    const auto root = utf8_path(directory);
-    std::error_code error;
-    if (!std::filesystem::is_directory(root, error) || error) {
-        return std::unexpected(refused("is not a readable directory"));
-    }
-    BundleContents contents;
-    std::filesystem::recursive_directory_iterator walk{
-        root, std::filesystem::directory_options::none, error};
-    if (error) {
-        return std::unexpected(refused("cannot be listed"));
-    }
-    const std::filesystem::recursive_directory_iterator end;
-    for (std::size_t visited = 0; walk != end; walk.increment(error), ++visited) {
-        if (error) {
-            return std::unexpected(refused("cannot be listed"));
-        }
-        if (visited >= bundle_max_entries) {
-            return std::unexpected(refused("holds more entries than one may contain"));
-        }
-        // Inspected without following: a link is refused, never resolved.
-        const auto status = walk->symlink_status(error);
-        if (error) {
-            return std::unexpected(refused("holds an entry that cannot be inspected"));
-        }
-        auto name = relative_name(root, walk->path());
-        if (std::filesystem::is_directory(status)) {
-            contents.directories.push_back(std::move(name));
-            continue;
-        }
-        if (!std::filesystem::is_regular_file(status)) {
-            return std::unexpected(refused("holds " + name + ", which is not a regular file"));
-        }
-        const BundleSlot slot{.path = walk->path()};
-        // Size and digest both come from this one reading, so no entry is recorded at a size that
-        // a separate measurement claimed.
-        auto identity = identify_slot(slot, bundle_max_file_bytes);
-        if (!identity) {
-            return std::unexpected(refused("holds " + name + ", which cannot be read"));
-        }
-        contents.files.push_back({.name = std::move(name), .identity = std::move(*identity)});
-    }
-    return contents;
-}
-
-core::Result<core::Buffer> read_bundle_file(const std::string& directory, std::string_view relative,
-                                            std::size_t limit, core::Budget& budget) {
-    const auto path = utf8_path(directory) / utf8_path(relative);
-    std::error_code error;
-    if (!std::filesystem::is_regular_file(std::filesystem::symlink_status(path, error)) || error) {
-        return std::unexpected(refused("does not contain " + std::string(relative)));
-    }
-    const auto file = open_for_reading(path);
-    if (file == nullptr) {
-        return std::unexpected(refused("cannot open " + std::string(relative)));
-    }
-    // Measured through the handle this reads from, so the size belongs to the file being read
-    // rather than to whatever the path named a moment earlier. A file past the bound reports no
-    // position this can use, which is the same refusal as one that is simply too large.
-    const auto measured = file_position_at_end(file.get());
-    if (!measured || *measured > limit) {
-        return std::unexpected(refused("holds a " + std::string(relative) + " that is too large"));
-    }
-    auto bytes = budget.allocate(*measured);
+    auto bytes = budget.allocate(static_cast<std::size_t>(length));
     if (!bytes) {
         return std::unexpected(bytes.error());
     }
-    const auto remaining = bytes->bytes();
-    if (!remaining.empty() &&
-        std::fread(remaining.data(), 1, remaining.size(), file.get()) != remaining.size()) {
-        return std::unexpected(refused("cannot read " + std::string(relative)));
+    auto remaining = bytes->bytes();
+    constexpr std::size_t transfer = std::size_t{64} * 1024;
+    while (!remaining.empty()) {
+        if (cancellation.requested(core::Checkpoint::verification)) {
+            return core::cancelled();
+        }
+        const auto part = remaining.first(std::min(transfer, remaining.size()));
+        if (std::fread(part.data(), 1, part.size(), file.get()) != part.size()) {
+            return core::failure(core::ErrorCode::input,
+                                 "Bundle file changed size or could not be read");
+        }
+        remaining = remaining.subspan(part.size());
+    }
+    if (std::fgetc(file.get()) != EOF || std::ferror(file.get()) != 0) {
+        return core::failure(core::ErrorCode::input,
+                             "Bundle file changed size or could not be finished");
     }
     return bytes;
+}
+core::Result<core::Buffer> read(const BundleDirectory& directory, const std::string& name,
+                                std::size_t limit, core::Budget& budget,
+                                const core::Cancellation& cancellation) {
+    if (cancellation.requested(core::Checkpoint::verification)) {
+        return core::cancelled();
+    }
+    auto file = directory.file(name);
+    if (!file) {
+        return std::unexpected(file.error());
+    }
+    return snapshot(std::move(*file), limit, budget, cancellation);
+}
+core::Result<void> append(BundleSnapshot& result, const std::string& name, core::Buffer bytes,
+                          const core::Cancellation& cancellation) {
+    auto identity = identify(bytes.bytes(), cancellation);
+    if (!identity) {
+        return std::unexpected(identity.error());
+    }
+    result.contents.files.push_back({.name = name, .identity = std::move(*identity)});
+    if (name == "run.json") {
+        result.record = std::move(bytes);
+    } else if (name == "result.png") {
+        result.image = std::move(bytes);
+    } else {
+        result.mask = std::move(bytes);
+    }
+    return {};
+}
+core::Result<void> read_mask(const BundleDirectory& root, BundleSnapshot& result,
+                             core::Budget& budget, const core::Cancellation& cancellation) {
+    auto assets = root.child("assets");
+    if (!assets) {
+        return std::unexpected(assets.error());
+    }
+    auto names = assets->entries();
+    if (!names || names->size() != 1 || names->front() != "protect-mask.png") {
+        return core::failure(core::ErrorCode::input, "Bundle assets inventory is not closed");
+    }
+    auto mask = read(*assets, "protect-mask.png", bundle_max_file_bytes, budget, cancellation);
+    if (!mask) {
+        return std::unexpected(mask.error());
+    }
+    result.contents.directories.emplace_back("assets");
+    return append(result, "assets/protect-mask.png", std::move(*mask), cancellation);
+}
+} // namespace
+core::Result<BundleSnapshot> read_bundle(const std::string& directory, core::Budget& budget,
+                                         const core::Cancellation& cancellation,
+                                         std::size_t record_limit) {
+    auto root = BundleDirectory::open(utf8_path(directory));
+    if (!root) {
+        return std::unexpected(root.error());
+    }
+    auto names = root->entries();
+    if (!names) {
+        return std::unexpected(names.error());
+    }
+    BundleSnapshot result;
+    for (const auto& name : *names) {
+        if (name == "assets") {
+            auto mask = read_mask(*root, result, budget, cancellation);
+            if (!mask) {
+                return std::unexpected(mask.error());
+            }
+            continue;
+        }
+        if (name != "run.json" && name != "result.png") {
+            return core::failure(core::ErrorCode::input, "Bundle contains an undeclared entry");
+        }
+        const auto limit = name == "run.json" ? std::min(record_limit, bundle_max_file_bytes)
+                                              : bundle_max_file_bytes;
+        auto bytes = read(*root, name, limit, budget, cancellation);
+        if (!bytes) {
+            return std::unexpected(bytes.error());
+        }
+        auto stored = append(result, name, std::move(*bytes), cancellation);
+        if (!stored) {
+            return std::unexpected(stored.error());
+        }
+    }
+    return result;
+}
+core::Result<BundleContents> inspect_bundle(const std::string& directory) {
+    core::Budget budget{bundle_snapshot_budget};
+    auto result = read_bundle(directory, budget, {}, bundle_max_file_bytes);
+    if (!result) {
+        return std::unexpected(result.error());
+    }
+    return std::move(result->contents);
+}
+core::Result<core::Buffer> read_bundle_file(const std::string& directory, std::string_view relative,
+                                            std::size_t limit, core::Budget& budget) {
+    // This compatibility entry point is intentionally a single root file, never an arbitrary path.
+    if (relative != "run.json" && relative != "result.png") {
+        return core::failure(core::ErrorCode::input, "Unsupported bundle file role");
+    }
+    auto root = BundleDirectory::open(utf8_path(directory));
+    if (!root) {
+        return std::unexpected(root.error());
+    }
+    return read(*root, std::string(relative), limit, budget, {});
 }
 } // namespace docenhance::io

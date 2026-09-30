@@ -76,7 +76,7 @@ core::Result<IdentifiedRaster> load_png_raster(const std::string& input, core::B
     }
     // Identify the snapshot before it is decoded and released; reopening the path afterwards
     // would describe whatever occupies it then.
-    auto source = identify(encoded->bytes());
+    auto source = identify(encoded->bytes(), cancellation);
     if (!source) {
         return std::unexpected(source.error());
     }

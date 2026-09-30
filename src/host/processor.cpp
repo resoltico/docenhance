@@ -79,7 +79,7 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
         .illumination = none,
     });
     if (!published) {
-        return std::unexpected(published.error());
+        return std::unexpected(std::move(published.error()));
     }
     return app::PublishedImage{
         .output = std::move(published->output),

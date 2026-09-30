@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "bundle.hpp"
 
+#include "bundle_verify.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
@@ -24,6 +25,8 @@
 #include <vector>
 
 namespace docenhance::host {
+static_assert(std::is_nothrow_move_constructible_v<PublishedRun>);
+static_assert(std::is_nothrow_move_constructible_v<core::Error>);
 namespace {
 // What the writers fill in as they run. The record writer is declared last, so by the time it
 // runs every artifact it describes has been written, verified and identified.
@@ -33,8 +36,7 @@ struct Composition {
     std::optional<image::ConversionReport> conversion;
     bundle::OutputFacts output{};
     std::optional<bundle::ProtectionFacts> protection;
-    core::ContentIdentity record{};
-    bool wrote_record = false;
+    ExpectedBundle expected;
 };
 
 core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
@@ -59,12 +61,13 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
     if (!written) {
         return written;
     }
-    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes);
+    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes, run.cancellation.get());
     if (!identity) {
         return std::unexpected(identity.error());
     }
     if (run.observe_conversion != nullptr) {
         composed.conversion = run.observe_conversion(run.conversion_state);
+        composed.conversion->verified = true;
     }
     composed.output = {
         .artifact = {.name = bundle::image_name, .identity = std::move(*identity)},
@@ -90,7 +93,7 @@ core::Result<void> write_mask(void* const state, const io::BundleSlot& slot) {
     if (!written) {
         return written;
     }
-    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes);
+    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes, run.cancellation.get());
     if (!identity) {
         return std::unexpected(identity.error());
     }
@@ -124,7 +127,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     // The record's own digest is taken from these bytes and reported in the response. Embedding it
     // would mean hashing bytes that contain the hash.
     const std::span<const char> text{written->data(), written->size()};
-    auto identity = io::identify(std::as_bytes(text));
+    auto identity = io::identify(std::as_bytes(text), run.cancellation.get());
     if (!identity) {
         return std::unexpected(identity.error());
     }
@@ -132,8 +135,8 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     if (!placed) {
         return placed;
     }
-    composed.record = std::move(*identity);
-    composed.wrote_record = true;
+    composed.expected.record = std::move(*identity);
+    composed.expected.run = record.context.identity;
     return {};
 }
 } // namespace
@@ -146,19 +149,22 @@ core::Result<PublishedRun> publish_run(const RunPublication& run) {
         files.push_back({.relative = bundle::mask_name, .state = &composed, .write = write_mask});
     }
     files.push_back({.relative = bundle::record_name, .state = &composed, .write = write_record});
-    auto published = io::publish_bundle(run.output_directory.get(), files, run.cancellation.get());
-    if (!published) {
-        return std::unexpected(published.error());
-    }
-    if (!composed.wrote_record) {
-        return core::failure(core::ErrorCode::invariant, "A bundle was published without a record");
-    }
-    return PublishedRun{
-        .output = std::move(*published),
+    PublishedRun result{
+        .output = {},
         .run = run.context.get().identity,
-        .record = std::move(composed.record),
-        .verification = composed.output.verification,
-        .conversion = composed.conversion,
+        .record = {.sha256 = {}, .bytes = 0},
+        .verification = bundle::Verification::decoded_and_compared,
+        .conversion = std::nullopt,
     };
+    auto published = io::publish_bundle(run.output_directory.get(), files, run.cancellation.get(),
+                                        bundle_validation(composed.expected));
+    if (!published) {
+        return std::unexpected(std::move(published.error()));
+    }
+    result.output = std::move(*published);
+    result.record = std::move(composed.expected.record);
+    result.verification = composed.output.verification;
+    result.conversion = composed.conversion;
+    return result;
 }
 } // namespace docenhance::host

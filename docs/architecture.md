@@ -62,7 +62,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 | `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
 
-Only `de_report` uses nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
+Only `de_bundle` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
 Other pinned imaging libraries remain isolated in the native dependency probe until a real method
 needs them. Public headers never expose third-party types. The executable-only `entry` layer
 explicitly declares that it has no public header directory; it is not a fake reusable library.
@@ -86,7 +86,9 @@ from an owning plane. It does not extend storage lifetime. Rows require in-range
 Kernel entry points reject empty, shape-mismatched and overlapping source/destination storage.
 Full backing spans, including padding, are used for conservative overlap checks.
 
-The binarization host has a 128 MiB charged-buffer limit shared by image planes and libpng/zlib allocations.
+Binarization processing retains a 128 MiB charged-buffer limit shared by its image planes and
+libpng/zlib allocations. Complete bundle validation has a separate 1 GiB charged-buffer budget,
+which can coexist with live processing buffers; see [processing bundles](bundles.md).
 This is **not a process-RSS bound**: small standard-library metadata, the accounting ledger, C stream
 buffers, OS thread resources and stacks are outside it. The codec allocator uses a bounded
 registry; exhaustion is a resource failure, never permission to allocate elsewhere. Generic
@@ -128,7 +130,17 @@ Commit is native and atomically non-replacing: Linux `renameat2(RENAME_NOREPLACE
 check-then-rename fallback. An existing empty directory, file or symlink cannot be replaced, even
 when it appeared after the precheck. Unsupported filesystems fail closed.
 
-Cleanup removes only this attempt's known staged file and directory, never recursively.
+Bundle validation stays in `de_host`, composing `de_bundle`'s complete typed record reader with
+`de_io`'s native snapshots and PNG observations and `de_color`'s supported ICC checks. The publisher
+invokes supplied validation callbacks before commit and when reconciling the destination, without
+acquiring a bundle/method layer dependency. The same acceptance contract serves later verification,
+staging validation and postcommit observation; none reruns processing.
+
+Cleanup removes only this attempt's known staged files and directories, never recursively. Native
+object identities captured at creation refuse cleanup of replaced names. An ambiguous commit retains
+staging through destruction until its outcome can be explained. Successful rename remains completed
+publication even if later inspection fails; such an inspection failure is `E_OUTPUT_VERIFY` with
+`completed`, not false absence or uncertainty about a known effect.
 Responses distinguish `not_started`, `not_published`, `completed` and `unknown`. Ambiguous filesystem
 errors or failed cleanup produce `E_PUBLICATION_UNKNOWN` (exit 7); callers must inspect paths rather
 than retry blindly. Output-stream failure (exit 5 without a complete response) is also not proof
@@ -177,8 +189,10 @@ The top-level CMake project owns versioning. `deps/lock.json` owns source identi
 `deps/features.json` owns upstream feature policy; `deps/tools.json` owns developer-tool versions.
 `spec/cli-contract.json` and `spec/method-contract.json` generate descriptors, reference docs and
 fuzz dictionaries. `spec/command-response.schema.json` owns the response template; reviewed method
-identities generate its closed alternatives into `schemas/command-response.schema.json`. The real
-Draft 2020-12 validator checks executable output and negative fixtures. The executable catalog is
+identities generate its closed alternatives into `schemas/command-response.schema.json`. The run-record template in `spec/run-record.schema.json` shares conversion/illumination report
+definitions and reviewed method identities with the response schema during generation. Both schemas
+are shipped. The real Draft 2020-12 validator checks executable output, emitted run records and
+negative fixtures; the bounded typed record reader additionally validates cross-field relationships. The executable catalog is
 built from actual method variant alternatives and must equal the reviewed catalog at compile time.
 
 Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,

@@ -20,7 +20,7 @@ core::Result<IdentifiedImage> load_grayscale_png(const std::string& input, core:
     if (!encoded) {
         return std::unexpected(encoded.error());
     }
-    auto source = identify(encoded->bytes());
+    auto source = identify(encoded->bytes(), cancellation);
     if (!source) {
         return std::unexpected(source.error());
     }

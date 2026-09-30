@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #pragma once
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
@@ -53,8 +54,9 @@ struct TransformCloser {
 using Profile = std::unique_ptr<void, ProfileCloser>;
 using Curve = std::unique_ptr<cmsToneCurve, CurveCloser>;
 using Transform = std::unique_ptr<void, TransformCloser>;
-[[nodiscard]] core::Result<core::Buffer> output_profile(const Context& context,
-                                                        core::Budget& budget, bool gray);
+[[nodiscard]] core::Result<core::Buffer>
+output_profile(const Context& context, core::Budget& budget, bool gray,
+               const core::Cancellation& cancellation = {});
 [[nodiscard]] Profile linear_rgb_profile(const Context& context);
 [[nodiscard]] core::Result<Profile> source_profile(const Context& context,
                                                    const image::Raster& source);

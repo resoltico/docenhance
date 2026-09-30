@@ -6,6 +6,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_context.hpp"
@@ -128,12 +129,10 @@ image::SampleModel sample_model(const PngContext& context) noexcept {
         return image::SampleModel::rgba;
     }
 }
-} // namespace
-core::Result<image::Raster> decode_png_raster(std::span<const std::uint8_t> bytes,
-                                              core::Budget& budget, image::ProfilePolicy policy,
-                                              const core::Cancellation& cancellation,
-                                              PngLimits limits) {
-    auto scanned = scan_png(bytes, budget, policy, cancellation, limits);
+core::Result<image::Raster> decode_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
+                                          PngReadPolicy policy,
+                                          const core::Cancellation& cancellation) {
+    auto scanned = scan_png(bytes, budget, policy, cancellation);
     if (!scanned) {
         return std::unexpected(std::move(scanned.error()));
     }
@@ -170,5 +169,26 @@ core::Result<image::Raster> decode_png_raster(std::span<const std::uint8_t> byte
         .pixels = std::move(*pixels),
         .metadata = std::move(scanned->metadata),
     };
+}
+} // namespace
+core::Result<image::Raster> decode_png_raster(std::span<const std::uint8_t> bytes,
+                                              core::Budget& budget, image::ProfilePolicy policy,
+                                              const core::Cancellation& cancellation,
+                                              PngLimits limits) {
+    return decode_raster(bytes, budget,
+                         {.profile = policy, .limits = limits, .content = PngContent::source},
+                         cancellation);
+}
+core::Result<image::Raster> decode_result_png_raster(std::span<const std::uint8_t> bytes,
+                                                     core::Budget& budget,
+                                                     const core::Cancellation& cancellation) {
+    return decode_raster(
+        bytes, budget,
+        {
+            .profile = image::ProfilePolicy::embedded,
+            .limits = {.encoded_bytes = bundle_max_file_bytes, .pixels = png_max_pixels},
+            .content = PngContent::result,
+        },
+        cancellation);
 }
 } // namespace docenhance::io

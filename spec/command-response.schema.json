@@ -717,8 +717,12 @@
             "publication": {
               "enum": [
                 "not_started",
-                "not_published"
+                "not_published",
+                "completed"
               ]
+            },
+            "command": {
+              "const": "process"
             }
           }
         },

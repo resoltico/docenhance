@@ -29,7 +29,9 @@ Each result is published as a bundle: the image, a `run.json` recording the buil
 source bytes, the admitted request, the execution observations, the protection in force and the
 verified output, and the canonical mask when one was supplied. The files are committed together, so
 no result is published without its record. `docenhance verify DIRECTORY` reads one back against a
-closed inventory without executing anything it finds. Binary output is now read back and compared
+complete supported record, closed inventory and decoded artifact properties without executing
+anything it finds. Staged bundles use that same validation; publication reconciles this run's
+identity and manifest digest, retaining uncertainty and preserving known committed effects. Binary output is now read back and compared
 before publication, as continuous output already was. Agreement between artifacts and their record
 is not authenticity; see [processing bundles](bundles.md).
 See [architecture](architecture.md) for exact limits and the publication trust/durability boundary.

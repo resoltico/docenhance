@@ -1,10 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
 #include "context.hpp"
+#include "docenhance/color/profile.hpp"
+#include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/raster.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -48,8 +52,8 @@ bool valid_chroma(const std::array<std::uint32_t, image::chromaticity_fields>& v
     const double green_weight = (((r.x - b.x) * (w.y - b.y)) - ((w.x - b.x) * (r.y - b.y))) / area;
     return red_weight > 0 && green_weight > 0 && red_weight + green_weight < 1;
 }
-core::Result<Profile> embedded_profile(const Context& context, const image::Raster& source) {
-    auto const bytes = source.metadata.icc.bytes();
+core::Result<Profile> embedded_profile(const Context& context, image::RasterShape shape,
+                                       std::span<const std::byte> bytes) {
     constexpr std::size_t header_size = 128;
     std::uint32_t declared = 0;
     if (bytes.size() < header_size || bytes.size() > image::profile_limit) {
@@ -68,8 +72,8 @@ core::Result<Profile> embedded_profile(const Context& context, const image::Rast
     }
     // Native C enums carry arbitrary profile bytes. Preserve their unsigned representation;
     // implicit promotion to int changes high-bit malformed signatures before rejection.
-    const auto wanted = static_cast<std::uint32_t>(
-        image::is_color(source.shape.model) ? cmsSigRgbData : cmsSigGrayData);
+    const auto wanted =
+        static_cast<std::uint32_t>(image::is_color(shape.model) ? cmsSigRgbData : cmsSigGrayData);
     const auto actual = static_cast<std::uint32_t>(cmsGetColorSpace(profile.get()));
     const auto kind = static_cast<std::uint32_t>(cmsGetDeviceClass(profile.get()));
     if (actual != wanted || (kind != static_cast<std::uint32_t>(cmsSigInputClass) &&
@@ -91,6 +95,27 @@ Curve transfer_curve(const Context& context, const image::PngMetadata& metadata)
     return Curve{cmsBuildParametricToneCurve(context.get(), srgb_curve_type, parameters.data())};
 }
 } // namespace
+core::Result<void> validate_output_profile(image::RasterShape shape,
+                                           std::span<const std::byte> bytes, core::Budget& budget,
+                                           const core::Cancellation& cancellation) {
+    if (bytes.empty()) {
+        return {};
+    }
+    const Context context{budget};
+    auto profile = embedded_profile(context, shape, bytes);
+    if (!profile) {
+        return std::unexpected(profile.error());
+    }
+    auto expected = output_profile(context, budget, !image::is_color(shape.model), cancellation);
+    if (!expected) {
+        return std::unexpected(expected.error());
+    }
+    if (!std::ranges::equal(bytes, expected->bytes())) {
+        return core::failure(core::ErrorCode::input,
+                             "Bundle ICC profile is not the supported canonical output profile");
+    }
+    return {};
+}
 core::Result<void> validate_declarations(const image::PngMetadata& metadata) {
     constexpr unsigned last_intent = 3;
     if (metadata.srgb && (*metadata.srgb > last_intent || !metadata.icc.empty())) {
@@ -116,7 +141,7 @@ core::Result<void> validate_declarations(const image::PngMetadata& metadata) {
 }
 core::Result<Profile> source_profile(const Context& context, const image::Raster& source) {
     if (!source.metadata.icc.empty()) {
-        return embedded_profile(context, source);
+        return embedded_profile(context, source.shape, source.metadata.icc.bytes());
     }
     const auto chroma = source.metadata.chromaticities.value_or(srgb_chroma);
     const auto white = xy(chroma, 0);

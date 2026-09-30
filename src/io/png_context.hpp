@@ -5,6 +5,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "entry_identity.hpp"
 
 #include <array>
 #include <cstddef>
@@ -57,7 +58,8 @@ class PngContext {
     PngContext(PngContext&&) = delete;
     PngContext& operator=(PngContext&&) = delete;
     ~PngContext();
-    [[nodiscard]] bool open(const std::filesystem::path& path);
+    [[nodiscard]] bool open(const std::filesystem::path& path,
+                            std::optional<EntryIdentity>* created = nullptr);
     [[nodiscard]] bool close_output() noexcept;
     [[nodiscard]] core::Error error(core::ErrorCode fallback) const;
     PngMemory memory;
@@ -77,5 +79,6 @@ class PngContext {
 [[nodiscard]] core::Result<void> encode_png(const std::filesystem::path& output,
                                             image::PlaneView<const std::uint8_t> view,
                                             core::Budget& budget,
-                                            const core::Cancellation& cancellation = {});
+                                            const core::Cancellation& cancellation = {},
+                                            std::optional<EntryIdentity>* created = nullptr);
 } // namespace docenhance::io

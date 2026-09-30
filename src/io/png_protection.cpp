@@ -97,7 +97,7 @@ core::Result<IdentifiedMask> load_protection_png(const std::string& path, image:
     if (!bytes) {
         return std::unexpected(bytes.error());
     }
-    auto source = identify(bytes->bytes());
+    auto source = identify(bytes->bytes(), cancellation);
     if (!source) {
         return std::unexpected(source.error());
     }

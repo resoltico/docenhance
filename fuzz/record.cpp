@@ -68,6 +68,33 @@ void accepted_records_are_usable(const bundle::DeclaredBundle& declared) {
             "an accepted record is of a version this build supports");
     require(declared.inventory.size() <= bundle::record_max_artifacts,
             "an accepted record declares no more artifacts than a bundle may hold");
+    require(declared.operation.has_value(), "an accepted record retains its validated operation");
+    require(declared.run.size() == 32, "an accepted record has a complete run identity");
+    require(hexadecimal(declared.source.identity.sha256),
+            "accepted source identity is well formed");
+    require(hexadecimal(declared.build.dependency_lock_sha256),
+            "accepted build identity is well formed");
+    require(declared.source.identity.bytes != 0, "accepted source has a nonzero extent");
+    require(declared.protection_supplied == declared.protection.has_value(),
+            "protection presence agrees with request");
+    require(declared.output.shape.width != 0 && declared.output.shape.height != 0,
+            "accepted output has nonempty dimensions");
+    require(declared.output.shape.depth == image::byte_bits ||
+                declared.output.shape.depth == image::word_bits,
+            "accepted output uses supported precision");
+    require(declared.output.artifact.name == bundle::image_name,
+            "accepted output has its unique role");
+    if (declared.protection) {
+        require(declared.inventory.size() == 2,
+                "protection declares exactly one additional artifact");
+        require(declared.protection->stored.name == bundle::mask_name,
+                "accepted protection has its unique role");
+        require(declared.protection->width == declared.output.shape.width &&
+                    declared.protection->height == declared.output.shape.height,
+                "accepted protection uses oriented output extents");
+    } else {
+        require(declared.inventory.size() == 1, "an unprotected bundle declares exactly its image");
+    }
     for (const auto& artifact : declared.inventory) {
         require(!artifact.name.empty(), "an accepted artifact is named");
         require(artifact.name.front() != '/', "an accepted artifact is named relatively");
@@ -92,7 +119,7 @@ std::string written_record(FuzzInput& input) {
         .source =
             {
                 .identity = {.sha256 = std::string(core::sha256_hex_length, 'b'), .bytes = 1},
-                .name = input.string(32),
+                .name = "page.png",
             },
         .operation = methods::Binarization{*method},
         .protection_supplied = false,

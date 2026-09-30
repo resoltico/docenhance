@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/io/digest.hpp"
 
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "png_context.hpp"
 #include "publication.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -18,7 +20,8 @@
 #include <utility>
 
 namespace docenhance::io {
-core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::uint64_t limit) {
+core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::uint64_t limit,
+                                                  const core::Cancellation& cancellation) {
     const auto file = open_for_reading(slot.path);
     if (file == nullptr) {
         return core::failure(core::ErrorCode::output, "Cannot open a bundle file to identify it");
@@ -28,6 +31,9 @@ core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::u
     picosha2::hash256_one_by_one hasher;
     std::uint64_t total = 0;
     while (true) {
+        if (cancellation.requested(core::Checkpoint::verification)) {
+            return core::cancelled();
+        }
         const auto read = std::fread(buffer.data(), 1, buffer.size(), file.get());
         if (read == 0) {
             break;
@@ -56,13 +62,26 @@ core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::u
         return core::failure(core::ErrorCode::resource, "Identifying content exhausted memory");
     }
 }
-core::Result<core::ContentIdentity> identify(std::span<const std::byte> content) {
+core::Result<core::ContentIdentity> identify(std::span<const std::byte> content,
+                                             const core::Cancellation& cancellation) {
     // uint8_t is the unsigned-byte view of the same immutable storage.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     const std::span bytes{reinterpret_cast<const std::uint8_t*>(content.data()), content.size()};
     try {
         std::string hex;
-        picosha2::hash256_hex_string(bytes.begin(), bytes.end(), hex);
+        picosha2::hash256_one_by_one hasher;
+        auto remaining = bytes;
+        constexpr std::size_t transfer = std::size_t{64} * 1024;
+        while (!remaining.empty()) {
+            if (cancellation.requested(core::Checkpoint::verification)) {
+                return core::cancelled();
+            }
+            const auto part = remaining.first(std::min(transfer, remaining.size()));
+            hasher.process(part.begin(), part.end());
+            remaining = remaining.subspan(part.size());
+        }
+        hasher.finish();
+        picosha2::get_hash_hex_string(hasher, hex);
         if (hex.size() != core::sha256_hex_length) {
             return core::failure(core::ErrorCode::invariant, "A digest was not fully rendered");
         }

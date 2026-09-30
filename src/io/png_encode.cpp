@@ -4,6 +4,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
 
@@ -14,6 +15,7 @@
 #include <cstdio>
 #include <expected>
 #include <filesystem>
+#include <optional>
 #include <png.h>
 #include <pngconf.h>
 #include <span>
@@ -74,7 +76,8 @@ void install_png_writer(PngContext& context) {
 }
 core::Result<void> encode_png(const std::filesystem::path& output,
                               image::PlaneView<const std::uint8_t> view, core::Budget& budget,
-                              const core::Cancellation& cancellation) {
+                              const core::Cancellation& cancellation,
+                              std::optional<EntryIdentity>* const created) {
     if (view.empty()) {
         return core::failure(core::ErrorCode::argument, "Cannot encode an empty image");
     }
@@ -82,7 +85,7 @@ core::Result<void> encode_png(const std::filesystem::path& output,
         return core::cancelled();
     }
     PngContext context{budget, true, cancellation};
-    if (!context.open(output) || !write_pixels(context, view)) {
+    if (!context.open(output, created) || !write_pixels(context, view)) {
         return std::unexpected(context.error(core::ErrorCode::output));
     }
     if (!context.close_output()) {

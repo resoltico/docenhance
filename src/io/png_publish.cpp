@@ -18,7 +18,7 @@ core::Result<void> write_verified_png(const BundleSlot& slot,
                                       image::PlaneView<const std::uint8_t> image,
                                       core::Budget& budget,
                                       const core::Cancellation& cancellation) {
-    auto encoded = encode_png(slot.path, image, budget, cancellation);
+    auto encoded = encode_png(slot.path, image, budget, cancellation, slot.created);
     if (!encoded) {
         return encoded;
     }

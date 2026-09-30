@@ -32,7 +32,6 @@ inline constexpr double surface_smoothing_damping = 0.8;
 inline constexpr double surface_coarse_scale = 1.6;
 // The background reference is this nearest-rank quantile of the measured cell quantiles.
 inline constexpr double surface_reference_rank = 0.90;
-[[nodiscard]] core::Result<SurfaceGrid> surface_grid(image::Extent extent, const Surface& method);
 [[nodiscard]] bool protected_at(image::PlaneView<const std::uint8_t> mask, std::uint32_t x,
                                 std::uint32_t y) noexcept;
 [[nodiscard]] double select_quantile(std::span<double> samples, double quantile);

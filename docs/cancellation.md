@@ -96,7 +96,7 @@ before the actual system call. It does not retroactively revoke the authorized o
 |---|---|
 | Cancelled before any stage is owned | `E_CANCELLED`, 130, `not_started`. |
 | Cancelled with owned staging and confirmed cleanup | `E_CANCELLED`, 130, `not_published`. |
-| Native commit succeeds, even after a late request | Success, with the actual output path and `completed`. Do not delete the published result. |
+| Native commit succeeds, even after a late request | Publication remains `completed`; a later integrity/inspection failure may return `E_OUTPUT_VERIFY`. Do not delete the published result. |
 | Native commit is definitely refused | Preserve the output failure; a late request cannot erase it. |
 | Commit or owned cleanup cannot be confirmed | `E_PUBLICATION_UNKNOWN`, 7, `unknown`, even when cancellation is pending. |
 
@@ -104,7 +104,9 @@ Only the known owned staged file and its directory may be removed. No recursive 
 foreign-stage sweep, existing-destination deletion or crash-leftover recovery is introduced.
 The publisher's private rename-operation seam allows deterministic tests around the cutoff; the
 public publisher always binds the real native no-replace operation. Return metadata is prepared
-before commit. Atomic visibility is still **not crash durability**, and output ancestors remain
+before commit. Bundle preparation uses the complete validator before this cutoff; postcommit
+reconciliation ignores late cancellation and preserves both known publication and ambiguous state.
+Bundle reads and content hashing poll during bounded transfers, including source and mask identities. Atomic visibility is still **not crash durability**, and output ancestors remain
 trusted against hostile replacement.
 
 Delivery stays separate from execution: writing, rendering or flushing can fail after a cancellation
