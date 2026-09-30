@@ -96,7 +96,7 @@ def malformed_records(exe: Path, directory: Path) -> None:
         expect(not VALIDATOR.is_valid(altered), "closed schema rejects unknown fields")
         path.write_text(json.dumps(altered), encoding="utf-8")
         refused(exe, directory)
-    duplicate = original.replace(b'"version": 1', b'"version": 2, "version": 1', 1)
+    duplicate = original.replace(b'"version": 2', b'"version": 1, "version": 2', 1)
     path.write_bytes(duplicate)
     refused(exe, directory)
     path.write_bytes(original)
@@ -176,6 +176,8 @@ def legacy_conversion_observation(exe: Path, directory: Path) -> None:
     path = directory / "run.json"
     original = path.read_bytes()
     record = json.loads(original)
+    record["record"]["version"] = 1
+    record["source"].pop("decoding")
     record["execution"]["conversion"]["verified"] = False
     VALIDATOR.validate(record)
     path.write_text(json.dumps(record), encoding="utf-8")

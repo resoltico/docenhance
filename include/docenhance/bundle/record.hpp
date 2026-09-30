@@ -5,6 +5,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
 
@@ -22,7 +23,7 @@ namespace docenhance::bundle {
 // The record describes processing. It is finalized before the commit point, so it cannot assert
 // that publication succeeded; publication state belongs to the command response.
 
-inline constexpr unsigned record_version = 1;
+inline constexpr unsigned record_version = 2;
 inline constexpr const char* record_name = "run.json";
 inline constexpr const char* image_name = "result.png";
 inline constexpr const char* mask_name = "assets/protect-mask.png";
@@ -42,6 +43,7 @@ struct SourceFacts {
     // The name as supplied, without its directories. A basename can still carry personal
     // information, so a bundle is never described as anonymized.
     std::string name;
+    std::optional<image::SourceDescription> decoding = std::nullopt;
 };
 
 // White protects: the convention the protection decoder applies, recorded so a later reader does

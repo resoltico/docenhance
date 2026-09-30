@@ -112,7 +112,12 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     const bundle::RunRecord record{
         .context = run.context.get(),
         .build = core::build_facts(),
-        .source = {.identity = run.source, .name = run.source_name},
+        .source =
+            {
+                .identity = run.source,
+                .name = run.source_name,
+                .decoding = run.source_decoding,
+            },
         .operation = run.operation,
         .protection_supplied = run.mask.has_value(),
         .output = composed.output,

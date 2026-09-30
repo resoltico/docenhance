@@ -17,9 +17,14 @@ namespace docenhance::app {
 // person or another program is the report layer's decision, and this layer never makes it.
 
 // Capabilities admitted by the application and verified by real end-to-end tests.
+struct InputSupport {
+    std::string_view format;
+    bool binary = false;
+};
 struct Capabilities {
     std::span<const methods::ImplementedMethod> methods;
     std::span<const std::string_view> input_formats;
+    std::span<const InputSupport> input_support;
 };
 struct Help {
     bool list_commands = false;

@@ -133,16 +133,18 @@ int probe_lcms_policy() {
     return 0;
 }
 
-// The codecs bound their own appetite: libjpeg by a memory ceiling, libpng by image limits.
+// This probe checks native configuration APIs, not enforcement of a total memory ceiling.
+// libjpeg's setting is advisory; production adapters own charged buffers and actual bounds.
 int probe_codec_policy() {
     jpeg_decompress_struct jpeg{};
     jpeg_error_mgr jpeg_error{};
     jpeg.err = jpeg_std_error(&jpeg_error);
     jpeg_create_decompress(&jpeg);
     jpeg.mem->max_memory_to_use = static_cast<decltype(jpeg.mem->max_memory_to_use)>(jpeg_budget);
-    const bool jpeg_bounded = static_cast<std::int64_t>(jpeg.mem->max_memory_to_use) == jpeg_budget;
+    const bool jpeg_configured =
+        static_cast<std::int64_t>(jpeg.mem->max_memory_to_use) == jpeg_budget;
     jpeg_destroy_decompress(&jpeg);
-    if (!jpeg_bounded) {
+    if (!jpeg_configured) {
         return jpeg_memory_limit;
     }
     png_structp png = png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);

@@ -126,6 +126,30 @@
     "src/io/entry_identity.cpp:clang-tidy/performance-no-int-to-ptr@dd6ab30e": {
       "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
     },
+    "src/io/jpeg_context.cpp:clang-tidy/cert-err52-cpp@08bce7fb": {
+      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    },
+    "src/io/jpeg_context.cpp:clang-tidy/cert-err52-cpp@8282ae0e": {
+      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    },
+    "src/io/jpeg_context.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@7b2c1339": {
+      "explanation": "The native libjpeg API defines a shared initial layout for its codec structures and passes jpeg_common_struct pointers to callbacks. The single conversion stays inside the codec adapter. Encoded snapshot casts elsewhere only expose immutable bytes with their checked span length."
+    },
+    "src/io/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@08bce7fb": {
+      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    },
+    "src/io/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@8282ae0e": {
+      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    },
+    "src/io/jpeg_context.cpp:msvc/4611@eab8232f": {
+      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    },
+    "src/io/jpeg_memory.cpp:clang-tidy/readability-function-size@23520e5a": {
+      "explanation": "The public libjpeg memory-manager callback fixes six arguments for virtual-array requests. The short adapter validates the pool and fixed control-slot bound, charges aligned arrays before entropy work, and returns an opaque control. Only this unavoidable ABI parameter count is excepted; code and file size limits remain enforced."
+    },
+    "src/io/jpeg_memory.cpp:clang-tidy/readability-function-size@4ede62c2": {
+      "explanation": "The public libjpeg memory-manager callback fixes six arguments for virtual-array requests. The short adapter validates the pool and fixed control-slot bound, charges aligned arrays before entropy work, and returns an opaque control. Only this unavoidable ABI parameter count is excepted; code and file size limits remain enforced."
+    },
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@1bb56840": {
       "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
     },
@@ -189,9 +213,6 @@
     "src/io/png_raster.cpp:msvc/4611@eab8232f": {
       "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
     },
-    "src/io/png_snapshot.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@313ba343": {
-      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary."
-    },
     "src/io/png_verify_rows.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
       "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
     },
@@ -221,6 +242,9 @@
     },
     "src/io/publication.cpp:clang-tidy/modernize-deprecated-headers@16943187": {
       "explanation": "The GNU renameat2/RENAME_NOREPLACE and Darwin renamex_np/RENAME_EXCL extensions are declared by the native stdio.h, not by the standard C++ <cstdio> interface. Including the actual native provider is required by include-cleaner and deliberately confines this OS API dependency to the private publication adapter."
+    },
+    "src/io/source.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@35adff1f": {
+      "explanation": "The native libjpeg API defines a shared initial layout for its codec structures and passes jpeg_common_struct pointers to callbacks. The single conversion stays inside the codec adapter. Encoded snapshot casts elsewhere only expose immutable bytes with their checked span length."
     },
     "src/io/windows_sdk.hpp:clang-tidy/misc-include-cleaner@ee70c5ba": {
       "explanation": "The Windows SDK umbrella establishes prerequisite native types and configuration before individual public API headers are included. Those direct headers own the referenced declarations; the umbrella itself has no separately referenced symbol, so this exception is restricted to its required inclusion."
@@ -257,6 +281,12 @@
     },
     "tests/support/interrupt_process.cpp:clang-tidy/modernize-deprecated-headers@6c5b764d": {
       "explanation": "The disposition check reads back the same sigaction state the entry bridge saves and restores, and struct sigaction and sa_handler are declared by the native signal.h provider rather than the standard C++ csignal interface. Comparing through std::signal instead would report an interposing runtime's wrapper, not the restored handler."
+    },
+    "tests/support/jpeg_resources.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@999af4c6": {
+      "explanation": "The native libjpeg API defines a shared initial layout for its codec structures and passes jpeg_common_struct pointers to callbacks. The single conversion stays inside the codec adapter. Encoded snapshot casts elsewhere only expose immutable bytes with their checked span length."
+    },
+    "tests/support/jpeg_resources.cpp:clang-tidy/misc-const-correctness@933a1ee1": {
+      "explanation": "The standard main entry point requires char** arguments on supported platforms. The measurement helper immediately views them as read-only strings; this exception is restricted to the OS entry signature."
     },
     "tests/support/standalone_main.cpp:clang-tidy/bugprone-exception-escape@6b355d85": {
       "explanation": "The standalone reference-test main catches failures and reports its exit status; MSVC's throwing expected accessors otherwise look like an escaping path to clang-tidy."

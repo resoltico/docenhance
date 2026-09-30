@@ -29,7 +29,7 @@ refused before the commit point rather than published into a bundle `verify` wou
 
 ## What the record says
 
-`run.json` is a closed, versioned object. Version 1 admits exactly the supported binary or
+`run.json` is a closed, versioned object. Versions 1 and 2 admit exactly the supported binary or
 continuous operation, with reviewed method versions and validated parameters. Missing or unknown
 fields, duplicate object keys (including escaped equivalents), out-of-range numbers and inconsistent
 observations are refused. Numeric domains are checked before narrowing. Run identities are 32
@@ -49,7 +49,7 @@ its own.
 |---|---|
 | `record` | The record format version, the run identity and the instant it was recorded |
 | `build` | Application version, platform, compiler and dependency-lock identity |
-| `source` | The digest and size of the exact encoded bytes that were decoded, and the file's name |
+| `source` | The digest/size of exact decoded source bytes and basename; version 2 additionally requires typed container/decode observations |
 | `request` | The admitted operation and its parameters, and whether a mask was supplied |
 | `execution` | The conversion observations and the illumination report, as the response states them |
 | `protection` | The supplied mask's digest, the stored canonical mask, its size, polarity and coordinate frame |
@@ -187,3 +187,17 @@ processing observations and the producer's original sample comparison remain rec
 claims; verification cannot establish those events without the original execution. It never reruns
 illumination or binarization. Agreement is not a statement about the meaning or authenticity of the
 original document.
+
+## Source observations and format compatibility
+
+New native output uses record version 2, requiring `source.decoding` with a closed PNG/JPEG
+alternative. It records the actual encoded source dimensions/precision and the selected decoder
+policy; JPEG also records component identities/interpretation, sampling, process/scans and physical
+metadata precedence/conflicts. Cross-field validation checks the admitted operation and conversion
+observations. Shared generated source definitions keep response `source_decoding` and persistent
+fields consistent; command responses use schema version 2.
+
+Complete version-one records retain their original closed shape; new decoding fields are refused
+there. These records are still verified against included artifacts without inventing absent-source
+observations. JPEG source bytes remain absent just like PNG source bytes: later verification checks
+record consistency and the included PNG result, not historical decoder execution or authenticity.

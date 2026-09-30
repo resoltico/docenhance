@@ -74,6 +74,7 @@ jobs:
       - name: Admit the complete workload before building
         run: python tools/run_fuzz_campaign.py --plan --seconds "$SECONDS_PER_TARGET" --jobs 2 --job-budget 19800
       - run: |
+          python tools/deps.py fetch --dependency jpeg
           python tools/deps.py fetch --dependency zlib
           python tools/deps.py fetch --dependency png
           python tools/deps.py fetch --dependency cli11

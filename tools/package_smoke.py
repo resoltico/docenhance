@@ -15,6 +15,8 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from jsonschema import Draft202012Validator
+
 from deps import ROOT, safe_extract
 
 
@@ -62,8 +64,27 @@ def smoke(root: Path) -> list[str]:
         for method in contract["methods"]
         if method["status"] == "implemented"
     ]
-    if version["methods"] != expected_methods or version["supported_formats"] != ["png"]:
-        failures.append("Package capabilities differ from the implemented method/PNG contract")
+    if version["methods"] != expected_methods or version["supported_formats"] != ["png", "jpeg"]:
+        failures.append("Package capabilities differ from the implemented method/PNG/JPEG contract")
+    source = root / "jpeg-source.jpg"
+    source.write_bytes((ROOT / "tests/fixtures/jpeg/ycbcr-2x2-progressive.jpg").read_bytes())
+    output = root / "jpeg-result"
+    response = run_json(candidates[0], "process", str(source), "--out-dir", str(output), "--json")
+    if response["source_decoding"]["format"] != "jpeg" or response["publication"] != "completed":
+        failures.append("Relocated executable did not process the JPEG through its native pipeline")
+    run_json(candidates[0], "verify", str(output), "--json")
+    for name, document in (
+        ("command-response.schema.json", response),
+        ("run-record.schema.json", json.loads((output / "run.json").read_bytes())),
+    ):
+        schemas = list(root.rglob("schemas/" + name))
+        if len(schemas) != 1:
+            failures.append("Package lacks its unique " + name)
+        else:
+            schema = json.loads(schemas[0].read_bytes())
+            failures.extend(
+                str(error) for error in Draft202012Validator(schema).iter_errors(document)
+            )
     return failures
 
 

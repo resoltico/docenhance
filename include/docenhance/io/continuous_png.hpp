@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 
@@ -23,6 +24,7 @@ decode_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
 struct IdentifiedRaster {
     image::Raster raster;
     core::ContentIdentity source;
+    image::SourceDescription description;
 };
 [[nodiscard]] core::Result<IdentifiedRaster>
 load_png_raster(const std::string& input, core::Budget& budget, image::ProfilePolicy policy,

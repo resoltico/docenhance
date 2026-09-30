@@ -75,7 +75,7 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 1,
+            "schema_version": 2,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
@@ -83,6 +83,7 @@ class MethodMetadataTests(unittest.TestCase):
             "method_version": 1,
             "output": "result/result.png",
             "publication": "completed",
+            "source_decoding": None,
             "record": {
                 "run": "0" * 32,
                 "path": "run.json",
@@ -104,12 +105,16 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 1,
+            "schema_version": 2,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,
             "methods": [{"id": "B02", "method_version": 1}],
-            "supported_formats": ["png"],
+            "supported_formats": ["png", "jpeg"],
+            "input_support": [
+                {"format": "png", "output_modes": ["preserve", "gray", "bw"]},
+                {"format": "jpeg", "output_modes": ["preserve", "gray"]},
+            ],
         }
         validator.validate(capabilities)
         capabilities["methods"] *= 2

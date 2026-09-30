@@ -53,7 +53,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_exec` | `de_core` | The schedule: how many workers run a page's independent work items |
 | `de_image` | `de_core` | Checked owning planes, borrowed views and numerical primitives |
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
-| `de_io` | `de_core`, `de_image` | Codecs, metadata, hashing and exclusive publication |
+| `de_io` | `de_core`, `de_image` | PNG/JPEG codecs, metadata, hashing and exclusive publication |
 | `de_bundle` | `de_core`, `de_image`, `de_methods` | The persistent run record: one written form for the facts an execution produced |
 | `de_app` | `de_contract`, `de_core`, `de_image`, `de_methods` | Validated use cases and the explicit processing and verification ports |
 | `de_report` | `de_app`, `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
@@ -170,7 +170,7 @@ The present public CLI does not expose `--threads`; this remains an internal ker
 CMake rejects undeclared direct layer/package links. Every production target registers its files,
 headers and links. Native builds must contain every declared layer. An isolated fuzz build must
 contain the complete transitive closure of its named root, not a manually duplicated source list.
-Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs. Separate PNG and ICC harnesses exercise the raw representation and native color boundary. PNG harnesses use the shared byte-span
+Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs. Separate PNG and ICC harnesses exercise the raw representation and native color boundary. PNG/JPEG harnesses use the production byte-span
 decoder; only those targets link the codec layer.
 
 Source checks validate manifest shape, duplicate targets, directory ownership, direct includes and
@@ -198,7 +198,7 @@ built from actual method variant alternatives and must equal the reviewed catalo
 Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,
 and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target
 registration, including box-mean, rather than a second shell list. Native sanitizer presets instrument first-party code. The isolated PNG fuzz build additionally
-instruments pinned libpng/zlib/LCMS and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
+instruments pinned libjpeg/libpng/zlib/LCMS and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
 and limits, rather than claiming that every platform or future method already passed.
 
 ## Cooperative cancellation
@@ -221,3 +221,18 @@ observations. Successful continuous results require complete matching illuminati
 `complete` describes the numerical stage, not a later publication outcome. The generated schema
 and executable catalog distinguish method families. [Illumination](illumination.md) owns the exact
 mathematics, resource phases, separate design QA and verification obligations.
+
+## Identified PNG and JPEG sources
+
+The continuous host calls the format-neutral source adapter. One bounded immutable encoded snapshot
+is hashed and dispatched by signature, never by extension or decoder retries. `image::RasterMetadata`
+contains shared ICC/orientation/resolution observations with closed PNG/JPEG container declarations;
+no native codec types escape `io`. Common EXIF extraction retains its bounded IFD0 contract. PNG's
+color/physical precedence and B02/B03 stored samples retain their existing semantics.
+
+The JPEG adapter promotes the locked static dependency into `de_io`, with the manifest owning that
+external-package permission. A bounded framing/metadata scan and charged native memory manager
+precede full-resolution native decoding. Native jumps stay inside owner-free wrappers, while the
+request's buffers and contexts outlive the frame. JPEG has no separate host, publisher or numerical
+method. New records and responses carry typed source observations with explicit format/wire versions;
+strict version-one bundle reading remains supported. See [JPEG](jpeg-processing.md).

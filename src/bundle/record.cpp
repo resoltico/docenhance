@@ -159,11 +159,14 @@ core::Result<std::string> serialize(const RunRecord& record) {
     try {
         Json source = identity_fields(record.source.identity);
         source.update(Json{{"name", record.source.name}});
+        if (record.source.decoding) {
+            source.emplace("decoding", source_fields(*record.source.decoding));
+        }
         const Json document = {
             {
                 "record",
                 {
-                    {"version", record_version},
+                    {"version", record.source.decoding ? record_version : 1},
                     {"run", record.context.identity},
                     {"recorded", record.context.recorded},
                 },

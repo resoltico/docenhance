@@ -26,7 +26,7 @@ core::Result<void> native_transform(ConversionState& state) {
     state.input_profile = std::move(*input);
     state.linear_profile = linear_rgb_profile(state.context);
     if (!state.input_profile || !state.linear_profile) {
-        return std::unexpected(state.context.error("Cannot construct PNG color profiles"));
+        return std::unexpected(state.context.error("Cannot construct source color profiles"));
     }
     const cmsUInt32Number format =
         image::is_color(source.shape.model) ? TYPE_RGB_FLT : TYPE_GRAY_FLT;
@@ -34,27 +34,23 @@ core::Result<void> native_transform(ConversionState& state) {
         state.context.get(), state.input_profile.get(), format, state.linear_profile.get(),
         TYPE_RGB_FLT, INTENT_RELATIVE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE));
     if (!state.transform || !state.context.good()) {
-        return std::unexpected(state.context.error("Cannot interpret PNG color profile"));
+        return std::unexpected(state.context.error("Cannot interpret source color profile"));
     }
     return {};
 }
-core::Result<void> prepare_transform(ConversionState& state) {
+core::Result<void> prepare_png_interpretation(ConversionState& state,
+                                              const image::PngDeclarations& png) {
     const auto& source = state.source.get();
     const auto& metadata = source.metadata;
-    if (state.parameters.profile == image::ProfilePolicy::srgb) {
-        state.report.interpretation = image::Interpretation::overridden_srgb;
-        return {};
-    }
-    if (!metadata.cicp && !metadata.srgb && metadata.icc.empty()) {
-        state.report.assumed_transfer = !metadata.gamma;
-        state.report.assumed_primaries =
-            image::is_color(source.shape.model) && !metadata.chromaticities;
+    if (!png.cicp && !png.srgb && metadata.icc.empty()) {
+        state.report.assumed_transfer = !png.gamma;
+        state.report.assumed_primaries = image::is_color(source.shape.model) && !png.chromaticities;
     }
     auto valid = validate_declarations(metadata);
     if (!valid) {
         return valid;
     }
-    if (!metadata.icc.empty() || metadata.chromaticities) {
+    if (!metadata.icc.empty() || png.chromaticities) {
         const auto prepared = native_transform(state);
         if (!prepared) {
             return prepared;
@@ -62,14 +58,36 @@ core::Result<void> prepare_transform(ConversionState& state) {
         state.report.interpretation = metadata.icc.empty() ? image::Interpretation::chromaticities
                                                            : image::Interpretation::icc;
     }
-    if (metadata.cicp || metadata.srgb) {
+    if (png.cicp || png.srgb) {
         state.transform.reset();
         state.report.interpretation =
-            metadata.cicp ? image::Interpretation::cicp : image::Interpretation::srgb;
-    } else if (!state.transform && metadata.gamma) {
+            png.cicp ? image::Interpretation::cicp : image::Interpretation::srgb;
+    } else if (!state.transform && png.gamma) {
         constexpr double png_scale = 100000.0;
-        state.power_exponent = png_scale / *metadata.gamma;
+        state.power_exponent = png_scale / *png.gamma;
         state.report.interpretation = image::Interpretation::gamma;
+    }
+    return {};
+}
+core::Result<void> prepare_transform(ConversionState& state) {
+    if (state.parameters.profile == image::ProfilePolicy::srgb) {
+        state.report.interpretation = image::Interpretation::overridden_srgb;
+        return {};
+    }
+    const auto& source = state.source.get();
+    const auto& metadata = source.metadata;
+    if (const auto* const png = metadata.png()) {
+        return prepare_png_interpretation(state, *png);
+    }
+    if (!metadata.icc.empty()) {
+        const auto prepared = native_transform(state);
+        if (!prepared) {
+            return prepared;
+        }
+        state.report.interpretation = image::Interpretation::icc;
+    } else {
+        state.report.assumed_transfer = true;
+        state.report.assumed_primaries = image::is_color(source.shape.model);
     }
     return {};
 }

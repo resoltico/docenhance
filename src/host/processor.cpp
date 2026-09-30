@@ -72,6 +72,7 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
         .context = context,
         .source = loaded->source,
         .source_name = io::file_name(request.input()),
+        .source_decoding = loaded->description,
         .operation = method,
         .mask = std::nullopt,
         .observe_conversion = nullptr,
@@ -85,6 +86,7 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
         .output = std::move(published->output),
         .run = std::move(published->run),
         .record = std::move(published->record),
+        .source_decoding = loaded->description,
     };
 }
 } // namespace

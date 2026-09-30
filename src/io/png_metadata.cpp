@@ -9,6 +9,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/png.hpp"
+#include "exif.hpp"
 
 #include <algorithm>
 #include <array>
@@ -155,7 +156,7 @@ unsigned declaration_bit(std::uint32_t type) noexcept {
         return 0;
     }
 }
-core::Result<void> color_declaration(image::PngMetadata& meta, const Chunk& chunk,
+core::Result<void> color_declaration(image::RasterMetadata& meta, const Chunk& chunk,
                                      core::Budget& budget) {
     constexpr std::size_t chroma_bytes = 32;
     if (chunk.type == chunk_iccp) {
@@ -169,20 +170,20 @@ core::Result<void> color_declaration(image::PngMetadata& meta, const Chunk& chun
         if (chunk.data.front() > last_intent) {
             return core::failure(core::ErrorCode::input, "PNG sRGB intent is invalid");
         }
-        meta.srgb = chunk.data.front();
+        meta.png()->srgb = chunk.data.front();
     } else if (chunk.type == chunk_gama && chunk.data.size() == png_integer_bytes &&
                png_integer(chunk.data) != 0) {
-        meta.gamma = png_integer(chunk.data);
+        meta.png()->gamma = png_integer(chunk.data);
     } else if (chunk.type == chunk_chrm && chunk.data.size() == chroma_bytes) {
         std::array<std::uint32_t, image::chromaticity_fields> values{};
         for (std::size_t i = 0; i < values.size(); ++i) {
             values.at(i) = png_integer(chunk.data.subspan(png_integer_bytes * i));
         }
-        meta.chromaticities = values;
+        meta.png()->chromaticities = values;
     } else if (chunk.type == chunk_cicp && chunk.data.size() == png_integer_bytes) {
         std::array<std::uint8_t, image::cicp_fields> values{};
         std::ranges::copy(chunk.data, values.begin());
-        meta.cicp = values;
+        meta.png()->cicp = values;
     } else {
         return core::failure(core::ErrorCode::input, "Malformed PNG color declaration");
     }
@@ -232,7 +233,7 @@ core::Result<void> finish(ScanState& state, const Chunk& chunk) {
     if (!state.data || !chunk.data.empty()) {
         return core::failure(core::ErrorCode::input, "PNG has no image data or an invalid IEND");
     }
-    if (!state.scan.metadata.icc.empty() && state.scan.metadata.srgb) {
+    if (!state.scan.metadata.icc.empty() && state.scan.metadata.png()->srgb) {
         return core::failure(core::ErrorCode::input, "PNG cannot declare both iCCP and sRGB");
     }
     return (state.seen & declaration_bit(chunk_exif)) == 0

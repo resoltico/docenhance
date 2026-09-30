@@ -11,7 +11,7 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/protection_png.hpp"
 #include "png_metadata.hpp"
-#include "png_snapshot.hpp"
+#include "source_snapshot.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -93,7 +93,7 @@ decode_protection_png(std::span<const std::uint8_t> bytes, image::Extent extent,
 core::Result<IdentifiedMask> load_protection_png(const std::string& path, image::Extent extent,
                                                  core::Budget& budget,
                                                  const core::Cancellation& cancellation) {
-    auto bytes = read_png_snapshot(path, budget, cancellation);
+    auto bytes = read_source_snapshot(path, budget, cancellation);
     if (!bytes) {
         return std::unexpected(bytes.error());
     }

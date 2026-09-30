@@ -4,12 +4,12 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
 
-> **Capability boundary: continuous-tone PNG representation, opt-in I01 illumination, and two binarizers.**
-> `process` defaults to color-managed PNG conversion with no enhancement filter. Static grayscale,
+> **Capability boundary: PNG/JPEG input to continuous-tone PNG representation, opt-in I01 illumination, and two binarizers.**
+> `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
 > and metadata policies. Explicit `--output-mode bw` selects B02/B03 on their narrower stored-gray
 > input domain. All output is published into a new directory. See [PNG processing](docs/png-processing.md)
-> and [typed binarization](docs/binarization.md). Other formats, batch processing, presets and
+> [JPEG admission](docs/jpeg-processing.md), and [typed binarization](docs/binarization.md). TIFF input, batch processing, presets and
 > denoising/restoration methods remain unsupported. I01 surface/auto illumination and protected
 > regions are specified in [illumination](docs/illumination.md); the default remains off.
 
@@ -58,7 +58,7 @@ source-archive workflow; neither workflow publishes a binary release:
 ```sh
 python tools/install_build_tools.py --lint   # once, in a virtual environment
 python tools/install_llvm.py --compiler      # the pinned clang, its runtimes and clang-tidy
-python tools/check_all.py                    # structure, gates, format, lint, types, tooling tests
+python tools/check_all.py                    # source checks and Docker Linux native verification on macOS/Windows
 cmake --workflow --preset dev                # build and test, with clang-tidy on every target
 cmake --workflow --preset fuzz               # strict fuzzing of the parsers and the command line
 ```
@@ -79,8 +79,7 @@ out/dev/app/bin/docenhance methods --json
 out/dev/app/bin/docenhance process --help --json
 ```
 
-`methods` reports I01 illumination, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG as the only
-accepted format. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
+`methods` reports I01 illumination, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout

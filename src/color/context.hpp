@@ -60,5 +60,5 @@ output_profile(const Context& context, core::Budget& budget, bool gray,
 [[nodiscard]] Profile linear_rgb_profile(const Context& context);
 [[nodiscard]] core::Result<Profile> source_profile(const Context& context,
                                                    const image::Raster& source);
-[[nodiscard]] core::Result<void> validate_declarations(const image::PngMetadata& metadata);
+[[nodiscard]] core::Result<void> validate_declarations(const image::RasterMetadata& metadata);
 } // namespace docenhance::color

@@ -167,6 +167,7 @@ def metadata_outputs(
     record_conversion = copy.deepcopy(conversion)
     record_conversion["properties"]["verified"] = {"type": "boolean"}
     record["$defs"].update(
+        source_decoding=schema["$defs"]["source_decoding"],
         conversion=record_conversion,
         resolution=conversion["properties"]["resolution"],
         illumination=schema["$defs"]["illumination"],

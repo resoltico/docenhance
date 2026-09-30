@@ -188,3 +188,19 @@ Automatic predicates can skip an unsuitable image but cannot turn solver/resourc
 successful skips. Keep illumination off by default; the old blueprint's balanced preset is not
 implemented. Preserve B02/B03 stored-sample definitions and reject illumination on that branch.
 See [illumination](illumination.md) for parameters, coverage, actual residual, bounds and tests.
+
+## A second container generalizes source admission, not processing
+
+PNG and JPEG use one read-only encoded snapshot/identity boundary and signature dispatch. Codec
+adapters keep container-specific validation; shared raster metadata separates ICC/orientation/
+physical resolution from a closed PNG/JPEG declaration alternative. The shared bounded IFD0
+reader does not become a general EXIF framework. JPEG YCbCr expansion yields integer RGB before
+the existing color adapter performs profile interpretation and linearization.
+
+The classic libjpeg adapter uses a public, per-request charged memory manager, not its advisory
+virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
+conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
+scan/marker limits and cancellation are fixed together. Output always uses the existing verified
+PNG bundle path. New records use version 2; complete version-one reading remains closed and does
+not invent historical source facts. Source format is not a numerical method-version change.
+See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.

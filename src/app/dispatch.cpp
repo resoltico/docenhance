@@ -33,10 +33,13 @@ core::BuildFacts build_facts() noexcept {
 }
 // Reported, never assumed: these are the lists the layers below actually implement.
 Capabilities capabilities() noexcept {
-    static constexpr auto formats = std::to_array<std::string_view>({"png"});
+    static constexpr auto formats = std::to_array<std::string_view>({"png", "jpeg"});
+    static constexpr auto support = std::to_array<InputSupport>(
+        {{.format = "png", .binary = true}, {.format = "jpeg", .binary = false}});
     return {
         .methods = methods::implemented_methods(),
         .input_formats = formats,
+        .input_support = support,
     };
 }
 Outcome succeeded(const contract::Invocation& invocation, Payload payload) {
@@ -96,6 +99,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                              .method = methods::describe(*method),
                                              .run = std::move(result->run),
                                              .record = std::move(result->record),
+                                             .source_decoding = result->source_decoding,
                                          });
         }
         if (!result->conversion || !result->conversion->verified || !result->illumination ||
@@ -108,6 +112,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                          .illumination = *result->illumination,
                                          .run = std::move(result->run),
                                          .record = std::move(result->record),
+                                         .source_decoding = result->source_decoding,
                                      });
     } catch (...) {
         return unknown_outcome;

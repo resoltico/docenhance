@@ -26,7 +26,7 @@ inline constexpr std::uint32_t chunk_trns = 0x74524e53;
 [[nodiscard]] bool pixel_chunk(std::uint32_t type) noexcept;
 struct PngScan {
     image::RasterShape shape;
-    image::PngMetadata metadata;
+    image::RasterMetadata metadata;
 };
 enum class PngContent { source, result };
 struct PngReadPolicy {
@@ -43,6 +43,4 @@ decode_result_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budg
                          const core::Cancellation& cancellation);
 [[nodiscard]] core::Result<core::Buffer> inflate_profile(std::span<const std::uint8_t> bytes,
                                                          core::Budget& budget);
-[[nodiscard]] core::Result<void> parse_exif(std::span<const std::uint8_t> bytes,
-                                            image::PngMetadata& metadata);
 } // namespace docenhance::io

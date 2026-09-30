@@ -6,6 +6,7 @@
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/illumination.hpp"
@@ -58,6 +59,7 @@ struct PublishedImage {
     // reconciliation matches against whatever is there.
     std::string run;
     core::ContentIdentity record;
+    std::optional<image::SourceDescription> source_decoding = std::nullopt;
 };
 struct ContinuousProcessed {
     std::string output;
@@ -65,12 +67,14 @@ struct ContinuousProcessed {
     methods::IlluminationReport illumination;
     std::string run;
     core::ContentIdentity record;
+    std::optional<image::SourceDescription> source_decoding = std::nullopt;
 };
 struct Processed {
     std::string output;
     methods::ImplementedMethod method;
     std::string run;
     core::ContentIdentity record;
+    std::optional<image::SourceDescription> source_decoding = std::nullopt;
 };
 struct ProcessFailure {
     core::Error error;

@@ -145,7 +145,7 @@ def discovery_cases(exe: Path) -> None:
         ],
         "implemented methods advertised",
     )
-    expect(version["supported_formats"] == ["png"], "PNG advertised")
+    expect(version["supported_formats"] == ["png", "jpeg"], "PNG and scoped JPEG advertised")
     expect(len(version["dependency_lock_sha256"]) == SHA256_HEX_LENGTH, "lock digest")
     expect(
         call_json(exe, ["methods", "--json"])["methods"]
