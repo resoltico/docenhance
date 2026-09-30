@@ -1,10 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
-#include "bundle_native.hpp"
-
-#include <_stdio.h>
-#include <sys/fcntl.h>
 #ifndef _WIN32
+#include "bundle_native.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "png_context.hpp"
@@ -12,9 +9,14 @@
 #include <cerrno>
 #include <dirent.h>
 #include <expected>
+#ifdef __APPLE__
+#include <sys/fcntl.h>
+#else
 #include <fcntl.h>
+#endif
 #include <filesystem>
 #include <iterator>
+#include <stdio.h> // NOLINT(modernize-deprecated-headers): POSIX fdopen is declared by the public native stdio header.
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -85,6 +87,8 @@ core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
         return std::unexpected(refused());
     }
     // The stream takes ownership of the already validated descriptor.
+    // POSIX fdopen is supplied through the public stdio.h SDK wrapper.
+    // NOLINTNEXTLINE(misc-include-cleaner)
     auto* const stream = fdopen(descriptor, "rb");
     if (stream == nullptr) {
         static_cast<void>(::close(descriptor));

@@ -9,7 +9,9 @@
 
 #include <algorithm>
 #include <cstddef>
+#ifndef _WIN32
 #include <expected>
+#endif
 #include <filesystem>
 #include <optional>
 #include <string>

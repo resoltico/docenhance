@@ -9,7 +9,6 @@
 #include "publication.hpp"
 
 #include <array>
-#include <cstddef>
 #include <expected>
 #include <filesystem>
 #include <new>

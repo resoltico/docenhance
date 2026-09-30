@@ -90,6 +90,12 @@
     "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@61fd2fae": {
       "explanation": "Native POSIX open/openat use a variadic ABI even for read-only access. These calls pass no creation flags or mode arguments and immediately retain the returned descriptor for handle-relative non-following bundle access."
     },
+    "src/io/bundle_posix.cpp:clang-tidy/misc-include-cleaner@3571ea43": {
+      "explanation": "POSIX fdopen is exposed by the supported public stdio.h header through macOS SDK internal declarations. The adapter uses that public header rather than the nonportable _stdio.h implementation header; this exception is limited to the native ABI declaration and immutable descriptor-to-stream ownership transfer."
+    },
+    "src/io/bundle_posix.cpp:clang-tidy/modernize-deprecated-headers@a708f244": {
+      "explanation": "POSIX fdopen is exposed by the supported public stdio.h header through macOS SDK internal declarations. The adapter uses that public header rather than the nonportable _stdio.h implementation header; this exception is limited to the native ABI declaration and immutable descriptor-to-stream ownership transfer."
+    },
     "src/io/bundle_windows.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@1c9201f0": {
       "explanation": "The native Windows HANDLE ABI is stored in intptr_t for the platform-neutral move-only owner. These casts preserve the opaque handle representation, never dereference it as memory, and pair ownership transfer with exactly one native or CRT close."
     },
