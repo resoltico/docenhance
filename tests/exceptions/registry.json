@@ -126,20 +126,20 @@
     "src/io/entry_identity.cpp:clang-tidy/performance-no-int-to-ptr@dd6ab30e": {
       "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
     },
-    "src/io/jpeg_context.cpp:clang-tidy/cert-err52-cpp@08bce7fb": {
-      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    "src/io/jpeg_context.cpp:clang-tidy/cert-err52-cpp@18b02ec2": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner."
     },
-    "src/io/jpeg_context.cpp:clang-tidy/cert-err52-cpp@8282ae0e": {
-      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    "src/io/jpeg_context.cpp:clang-tidy/cert-err52-cpp@d4144cc5": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner."
     },
     "src/io/jpeg_context.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@7b2c1339": {
       "explanation": "The native libjpeg API defines a shared initial layout for its codec structures and passes jpeg_common_struct pointers to callbacks. The single conversion stays inside the codec adapter. Encoded snapshot casts elsewhere only expose immutable bytes with their checked span length."
     },
-    "src/io/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@08bce7fb": {
-      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    "src/io/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@18b02ec2": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner."
     },
-    "src/io/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@8282ae0e": {
-      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."
+    "src/io/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@d4144cc5": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner."
     },
     "src/io/jpeg_context.cpp:msvc/4611@eab8232f": {
       "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper."

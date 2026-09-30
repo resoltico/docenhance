@@ -11,6 +11,7 @@
 #include "jpeg_context.hpp"
 #include "jpeg_scan.hpp"
 
+#include <csetjmp>
 #include <cstdint>
 #include <expected>
 #include <span>
@@ -29,7 +30,8 @@ core::Result<DecodedJpeg> decode_jpeg(std::span<const std::uint8_t> bytes, core:
     if (!bootstrap) {
         return std::unexpected(bootstrap.error());
     }
-    JpegContext context{budget, cancellation};
+    std::jmp_buf native_jump{};
+    JpegContext context{budget, cancellation, native_jump};
     context.scan_limit = limits.scans;
     context.working_charge_peak = budget.used();
     if (!jpeg_header(context, bytes)) {

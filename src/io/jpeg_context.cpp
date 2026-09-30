@@ -24,7 +24,7 @@ JpegContext& jpeg_context(j_common_ptr decoder) noexcept {
     }
     // The jump lands in a native-call wrapper; all C++ owners live in its caller.
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    std::longjmp(std::begin(jpeg_context(decoder).jump), 1);
+    std::longjmp(std::begin(jpeg_context(decoder).jump.get()), 1);
 }
 void jpeg_checkpoint(j_common_ptr decoder) noexcept {
     auto& context = jpeg_context(decoder);
@@ -112,7 +112,7 @@ bool jpeg_header(JpegContext& context, std::span<const std::uint8_t> bytes) {
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(std::begin(context.jump)) != 0) {
+    if (setjmp(std::begin(context.jump.get())) != 0) {
         return false;
     }
 #ifdef _MSC_VER
@@ -134,7 +134,7 @@ bool jpeg_pixels(JpegContext& context, image::PlaneView<std::uint8_t> pixels) {
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(std::begin(context.jump)) != 0) {
+    if (setjmp(std::begin(context.jump.get())) != 0) {
         return false;
     }
 #ifdef _MSC_VER
