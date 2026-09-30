@@ -16,7 +16,8 @@ inline constexpr const char* output_profile_name = "DocEnhance";
 void install_png_writer(PngContext& context);
 [[nodiscard]] core::Result<void> encode_png_rows(const std::filesystem::path& path,
                                                  image::RowSource& source, core::Budget& budget,
-                                                 const core::Cancellation& cancellation);
+                                                 const core::Cancellation& cancellation,
+                                                 std::optional<EntryIdentity>* created = nullptr);
 [[nodiscard]] core::Result<void> verify_png_rows(const std::filesystem::path& path,
                                                  image::RowSource& source, core::Budget& budget,
                                                  const core::Cancellation& cancellation);

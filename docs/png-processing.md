@@ -139,8 +139,10 @@ refusals, never instructions to downsample, discard color or reduce precision.
 
 Peak live storage includes the encoded snapshot while decoding; the full integer raster needed
 for interlacing/arbitrary orientation; bounded profiles/native blocks; three small float row buffers;
-and the encoder row or two verification rows. There are no full-page float working frames or a second
-full decoded verification image. Row padding is charged. Tall/narrow or extremely wide layouts can
+and the encoder row or two verification rows. The conversion and its processing-time decode-back comparison use no full-page float working
+frames or second full decoded verification image. Complete bundle preparation and later verification
+add a separately bounded encoded snapshot and decoded integer artifact plane; see
+[processing bundles](bundles.md) for that additional budget and its limits. Row padding is charged. Tall/narrow or extremely wide layouts can
 still hit row/native/budget limits; the pixel count alone is not a guarantee that every shape fits.
 
 Encoding uses noninterlaced 8/16-bit gray/RGB, compression level 6, default zlib strategy and SUB

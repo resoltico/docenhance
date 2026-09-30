@@ -9,6 +9,7 @@ P = process.
 - `root` — `docenhance COMMAND [OPTIONS]`
 - `process` — `docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]`
 - `verify` — `docenhance verify DIRECTORY [--json]`
+  Validate the complete supported run record, closed artifact inventory and observable PNG properties without executing the recorded request.
 - `methods` — `docenhance methods [ID] [--json]`
 - `version` — `docenhance version [--json]`
 

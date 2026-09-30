@@ -193,9 +193,10 @@ core::Result<std::string> serialize(const RunRecord& record) {
             },
             {"output", output_fields(record.output)},
         };
-        // Messages and names can quote arguments, which need not be UTF-8. Replacing an invalid
-        // sequence keeps the record valid JSON instead of failing after the image was written.
-        return document.dump(record_indent, ' ', false, Json::error_handler_t::replace) + "\n";
+        return document.dump(record_indent, ' ', false, Json::error_handler_t::strict) + "\n";
+    } catch (const Json::exception&) {
+        return core::failure(core::ErrorCode::invariant,
+                             "The run record contains malformed identity text");
     } catch (const std::bad_alloc&) {
         return core::failure(core::ErrorCode::resource, "Writing the run record exhausted memory");
     }

@@ -5,12 +5,14 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "entry_identity.hpp"
 
 #include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
+#include <optional>
 #include <png.h>
 #include <pngconf.h>
 #include <ranges>
@@ -136,7 +138,8 @@ FileHandle open_for_writing(const std::filesystem::path& path) {
     return FileHandle{std::fopen(path.c_str(), "wbx")};
 #endif
 }
-bool PngContext::open(const std::filesystem::path& path) {
+bool PngContext::open(const std::filesystem::path& path,
+                      std::optional<EntryIdentity>* const created) {
     if (png == nullptr || info == nullptr) {
         memory.exhausted = true;
         return false;
@@ -153,7 +156,10 @@ bool PngContext::open(const std::filesystem::path& path) {
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
     file.reset(std::fopen(path.c_str(), writing ? "wbx" : "rb"));
 #endif
-    return file != nullptr;
+    if (file != nullptr && created != nullptr) {
+        *created = stream_identity(file.get());
+    }
+    return file != nullptr && (created == nullptr || created->has_value());
 }
 bool PngContext::close_output() noexcept {
     std::FILE* const closing = file.release();

@@ -25,11 +25,25 @@ inline constexpr std::size_t record_max_artifacts = 16;
 
 // What a record declares this bundle contains. The inventory is closed: a file that is present
 // and undeclared is as much a disagreement as a declared file that is missing.
+struct RecordedBuild {
+    std::string version;
+    std::string platform;
+    std::string compiler;
+    std::string dependency_lock_sha256;
+};
 struct DeclaredBundle {
     unsigned version = 0;
     std::string run;
     std::string recorded;
     std::vector<Artifact> inventory;
+    RecordedBuild build{};
+    SourceFacts source{};
+    bool protection_supplied = false;
+    std::optional<Operation> operation = std::nullopt;
+    OutputFacts output{};
+    std::optional<ProtectionFacts> protection = std::nullopt;
+    std::optional<image::ConversionReport> conversion = std::nullopt;
+    methods::IlluminationReport illumination{};
 };
 
 [[nodiscard]] core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes);

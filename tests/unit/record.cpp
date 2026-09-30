@@ -149,4 +149,11 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
         CHECK(!bundle::read_record(as_bytes(large)));
     }
 }
+TEST_CASE("Record serialization never repairs malformed identity bytes", "[bundle][utf8]") {
+    auto record = binarized_record();
+    record.source.name = std::string(1, static_cast<char>(0xff));
+    const auto rejected = bundle::serialize(record);
+    REQUIRE(!rejected);
+    CHECK(rejected.error().code == core::ErrorCode::invariant);
+}
 } // namespace docenhance::tests

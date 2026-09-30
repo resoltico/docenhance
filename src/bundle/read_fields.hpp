@@ -1,0 +1,41 @@
+// SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+// SPDX-License-Identifier: MIT
+#pragma once
+#include "docenhance/bundle/record.hpp"
+#include "docenhance/core/identity.hpp"
+#include "docenhance/core/result.hpp"
+#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/raster.hpp"
+#include "docenhance/methods/illumination.hpp"
+
+#include <cstddef>
+#include <cstdint>
+#include <nlohmann/json.hpp>
+#include <optional>
+#include <string>
+#include <string_view>
+namespace docenhance::bundle {
+struct DeclaredBundle;
+}
+namespace docenhance::bundle {
+using RecordJson = nlohmann::json;
+// Missing/type errors stay inside the reader's JSON exception boundary. Numeric conversion
+// always follows an explicit domain check; the JSON library does not check narrowing.
+[[nodiscard]] const RecordJson& record_field(const RecordJson& object, std::string_view name);
+[[nodiscard]] std::uint64_t record_integer(const RecordJson& value, std::uint64_t maximum);
+[[nodiscard]] double record_number(const RecordJson& value);
+[[nodiscard]] bool record_boolean(const RecordJson& value);
+[[nodiscard]] std::string record_text(const RecordJson& value);
+[[nodiscard]] bool record_hexadecimal(std::string_view value, std::size_t length);
+[[nodiscard]] bool record_instant(std::string_view value);
+[[nodiscard]] image::RasterShape record_shape(const RecordJson& value);
+[[nodiscard]] std::optional<image::Resolution> record_resolution(const RecordJson& value);
+[[nodiscard]] core::ContentIdentity record_identity(const RecordJson& value);
+[[nodiscard]] core::Result<Operation> record_operation(const RecordJson& value);
+[[nodiscard]] core::Result<image::ConversionReport> record_conversion(const RecordJson& value);
+[[nodiscard]] core::Result<methods::IlluminationReport>
+record_illumination(const RecordJson& value);
+[[nodiscard]] bool illumination_agrees(const DeclaredBundle& d);
+[[nodiscard]] core::Result<void> validate_record_claims(const RecordJson& document,
+                                                        DeclaredBundle& d);
+} // namespace docenhance::bundle

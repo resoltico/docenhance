@@ -22,6 +22,8 @@ struct SurfaceGrid {
     std::uint32_t columns{};
     std::uint32_t rows{};
 };
+// Resolve the admitted grid without fitting or inspecting source samples.
+[[nodiscard]] core::Result<SurfaceGrid> surface_grid(image::Extent extent, const Surface& method);
 inline constexpr std::uint32_t surface_cell_limit = 65536;
 inline constexpr std::uint32_t surface_sample_limit = 1048576;
 inline constexpr double surface_floor = 0.02;

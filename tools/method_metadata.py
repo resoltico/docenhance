@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 from typing import TYPE_CHECKING, Any
@@ -153,7 +154,35 @@ def metadata_outputs(
     for branch in schema["oneOf"]:
         if "methods" in branch.get("properties", {}):
             branch["properties"]["methods"].update(maxItems=len(active), uniqueItems=True)
+    record = json.loads((root / "spec/run-record.schema.json").read_text(encoding="utf-8"))
+    record["description"] = (
+        "Generated from spec/run-record.schema.json, spec/command-response.schema.json "
+        "and spec/method-contract.json. Runtime typed validation also checks relationships."
+    )
+    conversion = next(
+        branch["properties"]["conversion"]
+        for branch in schema["oneOf"]
+        if "conversion" in branch.get("properties", {})
+    )
+    record_conversion = copy.deepcopy(conversion)
+    record_conversion["properties"]["verified"] = {"type": "boolean"}
+    record["$defs"].update(
+        conversion=record_conversion,
+        resolution=conversion["properties"]["resolution"],
+        illumination=schema["$defs"]["illumination"],
+        illumination_method=schema["$defs"]["illumination_method"],
+        binary_method={
+            **schema["$defs"]["method"],
+            "oneOf": [
+                alternative
+                for alternative in schema["$defs"]["method"]["oneOf"]
+                if alternative["properties"]["id"]["const"]
+                in {entry["id"] for entry in active if entry["family"] == "binarization"}
+            ],
+        },
+    )
     return {
         root / "include/docenhance/methods/method_catalog.hpp": render_catalog(active),
         root / "schemas/command-response.schema.json": json.dumps(schema, indent=2) + "\n",
+        root / "schemas/run-record.schema.json": json.dumps(record, indent=2) + "\n",
     }

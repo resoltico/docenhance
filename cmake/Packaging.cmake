@@ -14,5 +14,6 @@ install(FILES "${PROJECT_SOURCE_DIR}/LICENSE" "${PROJECT_SOURCE_DIR}/README.md" 
 install(DIRECTORY "${de_package_meta}/" DESTINATION share/docenhance)
 install(FILES "${PROJECT_SOURCE_DIR}/spec/cli-contract.json" "${PROJECT_SOURCE_DIR}/spec/method-contract.json"
   DESTINATION share/docenhance/spec)
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/schemas/" DESTINATION share/docenhance/schemas)
 include(PackageMetadata)
 include(CPack)

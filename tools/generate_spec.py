@@ -135,6 +135,8 @@ def render_reference(contract: dict[str, Any]) -> str:
     text = REFERENCE_PREAMBLE + "## Commands\n\n"
     for name, command in contract["commands"].items():
         text += f"- `{name}` — `{command['usage']}`\n"
+        if description := command.get("description"):
+            text += f"  {description}\n"
     text += "\n## Value grammar\n\n"
     for name, rule in contract["value_grammar"].items():
         text += f"**{name.capitalize()} values.** {rule}\n\n"

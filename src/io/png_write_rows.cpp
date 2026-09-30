@@ -6,6 +6,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
 
@@ -13,6 +14,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <optional>
 #include <png.h>
 #include <pngconf.h>
 #include <span>
@@ -84,7 +86,8 @@ bool finish_rows(PngContext const& context) {
 }
 } // namespace
 core::Result<void> encode_png_rows(const std::filesystem::path& path, image::RowSource& source,
-                                   core::Budget& budget, const core::Cancellation& cancellation) {
+                                   core::Budget& budget, const core::Cancellation& cancellation,
+                                   std::optional<EntryIdentity>* const created) {
     const auto description = source.descriptor();
     const auto bytes = image::raster_row_bytes(description.shape);
     if (!bytes || image::has_alpha(description.shape.model) || description.profile.empty() ||
@@ -99,7 +102,7 @@ core::Result<void> encode_png_rows(const std::filesystem::path& path, image::Row
         return core::cancelled();
     }
     PngContext context{budget, true, cancellation};
-    if (!context.open(path) || !begin_rows(context, description)) {
+    if (!context.open(path, created) || !begin_rows(context, description)) {
         return std::unexpected(context.error(core::ErrorCode::output));
     }
     for (std::uint32_t y = 0; y < description.shape.height; ++y) {
