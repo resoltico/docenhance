@@ -14,7 +14,6 @@
 #include <expected>
 #include <span>
 #include <string>
-#include <string_view>
 #include <utility>
 namespace docenhance::io {
 namespace {
@@ -132,24 +131,12 @@ core::Result<BundleSnapshot> read_bundle(const std::string& directory, core::Bud
     }
     return result;
 }
-core::Result<BundleContents> inspect_bundle(const std::string& directory) {
-    core::Budget budget{bundle_snapshot_budget};
-    auto result = read_bundle(directory, budget, {}, bundle_max_file_bytes);
-    if (!result) {
-        return std::unexpected(result.error());
-    }
-    return std::move(result->contents);
-}
-core::Result<core::Buffer> read_bundle_file(const std::string& directory, std::string_view relative,
-                                            std::size_t limit, core::Budget& budget) {
-    // This compatibility entry point is intentionally a single root file, never an arbitrary path.
-    if (relative != "run.json" && relative != "result.png") {
-        return core::failure(core::ErrorCode::input, "Unsupported bundle file role");
-    }
+core::Result<core::Buffer> read_bundle_record(const std::string& directory, std::size_t limit,
+                                              core::Budget& budget) {
     auto root = BundleDirectory::open(utf8_path(directory));
     if (!root) {
         return std::unexpected(root.error());
     }
-    return read(*root, std::string(relative), limit, budget, {});
+    return read(*root, "run.json", std::min(limit, bundle_max_file_bytes), budget, {});
 }
 } // namespace docenhance::io

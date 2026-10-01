@@ -139,11 +139,8 @@ Reading and hashing observe
 cancellation in transfers of at most 64 KiB; PNG scans and sample loops also have bounded checkpoints.
 Blocking native calls remain subject to the existing cooperative-cancellation limitations.
 
-Version-one conversion reports written before this correction may retain `verified: false` from
-the conversion snapshot taken before output comparison. That historical boolean is admitted as a
-boolean, while `output.verification` describes the producer's subsequent comparison. New records
-and responses both carry the completed comparison. This compatibility does not admit missing
-sections, unsupported requests or inconsistent artifact properties.
+Continuous conversion reports require `verified: true`, agreeing with the completed
+`output.verification` comparison. Historical false verification claims are refused.
 
 Verification never executes the recorded request, never reruns a method, and never opens a path the
 record names outside the bundle.

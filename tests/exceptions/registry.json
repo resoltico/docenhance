@@ -410,6 +410,15 @@
     },
     "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@d1fc70a1": {
       "explanation": "The TSan allocator-observation ABI qualifies storage pointers as volatile const. This cast only records or removes the pointer identity in the fixed observation registry; it never dereferences or alters allocator storage. TSan retains its own allocator, instrumentation and all production concurrency checks."
+    },
+    "tests/unit/reference.cpp:clang-tidy/concurrency-mt-unsafe@5d43d895": {
+      "explanation": "Only the locale regression test queries, changes and restores LC_NUMERIC. Catch discovers this case as its own process; it starts no workers, and the full runner executes cases serially with all worker joins completed. RAII restores the saved category even on assertion failure. No production code changes the process locale. Available comma-decimal locales exercise the actual embedding boundary; other environments retain their numeric locale."
+    },
+    "tests/unit/reference.cpp:clang-tidy/concurrency-mt-unsafe@b1a34868": {
+      "explanation": "Only the locale regression test queries, changes and restores LC_NUMERIC. Catch discovers this case as its own process; it starts no workers, and the full runner executes cases serially with all worker joins completed. RAII restores the saved category even on assertion failure. No production code changes the process locale. Available comma-decimal locales exercise the actual embedding boundary; other environments retain their numeric locale."
+    },
+    "tests/unit/reference.cpp:clang-tidy/concurrency-mt-unsafe@41a0725a": {
+      "explanation": "Only the locale regression test queries, changes and restores LC_NUMERIC. Catch discovers this case as its own process; it starts no workers, and the full runner executes cases serially with all worker joins completed. RAII restores the saved category even on assertion failure. No production code changes the process locale. Available comma-decimal locales exercise the actual embedding boundary; other environments retain their numeric locale."
     }
   }
 }

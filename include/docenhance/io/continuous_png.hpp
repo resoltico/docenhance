@@ -6,13 +6,10 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
-#include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 
 #include <cstdint>
 #include <span>
-#include <string>
 
 namespace docenhance::io {
 // Static PNG, decoded without quantization: low-depth grayscale/palette expand to 8 bits;
@@ -21,21 +18,8 @@ namespace docenhance::io {
 decode_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
                   image::ProfilePolicy policy, const core::Cancellation& cancellation = {},
                   PngLimits limits = {});
-struct IdentifiedRaster {
-    image::Raster raster;
-    core::ContentIdentity source;
-    image::SourceDescription description;
-};
-[[nodiscard]] core::Result<IdentifiedRaster>
-load_png_raster(const std::string& input, core::Budget& budget, image::ProfilePolicy policy,
-                const core::Cancellation& cancellation = {});
 // Encode into an existing directory, close, reopen and verify every integer row and the metadata.
 [[nodiscard]] core::Result<void>
 write_verified_png_rows(const BundleSlot& slot, image::RowSource& rows, core::Budget& budget,
                         const core::Cancellation& cancellation = {});
-// Encode, close, independently reopen and verify all integer rows and metadata, then use
-// the same exclusive publication transaction and cancellation cutoff as binary output.
-[[nodiscard]] core::Result<std::string>
-publish_png_rows(const std::string& output_directory, image::RowSource& rows, core::Budget& budget,
-                 const core::Cancellation& cancellation = {});
 } // namespace docenhance::io

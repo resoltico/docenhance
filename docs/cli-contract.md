@@ -16,7 +16,7 @@ P = process.
 
 ## Value grammar
 
-**Decimal values.** Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale.
+**Decimal values.** Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale. Conversion overflow, subnormal results and nonzero magnitudes rounded to zero are rejected; signed zero is admitted.
 
 **Window values.** Decimal digits only; odd integer in [3,4095]. No sign, whitespace, fraction or exponent.
 

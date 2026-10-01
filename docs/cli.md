@@ -27,8 +27,9 @@ metadata. Static PNG supports gray/palette/RGB/alpha layouts and 8/16-bit contin
 [PNG processing](png-processing.md). Each result is published as a
 [processing bundle](bundles.md): the image, a `run.json` recording what produced it, and the
 canonical protection mask when one was supplied. Profile assumptions, alpha flattening, requested depth reduction,
-orientation and verified output descriptors are reported. JPEG, TIFF, animation, recipes, presets
-and enhancement methods other than I01 remain unsupported.
+orientation and verified output descriptors are reported. Bounded 8-bit baseline/progressive
+Huffman JPEG supports preserve/gray through the same pipeline; see [JPEG admission](jpeg-processing.md).
+TIFF, animation, recipes, presets and enhancement methods other than I01/D01 remain unsupported.
 
 Only explicit `bw` activates a binarizer (Sauvola by default). B02/B03 retain the separate published
 1/2/4/8-bit grayscale-without-transparency input contract and 8-bit binary output. They do not run
@@ -37,10 +38,10 @@ Wrong-method, wrong-operation and explicitly empty values fail admission before 
 
 `RESULT` must not exist and its parent must already be a directory. The writer creates exclusively
 owned sibling staging and atomically publishes without replacement after encoding and closing
-succeed; continuous output is independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
+succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
-`docenhance methods` reports I01, B02 and B03. `methods I01`, `methods B02` or `methods B03` selects one entry.
-`version --json` reports the complete executable method list and only `png` as an input format.
+`docenhance methods` reports I01, D01, B02 and B03. `methods ID` selects one entry.
+`version --json` reports the complete executable method list and `png`/`jpeg` as input formats.
 Help, version and capability discovery do not invoke the image-processing host.
 
 ## Optional illumination and protection
@@ -57,11 +58,21 @@ See [illumination](illumination.md) for defaults, equations, protection and exac
 Illumination and masks require continuous output; wrong options with `bw` or an explicitly empty
 value are errors. A supplied mask is decoded and checked even with off/zero-strength processing.
 
+## Optional denoising
+
+```sh
+docenhance process INPUT.jpg --out-dir RESULT --denoise nlm
+```
+
+D01 runs after I01 and before final quantization, with exact protection of masked destinations.
+It is opt-in and requires continuous output; see [denoising](denoising.md) for the bounded
+NLM-L1 parameters, resource accounting and cancellation contract.
+
 ## Responses and failures
 
 With `--json`, binary success contains the admitted `method` and `method_version`. Continuous
 success instead contains `operation: continuous`, a typed `conversion` record and an
-`illumination` stage record (including disabled), with no fictional conversion-method ID. Both identify the final output path and `publication: completed`. The delivered machine contract is
+`illumination` and `denoising` stage records (including disabled), with no fictional conversion-method ID. Both identify the final output path and `publication: completed`. The delivered machine contract is
 [command-response.schema.json](../schemas/command-response.schema.json); edit the authoring
 schema and method catalog under `spec/`, then regenerate, rather than editing generated output.
 

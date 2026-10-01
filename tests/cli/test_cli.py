@@ -29,7 +29,7 @@ PNG_FILTER_AVERAGE = 3
 PNG_FILTER_PAETH = 4
 BYTE_MODULUS = 256
 HALF = 2
-HELP_COMMANDS = ("", "process", "methods", "version")
+HELP_COMMANDS = ("", "process", "verify", "methods", "version")
 REJECTED_INVOCATIONS = (
     ["--version", "--json"],
     ["version", "--wat"],
@@ -162,6 +162,10 @@ def discovery_cases(exe: Path) -> None:
         response = call_json(exe, [*([command] if command else []), "--help", "--json"])
         expect(response["exit_code"] == 0, f"{command} help exit code")
         expect(isinstance(response["options"], list), f"{command} help options")
+    expect(
+        "Commands: process, verify, methods, version" in call(exe, ["--help"]),
+        "root help lists every current command",
+    )
     options = call_json(exe, ["process", "--help", "--json"])["options"]
     expect(len(options) == PROCESS_OPTION_COUNT, "process option count")
 

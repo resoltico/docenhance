@@ -60,11 +60,11 @@ Evidence is commit/binary-specific, not a promise that a future version has no d
 
 ## Shared PNG decode boundary
 
-`io::load_grayscale_png` checks and opens the regular input file, measures it, and supplies a
-bounded reader. `io::decode_grayscale_png` supplies a borrowed byte span. Both call the same
-internal decoder, allocator callbacks, strict CRC handling, format admission, stored-sample
-expansion and Adam7 assembly. The file reader cannot read beyond its measured encoded-byte bound
-if a file grows after admission. This is not a snapshot or a filesystem sandbox.
+`io::load_grayscale_png` acquires and hashes a bounded immutable snapshot of the regular input
+file, then supplies those same bytes to `io::decode_grayscale_png`. File and borrowed-span inputs
+therefore share allocator callbacks, strict CRC handling, format admission, stored-sample
+expansion and Adam7 assembly. A changed file size during acquisition is refused. The snapshot
+keeps hashing and decoding consistent; source paths are not a filesystem sandbox.
 
 `PngLimits` can tighten, never disable or relax, the production limits of 128 MiB encoded input and
 40 million pixels. Harness limits are much smaller, with a finite shared image/codec budget.

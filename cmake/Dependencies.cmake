@@ -15,7 +15,7 @@ else()
 endif()
 # Upstream CMake packages are used where their installed target contract is reliable.
 find_package(OpenCV 5.0.0 EXACT CONFIG REQUIRED COMPONENTS core flann geometry imgproc photo
-    PATHS "${DE_DEPENDENCY_PREFIX}" "${DE_DEPENDENCY_PREFIX}/lib/cmake/opencv5" "${DE_DEPENDENCY_PREFIX}/lib/cmake/opencv4" NO_DEFAULT_PATH)
+    PATHS "${DE_DEPENDENCY_PREFIX}" "${DE_DEPENDENCY_PREFIX}/lib/cmake/opencv5" NO_DEFAULT_PATH)
 find_package(CLI11 2.7.2 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
 find_package(nlohmann_json 3.12.0 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
 if(DE_BUILD_TESTS)

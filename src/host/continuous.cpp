@@ -16,7 +16,6 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/io/bundle.hpp"
-#include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/protection_png.hpp"
 #include "docenhance/io/source.hpp"
 #include "docenhance/methods/denoising.hpp"
