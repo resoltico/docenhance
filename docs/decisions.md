@@ -15,15 +15,15 @@ a normal build verifies the cache rather than downloading or substituting host p
 Every shared preset also names the compiler it is validated with, in `DE_TOOLCHAIN`. The host
 `c++` is a moving reference: Apple clang implements fewer `-Wextra` diagnostics than the pinned
 LLVM clang and GCC, so an unpinned analysis preset would pass locally on code that the required
-jobs reject. The analysis presets therefore require the pinned LLVM release, and `release`
+jobs reject. The analysis presets therefore require the reviewed LLVM major, and `release`
 declares the platform's own toolchain because it builds the shipped binary. Neither contract
 falls back to another compiler; configure fails instead.
 
 `deps/lock.json` owns source identities, `deps/features.json` upstream feature policy and
 `deps/tools.json` tool versions and deployment floors. Exact pins and receipts detect changed
 inputs; they do not prove that upstream code is trustworthy. Source/licence review and package
-inspection remain necessary. Keep external types out of public headers and libraries behind the
-adapter that owns their effects. The native dependency probe is a verification program, not
+inspection remain necessary. Keep processing interfaces free of external types and libraries behind their owning adapters.
+The reviewed bundle/report JSON field-mapping interface is explicitly permitted by the layer manifest. The native dependency probe is a verification program, not
 permission to use every pinned imaging library in production.
 
 ## Typed admission and explicit execution
@@ -225,3 +225,13 @@ PNG-only acquisition and image-only publication in favor of shared source admiss
 bundles; preserve codec and reconciliation guarantees through the existing owners. Remove unused
 multipage parser scaffolding until a complete processing requirement exists. The repo-wide
 [contract and architecture audit](contract-audit.md) records the design and separate QA decisions.
+
+## Native build identity and dependency confinement
+
+Configuration is an admitted contract: native compiler family, standard-library capability, SDK,
+deployment floor, architecture and required diagnostics must agree before dependency builds start.
+One superbuild owns one prefix and its application child. A persisted configuration binding rejects
+changed or unbound build trees, rather than mixing installed libraries with another recipe.
+Dependency versions come from the source lock; the selected closure drives build, import and
+feature/provider auditing. Source receipts supplement immutable archive/Git evidence. These
+bindings establish identity and consistency, not source trust or binary reproducibility.

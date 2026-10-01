@@ -221,7 +221,7 @@ class ConfigGateTests(GateTestCase):
             "configurePresets": [
                 {
                     "name": "base",
-                    "cacheVariables": {"DE_ENABLE_CLANG_TIDY": True, "DE_TOOLCHAIN": "pinned"},
+                    "cacheVariables": {"DE_ENABLE_CLANG_TIDY": True, "DE_TOOLCHAIN": "analysis"},
                 },
                 {"name": "quick", "cacheVariables": {"DE_WARNINGS_AS_ERRORS": False}},
             ]

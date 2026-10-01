@@ -12,6 +12,7 @@ adapter really are free of third-party code.
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import subprocess
 import tempfile
@@ -66,7 +67,14 @@ def main() -> int:
     if not compiler:
         parser.error("Compiler not found")
     sources = [*reference_sources(), "tests/support/standalone_main.cpp"]
-    flags = ["-std=c++23", "-Werror", *STRICT_WARNINGS, "-fno-fast-math", "-ffp-contract=off"]
+    standard = json.loads((ROOT / "deps/tools.json").read_text())["cxx"]["standard"]
+    flags = [
+        f"-std=c++{standard}",
+        "-Werror",
+        *STRICT_WARNINGS,
+        "-fno-fast-math",
+        "-ffp-contract=off",
+    ]
     if args.sanitize:
         flags += [
             "-fsanitize=address,undefined",

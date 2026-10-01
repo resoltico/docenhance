@@ -3,7 +3,7 @@
 include_guard(GLOBAL)
 add_library(de_project_options INTERFACE)
 add_library(DocEnhance::options ALIAS de_project_options)
-target_compile_features(de_project_options INTERFACE cxx_std_23)
+target_compile_features(de_project_options INTERFACE cxx_std_${DE_CXX_STANDARD})
 if(MSVC)
   target_compile_options(de_project_options INTERFACE /W4 /permissive- /Zc:__cplusplus /utf-8 /EHsc /fp:strict)
   if(DE_WARNINGS_AS_ERRORS)

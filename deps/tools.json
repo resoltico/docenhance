@@ -110,5 +110,8 @@
     "image": "ubuntu@sha256:008173c23f95b170204355c12626cb5a965d779a7e1283b09e9cffbb1bf33ca3",
     "runtime_dependency": false,
     "purpose": "Local Docker Linux/GCC/libstdc++ native gates; no application runtime dependency."
+  },
+  "build": {
+    "max_jobs": 64
   }
 }

@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 from dep_verify import run
+from parallel import available_jobs
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -60,7 +61,7 @@ def main() -> int:
         msg = f"make and llvm-config {major} are required (tools/install_llvm.py --fuzzing)"
         raise InstallError(msg)
     fetch(pin, target)
-    jobs = str(os.cpu_count() or 2)
+    jobs = str(available_jobs())
     build = [make, "-j", jobs, "source-only", f"LLVM_CONFIG={llvm_config}", "NO_NYX=1"]
     subprocess.run(build, cwd=target, check=True)
     print(f"AFL++ {pin['version']} directory: {target}")

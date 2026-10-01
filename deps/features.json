@@ -179,12 +179,6 @@
       "LCMS2_BUILD_STATIC": true,
       "LCMS2_BUILD_TOOLS": false,
       "LCMS2_BUILD_TESTS": false,
-      "LCMS2_BUILD_JPGICC": false,
-      "LCMS2_BUILD_TIFICC": false,
-      "LCMS2_BUILD_TIFDIFF": false,
-      "LCMS2_WITH_JPEG": false,
-      "LCMS2_WITH_TIFF": false,
-      "LCMS2_WITH_ZLIB": false,
       "LCMS2_WITH_THREADS": false,
       "LCMS2_WITH_FASTFLOAT": false,
       "LCMS2_WITH_THREADED_PLUGIN": false

@@ -4,17 +4,15 @@
 # This entry point is development-only and runs inside the isolated Linux gate container.
 set -eu
 cd /source
-# Host-owned worktree and copied verified caches retain host UIDs. Trust only these explicit paths.
-git config --global --add safe.directory /source
+# The verifier grants each exact source directory to Git per call and ignores inherited Git config.
+if [ -e /host-deps/acquisition.active ]; then
+    echo "Host dependency cache has an active acquisition claim; inspect it before retrying" >&2
+    exit 1
+fi
 if [ ! -d .cache/deps/sources ] && [ -d /host-deps/sources ]; then
     mkdir -p .cache/deps
     cp -a /host-deps/. .cache/deps/
 fi
-for dependency in .cache/deps/sources/*; do
-    if [ -d "$dependency" ]; then
-        git config --global --add safe.directory "/source/$dependency"
-    fi
-done
 # Acquisition is explicit and separate from the offline CMake workflow; all sources remain locked.
 cmake -P cmake/AcquireDependencies.cmake
 python tools/check_all.py

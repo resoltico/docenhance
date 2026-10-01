@@ -2,14 +2,7 @@
 # SPDX-License-Identifier: MIT
 include(ExternalProject)
 # Explicit source order; serial projects avoid N libraries each starting N workers.
-if(DE_FUZZ_ONLY)
-  set(de_names zlib jpeg png lcms opencv cli11 json picosha2)
-else()
-  set(de_names zlib jpeg png tiff opencv leptonica lcms cli11 json picosha2)
-  if(DE_BUILD_TESTS)
-    list(APPEND de_names catch2)
-  endif()
-endif()
+set(de_names ${DE_SELECTED_DEPENDENCIES})
 # Fail before creating dependency builds. Verification never opens a network connection.
 set(de_verify_commands)
 foreach(name IN LISTS de_names)
@@ -33,11 +26,11 @@ set(de_common
   "-DCMAKE_FIND_USE_PACKAGE_REGISTRY:BOOL=OFF"
   "-DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY:BOOL=OFF"
   "-DBUILD_SHARED_LIBS:BOOL=OFF"
-  "-DBUILD_TESTING:BOOL=OFF"
   "-DCMAKE_POLICY_DEFAULT_CMP0091:STRING=NEW"
   "-DCMAKE_MSVC_RUNTIME_LIBRARY:STRING=${CMAKE_MSVC_RUNTIME_LIBRARY}")
 if(APPLE)
-  list(APPEND de_common "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${CMAKE_OSX_DEPLOYMENT_TARGET}"
+  list(APPEND de_common "-DCMAKE_OSX_SYSROOT:PATH=${CMAKE_OSX_SYSROOT}"
+    "-DCMAKE_OSX_DEPLOYMENT_TARGET:STRING=${CMAKE_OSX_DEPLOYMENT_TARGET}"
     "-DCMAKE_OSX_ARCHITECTURES:STRING=${CMAKE_OSX_ARCHITECTURES}")
 endif()
 if(CMAKE_TOOLCHAIN_FILE)
@@ -102,14 +95,32 @@ foreach(name IN LISTS de_names)
   if(DE_FUZZ_ONLY AND (name STREQUAL "png" OR name STREQUAL "zlib" OR name STREQUAL "lcms" OR name STREQUAL "jpeg" OR name STREQUAL "opencv"))
     # Instrument the actual pinned C decoder/decompressor, not just the C++ adapter.
     list(APPEND de_options
-      "-DCMAKE_C_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer"
-      "-DCMAKE_CXX_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer")
+      "-DCMAKE_C_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer")
+    if(name STREQUAL "opencv")
+      list(APPEND de_options "-DCMAKE_CXX_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer")
+    endif()
+  endif()
+  # Recipient contracts differ: C libraries do not consume a C++ compiler, and header-only
+  # adapters do not consume compiler/CRT/PIC controls. Do not send ignored configuration.
+  set(de_dependency_common ${de_common})
+  if(name MATCHES "^(zlib|jpeg|png|leptonica|lcms)$")
+    list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_CXX_COMPILER:")
+  elseif(name MATCHES "^(cli11|json|catch2)$")
+    list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_C_COMPILER:")
+  elseif(name STREQUAL "picosha2")
+    list(FILTER de_dependency_common EXCLUDE REGEX "^-D(CMAKE_(C_COMPILER|CXX_COMPILER|MSVC_RUNTIME_LIBRARY|OSX_DEPLOYMENT_TARGET|POSITION_INDEPENDENT_CODE)|BUILD_SHARED_LIBS):")
+  endif()
+  if(NOT name MATCHES "^(opencv|tiff|leptonica)$")
+    list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_POLICY_DEFAULT_CMP0091:")
+  endif()
+  if(name MATCHES "^(zlib|jpeg|lcms|json|picosha2|catch2)$")
+    list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_FIND_USE_(SYSTEM_)?PACKAGE_REGISTRY:")
   endif()
   ExternalProject_Add(de_dep_${name}
     SOURCE_DIR "${de_source}" BINARY_DIR "${de_binary}"
     PREFIX "${PROJECT_BINARY_DIR}/ep/${name}"
     DOWNLOAD_COMMAND "" UPDATE_COMMAND "" PATCH_COMMAND ""
-    CMAKE_GENERATOR Ninja CMAKE_ARGS ${de_common} ${de_options}
+    CMAKE_GENERATOR Ninja CMAKE_ARGS -Werror=unused-cli ${de_dependency_common} ${de_options}
     BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --parallel "${DE_BUILD_JOBS}"
     INSTALL_COMMAND "${CMAKE_COMMAND}" --install <BINARY_DIR>
     TEST_COMMAND ""
@@ -118,12 +129,6 @@ foreach(name IN LISTS de_names)
   set(de_previous de_dep_${name})
 endforeach()
 set(de_inner "${PROJECT_BINARY_DIR}/app")
-# Fuzz runs are CTest tests too, even when the unit tests are not built.
-if(DE_BUILD_TESTS OR DE_ENABLE_FUZZING)
-  set(de_inner_testing ON)
-else()
-  set(de_inner_testing OFF)
-endif()
 ExternalProject_Add(de_native
   SOURCE_DIR "${PROJECT_SOURCE_DIR}" BINARY_DIR "${de_inner}"
   PREFIX "${PROJECT_BINARY_DIR}/ep/application"
@@ -131,7 +136,6 @@ ExternalProject_Add(de_native
   CMAKE_GENERATOR Ninja
   CMAKE_ARGS ${de_common}
     "-DDE_SUPERBUILD:BOOL=OFF"
-    "-DBUILD_TESTING:BOOL=${de_inner_testing}"
     "-DDE_DEPENDENCY_PREFIX:PATH=${DE_DEPENDENCY_PREFIX}"
     "-DDE_SOURCE_CACHE:PATH=${DE_SOURCE_CACHE}"
     "-DDE_SUPERBUILD_BINARY:PATH=${PROJECT_BINARY_DIR}"
@@ -155,6 +159,10 @@ ExternalProject_Add(de_native
   BUILD_ALWAYS TRUE INSTALL_COMMAND "" TEST_COMMAND ""
   DEPENDS ${de_previous}
   USES_TERMINAL_CONFIGURE TRUE USES_TERMINAL_BUILD TRUE)
+add_custom_target(de_verify_configuration ALL
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/audit_build.py"
+    --build "${PROJECT_BINARY_DIR}" DEPENDS ${de_previous} VERBATIM)
+add_dependencies(de_native de_verify_configuration)
 # The audit cannot be skipped merely because ExternalProject's configure stamps exist.
 add_custom_target(de_verify_sources ALL ${de_verify_commands} VERBATIM)
 list(GET de_names 0 de_first)

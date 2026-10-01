@@ -79,15 +79,13 @@ def cached_archive(dep: Dependency, cache: Path) -> Path:
     archives.mkdir(parents=True, exist_ok=True)
     archive = archives / f"{dep['name']}-{dep['version']}.tar.gz"
     if not archive.exists():
-        temporary = archive.with_suffix(".download")
-        try:
+        with tempfile.TemporaryDirectory(prefix=f".{dep['name']}-", dir=archives) as directory:
+            temporary = Path(directory) / "download"
             download(dep["url"], temporary)
             if digest_file(temporary, dep["digest_algorithm"]) != dep["digest"]:
                 msg = f"Archive digest mismatch: {dep['name']}"
                 raise DependencyError(msg)
             temporary.rename(archive)
-        finally:
-            temporary.unlink(missing_ok=True)
     if digest_file(archive, dep["digest_algorithm"]) != dep["digest"]:
         msg = f"Cached archive digest mismatch: {dep['name']}"
         raise DependencyError(msg)

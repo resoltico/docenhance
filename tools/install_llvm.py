@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: MIT
 """Explicit online install of the pinned LLVM tools for CI runners and fresh machines.
 
-Installs clang-tidy and the clang-query the architecture rules use; with --compiler also the pinned
-clang and its sanitizer runtime, and with --fuzzing also what building AFL++ needs (on Linux; the
-Homebrew formula and the Windows installer contain everything). Every source and digest comes from
+Installs clang-tidy and clang-query; --compiler also installs the selected-major clang and
+sanitizer runtimes. --fuzzing adds the Linux tools needed by AFL++. Sources and recipes come from
 deps/tools.json:
-  Linux    apt.llvm.org packages, repository key checked against the pinned fingerprint
-  macOS    the current Homebrew llvm formula, followed by the pinned-major check in CMake
+  Linux    the supported LLVM major from apt.llvm.org, with a fingerprint-checked key
+  macOS    the configured Homebrew formula with immediate major validation; Intel tools
+           come from a digest-pinned source archive
   Windows  the official LLVM installer, SHA-256 verified, extracted without registration
 The directory holding them is printed and, under GitHub Actions, exported as DE_CLANG_TIDY_DIR,
 which cmake/ProjectOptions.cmake and tools/architecture_build.py search before PATH.
@@ -21,6 +21,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -28,6 +29,7 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
+from cache_lock import exclusive_cache
 from dep_acquire import download
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -94,10 +96,53 @@ def install_macos(pin: dict[str, Any]) -> Path:
 
 def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) -> Path:
     """Build only the pinned analysis tools when Homebrew lacks the required Intel formula."""
-    target = Path.home() / ".cache" / "docenhance" / f"llvm-{version}-macos-x86_64"
-    tools = target / "build" / "bin"
-    if (tools / "clang-tidy").is_file() and (tools / "clang-query").is_file():
+    identity = {
+        "version": version,
+        "source_url": pin["source_url"],
+        "source_sha256": pin["source_sha256"],
+        "architecture": "x86_64",
+        "recipe_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+    }
+    identifier = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
+    target = Path.home() / ".cache" / "docenhance" / "llvm" / f"{version}-x86_64-{identifier}"
+    with exclusive_cache(target.with_suffix(".active")):
+        tools = target / "build" / "bin"
+        if target.exists():
+            validate_source_tools(target, identity)
+            return tools
+        build_source_tools(pin, work, target)
+        observed = source_tool_receipt(target, identity)
+        (target / "receipt.json").write_text(
+            json.dumps(observed, sort_keys=True) + "\n", encoding="utf-8"
+        )
         return tools
+
+
+def source_tool_receipt(target: Path, identity: dict[str, str]) -> dict[str, Any]:
+    """Readiness and byte identity for both tools; this is not a binary reproducibility claim."""
+    files = {}
+    for name in ("clang-tidy", "clang-query"):
+        path = target / "build/bin" / name
+        if not path.is_file() or path.is_symlink():
+            msg = f"Incomplete source-built LLVM cache: {path}"
+            raise InstallError(msg)
+        with path.open("rb") as stream:
+            files[name] = hashlib.file_digest(stream, "sha256").hexdigest()
+    return {"identity": identity, "files": files}
+
+
+def validate_source_tools(target: Path, identity: dict[str, str]) -> None:
+    """Reject missing/changed readiness evidence instead of adopting partial cache contents."""
+    receipt = target / "receipt.json"
+    if not receipt.is_file() or json.loads(receipt.read_text()) != source_tool_receipt(
+        target, identity
+    ):
+        msg = f"Incomplete or changed LLVM cache; inspect and remove only {target} before retrying"
+        raise InstallError(msg)
+
+
+def build_source_tools(pin: dict[str, Any], work: Path, target: Path) -> None:
+    """Build both analysis tools from one digest-verified source archive."""
     archive = work / "llvm.tar.xz"
     download(pin["source_url"], archive)
     if hashlib.sha256(archive.read_bytes()).hexdigest() != pin["source_sha256"]:
@@ -135,7 +180,6 @@ def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) ->
         [cmake, "--build", str(build), "--target", "clang-tidy", "clang-query", "--parallel", "3"],
         check=True,
     )
-    return tools
 
 
 def install_windows(pin: dict[str, Any], work: Path) -> Path:
@@ -186,16 +230,39 @@ def main() -> int:
         else:
             msg = f"No pinned clang-tidy installation for {system}"
             raise InstallError(msg)
+    expected_major = str(tidy["version"]).split(".")[0]
     candidates = (
         directory / "clang-tidy",
         directory / "clang-tidy.exe",
-        directory / "clang-tidy-23",
+        directory / f"clang-tidy-{expected_major}",
     )
     executable = next((path for path in candidates if path.is_file()), None)
     if executable is None:
         msg = f"clang-tidy is missing from {directory}"
         raise InstallError(msg)
-    subprocess.run([str(executable), "--version"], check=True)
+    required = [executable]
+    if system != "Windows":
+        query = next(
+            (
+                path
+                for path in (directory / "clang-query", directory / f"clang-query-{expected_major}")
+                if path.is_file()
+            ),
+            None,
+        )
+        if query is None:
+            msg = f"clang-query is missing from {directory}"
+            raise InstallError(msg)
+        required.append(query)
+    for path in required:
+        output = subprocess.run(
+            [str(path), "--version"], capture_output=True, text=True, check=True
+        ).stdout
+        match = re.search(r"\bversion\s+([0-9]+)\.", output, re.IGNORECASE)
+        if match is None or match[1] != expected_major:
+            msg = f"LLVM {expected_major}.x is required; found {path}: {output.strip()}"
+            raise InstallError(msg)
+        print(output.strip())
     print(f"clang-tidy directory: {directory}")
     if github_env := os.environ.get("GITHUB_ENV"):
         with Path(github_env).open("a", encoding="utf-8") as stream:

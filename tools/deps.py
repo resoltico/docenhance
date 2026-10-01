@@ -13,8 +13,10 @@ from __future__ import annotations
 import argparse
 import sys
 import tarfile
+from contextlib import nullcontext
 from pathlib import Path
 
+from cache_lock import exclusive_cache
 from dep_acquire import fetch
 from dep_verify import (
     ROOT,
@@ -63,11 +65,18 @@ def main() -> int:
         if not selected:
             msg = f"Unknown dependency: {args.dependency}"
             raise DependencyError(msg)
-        for dep in selected:
-            if args.command == "fetch":
-                fetch(dep, args.cache.resolve())
-            else:
-                verify(dep, args.cache.resolve())
+        cache = args.cache.resolve()
+        claim = (
+            exclusive_cache(cache / "acquisition.active")
+            if args.command == "fetch"
+            else nullcontext()
+        )
+        with claim:
+            for dep in selected:
+                if args.command == "fetch":
+                    fetch(dep, cache)
+                else:
+                    verify(dep, cache)
     except (OSError, ValueError, RuntimeError, tarfile.TarError) as exc:
         print(f"Dependency acquisition/verification failed: {exc}", file=sys.stderr)
         return 1

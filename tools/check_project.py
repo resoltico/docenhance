@@ -92,6 +92,17 @@ def metadata_errors() -> list[str]:
         errors.append(str(exc))
     if read_json("CMakePresets.json")["version"] != PRESET_SCHEMA:
         errors.append("Expected CMake 4.4 preset schema 12")
+    minimum = read_json("deps/tools.json")["cmake"]["minimum"]
+    for filename in ("CMakeLists.txt", "cmake/AcquireDependencies.cmake"):
+        text = (ROOT / filename).read_text()
+        if f"cmake_minimum_required(VERSION {minimum})" not in text:
+            errors.append(f"{filename}: bootstrap minimum differs from deps/tools.json")
+    for filename in ("CMakePresets.json", "cmake/presets/base.json"):
+        declaration = read_json(filename)["cmakeMinimumRequired"]
+        numbers = minimum.split(".")
+        expected = {"major": int(numbers[0]), "minor": int(numbers[1]), "patch": 0}
+        if declaration != expected:
+            errors.append(f"{filename}: preset minimum differs from deps/tools.json")
     for path, rel, _ in code_files(ROOT):
         head = path.read_text(encoding="utf-8")[:SPDX_WINDOW]
         errors.extend(
@@ -139,7 +150,7 @@ def toolchain_errors() -> list[str]:
         if not tools.get(name, {}).get("version")
     )
     if tools.get("cxx", {}).get("standard") != CXX_STANDARD:
-        errors.append("deps/tools.json C++ standard must match cxx_std_23")
+        errors.append("deps/tools.json C++ standard must satisfy the C++23 product baseline")
     # The compiler, its sanitizer runtimes and the analysis tools come from one LLVM release,
     # so the fuzzing major cannot drift away from the pin cmake/CompilerPolicy.cmake reads.
     if str(tools.get("fuzzing", {}).get("llvm_major")) != pinned_llvm_major(tools):
