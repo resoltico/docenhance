@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <exception>
 #include <functional>
 #include <iostream>
 #include <mutex>
@@ -362,6 +363,9 @@ int measure() {
         observing.store(false);
         cv::Mat::setDefaultAllocator(original);
         if (!refused || live.load() != 0) {
+            std::cerr << "Native allocation failure " << fail << "/" << observation.allocations
+                      << ": resource=" << refused << "; live=" << live.load()
+                      << "; attempts=" << allocation_attempts.load() << "\n";
             return 1;
         }
         ++contained;
@@ -378,7 +382,11 @@ int measure() {
 int main() {
     try {
         return measure();
+    } catch (const std::exception& error) {
+        std::cerr << "Native allocation observer exception: " << error.what() << "\n";
+        return 1;
     } catch (...) {
+        std::cerr << "Native allocation observer nonstandard exception\n";
         return 1;
     }
 }
