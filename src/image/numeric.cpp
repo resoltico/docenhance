@@ -12,7 +12,6 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 namespace docenhance::image {
 namespace {
 // IEC 61966-2-1 sRGB transfer function. Each constant is the published decimal value; derived
@@ -83,16 +82,15 @@ core::Result<Rgb> transport_luminance(const Rgb& rgb, double target) {
     }
     return out;
 }
-core::Result<double> nearest_rank(std::span<const double> values, double p) {
+core::Result<double> nearest_rank(std::span<double> values, double p) {
     if (values.empty() || !unit(p) ||
         !std::ranges::all_of(values, [](double v) { return std::isfinite(v); })) {
         return std::unexpected(bad("Invalid percentile input"));
     }
-    std::vector<double> work(values.begin(), values.end());
     const auto rank = static_cast<std::size_t>(std::ceil(p * static_cast<double>(values.size())));
     const auto index = rank == 0 ? 0 : std::min(rank - 1, values.size() - 1);
-    std::nth_element(work.begin(), work.begin() + static_cast<std::ptrdiff_t>(index), work.end());
-    return work.at(index);
+    std::ranges::nth_element(values, values.begin() + static_cast<std::ptrdiff_t>(index));
+    return values.subspan(index, 1).front();
 }
 std::size_t reflect101_folded(std::int64_t coordinate, std::size_t extent) noexcept {
     if (extent == 1) {

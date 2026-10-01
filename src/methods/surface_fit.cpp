@@ -4,6 +4,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
+#include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/surface.hpp"
@@ -97,7 +98,7 @@ core::Result<bool> should_fit(FitContext context) {
 // A cell darker than the paper reference divided by the largest admissible gain is beyond any
 // illumination I01 could correct. It is dark content such as a solid fill or dark photograph, not
 // evidence of lighting, so it stays unmeasured and the fitted field spans it from nearby paper.
-void exclude_dark_cells(image::PlaneView<double> work, IlluminationReport& report) {
+core::Result<void> exclude_dark_cells(image::PlaneView<double> work, IlluminationReport& report) {
     const auto weights = work.row(0);
     const auto logs = work.row(1);
     const auto scratch = work.row(2); // The right-hand side is assembled after this step.
@@ -108,9 +109,13 @@ void exclude_dark_cells(image::PlaneView<double> work, IlluminationReport& repor
         }
     }
     if (measured == 0) {
-        return;
+        return {};
     }
-    const double reference = select_quantile(scratch.first(measured), surface_reference_rank);
+    const auto selected = image::nearest_rank(scratch.first(measured), surface_reference_rank);
+    if (!selected) {
+        return std::unexpected(selected.error());
+    }
+    const double reference = *selected;
     report.background_reference = std::exp(reference);
     const double floor = reference - std::log(surface_gain_limit);
     for (std::size_t i = 0; i < weights.size(); ++i) {
@@ -120,6 +125,7 @@ void exclude_dark_cells(image::PlaneView<double> work, IlluminationReport& repor
             ++report.dark_cells;
         }
     }
+    return {};
 }
 core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext context) {
     auto& report = context.report.get();
@@ -143,7 +149,10 @@ core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext 
     if (!measured) {
         return std::unexpected(measured.error());
     }
-    exclude_dark_cells(work->view(), report);
+    auto excluded = exclude_dark_cells(work->view(), report);
+    if (!excluded) {
+        return std::unexpected(excluded.error());
+    }
     report.measured_cells = static_cast<std::uint32_t>(
         std::ranges::count_if(work->view().row(0), [](double w) { return w > 0; }));
     constexpr double explicit_coverage = 0.25;

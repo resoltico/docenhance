@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <limits>
 #include <type_traits>
+#include <utility>
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t surface_budget = std::size_t{32} * 1024 * 1024;
@@ -347,5 +348,31 @@ TEST_CASE("Solid dark content is left unmeasured and spanned from surrounding pa
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::method_inapplicable);
     CHECK(refused_report.dark_cells == dark_everywhere);
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Moving a fitted surface leaves an inactive empty owner", "[surface]") {
+    core::Budget budget{surface_budget};
+    LinearFixture source{budget, page};
+    source.fill(paper);
+    methods::IlluminationReport report;
+    auto original = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
+    REQUIRE(original);
+    REQUIRE(original->active());
+    const auto active = original->active();
+    const auto background = original->background(0, 0).value();
+    auto* const emptied = &*original;
+    auto retained = std::move(*original);
+    REQUIRE(!emptied->active());
+    REQUIRE(emptied->grid().extent == image::Extent{});
+    REQUIRE(!emptied->background(0, 0));
+    std::array<double, image::rgb_channels> pixel{paper, paper, paper};
+    REQUIRE(!emptied->apply({}, pixel, {}, report, {}));
+    REQUIRE(retained.active() == active);
+    REQUIRE(retained.background(0, 0).value() == background);
+    *emptied = std::move(retained);
+    REQUIRE(emptied->active() == active);
+    REQUIRE(emptied->background(0, 0).value() == background);
 }
 } // namespace docenhance::tests

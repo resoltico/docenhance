@@ -21,7 +21,7 @@ core::Result<void> IlluminatedSource::read(image::RowRange range, std::span<doub
     }
     auto ignored = report_.get();
     auto& observations = use == image::RowUse::output ? report_.get() : ignored;
-    auto applied = model_->apply(range, rgb, protection_, observations, cancellation_.get());
+    auto applied = model_->apply(range, rgb, protection_, observations, cancellation_);
     if (applied && use == image::RowUse::output && range.row + 1 == extent().height &&
         range.first + (rgb.size() / image::rgb_channels) == extent().width) {
         report_.get().complete = true;

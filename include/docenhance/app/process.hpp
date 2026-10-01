@@ -22,24 +22,30 @@ using Operation = std::variant<methods::Binarization, image::Continuous>;
 // The application admits requests; adapters cannot construct an unvalidated request.
 class ProcessRequest {
   public:
-    [[nodiscard]] const std::string& input() const noexcept {
+    [[nodiscard]] const std::string& input() const& noexcept {
         return input_;
     }
-    [[nodiscard]] const std::string& output_directory() const noexcept {
+    [[nodiscard]] const std::string& input() const&& = delete;
+    [[nodiscard]] const std::string& output_directory() const& noexcept {
         return output_;
     }
-    [[nodiscard]] const methods::Illumination& illumination() const noexcept {
+    [[nodiscard]] const std::string& output_directory() const&& = delete;
+    [[nodiscard]] const methods::Illumination& illumination() const& noexcept {
         return illumination_;
     }
-    [[nodiscard]] const std::optional<std::string>& protection() const noexcept {
+    [[nodiscard]] const methods::Illumination& illumination() const&& = delete;
+    [[nodiscard]] const std::optional<std::string>& protection() const& noexcept {
         return protection_;
     }
-    [[nodiscard]] const methods::Denoising& denoising() const noexcept {
+    [[nodiscard]] const std::optional<std::string>& protection() const&& = delete;
+    [[nodiscard]] const methods::Denoising& denoising() const& noexcept {
         return denoising_;
     }
-    [[nodiscard]] const Operation& operation() const noexcept {
+    [[nodiscard]] const methods::Denoising& denoising() const&& = delete;
+    [[nodiscard]] const Operation& operation() const& noexcept {
         return operation_;
     }
+    [[nodiscard]] const Operation& operation() const&& = delete;
 
   private:
     friend core::Result<ProcessRequest> prepare_process(const contract::Invocation& /*invocation*/);
@@ -60,27 +66,24 @@ class ProcessRequest {
     methods::Denoising denoising_;
 };
 [[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
-struct PublishedImage {
+// A published bundle is identified by the run and record digest, not a persisted publication claim.
+// Success alternatives carry only the observations belonging to their representation.
+struct PublishedBinary {
     std::string output;
-    std::optional<image::ConversionReport> conversion = std::nullopt;
-    std::optional<methods::IlluminationReport> illumination = std::nullopt;
-    // What identifies the bundle this image was published in: the run, and the record's own
-    // digest. The record on disk asserts nothing about publication, so these are what a later
-    // reconciliation matches against whatever is there.
     std::string run;
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
-    std::optional<methods::DenoisingReport> denoising = std::nullopt;
 };
-struct ContinuousProcessed {
+struct PublishedContinuous {
     std::string output;
     image::ConversionReport conversion;
     methods::IlluminationReport illumination;
     std::string run;
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
-    methods::DenoisingReport denoising{};
+    methods::DenoisingReport denoising;
 };
+using Published = std::variant<PublishedBinary, PublishedContinuous>;
 struct Processed {
     std::string output;
     methods::ImplementedMethod method;
@@ -93,7 +96,7 @@ struct ProcessFailure {
     std::optional<methods::DenoisingReport> denoising = std::nullopt;
     std::optional<methods::IlluminationReport> illumination = std::nullopt;
 };
-using ProcessResult = std::expected<PublishedImage, ProcessFailure>;
+using ProcessResult = std::expected<Published, ProcessFailure>;
 [[nodiscard]] inline std::unexpected<ProcessFailure>
 process_failure(core::Error error, std::optional<methods::IlluminationReport> illumination = {},
                 std::optional<methods::DenoisingReport> denoising = {}) {

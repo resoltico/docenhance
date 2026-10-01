@@ -9,14 +9,15 @@
 
 #include <functional>
 #include <span>
+#include <utility>
 namespace docenhance::host {
 class IlluminatedSource final : public image::LinearSource {
   public:
     IlluminatedSource(color::Converter& source, const methods::SurfaceModel* model,
                       image::PlaneView<const std::uint8_t> protection,
-                      methods::IlluminationReport& report, const core::Cancellation& cancellation)
+                      methods::IlluminationReport& report, core::Cancellation cancellation)
         : source_(source), model_(model), protection_(protection), report_(report),
-          cancellation_(cancellation) {}
+          cancellation_(std::move(cancellation)) {}
     [[nodiscard]] image::Extent extent() const noexcept override {
         return source_.get().extent();
     }
@@ -28,7 +29,7 @@ class IlluminatedSource final : public image::LinearSource {
     const methods::SurfaceModel* model_;
     image::PlaneView<const std::uint8_t> protection_;
     std::reference_wrapper<methods::IlluminationReport> report_;
-    std::reference_wrapper<const core::Cancellation> cancellation_;
+    core::Cancellation cancellation_;
 };
 class ContinuousRows final : public image::RowSource {
   public:

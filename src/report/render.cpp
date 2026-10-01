@@ -68,11 +68,9 @@ Json capability_fields(const app::Capabilities& capabilities) {
         methods.push_back({{"id", method.id}, {"method_version", method.method_version}});
     }
     Json formats = Json::array();
-    for (const auto format : capabilities.input_formats) {
-        formats.push_back(format);
-    }
     Json support = Json::array();
     for (const auto& item : capabilities.input_support) {
+        formats.push_back(item.format);
         Json modes = {"preserve", "gray"};
         if (item.binary) {
             modes.push_back("bw");
@@ -144,7 +142,7 @@ Output text_form(const app::Outcome& outcome) {
                 return {.out = std::move(text), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 return {.out = "Wrote " + payload.output + "\n", .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {
+            } else if constexpr (std::is_same_v<Payload, app::PublishedContinuous>) {
                 return {.out = continuous_text(payload), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Verified>) {
                 std::string text = "Bundle agrees with its record: " + payload.directory + "\n";
@@ -208,7 +206,7 @@ Output json_form(const app::Outcome& outcome) {
                     },
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {
+            } else if constexpr (std::is_same_v<Payload, app::PublishedContinuous>) {
                 return {.out = dump(envelope(outcome, continuous_fields(payload))), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Verified>) {
                 Json confirmed = Json::array();

@@ -74,7 +74,7 @@ template <typename Sample> class PlaneView {
         return {std::span<const Sample>{samples_}, shape_};
     }
 
-    [[nodiscard]] const PlaneShape& shape() const noexcept {
+    [[nodiscard]] PlaneShape shape() const noexcept {
         return shape_;
     }
     [[nodiscard]] std::uint32_t width() const noexcept {
@@ -158,7 +158,7 @@ template <typename Sample> class Plane {
         return Plane{std::move(*buffer), *shape};
     }
 
-    [[nodiscard]] const PlaneShape& shape() const noexcept {
+    [[nodiscard]] PlaneShape shape() const noexcept {
         return shape_;
     }
     [[nodiscard]] std::uint32_t width() const noexcept {
@@ -173,12 +173,15 @@ template <typename Sample> class Plane {
     [[nodiscard]] bool empty() const noexcept {
         return buffer_.empty();
     }
-    [[nodiscard]] PlaneView<Sample> view() noexcept {
+    [[nodiscard]] PlaneView<Sample> view() & noexcept {
         return {samples(), shape_};
     }
-    [[nodiscard]] PlaneView<const Sample> view() const noexcept {
+    [[nodiscard]] PlaneView<const Sample> view() const& noexcept {
         return {samples(), shape_};
     }
+
+    [[nodiscard]] PlaneView<Sample> view() && = delete;
+    [[nodiscard]] PlaneView<const Sample> view() const&& = delete;
 
   private:
     // The single place where raw storage becomes samples. The buffer is over-aligned for every

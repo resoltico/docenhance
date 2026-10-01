@@ -228,30 +228,31 @@ core::Result<void> box_mean(image::PlaneView<const float> source,
     };
     const auto rows = intermediate->view();
     const auto row_tiles = tiles_of(source.height(), tile_rows);
-    const auto across = scheduler.for_each(
-        row_tiles, exec::WorkRef{[&](std::size_t tile) {
-            const auto first = static_cast<std::uint32_t>(tile) * tile_rows;
-            const auto last = first + std::min(tile_rows, source.height() - first);
-            for (std::uint32_t y = first; y < last; ++y) {
-                if (!mean_along_row(source.row(y), rows.row(y), window, cancellation)) {
-                    return core::Result<void>{core::cancelled()};
-                }
+    const auto horizontal = [&](std::size_t tile) {
+        const auto first = static_cast<std::uint32_t>(tile) * tile_rows;
+        const auto last = first + std::min(tile_rows, source.height() - first);
+        for (std::uint32_t y = first; y < last; ++y) {
+            if (!mean_along_row(source.row(y), rows.row(y), window, cancellation)) {
+                return core::Result<void>{core::cancelled()};
             }
-            return core::Result<void>{};
-        }});
+        }
+        return core::Result<void>{};
+    };
+    const auto across = scheduler.for_each(row_tiles, exec::WorkRef{horizontal});
     if (!across) {
         return across;
     }
     const auto column_tiles = tiles_of(source.width(), tile_columns);
     const auto constant = rows.as_const();
-    return scheduler.for_each(
-        static_cast<std::size_t>(column_tiles) * row_tiles, exec::WorkRef{[&](std::size_t tile) {
-            const auto column = static_cast<std::uint32_t>(tile % column_tiles) * tile_columns;
-            const auto row = static_cast<std::uint32_t>(tile / column_tiles) * tile_rows;
-            return mean_down_tile(constant, destination, window, {.column = column, .row = row},
-                                  cancellation)
-                       ? core::Result<void>{}
-                       : core::Result<void>{core::cancelled()};
-        }});
+    const auto vertical = [&](std::size_t tile) {
+        const auto column = static_cast<std::uint32_t>(tile % column_tiles) * tile_columns;
+        const auto row = static_cast<std::uint32_t>(tile / column_tiles) * tile_rows;
+        return mean_down_tile(constant, destination, window, {.column = column, .row = row},
+                              cancellation)
+                   ? core::Result<void>{}
+                   : core::Result<void>{core::cancelled()};
+    };
+    return scheduler.for_each(static_cast<std::size_t>(column_tiles) * row_tiles,
+                              exec::WorkRef{vertical});
 }
 } // namespace docenhance::methods

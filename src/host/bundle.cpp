@@ -65,8 +65,8 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
     if (!identity) {
         return std::unexpected(identity.error());
     }
-    if (run.observe_conversion != nullptr) {
-        composed.conversion = run.observe_conversion(run.conversion_state);
+    if (run.converter.has_value()) {
+        composed.conversion = run.converter->get().report();
         composed.conversion->verified = true;
     }
     composed.output = {

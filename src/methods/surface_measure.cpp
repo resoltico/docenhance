@@ -75,11 +75,14 @@ core::Result<void> measure_cell(SurfaceInput input, Cell cell, CellBuffers buffe
     if (*n < required) {
         return {};
     }
-    const double quantile =
-        select_quantile(buffers.samples.first(*n), context.method.get().parameters().quantile);
-    if (quantile >= surface_floor) {
+    const auto quantile =
+        image::nearest_rank(buffers.samples.first(*n), context.method.get().parameters().quantile);
+    if (!quantile) {
+        return std::unexpected(quantile.error());
+    }
+    if (*quantile >= surface_floor) {
         output.front() = static_cast<double>(*n) / area;
-        surface_at(output, 1) = std::log(quantile);
+        surface_at(output, 1) = std::log(*quantile);
     }
     return {};
 }

@@ -18,6 +18,8 @@ class DenoisedSource final : public image::LinearSource {
                    image::PlaneView<const std::uint8_t> protection,
                    methods::DenoisingReport& report)
         : source_(source), planes_(planes), protection_(protection), report_(report) {}
+    DenoisedSource(image::LinearSource&, const DenoisingPlanes&&,
+                   image::PlaneView<const std::uint8_t>, methods::DenoisingReport&) = delete;
     [[nodiscard]] image::Extent extent() const noexcept override {
         return source_.get().extent();
     }

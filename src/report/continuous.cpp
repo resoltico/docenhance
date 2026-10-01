@@ -13,7 +13,7 @@
 #include <string>
 
 namespace docenhance::report {
-nlohmann::ordered_json continuous_fields(const app::ContinuousProcessed& value) {
+nlohmann::ordered_json continuous_fields(const app::PublishedContinuous& value) {
     // Publication state belongs to the response alone: the persistent record is written before
     // the commit point and cannot assert that publication succeeded.
     return {
@@ -31,7 +31,7 @@ nlohmann::ordered_json continuous_fields(const app::ContinuousProcessed& value) 
         },
     };
 }
-std::string continuous_text(const app::ContinuousProcessed& value) {
+std::string continuous_text(const app::PublishedContinuous& value) {
     const auto& report = value.conversion;
     std::string text = "Wrote verified continuous-tone PNG: " + value.output + "\n";
     text += std::to_string(report.output.depth) + " bits; " +

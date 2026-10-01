@@ -17,7 +17,7 @@
 #include <utility>
 
 namespace docenhance::color {
-inline constexpr std::uint32_t conversion_pixels = 4096;
+inline constexpr std::uint32_t conversion_pixels = image::linear_block_pixels;
 struct ConversionState {
     Context context;
     std::reference_wrapper<const image::Raster> source;

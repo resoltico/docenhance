@@ -22,7 +22,8 @@ void release_state(BudgetState* const state) noexcept {
         const std::unique_ptr<BudgetState> last_owner{state};
     }
 }
-// The one place in the project that asks the system for memory. Everything else takes a Buffer.
+// The owner of aligned, charged payload storage. Native adapters reserve or use these buffers;
+// ordinary C++ metadata and OS allocations remain outside the charged payload contract.
 [[nodiscard]] std::byte* acquire(std::size_t bytes) noexcept {
     return static_cast<std::byte*>(
         ::operator new(bytes, std::align_val_t{buffer_alignment}, std::nothrow));

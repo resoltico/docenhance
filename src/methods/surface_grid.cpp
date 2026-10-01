@@ -9,9 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
-#include <span>
 
 namespace docenhance::methods {
 namespace {
@@ -41,12 +39,5 @@ core::Result<SurfaceGrid> surface_grid(image::Extent extent, const Surface& meth
 bool protected_at(image::PlaneView<const std::uint8_t> mask, std::uint32_t x,
                   std::uint32_t y) noexcept {
     return !mask.empty() && mask.row(y).subspan(x, 1).front() != 0;
-}
-double select_quantile(std::span<double> samples, double quantile) {
-    const auto rank =
-        static_cast<std::size_t>(std::ceil(quantile * static_cast<double>(samples.size())));
-    const auto index = rank == 0 ? 0 : std::min(rank - 1, samples.size() - 1);
-    std::ranges::nth_element(samples, samples.begin() + static_cast<std::ptrdiff_t>(index));
-    return surface_at(samples, index);
 }
 } // namespace docenhance::methods

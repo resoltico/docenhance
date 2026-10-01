@@ -144,20 +144,25 @@ core::Result<SurfaceMeasurements> measure_surface(SurfaceInput input, const Surf
     const auto y = samples.y.first(samples.count);
     constexpr double low_quantile = 0.1;
     constexpr double high_quantile = 0.9;
-    const double b10 = select_quantile(b, low_quantile);
-    const double b50 = select_quantile(b, 0.5);
-    const double b90 = select_quantile(b, high_quantile);
-    const double y90 = select_quantile(y, high_quantile);
+    const auto b10 = image::nearest_rank(b, low_quantile);
+    const auto b50 = image::nearest_rank(b, 0.5);
+    const auto b90 = image::nearest_rank(b, high_quantile);
+    const auto y90 = image::nearest_rank(y, high_quantile);
+    for (const auto* const selected : {&b10, &b50, &b90, &y90}) {
+        if (!*selected) {
+            return std::unexpected(selected->error());
+        }
+    }
     return SurfaceMeasurements{
         .stride = stride,
         .count = samples.count,
         .fallback = fallback,
-        .target = b90,
-        .background_q10 = b10,
-        .background_q50 = b50,
-        .background_q90 = b90,
-        .luminance_q90 = y90,
-        .variation = (b90 - b10) / std::max(b90, surface_floor),
+        .target = *b90,
+        .background_q10 = *b10,
+        .background_q50 = *b50,
+        .background_q90 = *b90,
+        .luminance_q90 = *y90,
+        .variation = (*b90 - *b10) / std::max(*b90, surface_floor),
         .paper_fraction = static_cast<double>(samples.paper) / samples.count,
         .dark_fraction = static_cast<double>(samples.dark) / samples.count,
     };

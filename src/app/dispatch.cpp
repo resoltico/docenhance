@@ -12,41 +12,29 @@
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
-#include "docenhance/version.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
 namespace docenhance::app {
 namespace {
-core::BuildFacts build_facts() noexcept {
-    return {
-        .version = application_version,
-        .platform = build_platform,
-        .compiler = build_compiler,
-        .dependency_lock_sha256 = dependency_lock_sha256,
-    };
-}
 // Reported, never assumed: these are the lists the layers below actually implement.
 Capabilities capabilities() noexcept {
-    static constexpr auto formats = std::to_array<std::string_view>({"png", "jpeg"});
     static constexpr auto support = std::to_array<InputSupport>(
         {{.format = "png", .binary = true}, {.format = "jpeg", .binary = false}});
     return {
         .methods = methods::implemented_methods(),
-        .input_formats = formats,
         .input_support = support,
     };
 }
 Outcome succeeded(const contract::Invocation& invocation, Payload payload) {
     return {
         .command = invocation.command,
-        .build = build_facts(),
+        .build = core::build_facts(),
         .payload = std::move(payload),
     };
 }
@@ -92,33 +80,27 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
             return succeeded(invocation, std::move(result.error()));
         }
         if (const auto* const method = std::get_if<methods::Binarization>(&request->operation())) {
-            if (result->conversion || result->illumination || result->denoising) {
+            auto* const image = std::get_if<PublishedBinary>(&*result);
+            if (image == nullptr) {
                 return unknown_outcome;
             }
             return succeeded(invocation, Processed{
-                                             .output = std::move(result->output),
+                                             .output = std::move(image->output),
                                              .method = methods::describe(*method),
-                                             .run = std::move(result->run),
-                                             .record = std::move(result->record),
-                                             .source_decoding = result->source_decoding,
+                                             .run = std::move(image->run),
+                                             .record = std::move(image->record),
+                                             .source_decoding = image->source_decoding,
                                          });
         }
-        if (!result->conversion || !result->conversion->verified || !result->illumination ||
-            !matches(*request, *result->illumination) || !result->denoising ||
-            !methods::valid_denoising(*result->denoising, request->denoising()) ||
-            result->denoising->eligible_samples != result->illumination->eligible_samples ||
-            result->denoising->protected_samples != result->illumination->protected_samples) {
+        auto* const image = std::get_if<PublishedContinuous>(&*result);
+        if (image == nullptr || !image->conversion.verified ||
+            !matches(*request, image->illumination) ||
+            !methods::valid_denoising(image->denoising, request->denoising()) ||
+            image->denoising.eligible_samples != image->illumination.eligible_samples ||
+            image->denoising.protected_samples != image->illumination.protected_samples) {
             return unknown_outcome;
         }
-        return succeeded(invocation, ContinuousProcessed{
-                                         .output = std::move(result->output),
-                                         .conversion = *result->conversion,
-                                         .illumination = *result->illumination,
-                                         .run = std::move(result->run),
-                                         .record = std::move(result->record),
-                                         .source_decoding = result->source_decoding,
-                                         .denoising = *result->denoising,
-                                     });
+        return succeeded(invocation, std::move(*image));
     } catch (...) {
         return unknown_outcome;
     }
@@ -127,7 +109,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
 Outcome failure(const contract::Invocation& invocation, core::Error error) {
     return {
         .command = invocation.command,
-        .build = build_facts(),
+        .build = core::build_facts(),
         .payload = Failure{.error = std::move(error)},
     };
 }

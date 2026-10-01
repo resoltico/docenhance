@@ -74,7 +74,7 @@ class RecordingProcessor final : public app::Processor {
         case Behavior::unknown_exception:
             throw 42; // NOLINT(bugprone-std-exception-baseclass): Exercise catch-all containment.
         default:
-            return app::PublishedImage{.output = "result/result.png", .run = {}, .record = {}};
+            return app::PublishedBinary{.output = "result/result.png", .run = {}, .record = {}};
         }
     }
 };

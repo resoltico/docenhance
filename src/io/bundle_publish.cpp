@@ -8,6 +8,7 @@
 #include "png_context.hpp"
 #include "publication.hpp"
 
+#include <algorithm>
 #include <expected>
 #include <filesystem>
 #include <new>
@@ -77,8 +78,10 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
                                          std::span<const BundleFile> files,
                                          const core::Cancellation& cancellation,
                                          PublishRename commit, BundleValidation validation) {
-    if (files.empty() || commit == nullptr) {
-        return core::failure(core::ErrorCode::argument, "A bundle needs at least one file");
+    if (files.empty() || files.size() > bundle_max_entries || commit == nullptr ||
+        std::ranges::any_of(files, [](const auto& file) { return file.write == nullptr; })) {
+        return core::failure(core::ErrorCode::argument,
+                             "A bundle needs a bounded nonempty file table with valid writers");
     }
     Stage stage;
     try {

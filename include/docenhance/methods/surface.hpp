@@ -42,13 +42,25 @@ class SurfaceModel {
             const core::Cancellation& cancellation, IlluminationReport& report);
     SurfaceModel(const SurfaceModel&) = delete;
     SurfaceModel& operator=(const SurfaceModel&) = delete;
-    SurfaceModel(SurfaceModel&&) noexcept = default;
-    SurfaceModel& operator=(SurfaceModel&&) noexcept = default;
+    SurfaceModel(SurfaceModel&& other) noexcept
+        : grid_(std::exchange(other.grid_, {})), method_(other.method_),
+          logarithms_(std::move(other.logarithms_)), target_(std::exchange(other.target_, 0)),
+          active_(std::exchange(other.active_, false)) {}
+    SurfaceModel& operator=(SurfaceModel&& other) noexcept {
+        if (this != &other) {
+            grid_ = std::exchange(other.grid_, {});
+            method_ = other.method_;
+            logarithms_ = std::move(other.logarithms_);
+            target_ = std::exchange(other.target_, 0);
+            active_ = std::exchange(other.active_, false);
+        }
+        return *this;
+    }
     ~SurfaceModel() = default;
     [[nodiscard]] bool active() const noexcept {
         return active_;
     }
-    [[nodiscard]] const SurfaceGrid& grid() const noexcept {
+    [[nodiscard]] SurfaceGrid grid() const noexcept {
         return grid_;
     }
     [[nodiscard]] core::Result<double> background(std::uint32_t x, std::uint32_t y) const;
