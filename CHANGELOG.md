@@ -4,6 +4,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+- Enforce native build configuration identity, private dependency providers and complete selected
+  feature audits; retire ambiguous test/toolchain controls without cache migration. Bind Docker
+  state to architecture/image/recipes and serialize preparation. Verify archive source bytes
+  against locked artifacts and ignore inherited Git overrides; require ready LLVM tool caches.
+
 - Remove superseded PNG-only acquisition, image-only publication, generic bundle inspection/read
   APIs and unused page-selection scaffolding without compatibility aliases. Keep current source
   admission and bundle transactions, narrow reconciliation reads to the root record, and derive

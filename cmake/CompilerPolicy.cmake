@@ -6,34 +6,34 @@
 # Each preset therefore names the toolchain it is validated with, and another compiler fails
 # configure here instead of silently producing a weaker build.
 include_guard(GLOBAL)
-set(DE_TOOLCHAIN "pinned" CACHE STRING
-  "Compiler contract: pinned (deps/tools.json) or platform (the platform's release toolchain)")
-set_property(CACHE DE_TOOLCHAIN PROPERTY STRINGS pinned platform)
-if(NOT DE_TOOLCHAIN MATCHES "^(pinned|platform)$")
-  message(FATAL_ERROR "DE_TOOLCHAIN must be pinned or platform")
+set(DE_TOOLCHAIN "analysis" CACHE STRING
+  "Compiler contract: analysis (the reviewed compiler family and LLVM major) or platform (the platform's release toolchain)")
+set_property(CACHE DE_TOOLCHAIN PROPERTY STRINGS analysis platform)
+if(NOT DE_TOOLCHAIN MATCHES "^(analysis|platform)$")
+  message(FATAL_ERROR "DE_TOOLCHAIN must be analysis or platform")
 endif()
-# deps/tools.json pins one LLVM release for the compiler and the analysis tools together;
-# tools/install_llvm.py installs clang, its sanitizer runtime and clang-tidy from those recipes.
+# The LLVM major is the supported analysis contract. Installer source/binary recipes have
+# their own exact identities where available; platform patch releases are not falsely pinned.
 file(READ "${PROJECT_SOURCE_DIR}/deps/tools.json" de_tools_json)
 string(JSON de_llvm_pin GET "${de_tools_json}" clang_tidy version)
 string(REGEX MATCH "^[0-9]+" DE_LLVM_MAJOR "${de_llvm_pin}")
 # The native families docs/build.md names; the release preset builds the shipped binary with the
 # platform's own toolchain, which required CI exercises on all five supported platforms.
-set(de_platform_compilers GNU Clang AppleClang MSVC)
-string(JOIN ", " de_platform_named ${de_platform_compilers})
 
 function(de_require_toolchain language)
   set(id "${CMAKE_${language}_COMPILER_ID}")
   set(found "${CMAKE_${language}_COMPILER} (${id} ${CMAKE_${language}_COMPILER_VERSION})")
-  if(DE_TOOLCHAIN STREQUAL "platform")
-    if(NOT id IN_LIST de_platform_compilers)
-      message(FATAL_ERROR "DE_TOOLCHAIN=platform accepts ${de_platform_named}; found ${found}")
+  if(WIN32)
+    if(NOT id STREQUAL "MSVC")
+      message(FATAL_ERROR "Windows builds require the validated native MSVC compiler; found ${found}")
     endif()
     return()
   endif()
-  # Windows pins MSVC: no LLVM-clang build of the dependency superbuild is validated there, and
-  # required CI builds and packages Windows with cl.exe (tools/ci_windows.ps1).
-  if(WIN32 AND id STREQUAL "MSVC")
+  if(DE_TOOLCHAIN STREQUAL "platform")
+    if((APPLE AND NOT id STREQUAL "AppleClang") OR
+       (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT id STREQUAL "GNU"))
+      message(FATAL_ERROR "The release compiler is AppleClang on macOS or GNU on Linux; found ${found}")
+    endif()
     return()
   endif()
   string(REGEX MATCH "^[0-9]+" major "${CMAKE_${language}_COMPILER_VERSION}")
@@ -43,7 +43,7 @@ function(de_require_toolchain language)
     set(simulated "${CMAKE_${language}_SIMULATE_ID}")
   endif()
   if(NOT id STREQUAL "Clang" OR NOT major STREQUAL DE_LLVM_MAJOR OR simulated STREQUAL "MSVC")
-    message(FATAL_ERROR "DE_TOOLCHAIN=pinned requires LLVM clang ${DE_LLVM_MAJOR} "
+    message(FATAL_ERROR "DE_TOOLCHAIN=analysis requires LLVM clang ${DE_LLVM_MAJOR} "
       "(deps/tools.json), never the host c++; found ${found}. Set CC and CXX and configure a "
       "fresh build directory: on macOS CC=$(brew --prefix llvm)/bin/clang "
       "CXX=$(brew --prefix llvm)/bin/clang++, on Linux CC=clang-${DE_LLVM_MAJOR} "
@@ -51,8 +51,8 @@ function(de_require_toolchain language)
   endif()
 endfunction()
 
-if(DE_ENABLE_FUZZING AND NOT DE_TOOLCHAIN STREQUAL "pinned")
-  message(FATAL_ERROR "Fuzzing requires DE_TOOLCHAIN=pinned; use the fuzz preset")
+if(DE_ENABLE_FUZZING AND NOT DE_TOOLCHAIN STREQUAL "analysis")
+  message(FATAL_ERROR "Fuzzing requires DE_TOOLCHAIN=analysis; use the fuzz preset")
 endif()
 de_require_toolchain(C)
 de_require_toolchain(CXX)

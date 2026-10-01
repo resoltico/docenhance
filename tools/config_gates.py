@@ -53,7 +53,7 @@ GUARDED_CACHE_VARIABLES = ("DE_ENABLE_CLANG_TIDY", "DE_WARNINGS_AS_ERRORS")
 # Every shared preset states the compiler it is validated with; cmake/CompilerPolicy.cmake
 # rejects any other at configure time, so an unpinned host `c++` cannot weaken a build.
 TOOLCHAIN_VARIABLE = "DE_TOOLCHAIN"
-TOOLCHAIN_CONTRACTS = frozenset({"pinned", "platform"})
+TOOLCHAIN_CONTRACTS = frozenset({"analysis", "platform"})
 
 
 def tidy_checks(text: str) -> list[str]:

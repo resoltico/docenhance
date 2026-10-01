@@ -73,17 +73,17 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: matrix.platform == 'macos-x86_64'
         with:
-          path: ~/.cache/docenhance/llvm-23.1.1-macos-x86_64
+          path: ~/.cache/docenhance/llvm
           # A generation never receives a partial post-cancellation cache entry.
-          key: llvm-23.1.1-macos-x86_64-source-ebe9be46fe8756d-v2
+          key: llvm-source-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py
       - name: Save verified Intel LLVM tools
         if: matrix.platform == 'macos-x86_64' && steps.intel-llvm-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: ~/.cache/docenhance/llvm-23.1.1-macos-x86_64
-          key: llvm-23.1.1-macos-x86_64-source-ebe9be46fe8756d-v2
+          path: ~/.cache/docenhance/llvm
+          key: llvm-source-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
       - run: cmake -P cmake/AcquireDependencies.cmake
       # A hosted runner has cores the default of two workers leaves idle. Each job states how many
       # it has, and that one count bounds every external build and the architecture check.
@@ -91,7 +91,10 @@ jobs:
         shell: python
         run: |
           import os
-          cores = os.cpu_count()
+          import sys
+          sys.path.insert(0, "tools")
+          from parallel import available_jobs
+          cores = available_jobs()
           print(f"The runner reports {cores} logical cores")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
               environment.write(f"DE_BUILD_JOBS={cores}\n")
@@ -193,7 +196,10 @@ jobs:
         shell: python
         run: |
           import os
-          cores = os.cpu_count()
+          import sys
+          sys.path.insert(0, "tools")
+          from parallel import available_jobs
+          cores = available_jobs()
           print(f"The runner reports {cores} logical cores")
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
               environment.write(f"DE_BUILD_JOBS={cores}\n")

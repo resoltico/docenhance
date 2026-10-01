@@ -18,7 +18,10 @@ cmake -P cmake/AcquireDependencies.cmake
 ```
 
 Each source is checked against its declared release object or archive digest, then inventoried into
-a receipt in `.cache/deps/receipts`. Every build re-verifies that receipt before using the cache.
+a receipt in `.cache/deps/receipts`. Every build re-verifies that receipt before using the cache. Archive source bytes must also
+match the original digest-checked archive; changing both a source tree and its receipt cannot
+override the lock. Selected source archives admit bounded regular files/directories in one root,
+without links or duplicate names.
 The cache is local working state, not source control and not a second authority. See the [build
 guide](build.md#acquisition-is-a-separate-phase) for concurrency and recovery rules.
 
@@ -46,3 +49,8 @@ Review the official upstream release and license changes first. Change the lock 
 together when necessary, acquire into a fresh named cache entry, build in a fresh private prefix,
 and run the native probe, feature audit, numerical/CLI tests, fuzzing where applicable, and the
 relocated-package smoke test. Never accept an update merely because its version is higher.
+
+Acquisition claims one writer per cache. Git commands ignore inherited Git environment/global
+configuration and grant only the exact owned working directory as safe. Release objects and
+source inventories remain mandatory. The Intel LLVM tool cache similarly requires both tools,
+source/recipe identity and byte-matching readiness evidence; partial caches are not adopted.

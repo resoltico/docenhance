@@ -14,7 +14,7 @@ import os
 import re
 import subprocess
 import tarfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,8 +35,15 @@ class CommandError(RuntimeError):
 
 def run(*args: str, cwd: Path | None = None) -> str:
     """Run a command without prompts or system Git configuration and return its stdout."""
-    env = os.environ.copy()
-    env.update(GIT_TERMINAL_PROMPT="0", GIT_CONFIG_NOSYSTEM="1")
+    env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
+    env.update(
+        GIT_TERMINAL_PROMPT="0",
+        GIT_CONFIG_NOSYSTEM="1",
+        GIT_CONFIG_GLOBAL=os.devnull,
+        GIT_DEFAULT_HASH="sha1",
+    )
+    if args and args[0] == "git" and cwd is not None:
+        args = ("git", "-c", f"safe.directory={cwd.resolve()}", *args[1:])
     result = subprocess.run(
         args, cwd=cwd, env=env, text=True, encoding="utf-8", capture_output=True, check=False
     )
@@ -97,13 +104,13 @@ def digest_file(path: Path, algorithm: str = "sha256") -> str:
         return hashlib.file_digest(stream, algorithm).hexdigest()
 
 
-def inventory(source: Path) -> dict[str, str]:
+def inventory(source: Path, *, exclude_git: bool = True) -> dict[str, str]:
     """Hash every file (and record every symlink target) below a source root."""
     files = {}
     base = source.resolve()
     for path in sorted(source.rglob("*")):
         rel = path.relative_to(source)
-        if ".git" in rel.parts:
+        if exclude_git and rel.parts[0] == ".git":
             continue
         if path.is_symlink():
             if not path.resolve().is_relative_to(base):
@@ -147,17 +154,33 @@ def receipt_for(dep: Dependency, source: Path) -> dict[str, Any]:
     """Build the verification receipt for an acquired source tree."""
     validate_licenses(dep, source)
     commit = verify_git(dep, source) if dep["transport"] == "git" else None
-    return {"dependency": dep, "resolved_commit": commit, "files": inventory(source)}
+    return {
+        "dependency": dep,
+        "resolved_commit": commit,
+        "files": inventory(source, exclude_git=dep["transport"] == "git"),
+    }
 
 
 def verify(dep: Dependency, cache: Path) -> dict[str, Any]:
     """Recompute a cached source's receipt and require it to equal the recorded one."""
     source, receipt = cache / "sources" / dep["name"], cache / "receipts" / f"{dep['name']}.json"
-    if not source.is_dir() or not receipt.is_file():
+    if source.is_symlink() or receipt.is_symlink() or not source.is_dir() or not receipt.is_file():
         msg = f"Missing {dep['name']}. Run cmake -P cmake/AcquireDependencies.cmake first."
         raise DependencyError(msg)
     recorded = json.loads(receipt.read_text(encoding="utf-8"))
     current = receipt_for(dep, source)
+    if dep["transport"] == "archive":
+        archive = cache / "archives" / f"{dep['name']}-{dep['version']}.tar.gz"
+        if (
+            archive.is_symlink()
+            or not archive.is_file()
+            or digest_file(archive, dep["digest_algorithm"]) != dep["digest"]
+        ):
+            msg = f"Missing or changed locked archive: {dep['name']}"
+            raise DependencyError(msg)
+        if current["files"] != archive_inventory(archive):
+            msg = f"Source differs from its locked archive: {dep['name']}"
+            raise DependencyError(msg)
     if current != recorded:
         msg = (
             f"Source content or lock changed: {dep['name']}; "
@@ -167,13 +190,59 @@ def verify(dep: Dependency, cache: Path) -> dict[str, Any]:
     return current
 
 
-def safe_extract(archive: Path, target: Path) -> None:
-    """Extract a tar archive within size limits, using Python's data filter."""
+def archive_members(tf: tarfile.TarFile) -> list[tarfile.TarInfo]:
+    """The selected source archive domain: bounded ordinary files and directories only."""
+    members = tf.getmembers()
+    unpacked = sum(max(m.size, 0) for m in members)
+    if len(members) > MAX_ARCHIVE_MEMBERS or unpacked > MAX_UNPACKED_BYTES:
+        msg = "Archive exceeds acquisition safety limits"
+        raise DependencyError(msg)
+    names: set[str] = set()
+    for member in members:
+        parts = member.name.rstrip("/").split("/")
+        if (
+            not (member.isfile() or member.isdir())
+            or member.name.startswith("/")
+            or any(part in {"", ".", ".."} for part in parts)
+            or "\\" in member.name
+            or ":" in member.name
+            or member.name in names
+        ):
+            msg = f"Unsupported or ambiguous source archive member: {member.name}"
+            raise tarfile.FilterError(msg)
+        names.add(member.name)
+    return members
+
+
+def archive_inventory(archive: Path) -> dict[str, str]:
+    """Derive source bytes from the digest-checked archive, never from a mutable receipt."""
+    result = {}
     with tarfile.open(archive, "r:*") as tf:
-        members = tf.getmembers()
-        unpacked = sum(max(m.size, 0) for m in members)
-        if len(members) > MAX_ARCHIVE_MEMBERS or unpacked > MAX_UNPACKED_BYTES:
-            msg = "Archive exceeds acquisition safety limits"
+        members = archive_members(tf)
+        roots = {PurePosixPath(member.name).parts[0] for member in members}
+        if len(roots) != 1:
+            msg = "Expected exactly one source archive root directory"
             raise DependencyError(msg)
-        # Python's data filter rejects absolute paths, traversal, devices and escaping links.
-        tf.extractall(target, filter="data")
+        for member in members:
+            if not member.isfile():
+                continue
+            parts = PurePosixPath(member.name).parts
+            if len(parts) <= 1:
+                msg = "Source archive root must be a directory"
+                raise DependencyError(msg)
+            stream = tf.extractfile(member)
+            if stream is None:
+                msg = f"Cannot read source archive member: {member.name}"
+                raise DependencyError(msg)
+            with stream:
+                digest = hashlib.sha256()
+                while chunk := stream.read(1024 * 1024):
+                    digest.update(chunk)
+                result[PurePosixPath(*parts[1:]).as_posix()] = digest.hexdigest()
+    return result
+
+
+def safe_extract(archive: Path, target: Path) -> None:
+    """Extract the bounded source archive domain through Python's filesystem data filter."""
+    with tarfile.open(archive, "r:*") as tf:
+        tf.extractall(target, members=archive_members(tf), filter="data")

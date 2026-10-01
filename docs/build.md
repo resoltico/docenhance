@@ -4,7 +4,8 @@
 
 The build is CMake + Ninja. Python scripts are **development tools**, never runtime workers. Git is used only during explicit acquisition and local source-integrity checks. There is no package-manager dependency at runtime.
 
-Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including floating-point `std::from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. The `dev`, `sanitize` and `tsan` presets require the pinned LLVM clang rather than whatever `c++` resolves to; see [the compiler contract](#the-compiler-contract-every-preset-states) below. Verification is commit-specific; use the relevant CI checks rather than inferring support from a compiler version.
+Recommended versions are recorded in `deps/tools.json`: CMake 4.4.3, Ninja 1.13.2. C++23 remains the product baseline; a recent compiler/standard library is required, including `std::expected`, stop tokens and integer `std::from_chars`. Floating decimal
+admission uses an explicit classic locale and does not require floating `from_chars`. Current native compiler families are GCC, Clang/AppleClang, and MSVC. The `dev`, `sanitize` and `tsan` presets require the supported LLVM major rather than whatever `c++` resolves to; see [the compiler contract](#the-compiler-contract-every-preset-states) below. Verification is commit-specific; use the relevant CI checks rather than inferring support from a compiler version.
 
 An optional developer installation route uses an isolated Python environment:
 
@@ -63,12 +64,12 @@ Projects are built serially, each with two workers by default. This deliberately
 Every shared preset names the toolchain it is validated with in `DE_TOOLCHAIN`, and
 `cmake/CompilerPolicy.cmake` rejects any other compiler at configure time. Nothing falls back to
 whatever `c++` happens to resolve to: Apple clang implements fewer `-Wextra` diagnostics than the
-pinned LLVM clang and GCC, so a local analysis run could otherwise pass on code that the required
+supported LLVM major and GCC, so a local analysis run could otherwise pass on code that the required
 CI jobs reject.
 
 | Contract | Presets | Required compiler |
 | --- | --- | --- |
-| `pinned` | `dev`, `sanitize`, `tsan`, `fuzz`, `fuzz-afl` | LLVM clang at the `deps/tools.json` major (MSVC on Windows) |
+| `analysis` | `dev`, `sanitize`, `tsan`, `fuzz`, `fuzz-afl` | LLVM clang at the `deps/tools.json` major (MSVC on Windows) |
 | `platform` | `release` | The platform's own release toolchain: GCC, Clang/AppleClang or MSVC |
 
 `release` builds the shipped binary, so it deliberately uses each platform's own toolchain — GCC
@@ -77,7 +78,7 @@ It still refuses a compiler outside those families. On Windows the pinned contra
 to MSVC: there is no validated LLVM-clang build of the dependency superbuild, and required CI
 builds and packages Windows with `cl.exe`.
 
-Install the pinned compiler with `python tools/install_llvm.py --compiler` (Homebrew `llvm` on
+Install the analysis compiler with `python tools/install_llvm.py --compiler` (Homebrew `llvm` on
 macOS, apt.llvm.org on Linux), then name it before configuring a **fresh** build directory. On
 macOS, where `c++` is Apple clang:
 
@@ -96,8 +97,8 @@ cmake --workflow --preset sanitize
 ```
 
 Substitute the major recorded in `deps/tools.json` for `23`. Never change compilers inside an
-existing build directory. A configure that reports `DE_TOOLCHAIN=pinned requires LLVM clang` is
-naming the actual compiler CMake found; install or select the pinned one rather than relaxing the
+existing build directory. A configure that reports `DE_TOOLCHAIN=analysis requires LLVM clang` is
+naming the actual compiler CMake found; install or select the supported major rather than relaxing the
 contract.
 
 ## Selecting compilers and personal settings
@@ -122,7 +123,7 @@ Do not modify shared presets to accommodate one machine. Create ignored `CMakeUs
 }
 ```
 
-Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --test-dir out/my-clang --output-on-failure`. A personal preset selects *where* the pinned compiler lives; it inherits the preset's `DE_TOOLCHAIN` contract and cannot substitute another compiler for it. Never switch compilers, architecture, build type or CRT inside an existing build directory. The x86-64 baseline does not use `-march=native`; ARM64 builds use their corresponding baseline. Cross-compilation is not part of the validated workflow. Native-per-architecture builds are intended.
+Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --test-dir out/my-clang --output-on-failure`. A personal preset selects *where* the analysis compiler lives; it inherits the preset's `DE_TOOLCHAIN` contract and cannot substitute another compiler for it. Never switch compilers, architecture, build type or CRT inside an existing build directory. The x86-64 baseline does not use `-march=native`; ARM64 builds use their corresponding baseline. Cross-compilation is not part of the validated workflow. Native-per-architecture builds are intended.
 
 ## Optimization options
 
@@ -164,10 +165,37 @@ python tools/check_reference_suite.py --compiler g++ --sanitize
 
 The last three commands compile the same first-party reference cases used by Catch2. Name the
 compiler explicitly, as the required jobs do: `--compiler` otherwise defaults to the host `c++`,
-which on macOS is Apple clang. Use `"$(brew --prefix llvm)/bin/clang++"` there for the pinned one. They are **not** a second application build framework or evidence that the native CLI/dependencies build. They are useful for rapid numerical and parser validation while dependency acquisition is unavailable.
+which on macOS is Apple clang. Use `"$(brew --prefix llvm)/bin/clang++"` there for the analysis compiler. They are **not** a second application build framework or evidence that the native CLI/dependencies build. They are useful for rapid numerical and parser validation while dependency acquisition is unavailable.
 
 ## Recovery and diagnostic evidence
 
 A source-integrity mismatch is fatal. First inspect the named source and receipt. Do not edit lock pins merely to make a modified cache pass. To deliberately reacquire a dependency, remove only its named source directory and receipt after reviewing their contents, then invoke acquisition again. If a lock or feature policy changes, create a fresh build directory/private prefix; do not mix old installed libraries with new headers.
 
 For build reports, attach the preset name, compiler/tool versions, `deps/lock.json` hash, the failing command, its output and the relevant `CMakeCache.txt`. Never attach actual private documents to a public bug report. A configured workflow file is not proof of a passing workflow.
+
+## Configuration ownership
+
+Use one fresh build directory and its `prefix` per native configuration. The build identity binds
+source/tool/feature policy and dependency recipes to the compiler executables, build kind, SDK,
+architecture, CRT and instrumentation choices. Identical configuration reuse is supported; changing
+those inputs requires a fresh tree. Old unbound caches are refused without migration. Execution
+worker counts and fuzz duration may change without changing native compilation identity.
+
+`DE_BUILD_TESTS` and isolated fuzzing own test registration. `BUILD_TESTING` is not an application
+option. Required warnings and clang-tidy cannot be disabled. Ambient compile/link flags, toolchain
+files, cross-compilation, compiler launchers and nondefault CMake flags are refused rather than
+ignored between the parent and child builds. macOS uses the single native architecture and the
+exact reviewed deployment target; the selected SDK is forwarded to every child. The release
+compiler is GNU on Linux, AppleClang on macOS and MSVC on Windows. Analysis uses LLVM's supported
+major on Linux/macOS and native MSVC on Windows; it does not claim identical LLVM patch versions.
+
+The configured dependency plan determines compilation, importing and auditing. Disabling the
+development probe excludes its TIFF/Leptonica builds; fuzzing uses its own complete codec/CLI
+closure. Package metadata remains the explicitly labeled full declared-source inventory, not a
+binary-composition certificate. Native dependency audit runs before the application build even
+when unit tests are disabled. Package directories, includes and archives stay in the owning prefix.
+
+The Docker gate selects the Linux daemon's native architecture explicitly. `DOCKER_DEFAULT_PLATFORM`
+is refused; its image and native volumes bind architecture, image contents and dependency/build
+policy. One gate owns a checkout at a time. Each run retains its own diagnostic log, with
+`latest.log` a convenience copy. An interrupted writer claim requires inspection before removal.

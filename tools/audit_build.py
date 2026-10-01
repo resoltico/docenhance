@@ -13,15 +13,6 @@ ROOT = Path(__file__).resolve().parents[1]
 FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
 
 
-OPENCV_MODULES = {
-    "opencv_core",
-    "opencv_flann",
-    "opencv_geometry",
-    "opencv_imgproc",
-    "opencv_photo",
-}
-
-
 def read_cache(path: Path) -> dict[str, str]:
     """Parse KEY:TYPE=VALUE entries of a CMakeCache.txt."""
     values = {}
@@ -34,7 +25,7 @@ def read_cache(path: Path) -> dict[str, str]:
 
 
 def feature_failures(
-    name: str, settings: dict[str, bool | str], cache: dict[str, str]
+    name: str, settings: dict[str, bool | str], cache: dict[str, str], binary: Path
 ) -> list[str]:
     """Compare one dependency's configured cache with its declared feature settings."""
     failures = []
@@ -47,11 +38,14 @@ def feature_failures(
             actual_bool = actual.upper() not in FALSE and not actual.endswith("-NOTFOUND")
             if actual_bool != expected:
                 failures.append(f"{name}: unexpected {key}={actual}")
-        elif "<BINARY>" not in expected and actual != expected:
-            failures.append(f"{name}: unexpected {key}={actual}")
+        else:
+            resolved = expected.replace("<BINARY>", binary.as_posix())
+            if actual.replace("\\", "/") != resolved:
+                failures.append(f"{name}: unexpected {key}={actual}; expected {resolved}")
     if name == "opencv":
         modules = set(cache.get("OPENCV_MODULES_BUILD", "").split(";"))
-        if modules != OPENCV_MODULES:
+        expected_modules = {"opencv_" + part for part in str(settings["BUILD_LIST"]).split(",")}
+        if modules != expected_modules:
             failures.append(f"OpenCV module closure differs: {sorted(modules)}")
     if cache.get("BUILD_SHARED_LIBS", "").upper() not in FALSE:
         failures.append(f"{name}: unexpected shared-library build")
@@ -60,18 +54,44 @@ def feature_failures(
 
 def audit(build: Path) -> list[str]:
     """Audit every configured dependency in a superbuild tree."""
-    features = json.loads((ROOT / "deps/features.json").read_text(encoding="utf-8"))["dependencies"]
+    policy = json.loads((ROOT / "deps/features.json").read_text(encoding="utf-8"))
+    features = policy["dependencies"]
+    binding = json.loads((build / "build-identity.json").read_text(encoding="utf-8"))
+    if binding["CMAKE_SYSTEM_NAME"] in {"Darwin", "Linux"}:
+        for name, settings in policy["unix_dependencies"].items():
+            features[name].update(settings)
+    selected = json.loads((build / "dependency-plan.json").read_text(encoding="utf-8"))
+    if not isinstance(selected, list) or not selected or len(set(selected)) != len(selected):
+        return ["Invalid or empty configured dependency plan"]
     failures = []
-    for name, settings in features.items():
-        if name == "picosha2":
+    for name in selected:
+        if name not in features:
+            failures.append(f"Unknown configured dependency: {name}")
             continue
-        path = build / "deps" / name / "CMakeCache.txt"
-        if name == "catch2" and not path.exists():
-            continue
+        binary = build / "deps" / name
+        path = binary / "CMakeCache.txt"
         if not path.exists():
             failures.append(f"Missing configured dependency cache: {name}")
             continue
-        failures.extend(feature_failures(name, settings, read_cache(path)))
+        cache = read_cache(path)
+        failures.extend(feature_failures(name, features[name], cache, binary))
+        for key in (
+            "ZLIB_LIBRARY",
+            "ZLIB_LIBRARY_RELEASE",
+            "ZLIB_LIBRARY_DEBUG",
+            "ZLIB_INCLUDE_DIR",
+            "JPEG_LIBRARY",
+            "JPEG_LIBRARY_RELEASE",
+            "JPEG_LIBRARY_DEBUG",
+            "JPEG_INCLUDE_DIR",
+        ):
+            value = cache.get(key, "")
+            if (
+                value
+                and not value.endswith("-NOTFOUND")
+                and not Path(value).resolve().is_relative_to((build / "prefix").resolve())
+            ):
+                failures.append(f"{name}: foreign dependency provider {key}={value}")
     return failures
 
 

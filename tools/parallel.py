@@ -4,13 +4,25 @@
 
 from __future__ import annotations
 
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
-MAX_JOBS = 64
+MAX_JOBS: int = json.loads((Path(__file__).resolve().parents[1] / "deps/tools.json").read_text())[
+    "build"
+]["max_jobs"]
+
+
+def available_jobs() -> int:
+    """Bound an observed CPU count by the project execution policy."""
+    return min(MAX_JOBS, max(1, os.cpu_count() or 1))
+
+
 # One item is nothing to overlap, so it never pays for a pool.
 MINIMUM_TO_OVERLAP = 2
 
