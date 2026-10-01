@@ -314,13 +314,12 @@ TEST_CASE("Publication refuses missing writers and oversized tables before stagi
     const auto output = temporary.path / "result";
     const auto before = std::distance(std::filesystem::directory_iterator{temporary.path},
                                       std::filesystem::directory_iterator{});
-    const std::array missing{
-        io::BundleFile{
-            .relative = "image.png",
-            .state = nullptr,
-            .write = nullptr,
-        },
+    const io::BundleFile missing_writer{
+        .relative = "image.png",
+        .state = nullptr,
+        .write = nullptr,
     };
+    const std::array missing{missing_writer};
     REQUIRE(io::publish_bundle(utf8_spelling(output), missing).error().code ==
             core::ErrorCode::argument);
     std::string content = "unused";
@@ -340,13 +339,8 @@ TEST_CASE("Staging bounds nested owned entries and cleans every acquired directo
     }
     relative += "image.png";
     std::string content = "never written";
-    const std::array files{
-        io::BundleFile{
-            .relative = relative,
-            .state = &content,
-            .write = write_text,
-        },
-    };
+    const io::BundleFile file{.relative = relative, .state = &content, .write = write_text};
+    const std::array files{file};
     const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
     REQUIRE(!refused);
     REQUIRE(refused.error().code == core::ErrorCode::resource);
@@ -362,9 +356,8 @@ TEST_CASE("Native absolute publication names cannot escape staging", "[bundle]")
     const auto escaped = temporary.path / "escape";
     const auto relative = utf8_spelling(escaped);
     std::string content = "never written";
-    const std::array files{
-        io::BundleFile{.relative = relative, .state = &content, .write = write_text},
-    };
+    const io::BundleFile file{.relative = relative, .state = &content, .write = write_text};
+    const std::array files{file};
     const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
     REQUIRE(!refused);
     REQUIRE(refused.error().publication == core::Publication::not_published);

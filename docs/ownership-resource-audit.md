@@ -115,3 +115,7 @@ constructor could win overload resolution when copying a mutable WorkRef, retain
 instead of its callable. Exclude WorkRef itself from that constructor, retain normal copy/move
 semantics, and test a mutable copy after its originating wrapper leaves scope. The same real
 counterexample must run cleanly after the fix; no wrapper lifetime chain is retained.
+
+Cross-platform QA found a clang-tidy trailing-comma disagreement for a nested one-element test
+array under the runner's newer macOS SDK. Name the file descriptor and use a simple array
+initializer; retain the exact test, warning requirement and platform checks without suppression.
