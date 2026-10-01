@@ -11,7 +11,12 @@
 #include <cstdint>
 #include <expected>
 #include <new>
-#include <opencv2/core.hpp>
+#include <opencv2/core/base.hpp>
+#include <opencv2/core/exception.hpp>
+#include <opencv2/core/hal/interface.h>
+#include <opencv2/core/mat.hpp>
+#include <opencv2/core/utility.hpp>
+#include <opencv2/core/utils/logger.defines.hpp>
 #include <opencv2/core/utils/logger.hpp>
 #include <opencv2/photo.hpp>
 #include <vector>
