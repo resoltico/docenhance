@@ -12,6 +12,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstdlib>
 #include <exception>
 #include <functional>
@@ -383,10 +384,12 @@ int main() {
     try {
         return measure();
     } catch (const std::exception& error) {
-        std::cerr << "Native allocation observer exception: " << error.what() << "\n";
+        static_cast<void>(std::fputs("Native allocation observer exception: ", stderr));
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputc('\n', stderr));
         return 1;
     } catch (...) {
-        std::cerr << "Native allocation observer nonstandard exception\n";
+        static_cast<void>(std::fputs("Native allocation observer nonstandard exception\n", stderr));
         return 1;
     }
 }
