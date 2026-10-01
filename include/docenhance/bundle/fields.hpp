@@ -4,6 +4,7 @@
 #include "docenhance/core/identity.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/source.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <nlohmann/json.hpp>
@@ -12,6 +13,9 @@
 #include <vector>
 
 namespace docenhance::bundle {
+[[nodiscard]] nlohmann::ordered_json denoising_fields(const methods::DenoisingReport& report);
+[[nodiscard]] nlohmann::ordered_json
+denoising_request_fields(const methods::DenoisingReport& report);
 // One mapping from typed execution facts to their written form. The persistent record and the
 // command response both use it, so a fact cannot be spelled one way on disk and another on
 // stdout, and a field cannot be added to one and forgotten in the other.

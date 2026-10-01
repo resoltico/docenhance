@@ -30,6 +30,7 @@ def fetch_git(dep: Dependency, staging: Path) -> None:
     """Fetch exactly the pinned tag object into an empty staging repository."""
     run("git", "-c", "init.defaultBranch=main", "init", str(staging))
     run("git", "config", "core.autocrlf", "false", cwd=staging)
+    run("git", "config", "core.eol", "lf", cwd=staging)
     run("git", "config", "core.hooksPath", ".disabled-hooks", cwd=staging)
     run("git", "remote", "add", "origin", dep["repository"], cwd=staging)
     run(

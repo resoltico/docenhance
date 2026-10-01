@@ -121,15 +121,11 @@ swap X/Y densities. No resolution is invented. Unitless pHYs aspect information 
 
 Output retains only a deterministic output ICC profile and valid physical resolution. Original text,
 EXIF, timestamps, GPS and unknown metadata are not copied. RGB uses a generated standard sRGB
-profile. Gray uses D50 and a 65,530-entry sRGB decoding curve, not gamma 2.2. The ICC curveType stores
-explicit uint16 knots rounded from the double D(c) reference; its unavoidable curve-value error is
-at most half a 16-bit unit at each knot. This is an explicit refinement of the blueprint's floating
-table: the pinned Little CMS float constructor otherwise serializes a 4096-knot approximation,
-and its integer curve API explicitly rejects more than 65,530 entries. This supported dense table
-avoids both silent coarse serialization and an unreadable profile exceeding the library limit.
-Integer image samples are not quantized by this profile serialization step. Canonical serialization
-fixes the ICC creation date to 2000-01-01 and recomputes the profile ID; the date is a profile
-reproducibility convention, not a claimed document date. No proprietary profile is bundled.
+profile. Gray uses D50 and the standard parametric sRGB decoding curve, not gamma 2.2. The ICC parameters
+have signed 16.16 precision; output pixels use the independent double transfer definition. The
+canonical profile can be serialized, reopened and interpreted by the pinned library. It no longer
+uses a dense sampled curve exceeding that reader's 32767-entry limit. Profile parameters and
+integer pixel precision are distinct contracts.
 
 ## Resources and irreversible publication
 

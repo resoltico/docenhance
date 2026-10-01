@@ -123,3 +123,10 @@ coefficient fixtures and malformed/truncated regressions seed it. The isolated b
 instruments the actual imported JPEG archive and checks its ASan/UBSan/coverage symbols; upstream
 assembly is not claimed to be instrumented. The target manifest owns input bounds and campaign
 workload admission, so the added target must fit the configured campaign budget.
+
+
+The denoising harness invokes actual pinned CV_16U/L1 execution, compares global halos against a
+whole native call, checks correction identity and resource refunds. Isolated fuzz builds instrument
+OpenCV core/photo/imgproc alongside the codec archives; imported archive symbols establish actual
+ASan/UBSan and coverage presence. The required PR workload budget is 2100 seconds for the expanded
+complete target set. Native assembly remains outside the instrumentation claim.

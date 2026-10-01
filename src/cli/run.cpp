@@ -111,6 +111,12 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const R
             invocation.background_quantile = optional_value("--background-quantile");
             invocation.background_smooth = optional_value("--background-smooth");
             invocation.protect_mask = optional_value("--protect-mask");
+            invocation.denoise = optional_value("--denoise");
+            invocation.denoise_blend = optional_value("--denoise-blend");
+            invocation.nlm_h = optional_value("--nlm-h");
+            invocation.nlm_patch = optional_value("--nlm-patch");
+            invocation.nlm_search = optional_value("--nlm-search");
+
             invocation.binarize = optional_value("--binarize");
             invocation.fixed_threshold = optional_value("--fixed-threshold");
             invocation.sauvola_window = optional_value("--sauvola-window");

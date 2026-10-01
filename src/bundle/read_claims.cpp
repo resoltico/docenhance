@@ -106,6 +106,36 @@ std::optional<ProtectionFacts> protection(const RecordJson& v) {
         .height = static_cast<std::uint32_t>(record_integer(record_field(v, "height"), UINT32_MAX)),
     };
 }
+core::Result<void> canonical_claims(const RecordJson& document, const DeclaredBundle& d) {
+    if (!d.operation) {
+        return invalid();
+    }
+    const RunRecord record{
+        .context = {.identity = d.run, .recorded = d.recorded},
+        .build =
+            {
+                .version = d.build.version,
+                .platform = d.build.platform,
+                .compiler = d.build.compiler,
+                .dependency_lock_sha256 = d.build.dependency_lock_sha256,
+            },
+        .source = d.source,
+        .operation = *d.operation,
+        .protection_supplied = d.protection_supplied,
+        .output = d.output,
+        .protection = d.protection,
+        .conversion = d.conversion,
+        .illumination = d.illumination,
+        .denoising = d.denoising,
+    };
+    auto canonical = serialize(record);
+    if (!canonical) {
+        return std::unexpected(canonical.error());
+    }
+    // Equality is structural, not text or key order. This checks every required/unknown field,
+    // derived fraction, warning and method identity without a second default table.
+    return RecordJson::parse(*canonical) == document ? core::Result<void>{} : invalid();
+}
 } // namespace
 core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBundle& d) {
     const auto& build = record_field(document, "build");
@@ -114,7 +144,7 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
     const auto compiler = record_text(record_field(build, "compiler"));
     const auto lock = record_text(record_field(build, "dependency_lock_sha256"));
     const auto& source = record_field(document, "source");
-    auto source_facts = record_source_facts(source, d.version);
+    auto source_facts = record_source_facts(source);
     if (!source_facts) {
         return invalid();
     }
@@ -124,6 +154,10 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
         record_illumination(record_field(record_field(document, "execution"), "illumination"));
     if (!op || !light) {
         return invalid();
+    }
+    auto denoise_claims = validate_denoising_claims(document, d, *op, *light);
+    if (!denoise_claims) {
+        return denoise_claims;
     }
     d.operation = *op;
     d.illumination = *light;
@@ -163,29 +197,6 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
          d.protection->height != d.output.shape.height)) {
         return invalid();
     }
-    const RunRecord record{
-        .context = {.identity = d.run, .recorded = d.recorded},
-        .build =
-            {
-                .version = version,
-                .platform = platform,
-                .compiler = compiler,
-                .dependency_lock_sha256 = lock,
-            },
-        .source = *source_facts,
-        .operation = *d.operation,
-        .protection_supplied = supplied,
-        .output = d.output,
-        .protection = d.protection,
-        .conversion = d.conversion,
-        .illumination = d.illumination,
-    };
-    auto canonical = serialize(record);
-    if (!canonical) {
-        return std::unexpected(canonical.error());
-    }
-    // Equality is structural, not text or key order. This checks every required/unknown field,
-    // derived fraction, warning and method identity without a second default table.
-    return RecordJson::parse(*canonical) == document ? core::Result<void>{} : invalid();
+    return canonical_claims(document, d);
 }
 } // namespace docenhance::bundle

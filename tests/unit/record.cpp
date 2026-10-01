@@ -6,6 +6,7 @@
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
 
@@ -50,6 +51,8 @@ bundle::RunRecord binarized_record() {
             {
                 .identity = {.sha256 = std::string(sample_digest), .bytes = 1024},
                 .name = "page.png",
+                .decoding =
+                    image::PngSource{.width = 100, .height = 50, .depth = 8, .color_type = 0},
             },
         .operation = methods::Binarization{*method},
         .protection_supplied = false,
@@ -76,6 +79,7 @@ bundle::RunRecord binarized_record() {
         .protection = std::nullopt,
         .conversion = std::nullopt,
         .illumination = illumination,
+        .denoising = {.complete = true},
     };
 }
 } // namespace
@@ -85,7 +89,7 @@ TEST_CASE("A written record declares what the bundle contains", "[bundle]") {
     REQUIRE(written);
     const auto declared = bundle::read_record(as_bytes(*written));
     REQUIRE(declared);
-    CHECK(declared->version == 1);
+    CHECK(declared->version == bundle::record_version);
     CHECK(declared->run == "0123456789abcdef0123456789abcdef");
     REQUIRE(declared->inventory.size() == 1);
     CHECK(declared->inventory.front().name == bundle::image_name);
@@ -111,9 +115,9 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
     }
     SECTION("a version this build does not support") {
         auto altered = *written;
-        const auto at = altered.find("\"version\": 1");
+        const auto at = altered.find("\"version\": 3");
         REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 1").size(), "\"version\": 2");
+        altered.replace(at, std::string_view("\"version\": 3").size(), "\"version\": 2");
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);

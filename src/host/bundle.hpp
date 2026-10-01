@@ -49,6 +49,7 @@ struct RunPublication {
     image::ConversionReport (*observe_conversion)(void*) = nullptr;
     void* conversion_state = nullptr;
     std::reference_wrapper<const methods::IlluminationReport> illumination;
+    methods::DenoisingReport denoising{};
 };
 
 // What was published, and what the response needs to identify it.

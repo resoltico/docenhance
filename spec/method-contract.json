@@ -36,14 +36,16 @@
       "id": "D01",
       "name": "16-bit NLM-L1",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--denoise",
         "--denoise-blend",
         "--nlm-h",
         "--nlm-patch",
         "--nlm-search"
-      ]
+      ],
+      "selector": "nlm",
+      "family": "denoising"
     },
     {
       "id": "D02",

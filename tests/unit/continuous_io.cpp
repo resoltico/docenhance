@@ -14,7 +14,7 @@
 #include "docenhance/io/protection_png.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/surface.hpp"
-#include "illumination_rows.hpp"
+#include "linear_rows.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
 #include "temporary_directory.hpp"
@@ -145,10 +145,8 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
         image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1)
             .value();
     const core::Cancellation cancellation;
-    host::IlluminationRows rows{
-        *converter,
-        std::move(block),
-        {.model = model, .protection = {}, .report = report, .cancellation = cancellation}};
+    host::IlluminatedSource entering{*converter, &model, {}, report, cancellation};
+    host::ContinuousRows rows{entering, converter->descriptor(), std::move(block), false};
     AlteredRows altered{rows};
     const auto held = budget.used();
     const auto result =
@@ -179,10 +177,8 @@ TEST_CASE("I01 cancellation in application versus verification preserves stage t
                          .value();
         const CheckpointStop stop{phase, 0};
         const auto cancellation = stop.cancellation();
-        host::IlluminationRows rows{
-            *converter,
-            std::move(block),
-            {.model = model, .protection = {}, .report = report, .cancellation = cancellation}};
+        host::IlluminatedSource entering{*converter, &model, {}, report, cancellation};
+        host::ContinuousRows rows{entering, converter->descriptor(), std::move(block), false};
         const auto held = budget.used();
         const auto result = io::publish_png_rows(utf8_spelling(directory.path / "output"), rows,
                                                  budget, cancellation);

@@ -171,3 +171,43 @@ Positive grid-Laplacian weight for fitting the logarithmic background.
 1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination is disabled.
 
 **Applicable methods:** I01.
+
+## `--denoise METHOD`
+
+**Scope:** P. **Domain/default:** off; off|nlm.
+
+Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG after I01. No binary denoising.
+
+**Applicable methods:** D01.
+
+## `--denoise-blend A`
+
+**Scope:** P. **Domain/default:** 0.5; finite `[0,1]`.
+
+NLM only. Blend once; zero preserves entering samples after source/mask validation.
+
+**Applicable methods:** D01.
+
+## `--nlm-h H`
+
+**Scope:** P. **Domain/default:** 3; finite `[0.1,25]`.
+
+NLM only. Equivalent 8-bit perceptual strength; native float strength is 257 times float(H). Higher strengths may remove marks.
+
+**Applicable methods:** D01.
+
+## `--nlm-patch PIXELS`
+
+**Scope:** P. **Domain/default:** 7; odd integer `[3,15]`.
+
+NLM only. Square patch width.
+
+**Applicable methods:** D01.
+
+## `--nlm-search PIXELS`
+
+**Scope:** P. **Domain/default:** 21; odd integer `[7,41]`.
+
+NLM only. Search at least patch; active processing requires fit in smaller oriented dimension.
+
+**Applicable methods:** D01.

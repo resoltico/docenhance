@@ -46,6 +46,16 @@ class InventoryError(ValueError):
 def copy_licenses(dep: Dependency, receipt: dict[str, Any], source: Path, out: Path) -> None:
     """Copy declared and discovered license files of one dependency into out/licenses/."""
     candidates = set(dep["license_files"])
+    if dep["name"] == "opencv":
+        # Native NLM files carry an applicable source notice beyond the repository LICENSE.
+        candidates.update(
+            {
+                (
+                    Path("modules") / "photo" / "src" / "fast_nlmeans_denoising_invoker.hpp"
+                ).as_posix(),
+                (Path("modules") / "photo" / "src" / "arrays.hpp").as_posix(),
+            }
+        )
     for rel in receipt["files"]:
         if Path(rel).name.upper().startswith(LICENSE_PREFIXES) and (source / rel).is_file():
             candidates.add(rel)

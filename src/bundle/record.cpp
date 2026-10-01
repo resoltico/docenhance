@@ -159,14 +159,16 @@ core::Result<std::string> serialize(const RunRecord& record) {
     try {
         Json source = identity_fields(record.source.identity);
         source.update(Json{{"name", record.source.name}});
-        if (record.source.decoding) {
-            source.emplace("decoding", source_fields(*record.source.decoding));
+        if (!record.source.decoding) {
+            return core::failure(core::ErrorCode::invariant,
+                                 "Run record requires source decoding facts");
         }
-        const Json document = {
+        source.emplace("decoding", source_fields(*record.source.decoding));
+        Json document = {
             {
                 "record",
                 {
-                    {"version", record.source.decoding ? record_version : 1},
+                    {"version", record_version},
                     {"run", record.context.identity},
                     {"recorded", record.context.recorded},
                 },
@@ -196,6 +198,8 @@ core::Result<std::string> serialize(const RunRecord& record) {
             },
             {"output", output_fields(record.output)},
         };
+        document.at("request").emplace("denoising", denoising_request_fields(record.denoising));
+        document.at("execution").emplace("denoising", denoising_fields(record.denoising));
         return document.dump(record_indent, ' ', false, Json::error_handler_t::strict) + "\n";
     } catch (const Json::exception&) {
         return core::failure(core::ErrorCode::invariant,

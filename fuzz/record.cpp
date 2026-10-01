@@ -65,10 +65,10 @@ bool inside_bundle(std::string_view name) {
 // Whatever a reader accepts, it must have checked. These are the claims the bundle layer makes
 // about what it returns, restated where a fuzzer can attack them.
 void accepted_records_are_usable(const bundle::DeclaredBundle& declared) {
-    require(declared.version == 1 || declared.version == bundle::record_version,
+    require(declared.version == bundle::record_version,
             "an accepted record is of a version this build supports");
     require(declared.source.decoding.has_value() == (declared.version == bundle::record_version),
-            "only complete version-two records carry required source decoding observations");
+            "current records carry required source decoding observations");
     if (declared.source.decoding) {
         require(image::valid_source_description(*declared.source.decoding),
                 "accepted source alternatives have valid precision, components, framing and "
@@ -128,6 +128,7 @@ std::string written_record(FuzzInput& input) {
             {
                 .identity = {.sha256 = std::string(core::sha256_hex_length, 'b'), .bytes = 1},
                 .name = "page.png",
+                .decoding = image::PngSource{.width = 1, .height = 1, .depth = 8, .color_type = 0},
             },
         .operation = methods::Binarization{*method},
         .protection_supplied = false,
@@ -156,6 +157,7 @@ std::string written_record(FuzzInput& input) {
         .protection = std::nullopt,
         .conversion = std::nullopt,
         .illumination = illumination,
+        .denoising = {.complete = true},
     };
     auto written = bundle::serialize(record);
     require(written.has_value(), "a record this program built always serializes");

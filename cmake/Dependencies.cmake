@@ -5,7 +5,7 @@ if(NOT IS_DIRECTORY "${DE_DEPENDENCY_PREFIX}")
   message(FATAL_ERROR "Build via the superbuild; no system dependency fallback is supported")
 endif()
 if(DE_FUZZ_ONLY)
-  foreach(de_dependency IN ITEMS zlib jpeg png lcms cli11 json)
+  foreach(de_dependency IN ITEMS zlib jpeg png lcms opencv cli11 json)
     execute_process(COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/deps.py" verify
       --cache "${DE_SOURCE_CACHE}" --dependency ${de_dependency} COMMAND_ERROR_IS_FATAL ANY)
   endforeach()
@@ -14,10 +14,8 @@ else()
     --cache "${DE_SOURCE_CACHE}" COMMAND_ERROR_IS_FATAL ANY)
 endif()
 # Upstream CMake packages are used where their installed target contract is reliable.
-if(NOT DE_FUZZ_ONLY)
-  find_package(OpenCV 5.0.0 EXACT CONFIG REQUIRED COMPONENTS core flann geometry imgproc photo
+find_package(OpenCV 5.0.0 EXACT CONFIG REQUIRED COMPONENTS core flann geometry imgproc photo
     PATHS "${DE_DEPENDENCY_PREFIX}" "${DE_DEPENDENCY_PREFIX}/lib/cmake/opencv5" "${DE_DEPENDENCY_PREFIX}/lib/cmake/opencv4" NO_DEFAULT_PATH)
-endif()
 find_package(CLI11 2.7.2 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
 find_package(nlohmann_json 3.12.0 EXACT CONFIG REQUIRED PATHS "${DE_DEPENDENCY_PREFIX}" NO_DEFAULT_PATH)
 if(DE_BUILD_TESTS)

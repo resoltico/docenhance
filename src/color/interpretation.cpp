@@ -89,10 +89,7 @@ Curve transfer_curve(const Context& context, const image::RasterMetadata& metada
     if (metadata.png() != nullptr && metadata.png()->gamma) {
         return Curve{cmsBuildGamma(context.get(), png_scale / *metadata.png()->gamma)};
     }
-    constexpr int srgb_curve_type = 4;
-    constexpr auto parameters =
-        std::to_array<double>({2.4, 1.0 / 1.055, 0.055 / 1.055, 1.0 / 12.92, 0.04045});
-    return Curve{cmsBuildParametricToneCurve(context.get(), srgb_curve_type, parameters.data())};
+    return srgb_transfer(context);
 }
 } // namespace
 core::Result<void> validate_output_profile(image::RasterShape shape,

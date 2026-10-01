@@ -95,19 +95,17 @@ core::Result<image::SourceDescription> record_source(const RecordJson& value) {
     }
     return result;
 }
-core::Result<SourceFacts> record_source_facts(const RecordJson& value, unsigned version) {
+core::Result<SourceFacts> record_source_facts(const RecordJson& value) {
     SourceFacts facts{
         .identity = record_identity(value),
         .name = record_text(record_field(value, "name")),
         .decoding = std::nullopt,
     };
-    if (version == record_version) {
-        auto decoding = record_source(record_field(value, "decoding"));
-        if (!decoding) {
-            return std::unexpected(decoding.error());
-        }
-        facts.decoding = *decoding;
+    auto decoding = record_source(record_field(value, "decoding"));
+    if (!decoding) {
+        return std::unexpected(decoding.error());
     }
+    facts.decoding = *decoding;
     return facts;
 }
 namespace {
@@ -145,7 +143,7 @@ bool source_agrees(const DeclaredBundle& declared) {
         return false;
     }
     if (!declared.source.decoding) {
-        return declared.version == 1;
+        return false;
     }
     const auto& source = *declared.source.decoding;
     if (declared.source.identity.bytes > image::source_encoded_bytes_max) {

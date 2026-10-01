@@ -118,18 +118,12 @@ charged allocations, peak RSS and runtime are different evidence, never intercha
 
 ## Persistent and response compatibility
 
-New production records use format version 2 and require a closed `source.decoding` PNG/JPEG
-alternative. Response schema version 2 exposes the same mapping as `source_decoding` and reports an
+New production records use format version 3 and require a closed `source.decoding` PNG/JPEG
+alternative. Response schema version 3 exposes the same mapping as `source_decoding` and reports an
 explicit input/output-mode matrix. A custom processing port can report unknown source observations
 as null; the native host always supplies them. Numerical method versions are unchanged.
 
-Complete version-one records retain their exact closed shape and validation; new decoding fields
-are not permitted in that shape. Their absent-source decoding history is not manufactured during
-verification. New cross-field checks bind precision/components/dimensions to conversion observations,
-JPEG metadata decisions to selected oriented resolution, and binarization to its PNG domain.
-Schemas share source definitions from the reviewed response template and are generated together.
-Later verification inspects included PNG artifacts; it neither executes the request nor certifies
-an absent source, historical producer or document meaning/authenticity.
+Only the current record format is supported. Obsolete versions are refused without migration.
 
 ## Evidence and developer commands
 

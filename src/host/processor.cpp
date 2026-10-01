@@ -16,6 +16,7 @@
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <cstddef>
@@ -64,6 +65,7 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
         return std::unexpected(applied.error());
     }
     const methods::IlluminationReport none;
+    const methods::DenoisingReport disabled{.complete = true};
     auto published = publish_run({
         .output_directory = request.output_directory(),
         .artwork = destination->view().as_const(),
@@ -78,6 +80,7 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
         .observe_conversion = nullptr,
         .conversion_state = nullptr,
         .illumination = none,
+        .denoising = disabled,
     });
     if (!published) {
         return std::unexpected(std::move(published.error()));
@@ -103,8 +106,10 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
         return std::move(*result);
     }
     methods::IlluminationReport report;
-    auto result = continuous(request, std::get<image::Continuous>(request.operation()),
-                             cancellation, context_, report);
+    methods::DenoisingReport denoising;
+    auto result =
+        continuous(request, std::get<image::Continuous>(request.operation()),
+                   {.cancellation = cancellation, .context = context_}, report, denoising);
     if (!result) {
         if (report.requested && !report.complete) {
             report.status = methods::SurfaceStatus::failed;
@@ -113,7 +118,11 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
                 report.reason = methods::SurfaceReason::processing_failure;
             }
         }
-        return app::process_failure(std::move(result.error()), report);
+        if (denoising.requested && !denoising.complete) {
+            denoising.status = methods::DenoiseStatus::failed;
+            denoising.reason = methods::DenoiseReason::processing_failure;
+        }
+        return app::process_failure(std::move(result.error()), report, denoising);
     }
     return std::move(*result);
 }

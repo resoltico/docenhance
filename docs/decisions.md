@@ -201,6 +201,19 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. New records use version 2; complete version-one reading remains closed and does
-not invent historical source facts. Source format is not a numerical method-version change.
+PNG bundle path. Current records use version 3; obsolete formats are refused without backward compatibility or
+migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
+
+## Native denoising proves fixed operation composition
+
+D01 consumes the frozen I01 result before one shared final quantizer. Two uint16 planes retain the
+native correction; original entering doubles are reconstructed from the retained source/model.
+No native replay or observation replay occurs during verification. Protected destinations bypass
+transport exactly; neighborhood context is still shared with protected pixels.
+
+The native boundary owns effects and catches, while methods retain native-free types and correction
+math. Sequential 256-pixel output tiles force one native stripe even at maximum halo, avoiding
+process-global thread settings. Native scratch uses a ledger-only reservation with audited bounds,
+independent allocation observation and RAII refund. See [denoising](denoising.md) and its separate
+[design QA](denoising-design-qa.md). Current records/responses make a clean format break.

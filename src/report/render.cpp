@@ -11,6 +11,7 @@
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "illumination.hpp"
 
 #include <nlohmann/json.hpp>
@@ -25,7 +26,7 @@ using Json = nlohmann::ordered_json;
 constexpr int json_indent = 2;
 // The envelope version of schemas/command-response.schema.json, which the CLI contract test
 // validates every response against.
-constexpr int schema_version = 2;
+constexpr int schema_version = 3;
 
 std::string_view publication_name(core::Publication publication) noexcept {
     switch (publication) {
@@ -103,7 +104,7 @@ std::string help_text(const app::Outcome& outcome, const app::Help& help) {
             "PNG output; explicit "
             "B02/B03 binary output on stored 1/2/4/8-bit grayscale PNG samples.\n";
     text += "JPEG supports preserve/gray output, never bw. Opt-in I01 illumination supports "
-            "protected regions. TIFF input, denoising, "
+            "protected regions and opt-in D01 16-bit NLM-L1 denoising. TIFF input, "
             "batching and presets are not implemented.\n\n";
     if (help.list_commands) {
         text += "Commands: process, methods, version\n\n";
@@ -159,7 +160,14 @@ Output text_form(const app::Outcome& outcome) {
                     .out = {},
                     .err = std::string(payload.error.identifier()) + ": " +
                            std::string(diagnostic(payload.error)) + "\n" +
-                           (payload.illumination ? illumination_text(*payload.illumination) : ""),
+                           (payload.illumination ? illumination_text(*payload.illumination) : "") +
+                           (payload.denoising
+                                ? "Denoising: " +
+                                      std::string(methods::status_name(payload.denoising->status)) +
+                                      " (" +
+                                      std::string(methods::reason_name(payload.denoising->reason)) +
+                                      ")\n"
+                                : ""),
                 };
             }
         },
@@ -228,6 +236,9 @@ Output json_form(const app::Outcome& outcome) {
                     {"error", error},
                     {"publication", publication_name(payload.error.publication)},
                 };
+                if (payload.denoising) {
+                    fields.emplace("denoising", bundle::denoising_fields(*payload.denoising));
+                }
                 if (payload.illumination) {
                     fields.emplace("illumination",
                                    bundle::illumination_fields(*payload.illumination));

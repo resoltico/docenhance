@@ -9,6 +9,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <utility>
 
 namespace docenhance::core {
 struct BudgetState {
@@ -46,6 +47,36 @@ void Buffer::release() noexcept {
     data_ = nullptr;
     size_ = 0;
     state_ = nullptr;
+}
+
+void Reservation::release() noexcept {
+    if (state_ != nullptr) {
+        state_->used.fetch_sub(size_, std::memory_order_acq_rel);
+        release_state(state_);
+    }
+    state_ = nullptr;
+    size_ = 0;
+}
+Reservation::~Reservation() {
+    release();
+}
+Reservation& Reservation::operator=(Reservation&& other) noexcept {
+    if (this != &other) {
+        release();
+        size_ = std::exchange(other.size_, 0);
+        state_ = std::exchange(other.state_, nullptr);
+    }
+    return *this;
+}
+Result<Reservation> Budget::reserve(std::size_t bytes) {
+    if (bytes == 0) {
+        return Reservation{};
+    }
+    if (!charge(bytes)) {
+        return failure(ErrorCode::resource, "Native working storage exceeds the budget");
+    }
+    state_->references.fetch_add(1, std::memory_order_relaxed);
+    return Reservation{bytes, state_};
 }
 
 Budget::Budget(std::size_t limit) noexcept

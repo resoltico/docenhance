@@ -29,7 +29,7 @@ from test_cli import call_json, expect
 
 BYTE_MAX = 255
 WORD_MAX = 65535
-GRAY_CURVE_KNOTS = 65530
+ICC_SRGB_FUNCTION = 3
 BYTE_DEPTH = 8
 TRANSPARENT_PIXELS = 2
 VISIBLE_GAMMA_DIFFERENCE = 20
@@ -239,16 +239,19 @@ def profile_boundaries(exe: Path, root: Path) -> None:
             continue
         offset, size = struct.unpack(">II", profile[at + 4 : at + 12])
         curve = profile[offset : offset + size]
-        expect(curve[:4] == b"curv", "gray ICC curveType")
-        count = int.from_bytes(curve[8:12], "big")
-        expect(count == GRAY_CURVE_KNOTS, "all 65530 serialized gray knots")
-        knots = struct.unpack(f">{count}H", curve[12:])
+        expect(curve[:4] == b"para", "gray ICC parametric sRGB curve")
+        expect(
+            int.from_bytes(curve[8:10], "big") == ICC_SRGB_FUNCTION,
+            "ICC sRGB piecewise power curve type",
+        )
+        parameters = tuple(value / 65536 for value in struct.unpack(">5i", curve[12:32]))
+        expected_parameters = (2.4, 1 / 1.055, 0.055 / 1.055, 1 / 12.92, 0.04045)
         expect(
             all(
-                q == int(transfer_decode(i / (count - 1)) * WORD_MAX + 0.5)
-                for i, q in enumerate(knots)
+                abs(a - b) <= 1 / 65536
+                for a, b in zip(parameters, expected_parameters, strict=True)
             ),
-            "serialized gray curve agrees with independent sRGB definition",
+            "ICC fixed-point parameters agree with independent sRGB definition",
         )
         break
     else:

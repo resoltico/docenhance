@@ -69,7 +69,22 @@ def smoke(root: Path) -> list[str]:
     source = root / "jpeg-source.jpg"
     source.write_bytes((ROOT / "tests/fixtures/jpeg/ycbcr-2x2-progressive.jpg").read_bytes())
     output = root / "jpeg-result"
-    response = run_json(candidates[0], "process", str(source), "--out-dir", str(output), "--json")
+    response = run_json(
+        candidates[0],
+        "process",
+        str(source),
+        "--out-dir",
+        str(output),
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--json",
+    )
+    if response["denoising"]["native_calls"] != 1:
+        failures.append("Relocated executable did not execute and reuse native D01")
     if response["source_decoding"]["format"] != "jpeg" or response["publication"] != "completed":
         failures.append("Relocated executable did not process the JPEG through its native pipeline")
     run_json(candidates[0], "verify", str(output), "--json")

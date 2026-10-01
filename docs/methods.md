@@ -16,7 +16,7 @@ Method-specific argument references: `--illumination`, `--background-strength`, 
 
 ## D01 — 16-bit NLM-L1
 
-Status: **not-implemented**.
+Status: **implemented**.
 
 Method-specific argument references: `--denoise`, `--denoise-blend`, `--nlm-h`, `--nlm-patch`, `--nlm-search`.
 

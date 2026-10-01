@@ -124,6 +124,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         .protection = composed.protection,
         .conversion = composed.conversion,
         .illumination = run.illumination.get(),
+        .denoising = run.denoising,
     };
     auto written = bundle::serialize(record);
     if (!written) {

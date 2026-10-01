@@ -54,7 +54,7 @@ def implemented(
             raise ValueError(msg)
         if entry["status"] != "implemented":
             continue
-        if entry.get("family") not in {"binarization", "illumination"}:
+        if entry.get("family") not in {"binarization", "illumination", "denoising"}:
             msg = f"{identity}: implemented methods require an executable family"
             raise ValueError(msg)
         selector = entry.get("selector", "")
@@ -92,10 +92,15 @@ def render_catalog(active: list[dict[str, Any]]) -> str:
             f"    .selector = {json.dumps(entry['selector'])},\n}};\n"
         )
     descriptors = ", ".join(f"{entry['selector']}_descriptor" for entry in active)
-    text += (
-        "inline constexpr auto reviewed_methods =\n"
-        f"    std::to_array<ImplementedMethod>({{{descriptors}}});\n"
-    )
+    call = f"std::to_array<ImplementedMethod>({{{descriptors}}});"
+    line_width = 100
+    if len(call) + 4 > line_width:
+        text += (
+            "inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>(\n"
+            f"    {{{descriptors}}});\n"
+        )
+    else:
+        text += "inline constexpr auto reviewed_methods =\n    " + call + "\n"
     return text + "} // namespace docenhance::methods\n"
 
 
@@ -165,9 +170,11 @@ def metadata_outputs(
         if "conversion" in branch.get("properties", {})
     )
     record_conversion = copy.deepcopy(conversion)
-    record_conversion["properties"]["verified"] = {"type": "boolean"}
+    record_conversion["properties"]["verified"] = {"const": True}
     record["$defs"].update(
         source_decoding=schema["$defs"]["source_decoding"],
+        denoising=schema["$defs"]["denoising"],
+        denoising_request=schema["$defs"]["denoising_request"],
         conversion=record_conversion,
         resolution=conversion["properties"]["resolution"],
         illumination=schema["$defs"]["illumination"],

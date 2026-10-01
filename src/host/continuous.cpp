@@ -3,6 +3,7 @@
 #include "continuous.hpp"
 
 #include "bundle.hpp"
+#include "denoising.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/color/converter.hpp"
@@ -13,13 +14,15 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/protection_png.hpp"
 #include "docenhance/io/source.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/surface.hpp"
-#include "illumination_rows.hpp"
+#include "linear_rows.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -62,7 +65,6 @@ core::Result<void> disabled_observations(ContinuousRun run,
 // during publication, long after this function returns.
 struct Prepared {
     std::optional<methods::SurfaceModel> model;
-    std::optional<IlluminationRows> rows;
 };
 core::Result<void> prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection,
                            Prepared& prepared) {
@@ -80,32 +82,72 @@ core::Result<void> prepare(ContinuousRun run, image::PlaneView<const std::uint8_
         return {};
     }
     prepared.model = std::move(*model);
-    auto block = image::Plane<double>::allocate(
-        run.budget.get(), image::linear_block_pixels * image::rgb_channels, 1);
-    if (!block) {
-        return std::unexpected(block.error());
-    }
-    prepared.rows.emplace(run.converter.get(), std::move(*block),
-                          IlluminationRun{
-                              .model = *prepared.model,
-                              .protection = protection,
-                              .report = run.report.get(),
-                              .cancellation = run.cancellation.get(),
-                          });
     return {};
 }
-} // namespace
-core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
-                                             image::Continuous operation,
-                                             const core::Cancellation& cancellation,
-                                             const bundle::RunContext& context,
-                                             methods::IlluminationReport& illumination) {
-    constexpr std::size_t continuous_budget_bytes = std::size_t{1024} * 1024 * 1024;
-    core::Budget budget{continuous_budget_bytes};
+void initialize_stages(const app::ProcessRequest& request,
+                       methods::IlluminationReport& illumination,
+                       methods::DenoisingReport& denoising) {
     if (const auto* const method = std::get_if<methods::Surface>(&request.illumination())) {
         illumination.status = methods::SurfaceStatus::failed;
         illumination.requested = method->parameters();
     }
+    if (const auto* const method = std::get_if<methods::Nlm>(&request.denoising())) {
+        denoising.status = methods::DenoiseStatus::failed;
+        denoising.requested = method->parameters();
+        denoising.native_h = methods::nlm_native_strength(*denoising.requested);
+    }
+}
+struct Protection {
+    image::Plane<std::uint8_t> mask;
+    std::optional<MaskFacts> facts;
+};
+core::Result<Protection> load_protection(const app::ProcessRequest& request,
+                                         const color::Converter& converter, core::Budget& budget,
+                                         const core::Cancellation& cancellation) {
+    Protection result;
+    if (request.protection()) {
+        auto loaded = io::load_protection_png(*request.protection(), converter.extent(), budget,
+                                              cancellation);
+        if (!loaded) {
+            return std::unexpected(loaded.error());
+        }
+        result.mask = std::move(loaded->mask);
+        result.facts = MaskFacts{
+            .supplied = std::move(loaded->source),
+            .canonical = result.mask.view().as_const(),
+        };
+    }
+    return result;
+}
+app::PublishedImage published_image(PublishedRun published, image::SourceDescription source,
+                                    const methods::IlluminationReport& illumination,
+                                    const methods::DenoisingReport& denoising,
+                                    image::ConversionReport fallback) {
+    // The conversion the record states, so the response and the record cannot disagree.
+    auto report = published.conversion.value_or(fallback);
+    // Derived from the comparison that ran, not asserted because publication returned.
+    report.verified = published.verification == bundle::Verification::decoded_and_compared;
+    return app::PublishedImage{
+        .output = std::move(published.output),
+        .conversion = report,
+        .illumination = illumination,
+        .run = std::move(published.run),
+        .record = std::move(published.record),
+        .source_decoding = source,
+        .denoising = denoising,
+    };
+}
+} // namespace
+core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
+                                             image::Continuous operation,
+                                             ContinuousExecution execution,
+                                             methods::IlluminationReport& illumination,
+                                             methods::DenoisingReport& denoising) {
+    const auto& cancellation = execution.cancellation.get();
+    const auto& context = execution.context.get();
+    constexpr std::size_t continuous_budget_bytes = std::size_t{1024} * 1024 * 1024;
+    core::Budget budget{continuous_budget_bytes};
+    initialize_stages(request, illumination, denoising);
     auto decoded =
         io::load_source(request.input(), budget, operation.parameters().profile, cancellation);
     if (!decoded) {
@@ -115,19 +157,9 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
     if (!converter) {
         return std::unexpected(converter.error());
     }
-    std::optional<MaskFacts> mask;
-    image::Plane<std::uint8_t> protection;
-    if (request.protection()) {
-        auto loaded = io::load_protection_png(*request.protection(), (*converter)->extent(), budget,
-                                              cancellation);
-        if (!loaded) {
-            return std::unexpected(loaded.error());
-        }
-        protection = std::move(loaded->mask);
-        mask = MaskFacts{
-            .supplied = std::move(loaded->source),
-            .canonical = protection.view().as_const(),
-        };
+    auto protection = load_protection(request, **converter, budget, cancellation);
+    if (!protection) {
+        return std::unexpected(protection.error());
     }
     Prepared prepared;
     auto ready = prepare(
@@ -138,12 +170,32 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
             .cancellation = cancellation,
             .report = illumination,
         },
-        protection.view().as_const(), prepared);
+        protection->mask.view().as_const(), prepared);
     if (!ready) {
         return std::unexpected(ready.error());
     }
-    image::RowSource& rows =
-        prepared.rows ? static_cast<image::RowSource&>(*prepared.rows) : **converter;
+    denoising.eligible_samples = illumination.eligible_samples;
+    denoising.protected_samples = illumination.protected_samples;
+    IlluminatedSource entering{**converter, prepared.model ? &*prepared.model : nullptr,
+                               protection->mask.view().as_const(), illumination, cancellation};
+    auto planes = prepare_denoising(entering, request, budget, cancellation, denoising);
+    if (!planes) {
+        return std::unexpected(planes.error());
+    }
+    DenoisedSource final_source{entering, *planes, protection->mask.view().as_const(), denoising};
+    if (!planes->input.empty()) {
+        auto assessed = assess_denoising(final_source, budget, cancellation, denoising);
+        if (!assessed) {
+            return std::unexpected(assessed.error());
+        }
+    }
+    auto block =
+        image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1);
+    if (!block) {
+        return std::unexpected(block.error());
+    }
+    ContinuousRows rows{final_source, (*converter)->descriptor(), std::move(*block),
+                        !planes->input.empty()};
     const Artwork artwork{std::ref(rows)};
     auto published = publish_run({
         .output_directory = request.output_directory(),
@@ -155,26 +207,17 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
         .source_name = io::file_name(request.input()),
         .source_decoding = decoded->description,
         .operation = operation,
-        .mask = mask,
+        .mask = protection->facts,
         .observe_conversion =
             [](void* state) { return static_cast<color::Converter*>(state)->report(); },
         .conversion_state = converter->get(),
         .illumination = illumination,
+        .denoising = denoising,
     });
     if (!published) {
         return std::unexpected(std::move(published.error()));
     }
-    // The conversion the record states, so the response and the record cannot disagree.
-    auto report = published->conversion.value_or((*converter)->report());
-    // Derived from the comparison that ran, not asserted because publication returned.
-    report.verified = published->verification == bundle::Verification::decoded_and_compared;
-    return app::PublishedImage{
-        .output = std::move(published->output),
-        .conversion = report,
-        .illumination = illumination,
-        .run = std::move(published->run),
-        .record = std::move(published->record),
-        .source_decoding = decoded->description,
-    };
+    return published_image(std::move(*published), decoded->description, illumination, denoising,
+                           (*converter)->report());
 }
 } // namespace docenhance::host

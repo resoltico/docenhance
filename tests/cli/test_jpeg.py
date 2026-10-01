@@ -24,8 +24,8 @@ from continuous_fixtures import (
 )
 from test_cli import call_json, expect
 
-WIRE_VERSION = 2
-RECORD_VERSION = 2
+WIRE_VERSION = 3
+RECORD_VERSION = 3
 WORD_DEPTH = 16
 FIRST_TRANSPOSED = 5
 DATA = Path(__file__).resolve().parents[1] / "fixtures/jpeg"
@@ -295,7 +295,7 @@ def failures(exe: Path, root: Path) -> None:
 
 
 def records(exe: Path, root: Path) -> None:
-    """Closed version-two observations are cross-checked; strict legacy PNG records survive."""
+    """Current source observations are cross-checked; obsolete record versions are rejected."""
     source = (DATA / "gray-1x1-baseline.jpg").read_bytes()
     process(exe, root, "record-jpeg", source)
     path = root / "record-jpeg/run.json"
@@ -319,20 +319,6 @@ def records(exe: Path, root: Path) -> None:
     path.write_text(json.dumps(altered), encoding="utf-8")
     call_json(exe, ["verify", str(path.parent), "--json"], 3)
     path.write_bytes(original)
-    # A real PNG record can be represented in the complete historical version-one shape.
-    png_input = root / "legacy.png"
-    png_input.write_bytes(Fixture(2, 1, ((48,), (128,))).encoded())
-    directory = root / "legacy-bundle"
-    call_json(exe, ["process", str(png_input), "--out-dir", str(directory), "--json"])
-    path = directory / "run.json"
-    legacy = json.loads(path.read_bytes())
-    legacy["record"]["version"] = 1
-    legacy["source"].pop("decoding")
-    path.write_text(json.dumps(legacy), encoding="utf-8")
-    call_json(exe, ["verify", str(directory), "--json"])
-    legacy["source"]["decoding"] = record["source"]["decoding"]
-    path.write_text(json.dumps(legacy), encoding="utf-8")
-    call_json(exe, ["verify", str(directory), "--json"], 3)
 
 
 def main() -> int:

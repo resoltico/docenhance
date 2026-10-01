@@ -22,8 +22,19 @@ def instrumented_symbols(text: str) -> bool:
 def inspect_archives(build: Path) -> dict[str, str]:
     """Check resolved imported-target files, retaining their exact SHA-256 identities."""
     archives = json.loads((build / "fuzz-codecs.json").read_text(encoding="utf-8"))
-    if not isinstance(archives, dict) or set(archives) != {"jpeg", "png", "zlib", "lcms"}:
-        msg = "The fuzz build must identify exactly its JPEG, PNG, zlib and Little CMS archives"
+    if not isinstance(archives, dict) or set(archives) != {
+        "jpeg",
+        "png",
+        "zlib",
+        "lcms",
+        "opencv_core",
+        "opencv_photo",
+        "opencv_imgproc",
+    }:
+        msg = (
+            "The fuzz build must identify exactly its JPEG, PNG, zlib, Little CMS "
+            "and OpenCV execution archives"
+        )
         raise FuzzError(msg)
     nm = shutil.which("nm")
     if nm is None:

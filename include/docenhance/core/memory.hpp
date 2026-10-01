@@ -26,6 +26,28 @@ inline constexpr std::size_t buffer_alignment = 64;
 
 class Budget;
 struct BudgetState;
+// A ledger-only lease for bounded native-owned working storage. It allocates no dummy payload
+// and retains the same shared ledger lifetime/refund rules as Buffer.
+class Reservation {
+  public:
+    Reservation() noexcept = default;
+    Reservation(const Reservation&) = delete;
+    Reservation& operator=(const Reservation&) = delete;
+    Reservation(Reservation&& other) noexcept
+        : size_(std::exchange(other.size_, 0)), state_(std::exchange(other.state_, nullptr)) {}
+    Reservation& operator=(Reservation&& other) noexcept;
+    ~Reservation();
+    [[nodiscard]] std::size_t size() const noexcept {
+        return size_;
+    }
+
+  private:
+    friend class Budget;
+    Reservation(std::size_t size, BudgetState* state) noexcept : size_(size), state_(state) {}
+    void release() noexcept;
+    std::size_t size_ = 0;
+    BudgetState* state_ = nullptr;
+};
 
 // Owning, aligned, move-only bytes, charged to the budget that produced them.
 class Buffer {
@@ -86,6 +108,8 @@ class Budget {
     // Zero bytes is an empty buffer and costs nothing; anything else is charged before it is
     // allocated, and the charge is returned if the allocator cannot satisfy it.
     [[nodiscard]] Result<Buffer> allocate(std::size_t bytes);
+    // Used includes both directly owned buffers and live native reservations.
+    [[nodiscard]] Result<Reservation> reserve(std::size_t bytes);
     [[nodiscard]] std::size_t limit() const noexcept {
         return limit_;
     }

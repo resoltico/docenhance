@@ -19,7 +19,7 @@ from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
 SHA256_HEX_LENGTH = 64
-PROCESS_OPTION_COUNT = 20
+PROCESS_OPTION_COUNT = 25
 EXIT_INVOCATION = 2
 EXIT_PROCESSING = 4
 PNG_FILTER_NONE = 0
@@ -140,6 +140,7 @@ def discovery_cases(exe: Path) -> None:
         version["methods"]
         == [
             {"id": "I01", "method_version": 1},
+            {"id": "D01", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
         ],
@@ -151,6 +152,7 @@ def discovery_cases(exe: Path) -> None:
         call_json(exe, ["methods", "--json"])["methods"]
         == [
             {"id": "I01", "method_version": 1},
+            {"id": "D01", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
         ],

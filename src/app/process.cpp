@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/app/process.hpp"
 
+#include "denoising.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/parse.hpp"
 #include "docenhance/contract/utf8.hpp"
@@ -187,7 +188,14 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     if (!illumination) {
         return std::unexpected(illumination.error());
     }
-    return ProcessRequest{invocation.subject, invocation.output_directory, *method, *illumination,
+    const auto denoising = prepare_denoising(invocation);
+    if (!denoising) {
+        return std::unexpected(denoising.error());
+    }
+    return ProcessRequest{invocation.subject,
+                          invocation.output_directory,
+                          *method,
+                          {.illumination = *illumination, .denoising = *denoising},
                           invocation.protect_mask};
 }
 } // namespace docenhance::app

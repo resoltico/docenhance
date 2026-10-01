@@ -21,10 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "enum": [
-            1,
-            2
-          ]
+          "const": 3
         },
         "run": {
           "type": "string",
@@ -70,7 +67,8 @@
       "required": [
         "sha256",
         "bytes",
-        "name"
+        "name",
+        "decoding"
       ],
       "additionalProperties": false,
       "properties": {
@@ -81,7 +79,7 @@
         "bytes": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 18446744073709551615
+          "maximum": 134217728
         },
         "name": {
           "type": "string",
@@ -97,7 +95,8 @@
       "type": "object",
       "required": [
         "operation",
-        "protection_supplied"
+        "protection_supplied",
+        "denoising"
       ],
       "additionalProperties": false,
       "properties": {
@@ -250,6 +249,9 @@
         },
         "protection_supplied": {
           "type": "boolean"
+        },
+        "denoising": {
+          "$ref": "#/$defs/denoising_request"
         }
       }
     },
@@ -257,7 +259,8 @@
       "type": "object",
       "required": [
         "conversion",
-        "illumination"
+        "illumination",
+        "denoising"
       ],
       "additionalProperties": false,
       "properties": {
@@ -273,6 +276,9 @@
         },
         "illumination": {
           "$ref": "#/$defs/illumination"
+        },
+        "denoising": {
+          "$ref": "#/$defs/denoising"
         }
       }
     },
@@ -547,55 +553,33 @@
       }
     },
     {
-      "if": {
-        "properties": {
-          "record": {
-            "properties": {
-              "version": {
-                "const": 1
-              }
+      "properties": {
+        "source": {
+          "required": [
+            "decoding"
+          ],
+          "properties": {
+            "bytes": {
+              "maximum": 134217728
             }
           }
-        }
-      },
-      "then": {
-        "properties": {
-          "source": {
-            "properties": {
-              "decoding": false
-            }
-          }
-        }
-      },
-      "else": {
-        "properties": {
-          "source": {
-            "required": [
-              "decoding"
-            ],
-            "properties": {
-              "bytes": {
-                "maximum": 134217728
-              }
-            }
-          },
-          "execution": {
-            "properties": {
-              "conversion": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "verified": {
-                        "const": true
-                      }
+        },
+        "execution": {
+          "properties": {
+            "conversion": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "verified": {
+                      "const": true
                     }
                   }
-                ]
-              }
+                }
+              ]
             }
           }
         }

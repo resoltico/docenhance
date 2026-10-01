@@ -57,6 +57,7 @@ using Transform = std::unique_ptr<void, TransformCloser>;
 [[nodiscard]] core::Result<core::Buffer>
 output_profile(const Context& context, core::Budget& budget, bool gray,
                const core::Cancellation& cancellation = {});
+[[nodiscard]] Curve srgb_transfer(const Context& context);
 [[nodiscard]] Profile linear_rgb_profile(const Context& context);
 [[nodiscard]] core::Result<Profile> source_profile(const Context& context,
                                                    const image::Raster& source);

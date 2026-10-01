@@ -93,7 +93,7 @@ TEST_CASE("Failed and cancelled color preparation refunds its native allocations
           "[continuous][resource]") {
     core::Budget source_budget{continuous_budget};
     auto const source = ramp(source_budget);
-    constexpr auto ceilings = std::to_array<std::size_t>({0, 1024, 65536, 262144});
+    constexpr auto ceilings = std::to_array<std::size_t>({0, 1024, 65536});
     for (const auto ceiling : ceilings) {
         core::Budget budget{ceiling};
         {
@@ -104,6 +104,14 @@ TEST_CASE("Failed and cancelled color preparation refunds its native allocations
         }
         CHECK(budget.used() == 0);
     }
+    constexpr std::size_t profile_budget = 262144;
+    core::Budget compact{profile_budget};
+    {
+        const auto result =
+            color::Converter::create(source, image::Continuous::create({}).value(), compact);
+        REQUIRE(result);
+    }
+    CHECK(compact.used() == 0);
     core::Budget budget{continuous_budget};
     const CheckpointStop stop{core::Checkpoint::allocation, 0};
     const auto result = color::Converter::create(source, image::Continuous::create({}).value(),
