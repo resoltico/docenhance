@@ -68,3 +68,6 @@ that regression for both clang-tidy and clang-query. The version requirement is 
 Windows QA found that the locked Little CMS release never consumes its POSIX thread switch on
 Windows. Declare that switch once in the Unix feature policy and apply/audit the same scope;
 keep unused-argument errors enabled on every platform.
+
+Windows also confirmed the header-only PicoSHA2 adapter consumes no package search prefix.
+Do not pass that irrelevant lookup control to its install-only configuration.
