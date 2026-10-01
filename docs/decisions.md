@@ -217,3 +217,11 @@ math. Sequential 256-pixel output tiles force one native stripe even at maximum 
 process-global thread settings. Native scratch uses a ledger-only reservation with audited bounds,
 independent allocation observation and RAII refund. See [denoising](denoising.md) and its separate
 [design QA](denoising-design-qa.md). Current records/responses make a clean format break.
+
+## Retire superseded project contracts directly
+
+Use one current project contract, without legacy readers, forwarding APIs or migrations. Retire
+PNG-only acquisition and image-only publication in favor of shared source admission and complete
+bundles; preserve codec and reconciliation guarantees through the existing owners. Remove unused
+multipage parser scaffolding until a complete processing requirement exists. The repo-wide
+[contract and architecture audit](contract-audit.md) records the design and separate QA decisions.

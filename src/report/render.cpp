@@ -107,7 +107,7 @@ std::string help_text(const app::Outcome& outcome, const app::Help& help) {
             "protected regions and opt-in D01 16-bit NLM-L1 denoising. TIFF input, "
             "batching and presets are not implemented.\n\n";
     if (help.list_commands) {
-        text += "Commands: process, methods, version\n\n";
+        text += "Commands: process, verify, methods, version\n\n";
     }
     for (const auto& option : contract::option_catalog) {
         if (!option.scope.contains(outcome.command)) {

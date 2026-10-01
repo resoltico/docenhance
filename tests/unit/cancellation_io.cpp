@@ -10,6 +10,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
+#include "png_transaction.hpp"
 #include "publication.hpp"
 #include "stub_verifier.hpp"
 #include "temporary_directory.hpp"
@@ -138,7 +139,7 @@ TEST_CASE("Every PNG encoding checkpoint cleans unpublished output", "[cancellat
     for (std::size_t after = 0; after < attempts; ++after) {
         const CheckpointStop stop{core::Checkpoint::encode, after};
         const auto result =
-            io::publish_grayscale_png(output, plane.view().as_const(), budget, stop.cancellation());
+            publish_png_fixture(output, plane.view().as_const(), budget, stop.cancellation());
         if (CheckpointStop::stopped()) {
             REQUIRE(!result);
             CHECK(result.error().code == core::ErrorCode::cancelled);
@@ -202,8 +203,8 @@ TEST_CASE("The final commit checkpoint is the cancellation cutoff", "[cancellati
     const auto output = utf8_spelling(directory.path / "output");
     {
         const CheckpointStop stop{core::Checkpoint::commit, 0};
-        const auto result = io::publish_png(output, plane.view().as_const(), budget,
-                                            stop.cancellation(), cancel_after_gate);
+        const auto result = publish_png_fixture(output, plane.view().as_const(), budget,
+                                                stop.cancellation(), cancel_after_gate);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(result.error().publication == core::Publication::not_published);
@@ -212,7 +213,7 @@ TEST_CASE("The final commit checkpoint is the cancellation cutoff", "[cancellati
     commit_source() = std::stop_source{};
     const core::Cancellation control{commit_source().get_token()};
     const auto result =
-        io::publish_png(output, plane.view().as_const(), budget, control, cancel_after_gate);
+        publish_png_fixture(output, plane.view().as_const(), budget, control, cancel_after_gate);
     REQUIRE(result);
     CHECK(control.requested(core::Checkpoint::processing));
     CHECK(std::filesystem::is_regular_file(directory.path / "output" / "result.png"));
@@ -227,8 +228,8 @@ TEST_CASE("A late cancellation never erases refused or uncertain publication",
         commit_source() = std::stop_source{};
         const auto output = utf8_spelling(directory.path / "output");
         const auto result =
-            io::publish_png(output, plane.view().as_const(), budget,
-                            core::Cancellation{commit_source().get_token()}, commit);
+            publish_png_fixture(output, plane.view().as_const(), budget,
+                                core::Cancellation{commit_source().get_token()}, commit);
         REQUIRE(!result);
         if (commit == refused_commit) {
             CHECK(result.error().code == core::ErrorCode::output);

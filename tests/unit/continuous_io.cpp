@@ -17,6 +17,7 @@
 #include "linear_rows.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
+#include "png_transaction.hpp"
 #include "temporary_directory.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -78,7 +79,7 @@ TEST_CASE("Continuous output verification rejects wrong samples before publicati
     AlteredRows altered{*converter};
     const auto held = budget.used();
     const auto result =
-        io::publish_png_rows(utf8_spelling(directory.path / "result"), altered, budget);
+        publish_png_fixture(utf8_spelling(directory.path / "result"), altered, budget);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(result.error().publication == core::Publication::not_published);
@@ -111,8 +112,8 @@ TEST_CASE("Cancellation during continuous verification never commits staged outp
     constexpr std::size_t attempts = 256;
     for (std::size_t after = 0; after < attempts; ++after) {
         const CheckpointStop stop{core::Checkpoint::verification, after};
-        const auto result = io::publish_png_rows(utf8_spelling(directory.path / "output"),
-                                                 *converter, budget, stop.cancellation());
+        const auto result = publish_png_fixture(utf8_spelling(directory.path / "output"),
+                                                *converter, budget, stop.cancellation());
         if (CheckpointStop::stopped()) {
             REQUIRE(!result);
             CHECK(result.error().code == core::ErrorCode::cancelled);
@@ -150,7 +151,7 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
     AlteredRows altered{rows};
     const auto held = budget.used();
     const auto result =
-        io::publish_png_rows(utf8_spelling(directory.path / "output"), altered, budget);
+        publish_png_fixture(utf8_spelling(directory.path / "output"), altered, budget);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(report.complete);
@@ -180,8 +181,8 @@ TEST_CASE("I01 cancellation in application versus verification preserves stage t
         host::IlluminatedSource entering{*converter, &model, {}, report, cancellation};
         host::ContinuousRows rows{entering, converter->descriptor(), std::move(block), false};
         const auto held = budget.used();
-        const auto result = io::publish_png_rows(utf8_spelling(directory.path / "output"), rows,
-                                                 budget, cancellation);
+        const auto result = publish_png_fixture(utf8_spelling(directory.path / "output"), rows,
+                                                budget, cancellation);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(result.error().publication == core::Publication::not_published);

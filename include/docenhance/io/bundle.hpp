@@ -80,11 +80,9 @@ struct BundleSnapshot {
                                                        core::Budget& budget,
                                                        const core::Cancellation& cancellation,
                                                        std::size_t record_limit);
-[[nodiscard]] core::Result<BundleContents> inspect_bundle(const std::string& directory);
-// The bytes of one bundle file, refused if larger than the limit given.
-[[nodiscard]] core::Result<core::Buffer> read_bundle_file(const std::string& directory,
-                                                          std::string_view relative,
-                                                          std::size_t limit, core::Budget& budget);
+// Read only the root record snapshot to identify this invocation before full reconciliation.
+[[nodiscard]] core::Result<core::Buffer>
+read_bundle_record(const std::string& directory, std::size_t limit, core::Budget& budget);
 [[nodiscard]] core::Result<std::string> publish_bundle(const std::string& output_directory,
                                                        std::span<const BundleFile> files,
                                                        const core::Cancellation& cancellation = {},

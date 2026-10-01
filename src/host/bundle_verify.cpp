@@ -78,8 +78,7 @@ core::Result<void> prepare_bundle(void* const state, const std::string& director
 io::BundleObservation observe_bundle(void* const state, const std::string& directory) {
     const auto& expected = *static_cast<ExpectedBundle*>(state);
     core::Budget budget{bundle::record_max_bytes};
-    auto bytes =
-        io::read_bundle_file(directory, bundle::record_name, bundle::record_max_bytes, budget);
+    auto bytes = io::read_bundle_record(directory, bundle::record_max_bytes, budget);
     if (!bytes) {
         return io::BundleObservation::unobservable;
     }

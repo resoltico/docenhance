@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/identity.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/io/bundle.hpp"
-#include "docenhance/io/digest.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -48,13 +48,4 @@ decode_grayscale_png(std::span<const std::uint8_t> input, core::Budget& budget,
                                                     core::Budget& budget,
                                                     const core::Cancellation& cancellation = {});
 
-// Publish result.png in a new directory. A native no-replace rename is the commit point; no
-// fallback may overwrite an existing file, directory or symlink. The parent must be trusted
-// against hostile ancestor replacement. Atomic visibility does not promise crash durability.
-// Cancellation observed before the last precommit checkpoint prevents publication; after that
-// snapshot the native operation decides success/refusal/uncertainty, never a late stop request.
-[[nodiscard]] core::Result<std::string>
-publish_grayscale_png(const std::string& output_directory,
-                      image::PlaneView<const std::uint8_t> image, core::Budget& budget,
-                      const core::Cancellation& cancellation = {});
 } // namespace docenhance::io

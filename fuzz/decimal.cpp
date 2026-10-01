@@ -73,7 +73,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     }
     errno = 0;
     const double expected = std::strtod(text.c_str(), nullptr);
-    const bool in_range = errno != ERANGE && std::isfinite(expected) && expected >= bounds.low &&
+    const bool in_range = errno != ERANGE && std::isfinite(expected) &&
+                          std::fpclassify(expected) != FP_SUBNORMAL && expected >= bounds.low &&
                           expected <= bounds.high;
     require(result.has_value() == in_range,
             "grammatical decimals are accepted exactly when in range");

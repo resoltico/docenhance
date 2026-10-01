@@ -8,6 +8,7 @@
 #include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
+#include "png_transaction.hpp"
 #include "publication.hpp"
 #include "temporary_directory.hpp"
 
@@ -41,8 +42,7 @@ TEST_CASE("Codec allocations share the caller budget and refund on every path", 
     image->view().row(0).back() = UINT8_MAX;
     const auto charged = source_budget.used();
     const auto original = temporary.path / "original";
-    REQUIRE(io::publish_grayscale_png(utf8_spelling(original), image->view().as_const(),
-                                      source_budget));
+    REQUIRE(publish_png_fixture(utf8_spelling(original), image->view().as_const(), source_budget));
     CHECK(source_budget.used() == charged);
     constexpr auto limits = std::to_array<std::size_t>({0, 64, 1024, 4096, 65536, mebibyte});
     for (const auto limit : limits) {
@@ -60,7 +60,7 @@ TEST_CASE("Codec allocations share the caller budget and refund on every path", 
         }
         CHECK(constrained.used() == 0);
         const auto result =
-            io::publish_grayscale_png(utf8_spelling(output), image->view().as_const(), constrained);
+            publish_png_fixture(utf8_spelling(output), image->view().as_const(), constrained);
         if (!result) {
             CHECK(result.error().code == core::ErrorCode::resource);
             CHECK(result.error().publication == core::Publication::not_published);
@@ -80,7 +80,7 @@ TEST_CASE("Binary output is read back and compared before it is published", "[io
         std::ranges::fill(image->view().row(y), y % 2 == 0 ? 0 : UINT8_MAX);
     }
     const auto published = temporary.path / "verified";
-    REQUIRE(io::publish_grayscale_png(utf8_spelling(published), image->view().as_const(), budget));
+    REQUIRE(publish_png_fixture(utf8_spelling(published), image->view().as_const(), budget));
 
     // What the verifier compares against, and what it does when the file disagrees with it. A
     // single flipped byte inside the compressed data must be a refusal, not a published result.

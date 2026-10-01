@@ -88,7 +88,7 @@ class CampaignOrchestrationTests(unittest.TestCase):
                     sys.executable,
                     str(ROOT / "tools/run_fuzzers.py"),
                     "--target",
-                    "pages",
+                    "decimal",
                     "--binary",
                     sys.executable,
                     "--seconds",

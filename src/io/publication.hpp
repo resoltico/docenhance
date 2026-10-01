@@ -2,14 +2,11 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/core/cancellation.hpp"
-#include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/plane.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "entry_identity.hpp"
 
 #include <cstddef>
-#include <cstdint>
 #include <cstdio>
 #include <filesystem>
 #include <span>
@@ -40,11 +37,6 @@ struct BundleStream {
 // coordinate cancellation after the gate and call the actual native operation without timing races.
 using PublishRename = std::error_code (*)(const std::filesystem::path&,
                                           const std::filesystem::path&) noexcept;
-// Borrowed writer operation: encoding and verification run before the one commit cutoff.
-struct PngWriterRef {
-    void* state;
-    core::Result<void> (*write)(void*, const BundleSlot&);
-};
 // The same transaction with the commit operation supplied, so tests can coordinate cancellation
 // around the native call without timing races.
 [[nodiscard]] core::Result<std::string> publish_bundle(const std::string& output_directory,
@@ -52,10 +44,4 @@ struct PngWriterRef {
                                                        const core::Cancellation& cancellation,
                                                        PublishRename commit,
                                                        BundleValidation validation = {});
-[[nodiscard]] core::Result<std::string>
-publish_generated_png(const std::string& output_directory, PngWriterRef writer,
-                      const core::Cancellation& cancellation, PublishRename commit);
-[[nodiscard]] core::Result<std::string>
-publish_png(const std::string& output_directory, image::PlaneView<const std::uint8_t> image,
-            core::Budget& budget, const core::Cancellation& cancellation, PublishRename commit);
 } // namespace docenhance::io

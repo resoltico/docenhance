@@ -22,36 +22,6 @@
 #include <vector>
 namespace docenhance::tests {
 inline void parser_cases() {
-    const auto all = contract::parse_pages("all");
-    require(all.has_value() && all.value().all && all.value().pages.empty(), "all pages");
-    const auto pages = contract::parse_pages("5,1-3");
-    require(pages.has_value() && pages.value().pages == std::vector<std::uint32_t>({1, 2, 3, 5}),
-            "sorted page expansion");
-    for (const auto* const text : {
-             "",
-             "0",
-             "1,",
-             ",1",
-             "1,,2",
-             "2-1",
-             "1-",
-             "-1",
-             "1-2-3",
-             "1,1",
-             "1-3,2",
-             "1 2",
-             "+1",
-             "ALL",
-             "4294967296",
-             "1.0",
-         }) {
-        require(!contract::parse_pages(text).has_value(),
-                std::string("bad page input accepted: ") + text);
-    }
-    require(!contract::parse_pages("1-100", 99).has_value(), "bounded page expansion");
-    require(contract::parse_pages("4294967295").has_value(), "uint32 maximum page");
-    require(!contract::parse_pages("1-4294967295").has_value(),
-            "hostile expansion fails before allocation");
     require(contract::parse_finite("1e-2", 0, 1).value() == 0.01, "finite exponent");
     for (const auto* const text : {
              "nan", "NaN", "inf", "-inf", "1e999", "0x1.0p0", " 1",  "1 ",
@@ -113,11 +83,11 @@ inline void decimal_cases() {
             "range endpoint in exponent form");
     require(!contract::parse_finite("1e-9", 1e-8, 1e-3).has_value(), "below the option range");
     require(!contract::parse_finite("1e+400", -1e308, 1e308).has_value(), "overflowing exponent");
-    // Integer-valued inputs never gain scientific notation.
-    for (const auto* const text : {"1e2", "1e+2", "1E2", "2e0-3"}) {
-        require(!contract::parse_pages(text).has_value(),
-                std::string("page selection accepted an exponent: ") + text);
-    }
+    require(!contract::parse_finite("1e-400", 0, 1).has_value(), "conversion underflow refused");
+    require(contract::parse_finite("0e-400", 0, 1).value() == 0, "zero has no underflow");
+    require(!contract::parse_finite("4.9406564584124654e-324", 0, 1).has_value(),
+            "conversion underflow is refused even for subnormal results");
+    require(std::signbit(contract::parse_finite("-0", -1, 1).value()), "negative zero retained");
 }
 inline void numerical_cases() {
     require(image::srgb_decode(0).value() == 0, "black decode");

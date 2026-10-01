@@ -6,13 +6,6 @@
     "TSAN_OPTIONS": "halt_on_error=1:second_deadlock_stack=1"
   },
   "targets": {
-    "pages": {
-      "max_len": 4200,
-      "source": "pages.cpp",
-      "links": [
-        "de_contract"
-      ]
-    },
     "decimal": {
       "max_len": 200,
       "source": "decimal.cpp",

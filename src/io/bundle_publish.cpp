@@ -8,7 +8,6 @@
 #include "png_context.hpp"
 #include "publication.hpp"
 
-#include <array>
 #include <expected>
 #include <filesystem>
 #include <new>
@@ -152,22 +151,5 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
                                          const core::Cancellation& cancellation,
                                          BundleValidation validation) {
     return publish_bundle(output_directory, files, cancellation, rename_exclusive, validation);
-}
-core::Result<std::string> publish_generated_png(const std::string& output_directory,
-                                                PngWriterRef writer,
-                                                const core::Cancellation& cancellation,
-                                                PublishRename commit) {
-    if (writer.write == nullptr || writer.state == nullptr) {
-        return core::failure(core::ErrorCode::argument, "Cannot publish an empty image");
-    }
-    // One image is a bundle of one file, through the same transaction.
-    const std::array<BundleFile, 1> files{
-        BundleFile{
-            .relative = "result.png",
-            .state = writer.state,
-            .write = writer.write,
-        },
-    };
-    return publish_bundle(output_directory, files, cancellation, commit);
 }
 } // namespace docenhance::io

@@ -65,7 +65,8 @@ checker reads it for include closure, API restrictions and this mechanically che
 
 Only `de_bundle` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
 OpenCV core/photo serve D01 through `de_denoise`; other unused imaging packages remain in the
-native probe. Public headers never expose third-party types. The executable-only `entry` layer
+native probe. The bundle field-mapping interface explicitly exposes nlohmann JSON to the report layer under
+the manifest's `interface_packages` permission; processing and numerical interfaces use project types. The executable-only `entry` layer
 explicitly declares that it has no public header directory; it is not a fake reusable library.
 
 ## Values, ownership and budgets
