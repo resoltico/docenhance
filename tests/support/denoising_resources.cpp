@@ -166,13 +166,14 @@ void release_bytes(void* const pointer) noexcept {
 #endif
 class ObservedMatAllocator final : public cv::MatAllocator {
   public:
-    explicit ObservedMatAllocator(cv::MatAllocator& upstream) : upstream_(upstream) {}
+    explicit ObservedMatAllocator(cv::MatAllocator& upstream, bool refuse_payload = false)
+        : upstream_(upstream), refuse_payload_(refuse_payload) {}
     // Fixed public native allocator ABI, including shape, storage and access flags.
     // NOLINTNEXTLINE(readability-function-size)
     cv::UMatData* allocate(int dimensions, const int* sizes, int type, void* data,
                            std::size_t* step, cv::AccessFlag flags,
                            cv::UMatUsageFlags usage) const override {
-        if (data == nullptr && refuse_allocation()) {
+        if (data == nullptr && (refuse_payload_ || refuse_allocation())) {
             CV_Error(cv::Error::StsNoMem, "Observed native Mat allocation refusal");
         }
         auto* const result =
@@ -198,6 +199,7 @@ class ObservedMatAllocator final : public cv::MatAllocator {
 
   private:
     std::reference_wrapper<cv::MatAllocator> upstream_;
+    bool refuse_payload_;
 };
 } // namespace
 #if DE_NLM_SANITIZER_OBSERVATION
@@ -228,7 +230,6 @@ void observe_free(const volatile void* const pointer) noexcept {
 }
 } // namespace
 #else
-// These are the standard replaceable ABI signatures, used only in this observation executable.
 // Compiler-specific standard-library declarations choose different parameter names.
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
 void* operator new(std::size_t bytes) {
@@ -271,7 +272,6 @@ void operator delete(void* const pointer, const std::nothrow_t& /*tag*/) noexcep
 void operator delete[](void* const pointer, const std::nothrow_t& /*tag*/) noexcept {
     release_bytes(pointer);
 }
-// Complete the replaceable deallocation ABI on compilers emitting sized delete calls.
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
 void operator delete(void* const pointer, std::size_t /*size*/) noexcept {
     release_bytes(pointer);
@@ -305,15 +305,6 @@ NativeObservation observe_call(docenhance::image::PlaneView<const std::uint16_t>
         .allocations = allocation_attempts.load(),
     };
 }
-void warm_error_path() {
-    try {
-        CV_Error(cv::Error::StsNoMem, "Observed native Mat allocation refusal");
-    } catch (const cv::Exception& error) {
-        if (error.code != cv::Error::StsNoMem) {
-            std::abort();
-        }
-    }
-}
 int measure() {
 #if DE_NLM_SANITIZER_OBSERVATION
     if (__sanitizer_install_malloc_and_free_hooks(observe_malloc, observe_free) == 0) {
@@ -344,9 +335,18 @@ int measure() {
     if (!denoise::native_tile(input.view().as_const(), output.view(), method, budget)) {
         return 1;
     }
-    warm_error_path();
     auto* const original = cv::Mat::getDefaultAllocator();
     ObservedMatAllocator allocator{*original};
+    {
+        ObservedMatAllocator refused_allocator{*original, true};
+        cv::Mat::setDefaultAllocator(&refused_allocator);
+        const auto refused =
+            denoise::native_tile(input.view().as_const(), output.view(), method, budget);
+        cv::Mat::setDefaultAllocator(original);
+        if (refused || refused.error().code != core::ErrorCode::resource) {
+            return 1;
+        }
+    }
     cv::Mat::setDefaultAllocator(&allocator);
     const auto observation = observe_call(input.view().as_const(), output.view(), method, budget);
     cv::Mat::setDefaultAllocator(original);
