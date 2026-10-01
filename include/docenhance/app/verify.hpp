@@ -16,9 +16,10 @@ namespace docenhance::app {
 // was not validated, and nothing here touches a filesystem.
 class VerifyRequest {
   public:
-    [[nodiscard]] const std::string& directory() const noexcept {
+    [[nodiscard]] const std::string& directory() const& noexcept {
         return directory_;
     }
+    [[nodiscard]] const std::string& directory() const&& = delete;
 
   private:
     friend core::Result<VerifyRequest> prepare_verify(const contract::Invocation& /*invocation*/);

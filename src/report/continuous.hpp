@@ -7,6 +7,6 @@
 #include <string>
 
 namespace docenhance::report {
-[[nodiscard]] nlohmann::ordered_json continuous_fields(const app::ContinuousProcessed& value);
-[[nodiscard]] std::string continuous_text(const app::ContinuousProcessed& value);
+[[nodiscard]] nlohmann::ordered_json continuous_fields(const app::PublishedContinuous& value);
+[[nodiscard]] std::string continuous_text(const app::PublishedContinuous& value);
 } // namespace docenhance::report

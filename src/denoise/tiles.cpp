@@ -11,8 +11,17 @@
 #include <cstdint>
 #include <expected>
 #include <functional>
+#include <limits>
 namespace docenhance::denoise {
 namespace {
+// Advancing by the remaining region reaches UINT32_MAX exactly without wrapping past it.
+constexpr std::uint32_t tile_length(std::uint32_t first, std::uint32_t extent) noexcept {
+    return std::min(methods::nlm_tile_width, extent - first);
+}
+constexpr std::uint32_t last_tile_samples = 3;
+static_assert(tile_length(std::numeric_limits<std::uint32_t>::max() - last_tile_samples,
+                          std::numeric_limits<std::uint32_t>::max()) == last_tile_samples);
+static_assert(tile_length(0, std::numeric_limits<std::uint32_t>::max()) == methods::nlm_tile_width);
 struct TileRegion {
     std::uint32_t x;
     std::uint32_t y;
@@ -74,21 +83,17 @@ core::Result<void> run_tile(image::PlaneView<const std::uint16_t> input,
     if (!filled) {
         return filled;
     }
-    auto scratch = native_scratch_bytes({.width = tile_in->width(), .height = tile_in->height()},
-                                        execution.method.get());
-    if (!scratch) {
-        return std::unexpected(scratch.error());
-    }
-    const auto charge = execution.budget.get().used() + *scratch;
     auto result =
         native_tile(tile_in->as_const(), *tile_out, execution.method.get(), execution.budget.get());
     if (!result) {
-        return result;
+        return std::unexpected(result.error());
     }
     execution.report.get().native_reserved_peak =
-        std::max(execution.report.get().native_reserved_peak, static_cast<std::uint64_t>(*scratch));
-    execution.report.get().preparation_charge_peak = std::max(
-        execution.report.get().preparation_charge_peak, static_cast<std::uint64_t>(charge));
+        std::max(execution.report.get().native_reserved_peak,
+                 static_cast<std::uint64_t>(result->reserved_bytes));
+    execution.report.get().preparation_charge_peak =
+        std::max(execution.report.get().preparation_charge_peak,
+                 static_cast<std::uint64_t>(result->charged_bytes));
     ++execution.report.get().native_calls;
     if (execution.cancellation.get().requested(core::Checkpoint::processing)) {
         return core::cancelled();
@@ -121,13 +126,13 @@ core::Result<void> denoise(image::PlaneView<const std::uint16_t> input,
     if (!out) {
         return std::unexpected(out.error());
     }
-    for (std::uint32_t y = 0; y < input.height(); y += methods::nlm_tile_width) {
-        for (std::uint32_t x = 0; x < input.width(); x += methods::nlm_tile_width) {
+    for (std::uint32_t y = 0; y < input.height(); y += tile_length(y, input.height())) {
+        for (std::uint32_t x = 0; x < input.width(); x += tile_length(x, input.width())) {
             const TileRegion region{
                 .x = x,
                 .y = y,
-                .width = std::min(methods::nlm_tile_width, input.width() - x),
-                .height = std::min(methods::nlm_tile_width, input.height() - y),
+                .width = tile_length(x, input.width()),
+                .height = tile_length(y, input.height()),
                 .radius = radius,
             };
             auto tile = run_tile(input, output, {.input = *in, .output = *out}, region, execution);

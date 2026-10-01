@@ -12,11 +12,14 @@
 #include <functional>
 namespace docenhance::denoise {
 // Native-free borrowed views. The caller owns source, destination and tile storage.
-[[nodiscard]] core::Result<std::size_t> native_scratch_bytes(image::Extent e,
-                                                             const methods::Nlm& method);
-[[nodiscard]] core::Result<void> native_tile(image::PlaneView<const std::uint16_t> input,
-                                             image::PlaneView<std::uint16_t> output,
-                                             const methods::Nlm& method, core::Budget& budget);
+struct NativeCall {
+    std::size_t reserved_bytes;
+    std::size_t charged_bytes;
+};
+[[nodiscard]] core::Result<NativeCall> native_tile(image::PlaneView<const std::uint16_t> input,
+                                                   image::PlaneView<std::uint16_t> output,
+                                                   const methods::Nlm& method,
+                                                   core::Budget& budget);
 struct NlmExecution {
     std::reference_wrapper<const methods::Nlm> method;
     std::reference_wrapper<core::Budget> budget;

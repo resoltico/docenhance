@@ -12,7 +12,7 @@
 #include <cstdint>
 #include <span>
 namespace docenhance::io {
-inline constexpr std::size_t jpeg_max_encoded_bytes = std::size_t{128} * 1024 * 1024;
+inline constexpr std::size_t jpeg_max_encoded_bytes = image::source_encoded_bytes_max;
 inline constexpr std::uint64_t jpeg_max_pixels = image::source_pixels_max;
 inline constexpr unsigned jpeg_max_scans = image::jpeg_scan_max;
 inline constexpr std::size_t jpeg_max_markers = 65536;

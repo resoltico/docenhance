@@ -27,10 +27,10 @@
 #include <variant>
 namespace docenhance::host {
 namespace {
-core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
-                                         const methods::Binarization& method,
-                                         const core::Cancellation& cancellation,
-                                         const bundle::RunContext& context) {
+core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
+                                          const methods::Binarization& method,
+                                          const core::Cancellation& cancellation,
+                                          const bundle::RunContext& context) {
     if (cancellation.requested(core::Checkpoint::admission)) {
         return core::cancelled();
     }
@@ -77,15 +77,14 @@ core::Result<app::PublishedImage> binary(const app::ProcessRequest& request,
         .source_decoding = loaded->description,
         .operation = method,
         .mask = std::nullopt,
-        .observe_conversion = nullptr,
-        .conversion_state = nullptr,
+        .converter = std::nullopt,
         .illumination = none,
         .denoising = disabled,
     });
     if (!published) {
         return std::unexpected(std::move(published.error()));
     }
-    return app::PublishedImage{
+    return app::PublishedBinary{
         .output = std::move(published->output),
         .run = std::move(published->run),
         .record = std::move(published->record),

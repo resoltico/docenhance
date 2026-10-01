@@ -235,3 +235,16 @@ changed or unbound build trees, rather than mixing installed libraries with anot
 Dependency versions come from the source lock; the selected closure drives build, import and
 feature/provider auditing. Source receipts supplement immutable archive/Git evidence. These
 bindings establish identity and consistency, not source trust or binary reproducibility.
+
+## Borrowing and completed native observations
+
+Reject temporary owners at borrowed-buffer, owning-plane, request, callable and converter
+boundaries. Keep views cheap and require the caller's lvalue owner to remain live and unmoved;
+shared ownership of every view would hide that contract and add page lifetimes. Small shapes and
+method parameters are returned as values. Retained execution control owns its stop token.
+
+The processing port uses binary/continuous success alternatives, and the continuous alternative
+is also the rendered outcome's typed value. Required stage observations stay together; semantic
+cross-field checks remain at admission. The native reservation owner returns completed resource
+observations, so the surrounding tile code neither predicts a charge nor duplicates the estimate.
+The separate design and QA are in the [ownership/resource audit](ownership-resource-audit.md).

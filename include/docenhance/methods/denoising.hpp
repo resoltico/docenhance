@@ -31,7 +31,7 @@ struct NlmParameters {
 class Nlm {
   public:
     [[nodiscard]] static core::Result<Nlm> create(NlmParameters parameters = {});
-    [[nodiscard]] const NlmParameters& parameters() const noexcept {
+    [[nodiscard]] NlmParameters parameters() const noexcept {
         return parameters_;
     }
     [[nodiscard]] static constexpr ImplementedMethod descriptor() noexcept {
@@ -47,7 +47,8 @@ using Denoising = std::variant<DenoisingOff, Nlm>;
 enum class DenoiseStatus { disabled, no_change, applied, failed };
 enum class DenoiseReason { none, zero_blend, no_eligible_samples, no_effect, processing_failure };
 inline constexpr std::uint32_t nlm_tile_width = 256;
-inline constexpr std::uint32_t nlm_native_extent = 310;
+inline constexpr std::uint32_t nlm_native_extent =
+    nlm_tile_width + nlm_max_patch + nlm_max_search - 2;
 struct DenoisingReport {
     DenoiseStatus status = DenoiseStatus::disabled;
     DenoiseReason reason = DenoiseReason::none;

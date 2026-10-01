@@ -4,6 +4,7 @@
 
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "entry_identity.hpp"
 #include "png_context.hpp"
 
@@ -90,13 +91,22 @@ constexpr unsigned staging_attempts = 64;
     auto path = stage.directory;
     std::size_t start = 0;
     while (start < relative.size()) {
+        if (stage.created.size() >= bundle_max_entries) {
+            return core::failure(core::ErrorCode::resource,
+                                 "Bundle staging exceeds its owned-entry limit");
+        }
         const auto stop = std::min(relative.find('/', start), relative.size());
         const auto part = relative.substr(start, stop - start);
         if (part.empty() || part == "." || part == "..") {
             return core::failure(core::ErrorCode::invariant,
                                  "A bundle file must be named relative to the bundle");
         }
-        path /= utf8_path(part);
+        const auto component = utf8_path(part);
+        if (component.has_root_path() || component.filename() != component) {
+            return core::failure(core::ErrorCode::argument,
+                                 "A bundle component must be one relative native filename");
+        }
+        path /= component;
         if (stop != relative.size()) {
             std::error_code error;
             if (std::filesystem::create_directory(path, error)) {

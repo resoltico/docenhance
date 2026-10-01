@@ -130,7 +130,7 @@ inline void numerical_cases() {
             }
         }
     }
-    const std::array<double, 5> values{9, 1, 3, 3, 7};
+    std::array<double, 5> values{9, 1, 3, 3, 7};
     require(image::nearest_rank(values, 0).value() == 1, "percentile p=0");
     require(image::nearest_rank(values, 1).value() == 9, "percentile p=1");
     require(image::nearest_rank(values, 0.5).value() == 3, "nearest-rank median");

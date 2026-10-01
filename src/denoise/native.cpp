@@ -3,11 +3,9 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/denoise/nlm.hpp"
-#include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
 
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <new>
@@ -38,13 +36,11 @@ void configure_diagnostics() {
     static_cast<void>(configured);
 }
 } // namespace
-core::Result<std::size_t> native_scratch_bytes(image::Extent e, const methods::Nlm& method) {
-    return methods::nlm_native_scratch(e, method);
-}
-core::Result<void> native_tile(image::PlaneView<const std::uint16_t> input,
-                               image::PlaneView<std::uint16_t> output, const methods::Nlm& method,
-                               core::Budget& budget) {
-    auto scratch = native_scratch_bytes({.width = input.width(), .height = input.height()}, method);
+core::Result<NativeCall> native_tile(image::PlaneView<const std::uint16_t> input,
+                                     image::PlaneView<std::uint16_t> output,
+                                     const methods::Nlm& method, core::Budget& budget) {
+    auto scratch =
+        methods::nlm_native_scratch({.width = input.width(), .height = input.height()}, method);
     if (!scratch) {
         return std::unexpected(scratch.error());
     }
@@ -57,6 +53,10 @@ core::Result<void> native_tile(image::PlaneView<const std::uint16_t> input,
     if (!reserved) {
         return std::unexpected(reserved.error());
     }
+    const NativeCall observation{
+        .reserved_bytes = reserved->size(),
+        .charged_bytes = budget.used(),
+    };
     try {
         configure_diagnostics();
         // OpenCV's borrowed Mat header requires mutable storage even for an InputArray. The
@@ -78,7 +78,7 @@ core::Result<void> native_tile(image::PlaneView<const std::uint16_t> input,
             return core::failure(core::ErrorCode::invariant,
                                  "Native NLM replaced borrowed output storage");
         }
-        return {};
+        return observation;
     } catch (const std::bad_alloc&) {
         return core::failure(core::ErrorCode::resource, "Native NLM allocation failed");
     } catch (const cv::Exception& error) {

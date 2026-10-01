@@ -114,13 +114,17 @@ foreach(name IN LISTS de_names)
     USES_TERMINAL_CONFIGURE TRUE USES_TERMINAL_BUILD TRUE USES_TERMINAL_INSTALL TRUE)
   set(de_previous de_dep_${name})
 endforeach()
+# This project already establishes CMP0091 through its minimum CMake version.
+# Only the older upstream recipients above consume the default-policy argument.
+set(de_application_common ${de_common})
+list(FILTER de_application_common EXCLUDE REGEX "^-DCMAKE_POLICY_DEFAULT_CMP0091:")
 set(de_inner "${PROJECT_BINARY_DIR}/app")
 ExternalProject_Add(de_native
   SOURCE_DIR "${PROJECT_SOURCE_DIR}" BINARY_DIR "${de_inner}"
   PREFIX "${PROJECT_BINARY_DIR}/ep/application"
   DOWNLOAD_COMMAND "" UPDATE_COMMAND "" PATCH_COMMAND ""
   CMAKE_GENERATOR Ninja
-  CMAKE_ARGS ${de_common}
+  CMAKE_ARGS ${de_application_common}
     "-DDE_SUPERBUILD:BOOL=OFF"
     "-DDE_DEPENDENCY_PREFIX:PATH=${DE_DEPENDENCY_PREFIX}"
     "-DDE_SOURCE_CACHE:PATH=${DE_SOURCE_CACHE}"

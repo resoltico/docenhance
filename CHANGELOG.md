@@ -4,6 +4,14 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+- Reject temporary owners at borrowed-view/callable/converter boundaries, use closed processing
+  success alternatives and typed publication observation, and report completed NLM resource
+  charges from the native reservation owner. Tile traversal avoids uint32 extent wraparound.
+- Bound publication file tables and owned staging entries; reject missing writers and native
+  path components that escape their relative filename role.
+- Consolidate percentile selection into caller-owned scratch, removing an uncharged input-sized
+  copy and a duplicated I01 selection implementation.
+
 - Enforce native build configuration identity, private dependency providers and complete selected
   feature audits; retire ambiguous test/toolchain controls without cache migration. Bind Docker
   state to architecture/image/recipes and serialize preparation. Verify archive source bytes

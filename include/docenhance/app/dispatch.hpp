@@ -23,7 +23,6 @@ struct InputSupport {
 };
 struct Capabilities {
     std::span<const methods::ImplementedMethod> methods;
-    std::span<const std::string_view> input_formats;
     std::span<const InputSupport> input_support;
 };
 struct Help {
@@ -37,7 +36,7 @@ struct Methods {
 };
 using Failure = ProcessFailure;
 using Payload =
-    std::variant<Help, Version, Methods, Processed, ContinuousProcessed, Verified, Failure>;
+    std::variant<Help, Version, Methods, Processed, PublishedContinuous, Verified, Failure>;
 struct Outcome {
     contract::Command command = contract::Command::root;
     // Every response identifies the build that produced it, whatever the payload.

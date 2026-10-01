@@ -34,7 +34,6 @@ inline constexpr double surface_coarse_scale = 1.6;
 inline constexpr double surface_reference_rank = 0.90;
 [[nodiscard]] bool protected_at(image::PlaneView<const std::uint8_t> mask, std::uint32_t x,
                                 std::uint32_t y) noexcept;
-[[nodiscard]] double select_quantile(std::span<double> samples, double quantile);
 struct MeasurementContext {
     std::reference_wrapper<const Surface> method;
     std::reference_wrapper<core::Budget> budget;

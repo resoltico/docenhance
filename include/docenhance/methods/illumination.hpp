@@ -34,7 +34,7 @@ class Surface {
     static constexpr std::uint32_t min_cell = 8;
     static constexpr std::uint32_t max_cell = 512;
     [[nodiscard]] static core::Result<Surface> create(SurfaceParameters parameters = {});
-    [[nodiscard]] const SurfaceParameters& parameters() const noexcept {
+    [[nodiscard]] SurfaceParameters parameters() const noexcept {
         return parameters_;
     }
     [[nodiscard]] static constexpr ImplementedMethod descriptor() noexcept {

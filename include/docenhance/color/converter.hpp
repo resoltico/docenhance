@@ -21,6 +21,9 @@ class Converter final : public image::RowSource, public image::LinearSource {
     [[nodiscard]] static core::Result<std::unique_ptr<Converter>>
     create(const image::Raster& source, image::Continuous operation, core::Budget& budget,
            const core::Cancellation& cancellation = {});
+    static core::Result<std::unique_ptr<Converter>> create(const image::Raster&&, image::Continuous,
+                                                           core::Budget&,
+                                                           const core::Cancellation& = {}) = delete;
     Converter(const Converter&) = delete;
     Converter& operator=(const Converter&) = delete;
     Converter(Converter&&) = delete;

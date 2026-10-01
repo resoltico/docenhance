@@ -82,8 +82,14 @@ reference to the accounting ledger, so it can safely outlive the `Budget` object
 reference destroys the ledger. Allocation/refund counters are atomic. Calling methods on a budget
 while destroying that same object is still invalid caller behavior.
 
+Buffer bytes and owning-plane views can be borrowed only from lvalues; converters likewise
+refuse temporary raster owners. A WorkRef can name only a live lvalue callable, and synchronous
+scheduler tasks remain in scope through all joins. Small shape/parameter accessors return values.
+These restrictions reject temporary-owner mistakes but do not extend backing storage lifetime.
+
 An owning `image::Plane` moves without copying samples; a moved-from plane is empty in both storage
-and shape. A borrowed `PlaneView` can only be created through checked extent/stride validation or
+and shape. A moved-from surface model is likewise inactive with empty extent and rejects
+sample/application access. A borrowed `PlaneView` can only be created through checked extent/stride validation or
 from an owning plane. It does not extend storage lifetime. Rows require in-range caller indices.
 Kernel entry points reject empty, shape-mismatched and overlapping source/destination storage.
 Full backing spans, including padding, are used for conservative overlap checks.
@@ -123,7 +129,9 @@ Malformed/truncated data, strict CRC failures and refused allocations are regres
 The output must be a new directory whose parent already exists. Prechecking the target improves
 errors but is not the correctness boundary. A bounded search exclusively creates a private sibling
 staging directory; occupied paths are never adopted. The encoder closes the staged PNG before commit.
-Return-path metadata is allocated before committing. POSIX output paths use `/` as the separator;
+Return-path metadata is allocated before committing. Writer tables are bounded and require
+nonnull callbacks before staging starts. Owned files and directories share the native inventory
+entry ceiling, and each native path component must be one relative filename. POSIX output paths use `/` as the separator;
 a literal backslash remains part of the directory name. Windows accepts native separator spelling.
 The reported path preserves the admitted UTF-8 directory spelling on both paths.
 
@@ -153,6 +161,10 @@ The output parent/ancestors must be trusted against hostile replacement. This is
 sandbox or a defense against another process with equivalent permissions tampering with owned paths.
 
 ## Numerical work and scheduling
+
+Percentile selection validates first and reorders caller-owned scratch in place; it never
+creates an input-sized private copy. I01 uses this same nearest-rank primitive over charged
+measurement planes. Independent sorted-input and allocation-observation checks cover it.
 
 Scalar definitions remain deterministic: no fast-math, locale-independent decimal parsing, explicit
 rounding and border conventions. Fixed-threshold results are checked exhaustively for 8-bit samples.
@@ -219,7 +231,12 @@ immutable model, oriented protection mask and downstream quantizer. `de_io` keep
 ownership of encoding/verification/publication. There is no plugin or generic recipe framework.
 
 `ProcessFailure` is an application result envelope with a core error and optional typed stage
-observations. Successful continuous results require complete matching illumination diagnostics;
+observations. The processing port has closed binary and continuous success alternatives. Continuous success
+carries conversion, illumination and denoising observations together; the application still checks
+verification and agreement with the admitted request. The report consumes that same continuous
+result rather than a second copied representation. Publication observes conversion through a
+typed borrowed converter, with no independent callback/void-pointer pair. Successful continuous
+results require complete matching illumination diagnostics;
 `complete` describes the numerical stage, not a later publication outcome. The generated schema
 and executable catalog distinguish method families. [Illumination](illumination.md) owns the exact
 mathematics, resource phases, separate design QA and verification obligations.
@@ -242,7 +259,8 @@ only the current closed bundle format is supported. See [JPEG](jpeg-processing.m
 ## Prepared luminance denoising
 
 `de_denoise` wraps only the pinned CV_16U/L1 operation, with bounded tile extents, native scratch
-reservation and contained exceptions. `de_methods` owns closed NLM settings, scalar correction and
+reservation and contained exceptions. Completed reservation/combined-charge observations are
+returned by the native owner while its lease is live; orchestration does not predict them. `de_methods` owns closed NLM settings, scalar correction and
 resource estimates without native types. The host composes linear interpretation, frozen I01,
 prepared D01 and final integer rows. Completed earlier-stage observations survive downstream
 failures; publication remains one complete bundle transaction. The prepared scalar planes and

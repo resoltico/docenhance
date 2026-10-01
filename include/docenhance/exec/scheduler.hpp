@@ -8,6 +8,7 @@
 #include <concepts>
 #include <cstddef>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 namespace docenhance::exec {
@@ -31,10 +32,11 @@ namespace docenhance::exec {
 class WorkRef {
   public:
     template <typename Callable>
-        requires std::invocable<const Callable&, std::size_t> &&
-                     std::same_as<std::invoke_result_t<const Callable&, std::size_t>,
-                                  core::Result<void>>
-    explicit WorkRef(const Callable& callable) noexcept
+        requires(!std::same_as<std::remove_cvref_t<Callable>, WorkRef>) &&
+                    std::invocable<const Callable&, std::size_t> &&
+                    std::same_as<std::invoke_result_t<const Callable&, std::size_t>,
+                                 core::Result<void>>
+    explicit WorkRef(Callable& callable) noexcept
         : object_(std::addressof(callable)), invoke_([](const void* object, std::size_t index) {
               return (*static_cast<const Callable*>(object))(index);
           }) {}
@@ -61,7 +63,7 @@ class Scheduler {
         return concurrency_.workers();
     }
 
-    [[nodiscard]] const core::Cancellation& cancellation() const noexcept {
+    [[nodiscard]] core::Cancellation cancellation() const noexcept {
         return cancellation_;
     }
 

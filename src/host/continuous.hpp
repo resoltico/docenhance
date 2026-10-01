@@ -15,7 +15,7 @@ struct ContinuousExecution {
     std::reference_wrapper<const core::Cancellation> cancellation;
     std::reference_wrapper<const bundle::RunContext> context;
 };
-[[nodiscard]] core::Result<app::PublishedImage>
+[[nodiscard]] core::Result<app::PublishedContinuous>
 continuous(const app::ProcessRequest& request, image::Continuous operation,
            ContinuousExecution execution, methods::IlluminationReport& illumination,
            methods::DenoisingReport& denoising);

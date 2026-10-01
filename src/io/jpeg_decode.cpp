@@ -26,7 +26,7 @@ core::Result<DecodedJpeg> decode_jpeg(std::span<const std::uint8_t> bytes, core:
     }
     // The pinned library's creation path allocates only its manager and permanent controllers.
     // This conservative reservation precedes jpeg_create; all subsequent blocks use our allocator.
-    auto bootstrap = budget.allocate(jpeg_bootstrap_bytes);
+    auto bootstrap = budget.reserve(jpeg_bootstrap_bytes);
     if (!bootstrap) {
         return std::unexpected(bootstrap.error());
     }

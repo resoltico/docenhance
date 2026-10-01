@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <fstream>
 #include <ios>
+#include <iterator>
 #include <optional>
 #include <span>
 #include <string>
@@ -304,5 +305,64 @@ TEST_CASE("Manifest writer completion and staged reread failures prevent publica
     } else {
         CHECK(empty_directory(temporary.path));
     }
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Publication refuses missing writers and oversized tables before staging", "[bundle]") {
+    const TemporaryDirectory temporary{"docenhance-bundle-table"};
+    const auto output = temporary.path / "result";
+    const auto before = std::distance(std::filesystem::directory_iterator{temporary.path},
+                                      std::filesystem::directory_iterator{});
+    const io::BundleFile missing_writer{
+        .relative = "image.png",
+        .state = nullptr,
+        .write = nullptr,
+    };
+    const std::array missing{missing_writer};
+    REQUIRE(io::publish_bundle(utf8_spelling(output), missing).error().code ==
+            core::ErrorCode::argument);
+    std::string content = "unused";
+    const std::vector<io::BundleFile> oversized(
+        io::bundle_max_entries + 1,
+        {.relative = "image.png", .state = &content, .write = write_text});
+    REQUIRE(io::publish_bundle(utf8_spelling(output), oversized).error().code ==
+            core::ErrorCode::argument);
+    REQUIRE(std::distance(std::filesystem::directory_iterator{temporary.path},
+                          std::filesystem::directory_iterator{}) == before);
+}
+TEST_CASE("Staging bounds nested owned entries and cleans every acquired directory", "[bundle]") {
+    const TemporaryDirectory temporary{"docenhance-bundle-depth"};
+    std::string relative;
+    for (std::size_t i = 0; i < io::bundle_max_entries; ++i) {
+        relative += "d/";
+    }
+    relative += "image.png";
+    std::string content = "never written";
+    const io::BundleFile file{.relative = relative, .state = &content, .write = write_text};
+    const std::array files{file};
+    const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+    REQUIRE(!refused);
+    REQUIRE(refused.error().code == core::ErrorCode::resource);
+    REQUIRE(refused.error().publication == core::Publication::not_published);
+    REQUIRE(std::filesystem::directory_iterator{temporary.path} ==
+            std::filesystem::directory_iterator{});
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Native absolute publication names cannot escape staging", "[bundle]") {
+    const TemporaryDirectory temporary{"docenhance-bundle-component"};
+    const auto escaped = temporary.path / "escape";
+    const auto relative = utf8_spelling(escaped);
+    std::string content = "never written";
+    const io::BundleFile file{.relative = relative, .state = &content, .write = write_text};
+    const std::array files{file};
+    const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+    REQUIRE(!refused);
+    REQUIRE(refused.error().publication == core::Publication::not_published);
+    REQUIRE(!std::filesystem::exists(escaped));
+    REQUIRE(std::filesystem::directory_iterator{temporary.path} ==
+            std::filesystem::directory_iterator{});
 }
 } // namespace docenhance::tests

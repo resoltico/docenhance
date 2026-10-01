@@ -10,6 +10,7 @@
 #include "support/oracle.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -138,18 +139,26 @@ void percentile(FuzzInput& input) {
         value = arbitrary ? input.any_double() : static_cast<double>(input.bounded(16));
     }
     const auto p = arbitrary ? input.any_double() : input.unit();
+    auto reference = values;
     const auto result = image::nearest_rank(values, p);
     const bool valid = !values.empty() && unit_interval(p) &&
                        std::ranges::all_of(values, [](double v) { return std::isfinite(v); });
     require(result.has_value() == valid,
             "nearest_rank accepts exactly finite samples and p in [0,1]");
     if (!valid) {
+        for (std::size_t i = 0; i < values.size(); ++i) {
+            require(std::bit_cast<std::uint64_t>(values.at(i)) ==
+                        std::bit_cast<std::uint64_t>(reference.at(i)),
+                    "invalid selection preserves every input byte");
+        }
         return;
     }
+    std::ranges::sort(reference);
     std::ranges::sort(values);
+    require(values == reference, "selection preserves the input multiset");
     const auto rank = static_cast<std::size_t>(std::ceil(p * static_cast<double>(values.size())));
     const auto index = rank == 0 ? 0 : std::min(rank - 1, values.size() - 1);
-    require(result.value() == values.at(index), "nearest rank equals the sorted reference");
+    require(result.value() == reference.at(index), "nearest rank equals the sorted reference");
 }
 } // namespace
 

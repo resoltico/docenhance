@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/bundle/record.hpp"
+#include "docenhance/color/converter.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/memory.hpp"
@@ -46,8 +47,7 @@ struct RunPublication {
     std::optional<MaskFacts> mask;
     // Read after the image is written, because a conversion counts what producing those rows
     // observed. A snapshot taken earlier would describe a run that had not happened yet.
-    image::ConversionReport (*observe_conversion)(void*) = nullptr;
-    void* conversion_state = nullptr;
+    std::optional<std::reference_wrapper<const color::Converter>> converter;
     std::reference_wrapper<const methods::IlluminationReport> illumination;
     methods::DenoisingReport denoising{};
 };

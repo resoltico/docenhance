@@ -102,7 +102,14 @@ TEST_CASE("Native refusal and deterministic cancellation release all temporary s
     auto output = image::Plane<std::uint16_t>::allocate(budget, side, side).value();
     const auto live = budget.used();
     const auto scratch =
-        denoise::native_scratch_bytes({.width = side, .height = side}, options).value();
+        methods::nlm_native_scratch({.width = side, .height = side}, options).value();
+    core::Budget exact_budget{scratch};
+    const auto completed =
+        denoise::native_tile(input.view().as_const(), output.view(), options, exact_budget);
+    REQUIRE(completed);
+    REQUIRE(completed->reserved_bytes == scratch);
+    REQUIRE(completed->charged_bytes == scratch);
+    REQUIRE(exact_budget.used() == 0);
     core::Budget short_budget{scratch - 1};
     REQUIRE(!(denoise::native_tile(input.view().as_const(), output.view(), options, short_budget)));
     REQUIRE(short_budget.used() == 0);

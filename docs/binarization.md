@@ -17,7 +17,7 @@ catalog is constructed from those same alternatives and must equal the generated
 at compile time. Editing a JSON status cannot create an executable capability. The generator also
 rejects duplicate identities/selectors, invalid versions and unknown implemented-option references.
 
-The processing port returns `PublishedImage`, not a method identifier supplied by an adapter.
+The processing port returns the binary `PublishedBinary` alternative, not a method identifier supplied by an adapter.
 The application attaches the identity of the admitted method to `Processed`; only the report layer
 serializes it. A successful process response contains `method`, `method_version`, `output` and
 `publication: completed`. `methods B02` and `methods B03` return just the selected capability.

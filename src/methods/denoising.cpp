@@ -5,6 +5,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/image/raster.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -24,7 +25,8 @@ core::Result<Nlm> Nlm::create(NlmParameters p) {
     return Nlm{p};
 }
 double nlm_native_strength(const NlmParameters& p) noexcept {
-    constexpr float scale = 257;
+    constexpr float scale =
+        static_cast<float>(image::word_max) / static_cast<float>(image::byte_max);
     return static_cast<double>(scale * static_cast<float>(p.h));
 }
 std::string_view status_name(DenoiseStatus s) noexcept {
@@ -64,8 +66,9 @@ core::Result<std::uint16_t> nlm_quantize(const image::Rgb& rgb) {
     if (!f) {
         return std::unexpected(f.error());
     }
-    constexpr double maximum = 65535;
-    return static_cast<std::uint16_t>(std::floor((maximum * *f) + nlm_default_blend));
+    constexpr double maximum = image::word_max;
+    constexpr double half_sample = 0.5;
+    return static_cast<std::uint16_t>(std::floor((maximum * *f) + half_sample));
 }
 core::Result<image::Rgb> nlm_correct(const image::Rgb& rgb, std::uint16_t input,
                                      std::uint16_t output, double blend) {
@@ -83,7 +86,7 @@ core::Result<image::Rgb> nlm_correct(const image::Rgb& rgb, std::uint16_t input,
     if (!f) {
         return std::unexpected(f.error());
     }
-    constexpr double maximum = 65535;
+    constexpr double maximum = image::word_max;
     const auto delta = static_cast<std::int32_t>(output) - static_cast<std::int32_t>(input);
     const auto candidate = std::clamp(*f + (static_cast<double>(delta) / maximum), 0.0, 1.0);
     const auto next = ((1 - blend) * *f) + (blend * candidate);

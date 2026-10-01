@@ -98,32 +98,27 @@ inline void schedule_cases() {
     for (const unsigned workers : {1U, 2U, 7U}) {
         std::vector<std::size_t> squares(items, 0);
         const exec::Scheduler scheduler{*exec::Concurrency::resolve(workers, workers, 0, 0)};
-        const auto run = scheduler.for_each(items, exec::WorkRef{[&squares](std::size_t index) {
-                                                squares.at(index) = index * index;
-                                                return core::Result<void>{};
-                                            }});
+        const auto square = [&squares](std::size_t index) {
+            squares.at(index) = index * index;
+            return core::Result<void>{};
+        };
+        const auto run = scheduler.for_each(items, exec::WorkRef{square});
         require(run.has_value(), "an independent run succeeds");
         require(squares.at(items - 1) == (items - 1) * (items - 1), "every item ran");
         require(std::ranges::count(squares, 0) == 1, "every item ran exactly once");
     }
     // The failure reported is the one a sequential run would have reported.
     const exec::Scheduler parallel{*exec::Concurrency::resolve(8, 8, 0, 0)};
-    const auto failed =
-        parallel.for_each(items, exec::WorkRef{[](std::size_t index) {
-                              return index % 100 == 0 && index > 0
-                                         ? core::Result<void>{core::failure(
-                                               core::ErrorCode::invariant, std::to_string(index))}
-                                         : core::Result<void>{};
-                          }});
+    const auto fail = [](std::size_t index) {
+        return index % 100 == 0 && index > 0
+                   ? core::Result<void>{core::failure(core::ErrorCode::invariant,
+                                                      std::to_string(index))}
+                   : core::Result<void>{};
+    };
+    const auto failed = parallel.for_each(items, exec::WorkRef{fail});
     require(!failed.has_value() && failed.error().message == "100",
             "the lowest failing index is the one reported");
-    require(parallel
-                .for_each(0, exec::WorkRef{[](std::size_t) {
-                              return core::Result<void>{
-                                  core::failure(core::ErrorCode::invariant, "x")};
-                          }})
-                .has_value(),
-            "no items is not a failure");
+    require(parallel.for_each(0, exec::WorkRef{fail}).has_value(), "no items is not a failure");
 }
 // A deterministic stand-in for a page: no randomness, no fixtures, the same samples everywhere.
 inline float probe_sample(std::uint32_t x, std::uint32_t y) {

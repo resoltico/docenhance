@@ -118,15 +118,15 @@ core::Result<Protection> load_protection(const app::ProcessRequest& request,
     }
     return result;
 }
-app::PublishedImage published_image(PublishedRun published, image::SourceDescription source,
-                                    const methods::IlluminationReport& illumination,
-                                    const methods::DenoisingReport& denoising,
-                                    image::ConversionReport fallback) {
+app::PublishedContinuous published_image(PublishedRun published, image::SourceDescription source,
+                                         const methods::IlluminationReport& illumination,
+                                         const methods::DenoisingReport& denoising,
+                                         image::ConversionReport fallback) {
     // The conversion the record states, so the response and the record cannot disagree.
     auto report = published.conversion.value_or(fallback);
     // Derived from the comparison that ran, not asserted because publication returned.
     report.verified = published.verification == bundle::Verification::decoded_and_compared;
-    return app::PublishedImage{
+    return app::PublishedContinuous{
         .output = std::move(published.output),
         .conversion = report,
         .illumination = illumination,
@@ -137,11 +137,11 @@ app::PublishedImage published_image(PublishedRun published, image::SourceDescrip
     };
 }
 } // namespace
-core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
-                                             image::Continuous operation,
-                                             ContinuousExecution execution,
-                                             methods::IlluminationReport& illumination,
-                                             methods::DenoisingReport& denoising) {
+core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& request,
+                                                  image::Continuous operation,
+                                                  ContinuousExecution execution,
+                                                  methods::IlluminationReport& illumination,
+                                                  methods::DenoisingReport& denoising) {
     const auto& cancellation = execution.cancellation.get();
     const auto& context = execution.context.get();
     constexpr std::size_t continuous_budget_bytes = std::size_t{1024} * 1024 * 1024;
@@ -207,9 +207,7 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
         .source_decoding = decoded->description,
         .operation = operation,
         .mask = protection->facts,
-        .observe_conversion =
-            [](void* state) { return static_cast<color::Converter*>(state)->report(); },
-        .conversion_state = converter->get(),
+        .converter = std::cref(**converter),
         .illumination = illumination,
         .denoising = denoising,
     });

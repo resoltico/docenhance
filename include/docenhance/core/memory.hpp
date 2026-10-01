@@ -8,12 +8,13 @@
 #include <utility>
 
 namespace docenhance::core {
-// A page of a scanned document is large: 40 megapixels of 32-bit samples is 160 MiB per plane, and
-// a pipeline holds several at once. Two consequences shape every allocation in this project.
+// A page of a scanned document is large: 40 megapixels of 32-bit samples is about 153 MiB per
+// plane, and a pipeline holds several at once. Two consequences shape every allocation in this
+// project.
 //
 // First, running out of memory is an expected outcome of a legitimate request, not a defect, so it
-// is a value: buffers are obtained through a Budget that returns Result, and nothing in the
-// processing layers directly allocates through a throwing path. Small metadata and OS resources
+// is a value: image/codec payload buffers are obtained through the charged Budget owner
+// using Result. Small metadata and OS resources
 // are outside the byte budget and are translated to resource failures at execution boundaries.
 //
 // Second, memory that is not accounted for cannot be limited. The host supplies a working
@@ -71,12 +72,15 @@ class Buffer {
         release();
     }
 
-    [[nodiscard]] std::span<std::byte> bytes() noexcept {
+    // Borrow only from a live lvalue owner; moving or destroying it invalidates the span.
+    [[nodiscard]] std::span<std::byte> bytes() & noexcept {
         return {data_, size_};
     }
-    [[nodiscard]] std::span<const std::byte> bytes() const noexcept {
+    [[nodiscard]] std::span<const std::byte> bytes() const& noexcept {
         return {data_, size_};
     }
+    [[nodiscard]] std::span<std::byte> bytes() && = delete;
+    [[nodiscard]] std::span<const std::byte> bytes() const&& = delete;
     [[nodiscard]] std::size_t size() const noexcept {
         return size_;
     }
