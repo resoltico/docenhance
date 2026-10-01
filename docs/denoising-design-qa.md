@@ -36,3 +36,9 @@ reviewed correction compiles a checked source override with an owning control ob
 allocation. Its digest/pattern/target checks fail closed on source changes; cache verification is
 unchanged. Numerical output is unchanged, and every allocation failure is exercised independently
 with a native allocation observer and the sanitizer workflow.
+
+
+The final platform review found two boundary assumptions to correct: text attributes can select
+Windows-native EOL even with autocrlf disabled, so acquisition explicitly sets LF and tests declared
+CRLF exceptions; TSan strongly owns new/delete, so its observer uses the supported sanitizer hooks.
+This preserves strict source digests and instrumentation rather than bypassing either requirement.

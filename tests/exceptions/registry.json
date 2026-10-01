@@ -404,6 +404,12 @@
     },
     "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@807c32c9": {
       "explanation": "The developer-only observer pairs standard nothrow allocation/deallocation forms with ordinary and sized forms. Parameter names in the standard ABI declarations vary by compiler; failed allocation returns null and releases through the same fixed pointer registry. Production never links these replacement operators."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@894651a2": {
+      "explanation": "The TSan allocation-observation hook ABI exposes newly allocated storage as const void*. This single cast records its owned address in the same fixed pointer registry, without reading or modifying the allocation. TSan retains its allocator and instrumentation; native allocation/concurrency checks still execute."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@d1fc70a1": {
+      "explanation": "The TSan allocator-observation ABI qualifies storage pointers as volatile const. This cast only records or removes the pointer identity in the fixed observation registry; it never dereferences or alters allocator storage. TSan retains its own allocator, instrumentation and all production concurrency checks."
     }
   }
 }

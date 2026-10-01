@@ -55,3 +55,9 @@ These observations retain the same synthetic-fidelity limitation as the punctuat
 The maximum-window release tile took 0.357 seconds in a later fresh-process observation; the debug
 build took 10.672 seconds while other compiler/sanitizer jobs were active. Cancellation can wait
 for that native call. These are measured examples, not an upper wall-clock bound.
+
+TSan owns the replaceable C++ allocation ABI. Its observer therefore installs the sanitizer's
+malloc/free observation hooks, retaining ordinary/native memory accounting and the one-worker check
+without replacing TSan's allocator. Mat payload refusal is injected in this mode; the native and
+ASan configurations separately exercise all seven C++/Mat allocation failures. Production and
+concurrent-call tests remain instrumented under TSan.

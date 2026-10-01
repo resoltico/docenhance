@@ -16,11 +16,16 @@
 #include <functional>
 #include <iostream>
 #include <mutex>
+#if !DE_NLM_SANITIZER_OBSERVATION
 #include <new>
+#endif
 #ifdef __has_feature
 #if __has_feature(address_sanitizer)
 #include <dlfcn.h>
 #endif
+#endif
+#if DE_NLM_SANITIZER_OBSERVATION
+#include <sanitizer/allocator_interface.h>
 #endif
 #include <opencv2/core.hpp>
 #include <opencv2/core/utils/logger.hpp>
@@ -70,16 +75,7 @@ struct ObservedAllocation {
 constexpr std::size_t allocation_slots = 2048;
 std::array<ObservedAllocation, allocation_slots> allocations{};
 std::mutex allocation_mutex;
-void* allocate_bytes(std::size_t bytes) {
-    if (refuse_allocation()) {
-        throw std::bad_alloc{};
-    }
-    // The replaceable ABI returns raw storage, released by the paired deallocation callback.
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
-    auto* const pointer = std::malloc(bytes == 0 ? 1 : bytes);
-    if (pointer == nullptr) {
-        throw std::bad_alloc{};
-    }
+bool register_allocation(void* const pointer, std::size_t bytes) {
     bool registered = false;
     const bool measured = observing.load();
     {
@@ -92,13 +88,44 @@ void* allocate_bytes(std::size_t bytes) {
             }
         }
     }
+    if (registered && measured) {
+        acquire_bytes(bytes);
+    }
+    return registered;
+}
+ObservedAllocation forget_allocation(const void* const pointer) noexcept {
+    ObservedAllocation allocation;
+    {
+        const std::scoped_lock lock{allocation_mutex};
+        for (auto& slot : allocations) {
+            if (slot.pointer == pointer) {
+                allocation = slot;
+                slot = {};
+                break;
+            }
+        }
+    }
+    if (allocation.measured) {
+        live.fetch_sub(allocation.bytes);
+    }
+    return allocation;
+}
+#if !DE_NLM_SANITIZER_OBSERVATION
+void* allocate_bytes(std::size_t bytes) {
+    if (refuse_allocation()) {
+        throw std::bad_alloc{};
+    }
+    // The replaceable ABI returns raw storage, released by the paired deallocation callback.
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
+    auto* const pointer = std::malloc(bytes == 0 ? 1 : bytes);
+    if (pointer == nullptr) {
+        throw std::bad_alloc{};
+    }
+    const bool registered = register_allocation(pointer, bytes);
     if (!registered) {
         // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
         std::free(pointer);
         throw std::bad_alloc{};
-    }
-    if (measured) {
-        acquire_bytes(bytes);
     }
     return pointer;
 }
@@ -125,27 +152,15 @@ void release_bytes(void* const pointer) noexcept {
     if (pointer == nullptr) {
         return;
     }
-    ObservedAllocation allocation;
-    {
-        const std::scoped_lock lock{allocation_mutex};
-        for (auto& slot : allocations) {
-            if (slot.pointer == pointer) {
-                allocation = slot;
-                slot = {};
-                break;
-            }
-        }
-    }
+    const auto allocation = forget_allocation(pointer);
     if (allocation.pointer == nullptr) {
         release_external(pointer);
         return;
     }
-    if (allocation.measured) {
-        live.fetch_sub(allocation.bytes);
-    }
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
     std::free(pointer);
 }
+#endif
 class ObservedMatAllocator final : public cv::MatAllocator {
   public:
     explicit ObservedMatAllocator(cv::MatAllocator& upstream) : upstream_(upstream) {}
@@ -159,7 +174,8 @@ class ObservedMatAllocator final : public cv::MatAllocator {
         }
         auto* const result =
             upstream_.get().allocate(dimensions, sizes, type, data, step, flags, usage);
-        if (result != nullptr && data == nullptr && observing.load()) {
+        if (!DE_NLM_SANITIZER_OBSERVATION && result != nullptr && data == nullptr &&
+            observing.load()) {
             acquire_bytes(result->size);
             result->currAllocator = this;
         }
@@ -170,7 +186,7 @@ class ObservedMatAllocator final : public cv::MatAllocator {
         return upstream_.get().allocate(data, flags, usage);
     }
     void deallocate(cv::UMatData* data) const override {
-        if (data != nullptr) {
+        if (!DE_NLM_SANITIZER_OBSERVATION && data != nullptr) {
             live.fetch_sub(data->size);
             data->currAllocator = &upstream_.get();
         }
@@ -181,6 +197,34 @@ class ObservedMatAllocator final : public cv::MatAllocator {
     std::reference_wrapper<cv::MatAllocator> upstream_;
 };
 } // namespace
+#if DE_NLM_SANITIZER_OBSERVATION
+namespace {
+thread_local bool hook_active = false;
+void observe_malloc(const volatile void* const pointer, std::size_t bytes) noexcept {
+    if (!observing.load() || hook_active) {
+        return;
+    }
+    hook_active = true;
+    // The sanitizer's observation ABI is const even though allocation storage is owned/mutable.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+    const bool recorded = register_allocation(const_cast<void*>(pointer), bytes);
+    if (!recorded) {
+        std::abort();
+    }
+    hook_active = false;
+}
+void observe_free(const volatile void* const pointer) noexcept {
+    if (hook_active || (!observing.load() && live.load() == 0)) {
+        return;
+    }
+    hook_active = true;
+    // The sanitizer exposes the pointer with volatile observation qualification.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+    static_cast<void>(forget_allocation(const_cast<const void*>(pointer)));
+    hook_active = false;
+}
+} // namespace
+#else
 // These are the standard replaceable ABI signatures, used only in this observation executable.
 // Compiler-specific standard-library declarations choose different parameter names.
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
@@ -236,6 +280,7 @@ void operator delete(void* const pointer, std::size_t /*size*/) noexcept {
 void operator delete[](void* const pointer, std::size_t /*size*/) noexcept {
     release_bytes(pointer);
 }
+#endif
 namespace {
 struct NativeObservation {
     bool completed;
@@ -261,6 +306,11 @@ NativeObservation observe_call(docenhance::image::PlaneView<const std::uint16_t>
     };
 }
 int measure() {
+#if DE_NLM_SANITIZER_OBSERVATION
+    if (__sanitizer_install_malloc_and_free_hooks(observe_malloc, observe_free) == 0) {
+        return 1;
+    }
+#endif
     constexpr int requested_threads = 4;
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
     cv::setNumThreads(requested_threads);

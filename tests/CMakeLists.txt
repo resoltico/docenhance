@@ -83,6 +83,7 @@ set_tests_properties(denoising-contract PROPERTIES TIMEOUT 90)
 
 add_executable(de_denoising_resources support/denoising_resources.cpp)
 target_link_libraries(de_denoising_resources PRIVATE de_denoise de_methods de_image de_core opencv_core)
+target_compile_definitions(de_denoising_resources PRIVATE DE_NLM_SANITIZER_OBSERVATION=$<BOOL:${DE_ENABLE_TSAN}>)
 de_apply_options(de_denoising_resources)
 
 add_test(NAME denoising-native-resources COMMAND de_denoising_resources)
