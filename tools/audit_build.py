@@ -54,7 +54,12 @@ def feature_failures(
 
 def audit(build: Path) -> list[str]:
     """Audit every configured dependency in a superbuild tree."""
-    features = json.loads((ROOT / "deps/features.json").read_text(encoding="utf-8"))["dependencies"]
+    policy = json.loads((ROOT / "deps/features.json").read_text(encoding="utf-8"))
+    features = policy["dependencies"]
+    binding = json.loads((build / "build-identity.json").read_text(encoding="utf-8"))
+    if binding["CMAKE_SYSTEM_NAME"] in {"Darwin", "Linux"}:
+        for name, settings in policy["unix_dependencies"].items():
+            features[name].update(settings)
     selected = json.loads((build / "dependency-plan.json").read_text(encoding="utf-8"))
     if not isinstance(selected, list) or not selected or len(set(selected)) != len(selected):
         return ["Invalid or empty configured dependency plan"]

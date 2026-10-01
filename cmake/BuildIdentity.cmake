@@ -79,7 +79,7 @@ endif()
 set(de_recipe_files deps/tools.json deps/lock.json deps/features.json
   cmake/BuildPolicy.cmake cmake/BuildIdentity.cmake cmake/CompilerPolicy.cmake
   cmake/Options.cmake cmake/Superbuild.cmake cmake/DependencyPlan.cmake
-  cmake/DependencyPaths.cmake cmake/Dependencies.cmake cmake/ProjectOptions.cmake
+  cmake/DependencyPaths.cmake cmake/DependencyFeatures.cmake cmake/Dependencies.cmake cmake/ProjectOptions.cmake
   cmake/dependencies/picosha2/CMakeLists.txt)
 file(GLOB de_hooks RELATIVE "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/cmake/opencv-hooks/*.cmake")
 list(APPEND de_recipe_files ${de_hooks})

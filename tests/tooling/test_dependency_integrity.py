@@ -203,6 +203,7 @@ class DependencyIntegrityTests(unittest.TestCase):
             )
             self.assertFalse(good)
             (root / "dependency-plan.json").write_text('["catch2"]')
+            (root / "build-identity.json").write_text('{"CMAKE_SYSTEM_NAME":"Linux"}')
             self.assertTrue(audit_build.audit(root))
 
 

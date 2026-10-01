@@ -179,7 +179,6 @@
       "LCMS2_BUILD_STATIC": true,
       "LCMS2_BUILD_TOOLS": false,
       "LCMS2_BUILD_TESTS": false,
-      "LCMS2_WITH_THREADS": false,
       "LCMS2_WITH_FASTFLOAT": false,
       "LCMS2_WITH_THREADED_PLUGIN": false
     },
@@ -202,6 +201,11 @@
       "CATCH_BUILD_TESTING": false,
       "CATCH_INSTALL_DOCS": false,
       "CATCH_INSTALL_EXTRAS": true
+    }
+  },
+  "unix_dependencies": {
+    "lcms": {
+      "LCMS2_WITH_THREADS": false
     }
   }
 }

@@ -64,3 +64,7 @@ results belong to the delivered commit and logs, not to this design record.
 CI challenged tool selection with generic LLVM 18 and major-qualified LLVM 23 installed together.
 The validator refused the wrong default; prefer the major-qualified installed tool and retain
 that regression for both clang-tidy and clang-query. The version requirement is unchanged.
+
+Windows QA found that the locked Little CMS release never consumes its POSIX thread switch on
+Windows. Declare that switch once in the Unix feature policy and apply/audit the same scope;
+keep unused-argument errors enabled on every platform.
