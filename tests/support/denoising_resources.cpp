@@ -36,8 +36,6 @@
 #include <opencv2/core/utils/logger.hpp>
 #include <thread>
 
-// Developer-only fresh-process observation. Ordinary C++ allocations (including upstream
-// new[] arrays and weight vectors) and native Mat data are observed independently of Budget.
 namespace {
 std::atomic<bool> observing{false};
 std::atomic<std::size_t> live{0};
@@ -236,17 +234,14 @@ void observe_free(const volatile void* const pointer) noexcept {
 void* operator new(std::size_t bytes) {
     return allocate_bytes(bytes);
 }
-// Compiler-specific standard-library declarations choose different parameter names.
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
 void* operator new[](std::size_t bytes) {
     return allocate_bytes(bytes);
 }
-// Compiler-specific standard-library declarations choose different parameter names.
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
 void operator delete(void* const pointer) noexcept {
     release_bytes(pointer);
 }
-// Compiler-specific standard-library declarations choose different parameter names.
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
 void operator delete[](void* const pointer) noexcept {
     release_bytes(pointer);
@@ -310,6 +305,15 @@ NativeObservation observe_call(docenhance::image::PlaneView<const std::uint16_t>
         .allocations = allocation_attempts.load(),
     };
 }
+void warm_error_path() {
+    try {
+        CV_Error(cv::Error::StsNoMem, "Observed native Mat allocation refusal");
+    } catch (const cv::Exception& error) {
+        if (error.code != cv::Error::StsNoMem) {
+            std::abort();
+        }
+    }
+}
 int measure() {
 #if DE_NLM_SANITIZER_OBSERVATION
     if (__sanitizer_install_malloc_and_free_hooks(observe_malloc, observe_free) == 0) {
@@ -340,6 +344,7 @@ int measure() {
     if (!denoise::native_tile(input.view().as_const(), output.view(), method, budget)) {
         return 1;
     }
+    warm_error_path();
     auto* const original = cv::Mat::getDefaultAllocator();
     ObservedMatAllocator allocator{*original};
     cv::Mat::setDefaultAllocator(&allocator);
