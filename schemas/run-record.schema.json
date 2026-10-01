@@ -21,10 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "enum": [
-            1,
-            2
-          ]
+          "const": 3
         },
         "run": {
           "type": "string",
@@ -70,7 +67,8 @@
       "required": [
         "sha256",
         "bytes",
-        "name"
+        "name",
+        "decoding"
       ],
       "additionalProperties": false,
       "properties": {
@@ -81,7 +79,7 @@
         "bytes": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 18446744073709551615
+          "maximum": 134217728
         },
         "name": {
           "type": "string",
@@ -97,7 +95,8 @@
       "type": "object",
       "required": [
         "operation",
-        "protection_supplied"
+        "protection_supplied",
+        "denoising"
       ],
       "additionalProperties": false,
       "properties": {
@@ -250,6 +249,9 @@
         },
         "protection_supplied": {
           "type": "boolean"
+        },
+        "denoising": {
+          "$ref": "#/$defs/denoising_request"
         }
       }
     },
@@ -257,7 +259,8 @@
       "type": "object",
       "required": [
         "conversion",
-        "illumination"
+        "illumination",
+        "denoising"
       ],
       "additionalProperties": false,
       "properties": {
@@ -273,6 +276,9 @@
         },
         "illumination": {
           "$ref": "#/$defs/illumination"
+        },
+        "denoising": {
+          "$ref": "#/$defs/denoising"
         }
       }
     },
@@ -625,7 +631,7 @@
           "type": "boolean"
         },
         "verified": {
-          "type": "boolean"
+          "const": true
         },
         "warnings": {
           "type": "array",
@@ -1480,6 +1486,293 @@
           }
         }
       ]
+    },
+    "denoising": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters",
+        "status",
+        "reason",
+        "complete",
+        "analysis_depth",
+        "distance",
+        "native_h",
+        "tile_width",
+        "border",
+        "eligible_samples",
+        "protected_samples",
+        "evaluated_samples",
+        "corrected_samples",
+        "changed_samples",
+        "native_calls",
+        "native_reserved_peak",
+        "preparation_charge_peak"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "method_version"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "const": "D01"
+                },
+                "method_version": {
+                  "const": 1
+                }
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "h",
+                "patch",
+                "search",
+                "blend"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "h": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 25
+                },
+                "patch": {
+                  "type": "integer",
+                  "enum": [
+                    3,
+                    5,
+                    7,
+                    9,
+                    11,
+                    13,
+                    15
+                  ]
+                },
+                "search": {
+                  "type": "integer",
+                  "enum": [
+                    7,
+                    9,
+                    11,
+                    13,
+                    15,
+                    17,
+                    19,
+                    21,
+                    23,
+                    25,
+                    27,
+                    29,
+                    31,
+                    33,
+                    35,
+                    37,
+                    39,
+                    41
+                  ]
+                },
+                "blend": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "disabled",
+            "no_change",
+            "applied",
+            "failed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "none",
+            "zero_blend",
+            "no_eligible_samples",
+            "no_effect",
+            "processing_failure"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "analysis_depth": {
+          "const": 16
+        },
+        "distance": {
+          "const": "L1"
+        },
+        "native_h": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 6425
+        },
+        "tile_width": {
+          "const": 256
+        },
+        "border": {
+          "const": "REFLECT_101"
+        },
+        "eligible_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "protected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "evaluated_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "corrected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "changed_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "native_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "native_reserved_peak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 18446744073709551615
+        },
+        "preparation_charge_peak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824
+        }
+      }
+    },
+    "denoising_request": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "id",
+                "method_version"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "id": {
+                  "const": "D01"
+                },
+                "method_version": {
+                  "const": 1
+                }
+              }
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "h",
+                "patch",
+                "search",
+                "blend"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "h": {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 25
+                },
+                "patch": {
+                  "type": "integer",
+                  "enum": [
+                    3,
+                    5,
+                    7,
+                    9,
+                    11,
+                    13,
+                    15
+                  ]
+                },
+                "search": {
+                  "type": "integer",
+                  "enum": [
+                    7,
+                    9,
+                    11,
+                    13,
+                    15,
+                    17,
+                    19,
+                    21,
+                    23,
+                    25,
+                    27,
+                    29,
+                    31,
+                    33,
+                    35,
+                    37,
+                    39,
+                    41
+                  ]
+                },
+                "blend": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "allOf": [
@@ -1586,55 +1879,33 @@
       }
     },
     {
-      "if": {
-        "properties": {
-          "record": {
-            "properties": {
-              "version": {
-                "const": 1
-              }
+      "properties": {
+        "source": {
+          "required": [
+            "decoding"
+          ],
+          "properties": {
+            "bytes": {
+              "maximum": 134217728
             }
           }
-        }
-      },
-      "then": {
-        "properties": {
-          "source": {
-            "properties": {
-              "decoding": false
-            }
-          }
-        }
-      },
-      "else": {
-        "properties": {
-          "source": {
-            "required": [
-              "decoding"
-            ],
-            "properties": {
-              "bytes": {
-                "maximum": 134217728
-              }
-            }
-          },
-          "execution": {
-            "properties": {
-              "conversion": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "verified": {
-                        "const": true
-                      }
+        },
+        "execution": {
+          "properties": {
+            "conversion": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "verified": {
+                      "const": true
                     }
                   }
-                ]
-              }
+                }
+              ]
             }
           }
         }

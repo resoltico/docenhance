@@ -6,6 +6,7 @@
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "illumination.hpp"
 
 #include <nlohmann/json.hpp>
@@ -18,6 +19,7 @@ nlohmann::ordered_json continuous_fields(const app::ContinuousProcessed& value) 
     return {
         {"operation", "continuous"},
         {"illumination", bundle::illumination_fields(value.illumination)},
+        {"denoising", bundle::denoising_fields(value.denoising)},
         {"output", value.output},
         {"publication", "completed"},
         {"conversion", bundle::conversion_fields(value.conversion)},
@@ -39,6 +41,9 @@ std::string continuous_text(const app::ContinuousProcessed& value) {
         text += std::string(warning) + "\n";
     }
     text += illumination_text(value.illumination);
+    text += "Denoising: " + std::string(methods::status_name(value.denoising.status)) + " (" +
+            std::string(methods::reason_name(value.denoising.reason)) +
+            "); changed=" + std::to_string(value.denoising.changed_samples) + "\n";
     return text;
 }
 } // namespace docenhance::report

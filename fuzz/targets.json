@@ -149,6 +149,16 @@
         "de_io"
       ],
       "max_len": 65536
+    },
+    "denoising": {
+      "source": "denoising.cpp",
+      "links": [
+        "de_denoise",
+        "de_methods",
+        "de_image",
+        "de_core"
+      ],
+      "max_len": 2048
     }
   }
 }

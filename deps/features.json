@@ -154,7 +154,14 @@
       "BUILD_TBB": false,
       "BUILD_IPP_IW": false,
       "BUILD_ITT": false,
-      "BUILD_CLAPACK": false
+      "BUILD_CLAPACK": false,
+      "CV_TRACE": false,
+      "OPENCV_DISABLE_ENV_SUPPORT": true,
+      "CV_LOG_STRIP_LEVEL": "0",
+      "DOCENHANCE_OPENCV_OWNED_MAT_STORAGE": true,
+      "DOCENHANCE_OPENCV_MATRIX_SHA256": "fd8a80d6e55e1310e7b4a46a12aa4fa137888e80da2dd5b5e47ffa3c49d388b0",
+      "DOCENHANCE_OPENCV_DENOISING_SHA256": "774c219cb79ac9b69ed573981164781691e80a304c05a41ae7e78c3628ff5f04",
+      "DOCENHANCE_OPENCV_PARALLEL_SHA256": "261ddacb72ba0ae01575918d670ea5970204eae217dcef8a2b9e149eb0e126c8"
     },
     "leptonica": {
       "BUILD_PROG": false,

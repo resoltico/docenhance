@@ -10,6 +10,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/version.hpp"
 
@@ -91,7 +92,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
             return succeeded(invocation, std::move(result.error()));
         }
         if (const auto* const method = std::get_if<methods::Binarization>(&request->operation())) {
-            if (result->conversion || result->illumination) {
+            if (result->conversion || result->illumination || result->denoising) {
                 return unknown_outcome;
             }
             return succeeded(invocation, Processed{
@@ -103,7 +104,10 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                          });
         }
         if (!result->conversion || !result->conversion->verified || !result->illumination ||
-            !matches(*request, *result->illumination)) {
+            !matches(*request, *result->illumination) || !result->denoising ||
+            !methods::valid_denoising(*result->denoising, request->denoising()) ||
+            result->denoising->eligible_samples != result->illumination->eligible_samples ||
+            result->denoising->protected_samples != result->illumination->protected_samples) {
             return unknown_outcome;
         }
         return succeeded(invocation, ContinuousProcessed{
@@ -113,6 +117,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                          .run = std::move(result->run),
                                          .record = std::move(result->record),
                                          .source_decoding = result->source_decoding,
+                                         .denoising = *result->denoising,
                                      });
     } catch (...) {
         return unknown_outcome;

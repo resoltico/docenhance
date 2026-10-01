@@ -3,6 +3,7 @@
 #include "docenhance/methods/catalog.hpp"
 
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/method_catalog.hpp"
 
@@ -16,7 +17,7 @@ namespace docenhance::methods {
 namespace {
 template <std::size_t... Indices>
 constexpr auto executable_catalog(std::index_sequence<Indices...> /*indices*/) noexcept {
-    return std::array{Surface::descriptor(),
+    return std::array{Surface::descriptor(), Nlm::descriptor(),
                       std::variant_alternative_t<Indices, Binarization>::descriptor()...};
 }
 constexpr auto catalog =

@@ -38,22 +38,22 @@ de_library(de_image LAYER image
   LINKS de_core)
 de_library(de_methods LAYER methods
   SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/binarization.cpp methods/sauvola.cpp
-          methods/illumination.cpp methods/surface_detail.hpp methods/surface_grid.cpp
+          methods/denoising.cpp methods/illumination.cpp methods/surface_detail.hpp methods/surface_grid.cpp
           methods/surface_measure.cpp methods/surface_system.cpp methods/surface_multigrid.cpp methods/surface_solve.cpp
           methods/surface_samples.cpp methods/surface_fit.cpp methods/surface_apply.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
           "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/method_catalog.hpp"
-          "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp"
+          "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
-  SOURCES app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
+  SOURCES app/denoising.cpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
           "${DE_INCLUDE}/app/verify.hpp"
   LINKS de_core de_contract de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_bundle LAYER bundle
-  SOURCES bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp bundle/read_fields.hpp bundle/read_values.cpp
+  SOURCES bundle/denoising_fields.cpp bundle/read_denoising.cpp bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp bundle/read_fields.hpp bundle/read_values.cpp
           bundle/read_observations.cpp bundle/read_operation.cpp bundle/read_illumination.cpp bundle/read_claims.cpp bundle/source_fields.cpp bundle/read_source.cpp
   HEADERS "${DE_INCLUDE}/bundle/fields.hpp" "${DE_INCLUDE}/bundle/record.hpp"
           "${DE_INCLUDE}/bundle/inventory.hpp"
@@ -81,16 +81,20 @@ de_library(de_color LAYER color
           color/converter.cpp color/conversion.hpp color/prepare.cpp color/rows.cpp
   HEADERS "${DE_INCLUDE}/color/converter.hpp" "${DE_INCLUDE}/color/profile.hpp"
   LINKS de_core de_image DE::lcms)
+de_library(de_denoise LAYER denoise
+  SOURCES denoise/native.cpp denoise/tiles.cpp
+  HEADERS "${DE_INCLUDE}/denoise/nlm.hpp"
+  LINKS de_core de_image de_methods opencv_core opencv_photo)
 # Both fuzz groups compile production targets. Only codec harnesses link io; the CLI closure
 # remains pure and never composes the host or publication path.
 if(DE_FUZZ_ONLY)
-  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli io color)
+  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli io color denoise)
   return()
 endif()
 de_library(de_host LAYER host
   SOURCES host/bundle.cpp host/bundle.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
-          host/illumination_rows.cpp host/illumination_rows.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
-  LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color)
+          host/linear_rows.cpp host/linear_rows.hpp host/denoising.cpp host/denoising.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
+  LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color de_denoise)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)
 if(MINGW)
   target_link_options(docenhance PRIVATE -municode)

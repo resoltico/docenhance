@@ -483,7 +483,8 @@
         "exec",
         "image",
         "io",
-        "methods"
+        "methods",
+        "denoise"
       ],
       "external": [],
       "forbidden_headers": [
@@ -588,6 +589,36 @@
       ],
       "may_catch": true,
       "may_allocate": true
+    },
+    "denoise": {
+      "target": "de_denoise",
+      "summary": "Bounded native NLM execution and resource reservation",
+      "uses": [
+        "core",
+        "image",
+        "methods"
+      ],
+      "external": [
+        "opencv"
+      ],
+      "forbidden_headers": [
+        "filesystem",
+        "fstream",
+        "iostream",
+        "thread",
+        "future",
+        "execution"
+      ],
+      "forbidden_calls": [
+        "getenv",
+        "fopen",
+        "imread",
+        "imwrite",
+        "system",
+        "malloc",
+        "free"
+      ],
+      "may_catch": true
     }
   }
 }

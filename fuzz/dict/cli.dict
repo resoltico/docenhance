@@ -42,3 +42,8 @@
 "--background-quantile"
 "--background-smooth"
 "--protect-mask"
+"--denoise"
+"--denoise-blend"
+"--nlm-h"
+"--nlm-patch"
+"--nlm-search"

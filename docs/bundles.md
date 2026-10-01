@@ -49,7 +49,7 @@ its own.
 |---|---|
 | `record` | The record format version, the run identity and the instant it was recorded |
 | `build` | Application version, platform, compiler and dependency-lock identity |
-| `source` | The digest/size of exact decoded source bytes and basename; version 2 additionally requires typed container/decode observations |
+| `source` | The digest/size of exact decoded source bytes and basename; required typed container/decode observations |
 | `request` | The admitted operation and its parameters, and whether a mask was supplied |
 | `execution` | The conversion observations and the illumination report, as the response states them |
 | `protection` | The supplied mask's digest, the stored canonical mask, its size, polarity and coordinate frame |
@@ -190,14 +190,16 @@ original document.
 
 ## Source observations and format compatibility
 
-New native output uses record version 2, requiring `source.decoding` with a closed PNG/JPEG
-alternative. It records the actual encoded source dimensions/precision and the selected decoder
-policy; JPEG also records component identities/interpretation, sampling, process/scans and physical
-metadata precedence/conflicts. Cross-field validation checks the admitted operation and conversion
-observations. Shared generated source definitions keep response `source_decoding` and persistent
-fields consistent; command responses use schema version 2.
+Current native output uses record version 3. It requires closed source decoding observations,
+a denoising request and complete execution report, alongside verified conversion and output facts.
+The reader accepts only this format; obsolete versions and unknown fields are refused. No backward
+compatibility reader or migration exists. The command response uses schema version 3.
 
-Complete version-one records retain their original closed shape; new decoding fields are refused
-there. These records are still verified against included artifacts without inventing absent-source
-observations. JPEG source bytes remain absent just like PNG source bytes: later verification checks
-record consistency and the included PNG result, not historical decoder execution or authenticity.
+D01 observations include typed settings, native float strength, 16-bit/L1 policy, global reflection,
+tile size, eligible/protected/evaluated/corrected/changed pixels, completed native calls and reserved/
+combined preparation charge peaks. Reader validation checks method settings, completion, count
+relationships, exact tile count and source-derived native reservation. Working-space change is not
+inferred from whether output bytes differ. See [denoising](denoising.md).
+
+JPEG and PNG source bytes remain absent: later verification checks recorded facts and included
+artifacts, not historical decoder execution or authenticity.

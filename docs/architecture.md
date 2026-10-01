@@ -58,13 +58,14 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_app` | `de_contract`, `de_core`, `de_image`, `de_methods` | Validated use cases and the explicit processing and verification ports |
 | `de_report` | `de_app`, `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
-| `de_host` | `de_app`, `de_bundle`, `de_color`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods` | Executes admitted requests using codecs, kernels and publication |
+| `de_host` | `de_app`, `de_bundle`, `de_color`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods`, `de_denoise` | Executes admitted requests using codecs, kernels and publication |
+| `de_denoise` | `de_core`, `de_image`, `de_methods` | Bounded native NLM execution and resource reservation |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 | `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
 
 Only `de_bundle` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
-Other pinned imaging libraries remain isolated in the native dependency probe until a real method
-needs them. Public headers never expose third-party types. The executable-only `entry` layer
+OpenCV core/photo serve D01 through `de_denoise`; other unused imaging packages remain in the
+native probe. Public headers never expose third-party types. The executable-only `entry` layer
 explicitly declares that it has no public header directory; it is not a fake reusable library.
 
 ## Values, ownership and budgets
@@ -235,4 +236,13 @@ external-package permission. A bounded framing/metadata scan and charged native 
 precede full-resolution native decoding. Native jumps stay inside owner-free wrappers, while the
 request's buffers and contexts outlive the frame. JPEG has no separate host, publisher or numerical
 method. New records and responses carry typed source observations with explicit format/wire versions;
-strict version-one bundle reading remains supported. See [JPEG](jpeg-processing.md).
+only the current closed bundle format is supported. See [JPEG](jpeg-processing.md).
+
+## Prepared luminance denoising
+
+`de_denoise` wraps only the pinned CV_16U/L1 operation, with bounded tile extents, native scratch
+reservation and contained exceptions. `de_methods` owns closed NLM settings, scalar correction and
+resource estimates without native types. The host composes linear interpretation, frozen I01,
+prepared D01 and final integer rows. Completed earlier-stage observations survive downstream
+failures; publication remains one complete bundle transaction. The prepared scalar planes and
+original source/model outlive encoding and verification. See [denoising](denoising.md).

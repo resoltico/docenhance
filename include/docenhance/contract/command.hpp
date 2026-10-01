@@ -48,6 +48,11 @@ struct Invocation {
     std::optional<std::string> background_cell = std::nullopt;
     std::optional<std::string> background_quantile = std::nullopt;
     std::optional<std::string> background_smooth = std::nullopt;
+    std::optional<std::string> denoise = std::nullopt;
+    std::optional<std::string> denoise_blend = std::nullopt;
+    std::optional<std::string> nlm_h = std::nullopt;
+    std::optional<std::string> nlm_patch = std::nullopt;
+    std::optional<std::string> nlm_search = std::nullopt;
     std::optional<std::string> protect_mask = std::nullopt;
     std::optional<std::string> binarize = std::nullopt;
     std::optional<std::string> fixed_threshold = std::nullopt;

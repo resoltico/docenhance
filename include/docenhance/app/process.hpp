@@ -9,6 +9,7 @@
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <expected>
@@ -33,21 +34,30 @@ class ProcessRequest {
     [[nodiscard]] const std::optional<std::string>& protection() const noexcept {
         return protection_;
     }
+    [[nodiscard]] const methods::Denoising& denoising() const noexcept {
+        return denoising_;
+    }
     [[nodiscard]] const Operation& operation() const noexcept {
         return operation_;
     }
 
   private:
     friend core::Result<ProcessRequest> prepare_process(const contract::Invocation& /*invocation*/);
+    struct Enhancements {
+        methods::Illumination illumination;
+        methods::Denoising denoising;
+    };
     ProcessRequest(std::string input, std::string output, Operation operation,
-                   methods::Illumination illumination, std::optional<std::string> protection)
+                   Enhancements enhancements, std::optional<std::string> protection)
         : input_(std::move(input)), output_(std::move(output)), operation_(operation),
-          illumination_(illumination), protection_(std::move(protection)) {}
+          illumination_(enhancements.illumination), protection_(std::move(protection)),
+          denoising_(enhancements.denoising) {}
     std::string input_;
     std::string output_;
     Operation operation_;
     methods::Illumination illumination_;
     std::optional<std::string> protection_;
+    methods::Denoising denoising_;
 };
 [[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
 struct PublishedImage {
@@ -60,6 +70,7 @@ struct PublishedImage {
     std::string run;
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    std::optional<methods::DenoisingReport> denoising = std::nullopt;
 };
 struct ContinuousProcessed {
     std::string output;
@@ -68,6 +79,7 @@ struct ContinuousProcessed {
     std::string run;
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    methods::DenoisingReport denoising{};
 };
 struct Processed {
     std::string output;
@@ -78,12 +90,18 @@ struct Processed {
 };
 struct ProcessFailure {
     core::Error error;
+    std::optional<methods::DenoisingReport> denoising = std::nullopt;
     std::optional<methods::IlluminationReport> illumination = std::nullopt;
 };
 using ProcessResult = std::expected<PublishedImage, ProcessFailure>;
 [[nodiscard]] inline std::unexpected<ProcessFailure>
-process_failure(core::Error error, std::optional<methods::IlluminationReport> illumination = {}) {
-    return std::unexpected(ProcessFailure{.error = std::move(error), .illumination = illumination});
+process_failure(core::Error error, std::optional<methods::IlluminationReport> illumination = {},
+                std::optional<methods::DenoisingReport> denoising = {}) {
+    return std::unexpected(ProcessFailure{
+        .error = std::move(error),
+        .denoising = denoising,
+        .illumination = illumination,
+    });
 }
 // A deliberate effect boundary. There is no default implementation or hidden service lookup.
 // Expected errors retain their publication state in Result. If a port throws, the application

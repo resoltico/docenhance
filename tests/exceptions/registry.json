@@ -350,6 +350,60 @@
     },
     "tools/native_probe.cpp:clang-tidy/cppcoreguidelines-owning-memory@a7e2a566": {
       "explanation": "This single allocation/deallocation call implements the external Leptonica C interception ABI on Windows. The library owns the raw result and releases it through the matching callback; a C++ owning return type cannot implement that ABI. The native probe checks that the interception hooks are actually used."
+    },
+    "src/denoise/native.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@c582aaaf": {
+      "explanation": "The pinned OpenCV borrowed Mat ABI accepts void* even for read-only InputArray. This single cast constructs the header for the audited CV_16U/NORM_L1 input-only call; the caller retains ownership and source identity, and native/full-tile tests check unchanged input."
+    },
+    "src/denoise/native.cpp:clang-tidy/readability-function-size@2247a8da": {
+      "explanation": "OpenCV fixes this six-argument error callback ABI. The stateless noexcept callback suppresses foreign stdout/stderr writes while the native library still throws its exception, which the owning adapter maps to a truthful resource/numerical failure. Native allocation fault injection exercises the error callback."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-owning-memory@1e76d459": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-no-malloc@1e76d459": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-owning-memory@5f538b55": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-no-malloc@5f538b55": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@e837046d": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-function-size@f9bd1802": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@5fa76de3": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@24273f12": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@fa507ab9": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@a6faf0d3": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@39ecc8b4": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@67b01521": {
+      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@88bdc79c": {
+      "explanation": "The developer-only observer pairs standard nothrow allocation/deallocation forms with ordinary and sized forms. Parameter names in the standard ABI declarations vary by compiler; failed allocation returns null and releases through the same fixed pointer registry. Production never links these replacement operators."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@2822a14c": {
+      "explanation": "The developer-only observer pairs standard nothrow allocation/deallocation forms with ordinary and sized forms. Parameter names in the standard ABI declarations vary by compiler; failed allocation returns null and releases through the same fixed pointer registry. Production never links these replacement operators."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@be5640d2": {
+      "explanation": "The developer-only observer pairs standard nothrow allocation/deallocation forms with ordinary and sized forms. Parameter names in the standard ABI declarations vary by compiler; failed allocation returns null and releases through the same fixed pointer registry. Production never links these replacement operators."
+    },
+    "tests/support/denoising_resources.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@807c32c9": {
+      "explanation": "The developer-only observer pairs standard nothrow allocation/deallocation forms with ordinary and sized forms. Parameter names in the standard ABI declarations vary by compiler; failed allocation returns null and releases through the same fixed pointer registry. Production never links these replacement operators."
     }
   }
 }

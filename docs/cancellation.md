@@ -170,3 +170,10 @@ ICC assembly, native input/progress/scan work, charged allocation/initialization
 Tests enumerate deterministic stop points through the actual decoder and require full refunds.
 These checkpoints feed the same control; no OS-handler or final precommit policy changes. See
 [JPEG source admission](jpeg-processing.md) for foreign-call and resource boundaries.
+
+
+D01 observes cancellation per preparation block, global-halo row, completed native tile and
+reconstruction block. A native tile is not interruptible; maximum patch/search and tile extents
+bound its work, while measured latency remains platform-dependent. Native errors take precedence
+before the next cancellation observation. Completed I01/D01 numerical reports survive later
+verification/publication failures; the existing final commit cutoff remains authoritative.

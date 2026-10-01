@@ -96,7 +96,7 @@ def malformed_records(exe: Path, directory: Path) -> None:
         expect(not VALIDATOR.is_valid(altered), "closed schema rejects unknown fields")
         path.write_text(json.dumps(altered), encoding="utf-8")
         refused(exe, directory)
-    duplicate = original.replace(b'"version": 2', b'"version": 1, "version": 2', 1)
+    duplicate = original.replace(b'"version": 3', b'"version": 1, "version": 3', 1)
     path.write_bytes(duplicate)
     refused(exe, directory)
     path.write_bytes(original)
@@ -171,20 +171,6 @@ def false_profile(exe: Path, directory: Path) -> None:
     path.write_bytes(original_record)
 
 
-def legacy_conversion_observation(exe: Path, directory: Path) -> None:
-    """Version-one records may retain the conversion snapshot from before output comparison."""
-    path = directory / "run.json"
-    original = path.read_bytes()
-    record = json.loads(original)
-    record["record"]["version"] = 1
-    record["source"].pop("decoding")
-    record["execution"]["conversion"]["verified"] = False
-    VALIDATOR.validate(record)
-    path.write_text(json.dumps(record), encoding="utf-8")
-    call_json(exe, ["verify", str(directory), "--json"])
-    path.write_bytes(original)
-
-
 def false_mask(exe: Path, directory: Path) -> None:
     """A stored mask must use canonical samples and agree with the observed protection count."""
     path = directory / "run.json"
@@ -255,7 +241,6 @@ def main() -> None:
         malformed_records(exe, binary)
         artifact_claims(exe, continuous)
         false_profile(exe, continuous)
-        legacy_conversion_observation(exe, continuous)
         false_binary(exe, binary)
         false_mask(exe, protected)
     print("PASS: complete bundle records, artifact properties and independent schema validation")

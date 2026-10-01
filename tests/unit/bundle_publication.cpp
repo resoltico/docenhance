@@ -6,6 +6,7 @@
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/methods/binarization.hpp"
@@ -59,7 +60,12 @@ WrittenBundle written_bundle() {
     const bundle::RunRecord facts{
         .context = {.identity = std::string(32, 'a'), .recorded = "2026-09-30T00:00:00Z"},
         .build = core::build_facts(),
-        .source = {.identity = {.sha256 = std::string(64, 'b'), .bytes = 1}, .name = "source.png"},
+        .source =
+            {
+                .identity = {.sha256 = std::string(64, 'b'), .bytes = 1},
+                .name = "source.png",
+                .decoding = image::PngSource{.width = 2, .height = 2, .depth = 8, .color_type = 0},
+            },
         .operation = methods::Binarization{*method},
         .protection_supplied = false,
         .output =
@@ -73,6 +79,7 @@ WrittenBundle written_bundle() {
         .protection = std::nullopt,
         .conversion = std::nullopt,
         .illumination = illumination,
+        .denoising = {.complete = true},
     };
     auto record = bundle::serialize(facts);
     REQUIRE(record);

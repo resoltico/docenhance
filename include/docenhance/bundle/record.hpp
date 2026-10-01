@@ -7,6 +7,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <cstdint>
@@ -23,7 +24,7 @@ namespace docenhance::bundle {
 // The record describes processing. It is finalized before the commit point, so it cannot assert
 // that publication succeeded; publication state belongs to the command response.
 
-inline constexpr unsigned record_version = 2;
+inline constexpr unsigned record_version = 3;
 inline constexpr const char* record_name = "run.json";
 inline constexpr const char* image_name = "result.png";
 inline constexpr const char* mask_name = "assets/protect-mask.png";
@@ -85,6 +86,7 @@ struct RunRecord {
     std::optional<ProtectionFacts> protection;
     std::optional<image::ConversionReport> conversion;
     methods::IlluminationReport illumination;
+    methods::DenoisingReport denoising{};
 };
 
 // The record as the bytes a bundle carries. Serialization is the last step before the inventory

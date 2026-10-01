@@ -122,3 +122,14 @@ See [CONTRIBUTING](CONTRIBUTING.md), [AGENTS](AGENTS.md), the [security policy](
 ## License
 
 DocEnhance is copyright 2026 Ervins Strauhmanis and MIT-licensed; bundled dependencies retain their own licenses. See [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md). The repository contains no vendored dependency sources or compiled libraries. Native-package generation copies original upstream license texts and emits a declared-source SPDX inventory; final binary-composition and distribution review remains a release requirement.
+
+Explicit luminance denoising composes after illumination and before final quantization:
+
+```sh
+docenhance process scan.jpg --out-dir denoised --denoise nlm --nlm-h 3 --denoise-blend 0.5 --json
+```
+
+D01 is bounded 16-bit NLM-L1, off by default. Protected pixels retain their entering linear samples;
+protected neighbors remain context. It is not JPEG restoration or a guarantee of mark preservation.
+See [the complete denoising contract](docs/denoising.md). Records and responses use format 3;
+obsolete records are rejected without migration.

@@ -5,13 +5,10 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
-#include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 
 #include <array>
-#include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <expected>
 #include <lcms2.h>
 #include <span>
@@ -41,30 +38,11 @@ core::Result<core::Buffer> serialize(const Context& context, void* const profile
     }
     return storage;
 }
-core::Result<Profile> gray_profile(const Context& context, core::Budget& budget,
-                                   const core::Cancellation& cancellation) {
-    constexpr std::uint32_t entries = 65530; // Largest table supported by the pinned Little CMS.
-    constexpr double rounding_half = 0.5;
-    auto table = image::Plane<std::uint16_t>::allocate(budget, entries, 1);
-    if (!table) {
-        return std::unexpected(table.error());
+core::Result<Profile> gray_profile(const Context& context, const core::Cancellation& cancellation) {
+    if (cancellation.requested(core::Checkpoint::verification)) {
+        return core::cancelled();
     }
-    auto const values = table->view().row(0);
-    constexpr std::uint32_t poll = 1024;
-    for (std::uint32_t i = 0; i < entries; ++i) {
-        if (i % poll == 0 && cancellation.requested(core::Checkpoint::verification)) {
-            return core::cancelled();
-        }
-        const auto value = image::srgb_decode(static_cast<double>(i) / (entries - 1));
-        if (!value) {
-            return std::unexpected(value.error());
-        }
-        values.subspan(i, 1).front() =
-            static_cast<std::uint16_t>(std::floor((*value * image::word_max) + rounding_half));
-    }
-    // ICC curveType stores uint16 samples. Little CMS serializes a floating curve through
-    // a 4096-point approximation; supplying the explicit table retains all 65530 knots.
-    Curve const curve{cmsBuildTabulatedToneCurve16(context.get(), entries, values.data())};
+    const Curve curve = srgb_transfer(context);
     if (!curve) {
         return std::unexpected(context.error("Cannot build the gray sRGB transfer curve"));
     }
@@ -75,6 +53,12 @@ core::Result<Profile> gray_profile(const Context& context, core::Budget& budget,
     return profile;
 }
 } // namespace
+Curve srgb_transfer(const Context& context) {
+    constexpr int curve_type = 4;
+    constexpr auto parameters =
+        std::to_array<double>({2.4, 1.0 / 1.055, 0.055 / 1.055, 1.0 / 12.92, 0.04045});
+    return Curve{cmsBuildParametricToneCurve(context.get(), curve_type, parameters.data())};
+}
 Profile linear_rgb_profile(const Context& context) {
     Curve const curve{cmsBuildGamma(context.get(), 1.0)};
     if (!curve) {
@@ -88,7 +72,7 @@ core::Result<core::Buffer> output_profile(const Context& context, core::Budget& 
     if (cancellation.requested(core::Checkpoint::verification)) {
         return core::cancelled();
     }
-    auto profile = gray ? gray_profile(context, budget, cancellation)
+    auto profile = gray ? gray_profile(context, cancellation)
                         : core::Result<Profile>{Profile{cmsCreate_sRGBProfileTHR(context.get())}};
     if (!profile) {
         return std::unexpected(profile.error());

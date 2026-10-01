@@ -1,7 +1,7 @@
 # Status
 
 The executable admits **static PNG and bounded 8-bit Huffman baseline/progressive JPEG** into **continuous-tone PNG representation** with opt-in **I01 quantile
-log-surface illumination**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
+log-surface illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
 It is not a complete restoration suite.
 
 ## Implemented product paths
@@ -16,6 +16,8 @@ I01 can be selected explicitly or through its opt-in automatic predicates, with 
 1/8-bit grayscale protection masks in oriented coordinates. Fitting, linear application and output
 verification share explicit resource/cancellation contracts; see [illumination](illumination.md).
 See [PNG processing](png-processing.md) for precise domains, limits and explicit assumptions.
+D01 follows I01 before final quantization; protection is exact and native execution occurs once.
+See [denoising](denoising.md) for numerical, resource, cancellation and record contracts.
 
 `--output-mode bw` activates B02/B03; default selection is Sauvola. Their existing stored-gray
 sample semantics and 1/2/4/8-bit nontransparent PNG input domain are unchanged, and broader input
@@ -47,8 +49,8 @@ reference/property tests and manifest-declared engine-independent fuzz harnesses
 raw binary/continuous PNG decoding, raw ICC parsing/transforms, independently generated exact-sample PNG checks and a direct-window Sauvola oracle. See [fuzzing](fuzzing.md).
 
 Sauvola and the box-mean primitive use the internal scheduler; the public CLI does not expose
-`--threads`, batching or arbitrary recipes. OpenCV, Leptonica and TIFF are linked
-and exercised by a development probe, not silently advertised as complete processing support.
+`--threads`, batching or arbitrary recipes. OpenCV core/photo execute D01 behind the bounded denoising adapter. Leptonica and TIFF remain
+development-probe packages without production processing admission.
 
 ## Verification is commit-specific
 

@@ -136,13 +136,14 @@ jobs:
           python-version: '3.13'
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
-      - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 2 --job-budget 1800
+      - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 2 --job-budget 2100
       - name: Build pinned AFL++
         if: matrix.engine == 'afl'
         run: |
           python tools/install_aflplusplus.py
           echo core | sudo tee /proc/sys/kernel/core_pattern
       - run: |
+          python tools/deps.py fetch --dependency opencv
           python tools/deps.py fetch --dependency jpeg
           python tools/deps.py fetch --dependency zlib
           python tools/deps.py fetch --dependency png

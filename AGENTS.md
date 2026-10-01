@@ -2,6 +2,9 @@
 
 ## Instructions
 
+Use hard, clean contract breaks. Do not maintain backward compatibility, legacy readers or
+migration paths. Update current contracts and tests together, and reject obsolete forms.
+
 Read `docs/status.md`, `docs/architecture.md`, `docs/decisions.md` and the reviewed contracts under
 `spec/`. The roadmap describes planned work; inspect current capability contracts before choosing
 a package. Names describe responsibilities, not a project's age, maturity or delivery phase.

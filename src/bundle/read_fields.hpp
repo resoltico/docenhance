@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <cstddef>
@@ -35,11 +36,14 @@ using RecordJson = nlohmann::json;
 [[nodiscard]] core::Result<image::ConversionReport> record_conversion(const RecordJson& value);
 [[nodiscard]] core::Result<methods::IlluminationReport>
 record_illumination(const RecordJson& value);
+[[nodiscard]] core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value);
+[[nodiscard]] core::Result<void>
+validate_denoising_claims(const RecordJson& document, DeclaredBundle& d, const Operation& operation,
+                          const methods::IlluminationReport& light);
 [[nodiscard]] bool illumination_agrees(const DeclaredBundle& d);
 [[nodiscard]] core::Result<void> validate_record_claims(const RecordJson& document,
                                                         DeclaredBundle& d);
 [[nodiscard]] core::Result<image::SourceDescription> record_source(const RecordJson& value);
-[[nodiscard]] core::Result<SourceFacts> record_source_facts(const RecordJson& value,
-                                                            unsigned version);
+[[nodiscard]] core::Result<SourceFacts> record_source_facts(const RecordJson& value);
 [[nodiscard]] bool source_agrees(const DeclaredBundle& declared);
 } // namespace docenhance::bundle

@@ -4,6 +4,7 @@
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/methods/denoising.hpp"
 
 #include <cstddef>
 #include <span>
@@ -44,6 +45,7 @@ struct DeclaredBundle {
     std::optional<ProtectionFacts> protection = std::nullopt;
     std::optional<image::ConversionReport> conversion = std::nullopt;
     methods::IlluminationReport illumination{};
+    methods::DenoisingReport denoising{};
 };
 
 [[nodiscard]] core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes);
