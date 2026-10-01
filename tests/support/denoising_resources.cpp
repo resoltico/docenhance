@@ -282,6 +282,10 @@ void operator delete[](void* const pointer, std::size_t /*size*/) noexcept {
 }
 #endif
 namespace {
+namespace core = docenhance::core;
+namespace image = docenhance::image;
+namespace methods = docenhance::methods;
+namespace denoise = docenhance::denoise;
 struct NativeObservation {
     bool completed;
     double seconds;
@@ -314,10 +318,6 @@ int measure() {
     constexpr int requested_threads = 4;
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
     cv::setNumThreads(requested_threads);
-    namespace core = docenhance::core;
-    namespace image = docenhance::image;
-    namespace methods = docenhance::methods;
-    namespace denoise = docenhance::denoise;
     core::Budget budget{std::size_t{16} * 1024 * 1024};
     const auto side = methods::nlm_native_extent;
     auto input = image::Plane<std::uint16_t>::allocate(budget, side, side).value();
