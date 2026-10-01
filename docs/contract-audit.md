@@ -27,6 +27,8 @@ Remove superseded entry points without forwarding aliases:
   Multipage input has no implemented product contract. Keep decimal parsing and its fuzz oracle.
 - Remove the unused duplicate CLI contract edition and the obsolete OpenCV 4 configuration path.
   OpenCV remains locked to 5.0.0 with exact package admission.
+- Derive PNG byte/pixel ceilings from the shared source constants, as JPEG already does.
+  Snapshot acquisition uses the shared source authority directly, with no PNG API dependency.
 
 The architecture's existing layer graph remains appropriate: application admission owns meaning,
 codecs own representations, the host owns composition and validation, and I/O owns transactional

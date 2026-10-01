@@ -6,7 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 - Remove superseded PNG-only acquisition, image-only publication, generic bundle inspection/read
   APIs and unused page-selection scaffolding without compatibility aliases. Keep current source
-  admission and bundle transactions, and narrow reconciliation reads to the root record.
+  admission and bundle transactions, narrow reconciliation reads to the root record, and derive
+  codec ceilings from one shared source authority.
 - Make decimal conversion independent of the embedding process locale with an explicit classic
   locale; document conversion bounds and correct stale capability/verification documentation.
 

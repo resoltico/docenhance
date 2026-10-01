@@ -31,8 +31,8 @@ load_grayscale_png(const std::string& input, core::Budget& budget,
 
 // Callers may tighten, never relax, the production input limits. The byte span is borrowed
 // for this call only. Memory decoding uses the same CRC/format/sample/allocator path as files.
-inline constexpr std::size_t png_max_encoded_bytes = std::size_t{128} * 1024 * 1024;
-inline constexpr std::uint64_t png_max_pixels = 40'000'000;
+inline constexpr std::size_t png_max_encoded_bytes = image::source_encoded_bytes_max;
+inline constexpr std::uint64_t png_max_pixels = image::source_pixels_max;
 struct PngLimits {
     std::size_t encoded_bytes = png_max_encoded_bytes;
     std::uint64_t pixels = png_max_pixels;
