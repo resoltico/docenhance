@@ -27,7 +27,6 @@
 #if DE_NLM_SANITIZER_OBSERVATION
 #include <sanitizer/allocator_interface.h>
 #endif
-#include <opencv2/core/base.hpp>
 #include <opencv2/core/exception.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/utility.hpp>
@@ -57,8 +56,8 @@ bool refuse_allocation() noexcept {
 void acquire_bytes(std::size_t bytes) {
     const std::scoped_lock lock{worker_mutex};
     const auto worker = std::this_thread::get_id();
-    const auto* const found = std::ranges::find(workers, worker);
-    if (found == workers.end()) {
+    const bool known = std::ranges::find(workers, worker) != workers.end();
+    if (!known) {
         if (worker_count < workers.size()) {
             workers.at(worker_count) = worker;
             ++worker_count;
