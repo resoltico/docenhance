@@ -85,7 +85,7 @@ TEST_CASE("A written record declares what the bundle contains", "[bundle]") {
     REQUIRE(written);
     const auto declared = bundle::read_record(as_bytes(*written));
     REQUIRE(declared);
-    CHECK(declared->version == bundle::record_version);
+    CHECK(declared->version == 1);
     CHECK(declared->run == "0123456789abcdef0123456789abcdef");
     REQUIRE(declared->inventory.size() == 1);
     CHECK(declared->inventory.front().name == bundle::image_name);

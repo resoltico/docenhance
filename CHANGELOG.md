@@ -4,6 +4,16 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Added
+
+- Bounded 8-bit Huffman baseline/progressive JPEG input for continuous `preserve`/`gray` and opt-in I01, including gray/RGB/YCbCr, bounded ICC/EXIF/JFIF interpretation, exact orientation and oriented PNG protection masks. Signature-based admission hashes and decodes one immutable source snapshot. Strict corruption, scan/marker/resource refusal and native cancellation use charged decoder buffers; output remains the verified PNG bundle. JPEG `bw`, arithmetic/lossless/higher-precision/CMYK/multi-image/gain-map input and JPEG output remain unsupported. See [JPEG](docs/jpeg-processing.md).
+- Production JPEG fuzzing with the actual instrumented static archive, independently constructed coefficient fixtures, and relocated-package JPEG processing/verification. A developer-only resource probe measures allocations, RSS and runtime separately.
+
+### Changed
+
+- **Breaking (wire):** responses use schema version 2, adding source/decode observations and the explicit operation/format matrix. New run records use format version 2 with required source observations; complete closed version-one records remain readable. B02/B03/I01 numerical definitions and method versions are unchanged.
+- Shared raster metadata separates container declarations from ICC/orientation/resolution. The bounded EXIF reader is reused without changing PNG color/pHYs precedence or binary stored-sample semantics.
+
 ## [0.4.0] - 2026-09-29
 
 ### Added

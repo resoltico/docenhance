@@ -164,3 +164,9 @@ not a process-RSS bound. Partial internal buffers are discarded, not certified a
 - [POSIX sigaction](https://pubs.opengroup.org/onlinepubs/9799919799/functions/sigaction.html)
 - [Windows console-handler registration](https://learn.microsoft.com/en-us/windows/console/setconsolectrlhandler)
 - [Windows console callback lifetime and events](https://learn.microsoft.com/en-us/windows/console/handlerroutine)
+
+JPEG source admission also observes decode checkpoints during bounded framing/entropy scans,
+ICC assembly, native input/progress/scan work, charged allocation/initialization and decoded rows.
+Tests enumerate deterministic stop points through the actual decoder and require full refunds.
+These checkpoints feed the same control; no OS-handler or final precommit policy changes. See
+[JPEG source admission](jpeg-processing.md) for foreign-call and resource boundaries.

@@ -132,7 +132,7 @@
       "max_len": 65536
     },
     "record": {
-      "max_len": 4300,
+      "max_len": 16384,
       "source": "record.cpp",
       "links": [
         "de_bundle",
@@ -140,6 +140,15 @@
         "de_image",
         "de_methods"
       ]
+    },
+    "jpeg_decode": {
+      "source": "jpeg_decode.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_io"
+      ],
+      "max_len": 65536
     }
   }
 }

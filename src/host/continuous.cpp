@@ -16,6 +16,7 @@
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/protection_png.hpp"
+#include "docenhance/io/source.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "illumination_rows.hpp"
@@ -106,7 +107,7 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
         illumination.requested = method->parameters();
     }
     auto decoded =
-        io::load_png_raster(request.input(), budget, operation.parameters().profile, cancellation);
+        io::load_source(request.input(), budget, operation.parameters().profile, cancellation);
     if (!decoded) {
         return std::unexpected(decoded.error());
     }
@@ -152,6 +153,7 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
         .context = context,
         .source = decoded->source,
         .source_name = io::file_name(request.input()),
+        .source_decoding = decoded->description,
         .operation = operation,
         .mask = mask,
         .observe_conversion =
@@ -172,6 +174,7 @@ core::Result<app::PublishedImage> continuous(const app::ProcessRequest& request,
         .illumination = illumination,
         .run = std::move(published->run),
         .record = std::move(published->record),
+        .source_decoding = decoded->description,
     };
 }
 } // namespace docenhance::host

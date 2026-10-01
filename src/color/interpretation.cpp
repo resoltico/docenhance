@@ -85,9 +85,9 @@ core::Result<Profile> embedded_profile(const Context& context, image::RasterShap
     }
     return profile;
 }
-Curve transfer_curve(const Context& context, const image::PngMetadata& metadata) {
-    if (metadata.gamma) {
-        return Curve{cmsBuildGamma(context.get(), png_scale / *metadata.gamma)};
+Curve transfer_curve(const Context& context, const image::RasterMetadata& metadata) {
+    if (metadata.png() != nullptr && metadata.png()->gamma) {
+        return Curve{cmsBuildGamma(context.get(), png_scale / *metadata.png()->gamma)};
     }
     constexpr int srgb_curve_type = 4;
     constexpr auto parameters =
@@ -116,23 +116,27 @@ core::Result<void> validate_output_profile(image::RasterShape shape,
     }
     return {};
 }
-core::Result<void> validate_declarations(const image::PngMetadata& metadata) {
+core::Result<void> validate_declarations(const image::RasterMetadata& metadata) {
+    if (metadata.png() == nullptr) {
+        return {};
+    }
     constexpr unsigned last_intent = 3;
-    if (metadata.srgb && (*metadata.srgb > last_intent || !metadata.icc.empty())) {
+    if (metadata.png()->srgb && (*metadata.png()->srgb > last_intent || !metadata.icc.empty())) {
         return core::failure(core::ErrorCode::input, "Invalid or conflicting PNG sRGB declaration");
     }
-    if (metadata.gamma && *metadata.gamma == 0) {
+    if (metadata.png()->gamma && *metadata.png()->gamma == 0) {
         return core::failure(core::ErrorCode::input, "PNG gamma must be positive");
     }
-    if (metadata.chromaticities && !valid_chroma(*metadata.chromaticities)) {
+    if (metadata.png()->chromaticities && !valid_chroma(*metadata.png()->chromaticities)) {
         return core::failure(core::ErrorCode::input,
                              "PNG chromaticities are invalid or degenerate");
     }
-    if (metadata.srgb && ((metadata.gamma && *metadata.gamma != srgb_gamma) ||
-                          (metadata.chromaticities && *metadata.chromaticities != srgb_chroma))) {
+    if (metadata.png()->srgb &&
+        ((metadata.png()->gamma && *metadata.png()->gamma != srgb_gamma) ||
+         (metadata.png()->chromaticities && *metadata.png()->chromaticities != srgb_chroma))) {
         return core::failure(core::ErrorCode::input, "PNG color declarations conflict with sRGB");
     }
-    if (metadata.cicp && *metadata.cicp != srgb_cicp) {
+    if (metadata.png()->cicp && *metadata.png()->cicp != srgb_cicp) {
         return core::failure(
             core::ErrorCode::input,
             "Unsupported PNG cICP interpretation; only full-range sRGB is supported");
@@ -143,7 +147,8 @@ core::Result<Profile> source_profile(const Context& context, const image::Raster
     if (!source.metadata.icc.empty()) {
         return embedded_profile(context, source.shape, source.metadata.icc.bytes());
     }
-    const auto chroma = source.metadata.chromaticities.value_or(srgb_chroma);
+    const auto* const png = source.metadata.png();
+    const auto chroma = png == nullptr ? srgb_chroma : png->chromaticities.value_or(srgb_chroma);
     const auto white = xy(chroma, 0);
     Curve const curve = transfer_curve(context, source.metadata);
     if (!curve) {

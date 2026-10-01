@@ -5,6 +5,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/digest.hpp"
 
@@ -19,6 +20,7 @@ namespace docenhance::io {
 struct IdentifiedImage {
     image::Plane<std::uint8_t> image;
     core::ContentIdentity source;
+    image::PngSource description;
 };
 // UTF-8 paths. Stored grayscale samples are expanded to 8 bits without gamma/color transforms.
 // Images, libpng and zlib allocations share the supplied byte budget. Metadata and OS resources

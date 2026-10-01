@@ -7,7 +7,7 @@
 
 #include <string>
 namespace docenhance::io {
-[[nodiscard]] core::Result<core::Buffer> read_png_snapshot(const std::string& input,
-                                                           core::Budget& budget,
-                                                           const core::Cancellation& cancellation);
+[[nodiscard]] core::Result<core::Buffer>
+read_source_snapshot(const std::string& input, core::Budget& budget,
+                     const core::Cancellation& cancellation);
 } // namespace docenhance::io

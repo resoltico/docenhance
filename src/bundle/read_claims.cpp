@@ -114,10 +114,10 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
     const auto compiler = record_text(record_field(build, "compiler"));
     const auto lock = record_text(record_field(build, "dependency_lock_sha256"));
     const auto& source = record_field(document, "source");
-    const SourceFacts source_facts{
-        .identity = record_identity(source),
-        .name = record_text(record_field(source, "name")),
-    };
+    auto source_facts = record_source_facts(source, d.version);
+    if (!source_facts) {
+        return invalid();
+    }
     const auto& request = record_field(document, "request");
     auto op = record_operation(record_field(request, "operation"));
     auto light =
@@ -144,16 +144,16 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
         .compiler = compiler,
         .dependency_lock_sha256 = lock,
     };
-    d.source = source_facts;
+    d.source = *source_facts;
     d.protection_supplied = supplied;
     if (version.empty() || platform.empty() || compiler.empty() ||
         !record_hexadecimal(lock, core::sha256_hex_length) ||
-        !record_hexadecimal(source_facts.identity.sha256, core::sha256_hex_length) ||
-        source_facts.identity.bytes == 0 || source_facts.name.empty() ||
-        source_facts.name.contains('\0') || source_facts.name.contains('/') ||
+        !record_hexadecimal(source_facts->identity.sha256, core::sha256_hex_length) ||
+        source_facts->identity.bytes == 0 || source_facts->name.empty() ||
+        source_facts->name.contains('\0') || source_facts->name.contains('/') ||
         !record_hexadecimal(d.run, run_identity_length) || !record_instant(d.recorded) ||
         supplied != d.protection.has_value() || d.output.artifact.name != image_name ||
-        !observations_agree(d) || !illumination_agrees(d)) {
+        !observations_agree(d) || !illumination_agrees(d) || !source_agrees(d)) {
         return invalid();
     }
     if (d.protection &&
@@ -172,7 +172,7 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
                 .compiler = compiler,
                 .dependency_lock_sha256 = lock,
             },
-        .source = source_facts,
+        .source = *source_facts,
         .operation = *d.operation,
         .protection_supplied = supplied,
         .output = d.output,

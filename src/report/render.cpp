@@ -25,7 +25,7 @@ using Json = nlohmann::ordered_json;
 constexpr int json_indent = 2;
 // The envelope version of schemas/command-response.schema.json, which the CLI contract test
 // validates every response against.
-constexpr int schema_version = 1;
+constexpr int schema_version = 2;
 
 std::string_view publication_name(core::Publication publication) noexcept {
     switch (publication) {
@@ -70,7 +70,15 @@ Json capability_fields(const app::Capabilities& capabilities) {
     for (const auto format : capabilities.input_formats) {
         formats.push_back(format);
     }
-    return {{"methods", methods}, {"supported_formats", formats}};
+    Json support = Json::array();
+    for (const auto& item : capabilities.input_support) {
+        Json modes = {"preserve", "gray"};
+        if (item.binary) {
+            modes.push_back("bw");
+        }
+        support.push_back({{"format", item.format}, {"output_modes", modes}});
+    }
+    return {{"methods", methods}, {"supported_formats", formats}, {"input_support", support}};
 }
 Json option_fields(contract::Command command) {
     Json options = Json::array();
@@ -91,9 +99,11 @@ Json option_fields(contract::Command command) {
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
-    text += "Implemented: static PNG color-managed continuous-tone 8/16-bit output; explicit "
-            "B02/B03 binary output on stored 1/2/4/8-bit grayscale samples.\n";
-    text += "Opt-in I01 illumination supports protected regions. Other image formats, denoising, "
+    text += "Implemented: static PNG and bounded 8-bit JPEG input; color-managed continuous-tone "
+            "PNG output; explicit "
+            "B02/B03 binary output on stored 1/2/4/8-bit grayscale PNG samples.\n";
+    text += "JPEG supports preserve/gray output, never bw. Opt-in I01 illumination supports "
+            "protected regions. TIFF input, denoising, "
             "batching and presets are not implemented.\n\n";
     if (help.list_commands) {
         text += "Commands: process, methods, version\n\n";
@@ -122,7 +132,7 @@ Output text_form(const app::Outcome& outcome) {
             } else if constexpr (std::is_same_v<Payload, app::Version>) {
                 return {
                     .out = "DocEnhance " + std::string(outcome.build.version) +
-                           " (continuous-tone PNG and explicit binarization)\n",
+                           " (PNG/JPEG input and explicit grayscale-PNG binarization)\n",
                     .err = {},
                 };
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {
@@ -183,6 +193,11 @@ Output json_form(const app::Outcome& outcome) {
                     {"output", payload.output},
                     {"publication", "completed"},
                     {"record", bundle::record_fields(payload.run, payload.record)},
+                    {
+                        "source_decoding",
+                        payload.source_decoding ? bundle::source_fields(*payload.source_decoding)
+                                                : Json(nullptr),
+                    },
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::ContinuousProcessed>) {

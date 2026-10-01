@@ -3,6 +3,7 @@
 #pragma once
 #include "docenhance/core/identity.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <nlohmann/json.hpp>
@@ -18,6 +19,7 @@ namespace docenhance::bundle {
 [[nodiscard]] std::string_view reason_name(methods::SurfaceReason reason) noexcept;
 [[nodiscard]] nlohmann::ordered_json illumination_fields(const methods::IlluminationReport& report);
 [[nodiscard]] nlohmann::ordered_json conversion_fields(const image::ConversionReport& report);
+[[nodiscard]] nlohmann::ordered_json source_fields(const image::SourceDescription& description);
 // What identifies a published bundle: the run, and the digest of the record it carries. The record
 // on disk asserts nothing about publication, so these are what a later reconciliation matches.
 [[nodiscard]] nlohmann::ordered_json record_fields(const std::string& run,

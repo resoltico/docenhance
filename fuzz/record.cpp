@@ -8,6 +8,7 @@
 #include "docenhance/bundle/inventory.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "support/entry_point.hpp"
@@ -64,8 +65,15 @@ bool inside_bundle(std::string_view name) {
 // Whatever a reader accepts, it must have checked. These are the claims the bundle layer makes
 // about what it returns, restated where a fuzzer can attack them.
 void accepted_records_are_usable(const bundle::DeclaredBundle& declared) {
-    require(declared.version == bundle::record_version,
+    require(declared.version == 1 || declared.version == bundle::record_version,
             "an accepted record is of a version this build supports");
+    require(declared.source.decoding.has_value() == (declared.version == bundle::record_version),
+            "only complete version-two records carry required source decoding observations");
+    if (declared.source.decoding) {
+        require(image::valid_source_description(*declared.source.decoding),
+                "accepted source alternatives have valid precision, components, framing and "
+                "metadata relations");
+    }
     require(declared.inventory.size() <= bundle::record_max_artifacts,
             "an accepted record declares no more artifacts than a bundle may hold");
     require(declared.operation.has_value(), "an accepted record retains its validated operation");

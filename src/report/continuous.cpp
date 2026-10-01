@@ -22,6 +22,11 @@ nlohmann::ordered_json continuous_fields(const app::ContinuousProcessed& value) 
         {"publication", "completed"},
         {"conversion", bundle::conversion_fields(value.conversion)},
         {"record", bundle::record_fields(value.run, value.record)},
+        {
+            "source_decoding",
+            value.source_decoding ? bundle::source_fields(*value.source_decoding)
+                                  : nlohmann::ordered_json(nullptr),
+        },
     };
 }
 std::string continuous_text(const app::ContinuousProcessed& value) {

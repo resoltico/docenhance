@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MIT
+#include "exif.hpp"
+
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
-#include "png_metadata.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -14,6 +15,7 @@
 
 namespace docenhance::io {
 namespace {
+constexpr std::size_t exif_integer_bytes = 4;
 constexpr std::size_t exif_limit = std::size_t{64} * 1024;
 constexpr std::size_t entry_bytes = 12;
 constexpr std::size_t max_entries = 128;
@@ -40,11 +42,11 @@ struct Exif {
         if (offset > bytes.size() || bytes.size() - offset < size) {
             return core::failure(core::ErrorCode::input, "EXIF rational is outside the chunk");
         }
-        const auto denominator = number(offset + png_integer_bytes, png_integer_bytes);
+        const auto denominator = number(offset + exif_integer_bytes, exif_integer_bytes);
         if (denominator == 0) {
             return core::failure(core::ErrorCode::input, "EXIF resolution has a zero denominator");
         }
-        return static_cast<double>(number(offset, png_integer_bytes)) / denominator;
+        return static_cast<double>(number(offset, exif_integer_bytes)) / denominator;
     }
 };
 struct ExifFields {
@@ -61,7 +63,7 @@ core::Result<void> read_entry(const Exif& exif, std::size_t at, ExifFields& fiel
         return {};
     }
     const auto type = exif.number(at + 2, 2);
-    const auto count = exif.number(at + png_integer_bytes, png_integer_bytes);
+    const auto count = exif.number(at + exif_integer_bytes, exif_integer_bytes);
     constexpr std::size_t value_offset = 8;
     if (count != 1 || type != (short_field ? short_type : rational_type)) {
         return core::failure(core::ErrorCode::input,
@@ -78,7 +80,7 @@ core::Result<void> read_entry(const Exif& exif, std::size_t at, ExifFields& fiel
         if (field) {
             return core::failure(core::ErrorCode::input, "Duplicate EXIF resolution");
         }
-        auto value = exif.rational(exif.number(at + value_offset, png_integer_bytes));
+        auto value = exif.rational(exif.number(at + value_offset, exif_integer_bytes));
         if (!value) {
             return std::unexpected(value.error());
         }
@@ -86,13 +88,21 @@ core::Result<void> read_entry(const Exif& exif, std::size_t at, ExifFields& fiel
     }
     return {};
 }
-core::Result<void> assign_fields(const ExifFields& fields, image::PngMetadata& metadata) {
+core::Result<void> assign_fields(const ExifFields& fields, image::RasterMetadata& metadata) {
     constexpr unsigned orientation_max = 8;
     metadata.orientation = fields.orientation.value_or(1);
     if (metadata.orientation < 1 || metadata.orientation > orientation_max ||
         (fields.unit && (*fields.unit < 1 || *fields.unit > short_type))) {
         return core::failure(core::ErrorCode::input,
                              "EXIF orientation or resolution unit is invalid");
+    }
+    if (metadata.png() == nullptr) {
+        const bool partial = fields.x.has_value() != fields.y.has_value();
+        const bool invalid = (fields.x && *fields.x <= 0) || (fields.y && *fields.y <= 0);
+        if (partial || invalid) {
+            return core::failure(core::ErrorCode::input,
+                                 "JPEG EXIF resolution fields must form a positive pair");
+        }
     }
     if (metadata.resolution || !fields.x || !fields.y || fields.unit.value_or(2) == 1) {
         return {};
@@ -112,22 +122,23 @@ core::Result<void> assign_fields(const ExifFields& fields, image::PngMetadata& m
     return {};
 }
 } // namespace
-core::Result<void> parse_exif(std::span<const std::uint8_t> bytes, image::PngMetadata& metadata) {
+core::Result<void> parse_exif(std::span<const std::uint8_t> bytes,
+                              image::RasterMetadata& metadata) {
     if (bytes.size() < tiff_header || bytes.size() > exif_limit ||
         ((bytes.subspan(0, 1).front() != 'I' || bytes.subspan(1, 1).front() != 'I') &&
          (bytes.subspan(0, 1).front() != 'M' || bytes.subspan(1, 1).front() != 'M'))) {
-        return core::failure(core::ErrorCode::input, "Invalid PNG EXIF header");
+        return core::failure(core::ErrorCode::input, "Invalid EXIF header");
     }
     const Exif exif{.bytes = bytes, .little = bytes.subspan(0, 1).front() == 'I'};
     constexpr unsigned tiff_magic = 42;
-    const auto offset = exif.number(png_integer_bytes, png_integer_bytes);
+    const auto offset = exif.number(exif_integer_bytes, exif_integer_bytes);
     if (exif.number(2, 2) != tiff_magic || offset < tiff_header || offset > bytes.size() - 2) {
-        return core::failure(core::ErrorCode::input, "Invalid PNG EXIF IFD offset");
+        return core::failure(core::ErrorCode::input, "Invalid EXIF IFD offset");
     }
     const auto count = exif.number(offset, 2);
     const auto table = std::size_t{offset} + 2;
-    if (count > max_entries || bytes.size() - table < (count * entry_bytes) + png_integer_bytes) {
-        return core::failure(core::ErrorCode::input, "PNG EXIF IFD exceeds its bounds");
+    if (count > max_entries || bytes.size() - table < (count * entry_bytes) + exif_integer_bytes) {
+        return core::failure(core::ErrorCode::input, "EXIF IFD exceeds its bounds");
     }
     ExifFields fields;
     for (std::size_t i = 0; i < count; ++i) {

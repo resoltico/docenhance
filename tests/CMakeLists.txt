@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
 add_executable(de_tests unit/reference.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/illumination.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
+  unit/command_delivery.cpp unit/utf8.cpp unit/png_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/illumination.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
 target_link_libraries(de_tests PRIVATE de_app de_bundle de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color Catch2::Catch2WithMain)
 de_apply_options(de_tests)
@@ -35,6 +35,8 @@ add_test(NAME sauvola-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_
 add_test(NAME illumination-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_illumination.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME continuous-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_continuous.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME bundle-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_bundles.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME jpeg-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME jpeg-pipeline-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg_pipeline.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME generated-contract COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/generate_spec.py" --check)
 # The compiler-driven architecture rules need GNU-style options (-M, -fsyntax-only) and a pinned
 # clang-query, which an MSVC compilation database cannot provide; there only the source rules run.
@@ -69,3 +71,9 @@ target_link_libraries(de_interrupt_process PRIVATE de_cli de_host de_core)
 de_apply_options(de_interrupt_process)
 add_test(NAME interrupt-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_interrupts.py" "$<TARGET_FILE:de_interrupt_process>")
 set_tests_properties(interrupt-contract PROPERTIES TIMEOUT 60)
+
+# Developer-only allocation observation; no benchmark result is manufactured by an API estimate.
+add_executable(de_jpeg_resources support/jpeg_resources.cpp)
+target_include_directories(de_jpeg_resources PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support")
+target_link_libraries(de_jpeg_resources PRIVATE de_io de_image de_core)
+de_apply_options(de_jpeg_resources)

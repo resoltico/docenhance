@@ -257,7 +257,7 @@ core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes) {
             !run->is_string() || recorded == nullptr || !recorded->is_string()) {
             return std::unexpected(rejected("has no identifying header"));
         }
-        if (version->get<std::uint64_t>() != record_version) {
+        if (version->get<std::uint64_t>() != 1 && version->get<std::uint64_t>() != record_version) {
             return std::unexpected(
                 rejected("was written in a version this build does not support"));
         }

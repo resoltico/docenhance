@@ -21,7 +21,10 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 1
+          "enum": [
+            1,
+            2
+          ]
         },
         "run": {
           "type": "string",
@@ -84,6 +87,9 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^[^\\u0000/]+$"
+        },
+        "decoding": {
+          "$ref": "#/$defs/source_decoding"
         }
       }
     },
@@ -434,7 +440,8 @@
     "conversion": {},
     "resolution": {},
     "illumination": {},
-    "illumination_method": {}
+    "illumination_method": {},
+    "source_decoding": {}
   },
   "allOf": [
     {
@@ -533,6 +540,61 @@
             "properties": {
               "profile_embedded": {
                 "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "record": {
+            "properties": {
+              "version": {
+                "const": 1
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "properties": {
+              "decoding": false
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "source": {
+            "required": [
+              "decoding"
+            ],
+            "properties": {
+              "bytes": {
+                "maximum": 134217728
+              }
+            }
+          },
+          "execution": {
+            "properties": {
+              "conversion": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "verified": {
+                        "const": true
+                      }
+                    }
+                  }
+                ]
               }
             }
           }

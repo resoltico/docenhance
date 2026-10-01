@@ -49,7 +49,7 @@ TEST_CASE("Application owns capability discovery", "[app]") {
     REQUIRE(payload != nullptr);
     CHECK(payload->capabilities.methods.size() == 3);
     CHECK(std::string{payload->capabilities.methods.front().id} == "I01");
-    CHECK(payload->capabilities.input_formats.size() == 1);
+    CHECK(payload->capabilities.input_formats.size() == 2);
     CHECK(std::string{payload->capabilities.input_formats.front()} == "png");
 }
 } // namespace docenhance::tests

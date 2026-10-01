@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <variant>
 
 namespace docenhance::image {
 inline constexpr unsigned byte_bits = 8;
@@ -37,20 +38,33 @@ struct Resolution {
     std::uint32_t y{};
     bool operator==(const Resolution&) const = default;
 };
-// PNG color declarations are retained without native-library types. ICC bytes are charged.
-struct PngMetadata {
-    core::Buffer icc;
+// Common interpretation is independent of the container's declarations.
+enum class JpegColor { gray, rgb, ycbcr };
+struct JpegDeclarations {
+    JpegColor color = JpegColor::gray;
+};
+struct PngDeclarations {
     std::optional<std::uint32_t> gamma;
     std::optional<std::array<std::uint32_t, chromaticity_fields>> chromaticities;
     std::optional<unsigned> srgb;
     std::optional<std::array<std::uint8_t, cicp_fields>> cicp;
+};
+struct RasterMetadata {
+    core::Buffer icc;
     unsigned orientation = 1;
     std::optional<Resolution> resolution;
+    std::variant<PngDeclarations, JpegDeclarations> declarations;
+    [[nodiscard]] PngDeclarations* png() noexcept {
+        return std::get_if<PngDeclarations>(&declarations);
+    }
+    [[nodiscard]] const PngDeclarations* png() const noexcept {
+        return std::get_if<PngDeclarations>(&declarations);
+    }
 };
 struct Raster {
     RasterShape shape;
     Plane<std::uint8_t> pixels;
-    PngMetadata metadata;
+    RasterMetadata metadata;
 };
 struct Coordinate {
     std::uint32_t x{};

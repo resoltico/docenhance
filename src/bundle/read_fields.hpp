@@ -38,4 +38,8 @@ record_illumination(const RecordJson& value);
 [[nodiscard]] bool illumination_agrees(const DeclaredBundle& d);
 [[nodiscard]] core::Result<void> validate_record_claims(const RecordJson& document,
                                                         DeclaredBundle& d);
+[[nodiscard]] core::Result<image::SourceDescription> record_source(const RecordJson& value);
+[[nodiscard]] core::Result<SourceFacts> record_source_facts(const RecordJson& value,
+                                                            unsigned version);
+[[nodiscard]] bool source_agrees(const DeclaredBundle& declared);
 } // namespace docenhance::bundle

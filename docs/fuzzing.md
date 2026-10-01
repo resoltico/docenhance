@@ -1,4 +1,4 @@
-# Fuzz campaigns and PNG decoding
+# Fuzz campaigns and native decoding
 
 ## One harness declaration
 
@@ -116,3 +116,10 @@ without filesystem writes. `color_profile` feeds raw ICC bytes directly to the n
 tiny gray/RGB rasters, so profile mutations need not survive an unrelated PNG CRC first. Both use
 first-party, generated corpus profiles/images. `fuzz-codecs.json` identifies all three actual
 instrumented native archives; the campaign rejects a missing ASan, UBSan or coverage signature.
+
+The `jpeg_decode` target exercises raw framing, metadata and the production decoder, with real
+charged allocations and refund/source-descriptor oracles. Complete independently constructed
+coefficient fixtures and malformed/truncated regressions seed it. The isolated build additionally
+instruments the actual imported JPEG archive and checks its ASan/UBSan/coverage symbols; upstream
+assembly is not claimed to be instrumented. The target manifest owns input bounds and campaign
+workload admission, so the added target must fit the configured campaign budget.

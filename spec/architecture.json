@@ -52,7 +52,10 @@
         "DE::jpeg"
       ],
       "headers": [
-        "jpeglib.h"
+        "jpeglib.h",
+        "jerror.h",
+        "jconfig.h",
+        "jmorecfg.h"
       ]
     },
     "png": {
@@ -273,7 +276,7 @@
     },
     "io": {
       "target": "de_io",
-      "summary": "Codecs, metadata, hashing and exclusive publication",
+      "summary": "PNG/JPEG codecs, metadata, hashing and exclusive publication",
       "uses": [
         "core",
         "image"
@@ -281,7 +284,8 @@
       "external": [
         "picosha2",
         "png",
-        "zlib"
+        "zlib",
+        "jpeg"
       ],
       "forbidden_headers": [
         "condition_variable",

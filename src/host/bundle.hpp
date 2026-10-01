@@ -8,6 +8,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <cstdint>
@@ -40,6 +41,7 @@ struct RunPublication {
     std::reference_wrapper<const bundle::RunContext> context;
     core::ContentIdentity source;
     std::string source_name;
+    std::optional<image::SourceDescription> source_decoding = std::nullopt;
     bundle::Operation operation;
     std::optional<MaskFacts> mask;
     // Read after the image is written, because a conversion counts what producing those rows
