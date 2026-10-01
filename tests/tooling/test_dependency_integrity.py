@@ -158,6 +158,23 @@ class DependencyIntegrityTests(unittest.TestCase):
             with self.assertRaises(install_llvm.InstallError):
                 install_llvm.validate_source_tools(root, identity)
 
+    def test_installed_major_is_preferred_over_runner_default(self) -> None:
+        """The CI host can retain generic LLVM 18 alongside the newly installed LLVM 23."""
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            for name in ("clang-tidy", "clang-query"):
+                (directory / name).write_bytes(b"runner default")
+                desired = directory / (name + "-23")
+                desired.write_bytes(b"reviewed major")
+                self.assertEqual(install_llvm.resolve_analysis_tool(directory, name, "23"), desired)
+                desired.unlink()
+                self.assertEqual(
+                    install_llvm.resolve_analysis_tool(directory, name, "23"), directory / name
+                )
+                (directory / name).unlink()
+                with self.assertRaises(install_llvm.InstallError):
+                    install_llvm.resolve_analysis_tool(directory, name, "23")
+
     def test_binary_path_feature_is_checked_and_missing_plan_cache_fails(self) -> None:
         """Expanded path settings and optional-looking missing caches are mandatory evidence."""
         with tempfile.TemporaryDirectory() as temporary:

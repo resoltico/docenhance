@@ -60,3 +60,7 @@ metadata remains labeled as the full declared-source inventory; it does not cert
 Retire old controls and unbound caches directly, with no forwarding aliases or migrations. Tests,
 consumers, CI, documentation and package checks must move together. Actual workflow/platform
 results belong to the delivered commit and logs, not to this design record.
+
+CI challenged tool selection with generic LLVM 18 and major-qualified LLVM 23 installed together.
+The validator refused the wrong default; prefer the major-qualified installed tool and retain
+that regression for both clang-tidy and clang-query. The version requirement is unchanged.

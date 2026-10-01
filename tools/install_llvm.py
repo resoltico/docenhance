@@ -200,6 +200,16 @@ def install_windows(pin: dict[str, Any], work: Path) -> Path:
     return found[0].parent
 
 
+def resolve_analysis_tool(directory: Path, name: str, major: str) -> Path:
+    """Prefer the installed major-qualified tool over a runner's older generic executable."""
+    candidates = (directory / f"{name}-{major}", directory / name, directory / f"{name}.exe")
+    selected = next((path for path in candidates if path.is_file()), None)
+    if selected is None:
+        msg = f"{name} {major}.x is missing from {directory}"
+        raise InstallError(msg)
+    return selected
+
+
 def main() -> int:
     """Install for the current platform and report the clang-tidy directory."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -231,28 +241,10 @@ def main() -> int:
             msg = f"No pinned clang-tidy installation for {system}"
             raise InstallError(msg)
     expected_major = str(tidy["version"]).split(".")[0]
-    candidates = (
-        directory / "clang-tidy",
-        directory / "clang-tidy.exe",
-        directory / f"clang-tidy-{expected_major}",
-    )
-    executable = next((path for path in candidates if path.is_file()), None)
-    if executable is None:
-        msg = f"clang-tidy is missing from {directory}"
-        raise InstallError(msg)
+    executable = resolve_analysis_tool(directory, "clang-tidy", expected_major)
     required = [executable]
     if system != "Windows":
-        query = next(
-            (
-                path
-                for path in (directory / "clang-query", directory / f"clang-query-{expected_major}")
-                if path.is_file()
-            ),
-            None,
-        )
-        if query is None:
-            msg = f"clang-query is missing from {directory}"
-            raise InstallError(msg)
+        query = resolve_analysis_tool(directory, "clang-query", expected_major)
         required.append(query)
     for path in required:
         output = subprocess.run(
