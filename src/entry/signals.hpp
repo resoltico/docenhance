@@ -5,6 +5,9 @@
 #ifndef _WIN32
 #include <array>
 #include <signal.h> // NOLINT(modernize-deprecated-headers): POSIX sigaction provider.
+#ifdef __APPLE__
+#include <sys/signal.h>
+#endif
 #endif
 
 namespace docenhance::entry {
@@ -24,8 +27,9 @@ class InterruptScope {
 #ifdef _WIN32
     bool installed_ = false;
 #else
-    std::array<struct sigaction, 2> previous_{};
-    std::array<bool, 2> installed_{};
+    static constexpr auto managed_signals = std::to_array<int>({SIGINT, SIGTERM, SIGPIPE});
+    std::array<struct sigaction, managed_signals.size()> previous_{};
+    std::array<bool, managed_signals.size()> installed_{};
 #endif
 };
 [[nodiscard]] core::Cancellation process_cancellation() noexcept;

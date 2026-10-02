@@ -51,18 +51,23 @@ bool disposition_is(int signal, void (*const handler)(int)) noexcept {
     return sigaction(signal, nullptr, &current) == 0 && current.sa_handler == handler;
 }
 int check_dispositions() {
-    if (!set_disposition(SIGINT, SIG_IGN) || !set_disposition(SIGTERM, prior_handler)) {
+    if (!set_disposition(SIGINT, SIG_IGN) || !set_disposition(SIGTERM, prior_handler) ||
+        !set_disposition(SIGPIPE, prior_handler)) {
         return 2;
     }
     {
         docenhance::entry::InterruptScope scope;
-        if (!scope.install() || std::raise(SIGINT) != 0 ||
+        if (!scope.install() || !disposition_is(SIGPIPE, SIG_IGN) || std::raise(SIGPIPE) != 0 ||
+            std::raise(SIGINT) != 0 ||
             docenhance::entry::process_cancellation().requested(
                 docenhance::core::Checkpoint::admission)) {
             return 2;
         }
     }
-    return disposition_is(SIGTERM, prior_handler) && disposition_is(SIGINT, SIG_IGN) ? 0 : 2;
+    return disposition_is(SIGTERM, prior_handler) && disposition_is(SIGINT, SIG_IGN) &&
+                   disposition_is(SIGPIPE, prior_handler)
+               ? 0
+               : 2;
 }
 #endif
 #ifdef _WIN32
@@ -125,6 +130,18 @@ int run(std::span<char* const> args) {
         }
         std::this_thread::yield();
     }
+    docenhance::host::Processor processor;
+    docenhance::host::Verifier verifier;
+    if (std::string_view{args.subspan(1).front()} == "--verify") {
+        const auto invocation = std::to_array<const char*>({
+            "docenhance",
+            "verify",
+            args.subspan(2).front(),
+            "--json",
+        });
+        return docenhance::cli::run(invocation, {.processor = processor, .verifier = verifier},
+                                    std::cout, std::cerr, control);
+    }
     const auto invocation = std::to_array<const char*>({
         "docenhance",
         "process",
@@ -137,8 +154,6 @@ int run(std::span<char* const> args) {
         "fixed",
         "--json",
     });
-    docenhance::host::Processor processor;
-    docenhance::host::Verifier verifier;
     return docenhance::cli::run(invocation, {.processor = processor, .verifier = verifier},
                                 std::cout, std::cerr, control);
 }

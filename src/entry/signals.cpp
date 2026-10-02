@@ -14,7 +14,6 @@
 #endif
 #include <windows.h> // NOLINT(misc-include-cleaner)
 #else
-#include <array>
 #include <ranges>
 #include <signal.h> // NOLINT(modernize-deprecated-headers): POSIX sigaction provider.
 #ifdef __APPLE__
@@ -42,7 +41,6 @@ BOOL WINAPI handle_console(DWORD event) noexcept {            // NOLINT(misc-inc
     return 1;
 }
 #else
-constexpr auto handled_signals = std::to_array<int>({SIGINT, SIGTERM});
 extern "C" void handle_signal(int /*signal*/) noexcept {
     // No allocation, callbacks, I/O, mutexes, exception handling or source/token destruction.
     interrupt_latch().store(true, std::memory_order_relaxed);
@@ -66,13 +64,13 @@ bool InterruptScope::install() noexcept {
     if (sigemptyset(&action.sa_mask) != 0) {
         return false;
     }
-    for (const auto signal : handled_signals) {
+    for (const auto signal : managed_signals) {
         if (sigaddset(&action.sa_mask, signal) != 0) {
             return false;
         }
     }
     for (auto [signal, previous, installed] :
-         std::views::zip(handled_signals, previous_, installed_)) {
+         std::views::zip(managed_signals, previous_, installed_)) {
         if (installed || sigaction(signal, nullptr, &previous) != 0) {
             return false;
         }
@@ -80,6 +78,8 @@ bool InterruptScope::install() noexcept {
         if (previous.sa_handler == SIG_IGN) {
             continue;
         }
+        // Broken response pipes are stream failures, never cancellation or signal exit.
+        action.sa_handler = signal == SIGPIPE ? SIG_IGN : handle_signal;
         if (sigaction(signal, &action, nullptr) != 0) {
             return false;
         }
@@ -95,7 +95,7 @@ InterruptScope::~InterruptScope() {
     }
 #else
     for (auto [signal, previous, installed] :
-         std::views::zip(handled_signals, previous_, installed_)) {
+         std::views::zip(managed_signals, previous_, installed_)) {
         if (installed) {
             static_cast<void>(sigaction(signal, &previous, nullptr));
         }

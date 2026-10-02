@@ -3,7 +3,7 @@
 ## Execution contract
 
 Cancellation is execution control, not a method parameter. The admitted `ProcessRequest` remains
-immutable and contains paths and the selected B02/B03 method. `core::Cancellation` owns a
+immutable and contains admitted paths and the selected binary or continuous operation choices. `core::Cancellation` owns a
 `std::stop_token` and, optionally, a static-lifetime `noexcept` observation function. A default
 capability never requests cancellation. An embedding caller supplies a token from its own
 `std::stop_source`; destroying that source does not invalidate a retained token's stop state.
@@ -17,8 +17,9 @@ contradictory token. Borrowed image views still require live backing storage unt
 all worker joins have finished. Token ownership does not extend image lifetime.
 
 Admission validates the invocation first. A malformed invocation remains `E_ARGUMENT` even when
-cancellation is pending. A valid, already-cancelled processing invocation returns `E_CANCELLED`
-without calling the processing port, opening the input or creating output. Help, version and method
+cancellation is pending. A valid, already-cancelled processing or verification invocation returns `E_CANCELLED`
+without calling its execution port, opening inputs or creating output. Verification cancellation
+always reports `not_started`; it cannot acquire a publication stage. Help, version and method
 discovery do not process images and remain available. Expected cancellation maps to exit **130**
 on all platforms, including handled SIGTERM; it is not a shell-derived signal exit number.
 
@@ -34,7 +35,11 @@ The standalone executable installs one process-boundary `InterruptScope` before 
 it after response delivery. The bridge is not installed by library calls or fuzz harnesses.
 
 On POSIX, `sigaction` observes SIGINT and SIGTERM with `SA_RESTART`. Dispositions deliberately inherited
-as `SIG_IGN` are preserved. Changed dispositions are saved and restored when the scope ends. On Windows,
+as `SIG_IGN` are preserved. Changed dispositions are saved and restored when the scope ends. SIGPIPE is ignored within this
+standalone boundary so a closed response pipe reaches stream error handling and exit 5. It never
+sets the cancellation latch. The standalone entry makes stdout/stderr unbuffered before I/O,
+so teardown cannot retry response bytes after signal restoration. Library calls change neither
+stream buffering nor signal dispositions. On Windows,
 `SetConsoleCtrlHandler` handles CTRL_C_EVENT and CTRL_BREAK_EVENT. Windows console reattachment resets
 handlers, so the executable must not detach or attach a different console during processing.
 
@@ -66,8 +71,11 @@ already completed computation need not change that computation's result.
 | Sauvola | Before workspace acquisition, reflected initialization rows, output rows and 1024-sample output blocks. Column initialization/advance is bounded by the existing fixed strip and halo width, not image height. |
 | Box mean | Before intermediate acquisition, at 1024-sample reflected-sum/output intervals and within both separable passes. The no-stop summation order is unchanged. |
 | PNG decoding | Before header work, before plane allocation and zero-fill blocks, in bounded input callbacks and between decoded rows/passes. File and byte-span decoding use the same implementation. |
-| PNG encoding | Before opening the staged output, between rows and in bounded output callbacks. File close and error checking complete before cleanup or commit. |
-| Publication | Before stage reservation, during encoding and once immediately before the native exclusive rename. |
+| PNG encoding | Before opening the staged output, between rows and in bounded output callbacks. File close and error checking complete before cleanup or commit. Delayed flush/close failures
+outweigh cancellation; an earlier genuine failure remains primary. |
+| Output verification | During bounded native reads and 64 KiB sample comparisons. |
+| Manifest writing | Before opening and each transfer of at most 64 KiB, with checked flush and close on returned paths. |
+| Publication | Before stage reservation, between writers, during encoding and once immediately before the native exclusive rename. |
 
 PNG input/output callbacks transfer at most 64 KiB between observations. The token and observed-stop
 flag live in `PngContext` outside every libpng jump frame. Callback and jump-frame automatic state

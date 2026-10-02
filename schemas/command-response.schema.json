@@ -752,7 +752,10 @@
         {
           "properties": {
             "command": {
-              "const": "process"
+              "enum": [
+                "process",
+                "verify"
+              ]
             },
             "exit_code": {
               "const": 130
@@ -770,7 +773,25 @@
                 "not_published"
               ]
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "command": {
+                    "const": "verify"
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "publication": {
+                    "const": "not_started"
+                  }
+                }
+              }
+            }
+          ]
         },
         {
           "properties": {

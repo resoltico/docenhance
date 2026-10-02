@@ -261,3 +261,13 @@ and orientation interpretation. Validate selected EXIF fields before choosing ph
 so a preferred declaration cannot hide malformed lower-priority fields. Strict decoder-policy
 admission refuses unsupported values instead of clamping them. The [input/numerical audit](input-numerical-audit.md)
 records the design and separate challenge cases.
+
+## Execution control follows observed effects
+
+Verification admission uses the same validate-before-stop rule as processing, while its response
+cannot claim publication. Standalone POSIX SIGPIPE handling belongs beside native interruption
+setup, without becoming cancellation or changing library callers' process state. Checked stream
+completion happens before staged cleanup even on cancellation; actual read/write errors precede
+a subsequent stop observation. PNG rereads share bounded native input callbacks, with reader
+state outside jump frames. The [execution/publication audit](execution-publication-audit.md)
+records the design and separate QA challenges.

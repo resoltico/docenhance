@@ -425,6 +425,9 @@
     },
     "tests/unit/input_admission.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@72944726": {
       "explanation": "This negative codec-admission fixture deliberately constructs an unknown fixed-underlying enum value to prove it is rejected before allocation or decoding."
+    },
+    "tests/unit/execution_boundaries.cpp:clang-tidy/cppcoreguidelines-owning-memory@2794ff19": {
+      "explanation": "The private BundleStream test callback consumes its FILE exactly once using fclose. The publisher releases ownership to this close callback, including injected flush/close failures; counted regression checks assert there is no second close."
     }
   }
 }

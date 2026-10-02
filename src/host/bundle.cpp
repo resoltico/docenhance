@@ -137,7 +137,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     if (!identity) {
         return std::unexpected(identity.error());
     }
-    auto placed = io::write_bytes(slot, *written);
+    auto placed = io::write_bytes(slot, *written, run.cancellation.get());
     if (!placed) {
         return placed;
     }

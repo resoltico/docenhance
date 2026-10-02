@@ -20,7 +20,10 @@ a plugin loader, service locator or dependency-injection framework.
 
 Outcomes carry a typed payload and build identity. The exit code is derived from the payload,
 not separately writable state. `de_report` alone chooses JSON/text spelling. The CLI alone writes
-the rendered response. It uses unformatted writes and explicitly flushes only a stream with
+the rendered response. The standalone POSIX scope ignores SIGPIPE and restores its prior disposition, so a closed
+response pipe reaches the same output-failure handling as other stream errors. It configures
+stdout/stderr as unbuffered before I/O, preventing teardown from retrying failed buffered bytes
+after signal restoration. Library calls retain caller stream configuration and signal dispositions. It uses unformatted writes and explicitly flushes only a stream with
 response content, then checks that stream's state. Caller width/fill settings cannot alter the
 serialized bytes. The adapter does not directly access an unselected stream; standard stream
 ties and exception masks remain in effect. A write,

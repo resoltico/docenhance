@@ -27,11 +27,15 @@ def interrupt(driver: Path, child: subprocess.Popen[str], event: int) -> None:
         os.kill(child.pid, event)
 
 
-def exercise(driver: Path, root: Path, event: int) -> None:
+def exercise(driver: Path, root: Path, event: int, *, verifying: bool = False) -> None:
     """No input or output may be opened when the admitted invocation is already cancelled."""
     flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
     with subprocess.Popen(
-        [str(driver), str(root / "absent.png"), str(root / "uncreated")],
+        [
+            str(driver),
+            "--verify" if verifying else str(root / "absent.png"),
+            str(root / "uncreated"),
+        ],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -69,7 +73,8 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as directory:
         for event in events:
             exercise(driver, Path(directory), event)
-    print(f"PASS: {len(events)} native interrupt cases")
+            exercise(driver, Path(directory), event, verifying=True)
+    print(f"PASS: {len(events) * 2} native interrupt cases")
     return 0
 
 

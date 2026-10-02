@@ -86,11 +86,8 @@ core::Result<void> encode_png(const std::filesystem::path& output,
     }
     PngContext context{budget, true, cancellation};
     if (!context.open(output, created) || !write_pixels(context, view)) {
-        return std::unexpected(context.error(core::ErrorCode::output));
+        return context.finish_output(std::unexpected(context.error(core::ErrorCode::output)));
     }
-    if (!context.close_output()) {
-        return core::failure(core::ErrorCode::output, "Cannot finish writing the PNG output");
-    }
-    return {};
+    return context.finish_output({});
 }
 } // namespace docenhance::io

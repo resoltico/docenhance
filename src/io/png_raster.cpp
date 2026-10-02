@@ -155,11 +155,15 @@ core::Result<image::Raster> decode_raster(std::span<const std::uint8_t> bytes, c
     if (!pixels) {
         return std::unexpected(pixels.error());
     }
-    for (std::uint32_t y = 0; y < shape.height; ++y) {
+    constexpr std::size_t transfer = std::size_t{64} * 1024;
+    auto storage = pixels->view().storage();
+    while (!storage.empty()) {
         if (cancellation.requested(core::Checkpoint::decode)) {
             return core::cancelled();
         }
-        std::ranges::fill(pixels->view().row(y), 0);
+        const auto part = storage.first(std::min(transfer, storage.size()));
+        std::ranges::fill(part, 0);
+        storage = storage.subspan(part.size());
     }
     if (!raster_pixels(context, pixels->view())) {
         return std::unexpected(context.error(core::ErrorCode::input));

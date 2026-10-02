@@ -6,12 +6,15 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/io/bundle.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
 
 #include <algorithm>
 #include <csetjmp>
+#include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <expected>
 #include <filesystem>
 #include <optional>
@@ -23,7 +26,29 @@
 
 namespace docenhance::io {
 namespace {
-bool read_output_header(PngContext const& context) {
+core::Result<void> compare_rows(std::span<const std::uint8_t> expected,
+                                std::span<const std::uint8_t> actual,
+                                const core::Cancellation& cancellation) {
+    constexpr std::size_t transfer = std::size_t{64} * 1024;
+    while (!expected.empty()) {
+        if (cancellation.requested(core::Checkpoint::verification)) {
+            return core::cancelled();
+        }
+        const auto count = std::min(transfer, expected.size());
+        if (!std::ranges::equal(expected.first(count), actual.first(count))) {
+            return core::failure(core::ErrorCode::output_verify,
+                                 "Encoded PNG integer samples failed verification");
+        }
+        expected = expected.subspan(count);
+        actual = actual.subspan(count);
+    }
+    return {};
+}
+bool read_file(void* const state, std::span<std::uint8_t> bytes) noexcept {
+    return std::fread(bytes.data(), 1, bytes.size(), static_cast<std::FILE*>(state)) ==
+           bytes.size();
+}
+bool read_output_header(PngContext const& context, PngInput& input) {
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4611)
@@ -35,7 +60,7 @@ bool read_output_header(PngContext const& context) {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-    png_init_io(context.png, context.file.get());
+    install_png_reader(context, input);
     png_set_crc_action(context.png, PNG_CRC_ERROR_QUIT, PNG_CRC_ERROR_QUIT);
     png_set_chunk_malloc_max(context.png, image::profile_limit);
     png_read_info(context.png, context.info);
@@ -125,8 +150,17 @@ core::Result<void> verify_png_rows(const std::filesystem::path& path, image::Row
         return std::unexpected(rows.error());
     }
     PngContext context{budget, false, cancellation};
-    if (!context.open(path) || !output_inventory(context, cancellation) ||
-        !read_output_header(context)) {
+    PngInput input{
+        .state = nullptr,
+        .read = read_file,
+        .remaining = bundle_max_file_bytes,
+        .checkpoint = core::Checkpoint::verification,
+    };
+    if (!context.open(path)) {
+        return std::unexpected(context.error(core::ErrorCode::output_verify));
+    }
+    input.state = context.file.get();
+    if (!output_inventory(context, cancellation) || !read_output_header(context, input)) {
         return std::unexpected(context.error(core::ErrorCode::output_verify));
     }
     if (!matching_header(context, description) ||
@@ -145,9 +179,9 @@ core::Result<void> verify_png_rows(const std::filesystem::path& path, image::Row
         if (!read_output_row(context, rows->view().row(1))) {
             return std::unexpected(context.error(core::ErrorCode::output_verify));
         }
-        if (!std::ranges::equal(rows->view().row(0), rows->view().row(1))) {
-            return core::failure(core::ErrorCode::output_verify,
-                                 "Encoded PNG integer samples failed verification");
+        auto agreed = compare_rows(rows->view().row(0), rows->view().row(1), cancellation);
+        if (!agreed) {
+            return agreed;
         }
     }
     return read_output_end(context)

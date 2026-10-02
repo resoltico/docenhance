@@ -4,6 +4,9 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+- Keep closed response pipes as delivery failures, admit truthful verification cancellation, and
+  check bounded codec/manifest work and delayed stream errors before publication cleanup.
+
 - Preserve double scalar precision through known sRGB/gamma interpretation and alpha composition;
   keep the native color-engine precision boundary explicit and correct the independent I01 oracle.
 - Apply static PNG framing to stored-grayscale input, validate EXIF before physical precedence,

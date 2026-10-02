@@ -35,6 +35,9 @@ core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::u
             return core::cancelled();
         }
         const auto read = std::fread(buffer.data(), 1, buffer.size(), file.get());
+        if (std::ferror(file.get()) != 0) {
+            return core::failure(core::ErrorCode::output, "A bundle file could not be read back");
+        }
         if (read == 0) {
             break;
         }
@@ -46,9 +49,6 @@ core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::u
         }
         const auto part = std::span{buffer}.first(read);
         hasher.process(part.begin(), part.end());
-    }
-    if (std::ferror(file.get()) != 0) {
-        return core::failure(core::ErrorCode::output, "A bundle file could not be read back");
     }
     hasher.finish();
     try {
