@@ -10,7 +10,6 @@
 #include "docenhance/methods/illumination.hpp"
 #include "read_fields.hpp"
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <expected>
@@ -75,30 +74,6 @@ core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value)
     return r;
 }
 namespace {
-bool native_observations_agree(const methods::DenoisingReport& r, image::RasterShape shape) {
-    if (r.native_calls == 0) {
-        return true;
-    }
-    if (!r.requested) {
-        return false;
-    }
-    auto method = methods::Nlm::create(*r.requested);
-    if (!method || r.requested->search > std::min(shape.width, shape.height)) {
-        return false;
-    }
-    const auto p = method->parameters();
-    const auto radius = (p.search + p.patch - 2) / 2;
-    auto scratch = methods::nlm_native_scratch(
-        {
-            .width = std::min(methods::nlm_tile_width, shape.width) + (2 * radius),
-            .height = std::min(methods::nlm_tile_width, shape.height) + (2 * radius),
-        },
-        *method);
-    const auto expected =
-        ((std::uint64_t{shape.width} + methods::nlm_tile_width - 1) / methods::nlm_tile_width) *
-        ((std::uint64_t{shape.height} + methods::nlm_tile_width - 1) / methods::nlm_tile_width);
-    return scratch && r.native_reserved_peak == *scratch && r.native_calls == expected;
-}
 core::Result<void> observations_agree(const methods::DenoisingReport& r, const Operation& operation,
                                       const methods::IlluminationReport& light,
                                       image::RasterShape shape) {
@@ -107,10 +82,11 @@ core::Result<void> observations_agree(const methods::DenoisingReport& r, const O
     if (std::holds_alternative<methods::Binarization>(operation)) {
         agrees = !r.requested && r.eligible_samples == 0 && r.protected_samples == 0;
     } else {
-        agrees =
-            r.protected_samples <= pixels && r.eligible_samples == pixels - r.protected_samples &&
-            r.eligible_samples == light.eligible_samples &&
-            r.protected_samples == light.protected_samples && native_observations_agree(r, shape);
+        agrees = r.protected_samples <= pixels &&
+                 r.eligible_samples == pixels - r.protected_samples &&
+                 r.eligible_samples == light.eligible_samples &&
+                 r.protected_samples == light.protected_samples &&
+                 methods::valid_denoising_extent(r, {.width = shape.width, .height = shape.height});
     }
     return agrees ? core::Result<void>{}
                   : core::failure(core::ErrorCode::input, "Inconsistent denoising observations");

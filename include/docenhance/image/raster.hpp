@@ -14,6 +14,7 @@
 
 namespace docenhance::image {
 inline constexpr unsigned byte_bits = 8;
+inline constexpr unsigned orientation_max = 8;
 inline constexpr unsigned word_bits = 16;
 inline constexpr std::size_t chromaticity_fields = 8;
 inline constexpr std::size_t cicp_fields = 4;
@@ -54,12 +55,14 @@ struct RasterMetadata {
     unsigned orientation = 1;
     std::optional<Resolution> resolution;
     std::variant<PngDeclarations, JpegDeclarations> declarations;
-    [[nodiscard]] PngDeclarations* png() noexcept {
+    [[nodiscard]] PngDeclarations* png() & noexcept {
         return std::get_if<PngDeclarations>(&declarations);
     }
-    [[nodiscard]] const PngDeclarations* png() const noexcept {
+    [[nodiscard]] const PngDeclarations* png() const& noexcept {
         return std::get_if<PngDeclarations>(&declarations);
     }
+    [[nodiscard]] PngDeclarations* png() && = delete;
+    [[nodiscard]] const PngDeclarations* png() const&& = delete;
 };
 struct Raster {
     RasterShape shape;

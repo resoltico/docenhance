@@ -9,6 +9,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/report/render.hpp"
+#include "failures.hpp"
 
 #include <CLI/CLI.hpp>
 #include <algorithm>
@@ -28,6 +29,11 @@
 #include <utility>
 #include <variant>
 namespace docenhance::cli {
+app::Outcome allocation_failure(const contract::Invocation& invocation) noexcept {
+    static_assert(std::is_nothrow_move_constructible_v<app::Outcome>);
+    // Empty owning strings do not allocate. The renderer supplies a static diagnostic later.
+    return app::failure(invocation, {.code = core::ErrorCode::resource, .message = {}});
+}
 namespace {
 using docenhance::app::Outcome;
 using docenhance::contract::Command;
@@ -172,25 +178,27 @@ int emit(const Outcome& outcome, bool json, std::ostream& out, std::ostream& err
 }
 // Everything the adapter can meet before a response exists, turned into one outcome. The CLI is
 // the single boundary an exception crosses; below it every failure is already a value.
+Outcome diagnostic_failure(const Invocation& invocation, ErrorCode code, const char* const text) {
+    try {
+        return app::failure(invocation, {.code = code, .message = text});
+    } catch (const std::bad_alloc&) {
+        return allocation_failure(invocation);
+    }
+}
 Outcome contained(std::span<const char* const> args, Invocation& invocation, Ports ports,
                   const core::Cancellation& cancellation) {
     std::optional<Outcome> outcome;
     try {
         outcome = parse_and_dispatch(args, invocation, ports, cancellation);
     } catch (const CLI::ParseError& error) {
-        outcome = argument_error(invocation, error.what());
+        outcome = diagnostic_failure(invocation, ErrorCode::argument, error.what());
     } catch (const std::bad_alloc&) {
-        outcome = app::failure(invocation, {
-                                               .code = ErrorCode::resource,
-                                               .message = "The system refused an allocation",
-                                           });
+        outcome = allocation_failure(invocation);
     } catch (const std::exception& error) {
-        outcome = app::failure(invocation, {.code = ErrorCode::invariant, .message = error.what()});
+        outcome = diagnostic_failure(invocation, ErrorCode::invariant, error.what());
     } catch (...) {
-        outcome = app::failure(invocation, {
-                                               .code = ErrorCode::invariant,
-                                               .message = "Unknown non-standard exception",
-                                           });
+        outcome =
+            diagnostic_failure(invocation, ErrorCode::invariant, "Unknown non-standard exception");
     }
     return std::move(*outcome);
 }

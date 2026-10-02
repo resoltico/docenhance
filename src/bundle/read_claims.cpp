@@ -10,7 +10,6 @@
 #include "docenhance/methods/illumination.hpp"
 #include "read_fields.hpp"
 
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -18,7 +17,6 @@
 #include <string_view>
 #include <variant>
 namespace docenhance::bundle {
-constexpr std::size_t run_identity_length = 32;
 namespace {
 core::Result<void> invalid() {
     return core::failure(core::ErrorCode::input,
@@ -51,35 +49,9 @@ bool observations_agree(const DeclaredBundle& d) {
         return false;
     }
     const auto& c = *d.conversion;
-    if (!valid_shape(c.source) || c.orientation == 0 || c.output != o.shape ||
-        c.resolution != o.resolution || c.flattened_pixels > pixels ||
-        c.clipped_components > pixels * image::components(o.shape.model) ||
-        c.depth_reduced != (c.source.depth > c.output.depth) || r.protected_samples > pixels ||
-        r.eligible_samples != pixels - r.protected_samples) {
-        return false;
-    }
-    const auto oriented = image::oriented_shape(c.source, c.orientation);
-    const auto policy = std::get<image::Continuous>(*d.operation).parameters();
-    if ((!image::has_alpha(c.source.model) || policy.alpha == image::AlphaPolicy::reject) &&
-        c.flattened_pixels != 0) {
-        return false;
-    }
-    const bool overridden = c.interpretation == image::Interpretation::overridden_srgb;
-    if (overridden != (policy.profile == image::ProfilePolicy::srgb)) {
-        return false;
-    }
-    auto depth = c.source.depth;
-    if (policy.depth == image::OutputDepth::byte) {
-        depth = image::byte_bits;
-    }
-    if (policy.depth == image::OutputDepth::word) {
-        depth = image::word_bits;
-    }
-    return oriented.width == o.shape.width && oriented.height == o.shape.height &&
-           depth == o.shape.depth &&
-           (policy.mode != image::ToneMode::gray || o.shape.model == image::SampleModel::gray) &&
-           (policy.mode != image::ToneMode::preserve ||
-            image::is_color(c.source.model) == image::is_color(o.shape.model));
+    return c.output == o.shape && c.resolution == o.resolution && r.protected_samples <= pixels &&
+           r.eligible_samples == pixels - r.protected_samples &&
+           image::valid_conversion(c, std::get<image::Continuous>(*d.operation));
 }
 OutputFacts output(const RecordJson& v) {
     return {
@@ -181,18 +153,19 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
     d.source = *source_facts;
     d.protection_supplied = supplied;
     if (version.empty() || platform.empty() || compiler.empty() ||
-        !record_hexadecimal(lock, core::sha256_hex_length) ||
-        !record_hexadecimal(source_facts->identity.sha256, core::sha256_hex_length) ||
+        !core::valid_hexadecimal(lock, core::sha256_hex_length) ||
+        !core::valid_hexadecimal(source_facts->identity.sha256, core::sha256_hex_length) ||
         source_facts->identity.bytes == 0 || source_facts->name.empty() ||
         source_facts->name.contains('\0') || source_facts->name.contains('/') ||
-        !record_hexadecimal(d.run, run_identity_length) || !record_instant(d.recorded) ||
-        supplied != d.protection.has_value() || d.output.artifact.name != image_name ||
-        !observations_agree(d) || !illumination_agrees(d) || !source_agrees(d)) {
+        !core::valid_hexadecimal(d.run, core::run_identity_hex_length) ||
+        !core::valid_instant(d.recorded) || supplied != d.protection.has_value() ||
+        d.output.artifact.name != image_name || !observations_agree(d) || !illumination_agrees(d) ||
+        !source_agrees(d)) {
         return invalid();
     }
     if (d.protection &&
         (d.protection->stored.name != mask_name ||
-         !record_hexadecimal(d.protection->original.sha256, core::sha256_hex_length) ||
+         !core::valid_hexadecimal(d.protection->original.sha256, core::sha256_hex_length) ||
          d.protection->original.bytes == 0 || d.protection->width != d.output.shape.width ||
          d.protection->height != d.output.shape.height)) {
         return invalid();

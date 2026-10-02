@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/contract/command.hpp"
+#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
@@ -22,6 +23,28 @@ using Operation = std::variant<methods::Binarization, image::Continuous>;
 // The application admits requests; adapters cannot construct an unvalidated request.
 class ProcessRequest {
   public:
+    ProcessRequest(const ProcessRequest&) = default;
+    ProcessRequest& operator=(const ProcessRequest&) = default;
+    ProcessRequest(ProcessRequest&& other) noexcept
+        : input_(std::exchange(other.input_, {})), output_(std::move(other.output_)),
+          operation_(other.operation_), illumination_(other.illumination_),
+          protection_(std::move(other.protection_)), denoising_(other.denoising_) {}
+    ProcessRequest& operator=(ProcessRequest&& other) noexcept {
+        if (this != &other) {
+            input_ = std::exchange(other.input_, {});
+            output_ = std::move(other.output_);
+            operation_ = other.operation_;
+            illumination_ = other.illumination_;
+            protection_ = std::move(other.protection_);
+            denoising_ = other.denoising_;
+        }
+        return *this;
+    }
+    ~ProcessRequest() = default;
+    [[nodiscard]] bool ready() const noexcept {
+        return contract::valid_path(input_) && contract::valid_path(output_) &&
+               (!protection_ || contract::valid_path(*protection_));
+    }
     [[nodiscard]] const std::string& input() const& noexcept {
         return input_;
     }

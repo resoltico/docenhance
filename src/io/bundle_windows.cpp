@@ -84,9 +84,15 @@ core::Result<BundleDirectory> BundleDirectory::open(const std::filesystem::path&
     return result;
 }
 core::Result<BundleDirectory> BundleDirectory::child(const std::string& name) const {
+    if (!active() || !valid_name(name)) {
+        return std::unexpected(refused());
+    }
     return open(path_ / utf8_path(name));
 }
 core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
+    if (!active() || !valid_name(name)) {
+        return std::unexpected(refused());
+    }
     auto* const handle = open_entry(path_ / utf8_path(name), false);
     if (handle == INVALID_HANDLE_VALUE) {
         return std::unexpected(refused());
@@ -109,6 +115,9 @@ core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
     return FileHandle{stream};
 }
 core::Result<std::vector<std::string>> BundleDirectory::entries() const {
+    if (!active()) {
+        return std::unexpected(refused());
+    }
     WIN32_FIND_DATAW data{};
     auto* const search = FindFirstFileW((path_ / L"*").c_str(), &data);
     if (search == INVALID_HANDLE_VALUE) {

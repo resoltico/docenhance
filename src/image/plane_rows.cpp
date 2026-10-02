@@ -25,6 +25,9 @@ OutputDescriptor PlaneRows::descriptor() const noexcept {
 }
 core::Result<void> PlaneRows::row(std::uint32_t index, std::span<std::uint8_t> bytes,
                                   RowUse /*use*/) {
+    if (image_.empty() || index >= image_.height() || bytes.size() != image_.width()) {
+        return core::failure(core::ErrorCode::argument, "Invalid binary output row range");
+    }
     const auto samples = image_.row(index);
     if (bytes.size() != samples.size()) {
         return core::failure(core::ErrorCode::invariant,

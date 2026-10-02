@@ -3,7 +3,10 @@
 #include "docenhance/image/continuous.hpp"
 
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/raster.hpp"
+#include "docenhance/image/source.hpp"
 
+#include <cstdint>
 #include <string_view>
 
 namespace docenhance::image {
@@ -38,5 +41,55 @@ std::string_view interpretation_name(Interpretation value) noexcept {
         return "png_chromaticities";
     }
     return "invalid";
+}
+namespace {
+bool valid_shape(RasterShape shape) noexcept {
+    return shape.width != 0 && shape.height != 0 && components(shape.model) != 0 &&
+           (shape.depth == byte_bits || shape.depth == word_bits) &&
+           std::uint64_t{shape.width} * shape.height <= source_pixels_max;
+}
+bool known_interpretation(Interpretation interpretation) noexcept {
+    switch (interpretation) {
+    case Interpretation::assumed_srgb:
+    case Interpretation::overridden_srgb:
+    case Interpretation::srgb:
+    case Interpretation::cicp:
+    case Interpretation::icc:
+    case Interpretation::gamma:
+    case Interpretation::chromaticities:
+        return true;
+    }
+    return false;
+}
+} // namespace
+bool valid_conversion(const ConversionReport& report, const Continuous& operation) noexcept {
+    const auto& c = report;
+    if (!c.verified || !valid_shape(c.source) || !valid_shape(c.output) ||
+        !known_interpretation(c.interpretation) || c.orientation == 0 ||
+        c.orientation > orientation_max || has_alpha(c.output.model) ||
+        (c.resolution && (c.resolution->x == 0 || c.resolution->y == 0))) {
+        return false;
+    }
+    const auto pixels = std::uint64_t{c.output.width} * c.output.height;
+    const auto p = operation.parameters();
+    if (c.flattened_pixels > pixels || c.clipped_components > pixels * components(c.output.model) ||
+        c.depth_reduced != (c.source.depth > c.output.depth) ||
+        ((!has_alpha(c.source.model) || p.alpha == AlphaPolicy::reject) &&
+         c.flattened_pixels != 0) ||
+        ((c.interpretation == Interpretation::overridden_srgb) !=
+         (p.profile == ProfilePolicy::srgb))) {
+        return false;
+    }
+    const auto oriented = oriented_shape(c.source, c.orientation);
+    auto depth = c.source.depth;
+    if (p.depth == OutputDepth::byte) {
+        depth = byte_bits;
+    } else if (p.depth == OutputDepth::word) {
+        depth = word_bits;
+    }
+    const auto model = p.mode == ToneMode::gray || !is_color(c.source.model) ? SampleModel::gray
+                                                                             : SampleModel::rgb;
+    return c.output.width == oriented.width && c.output.height == oriented.height &&
+           c.output.depth == depth && c.output.model == model;
 }
 } // namespace docenhance::image

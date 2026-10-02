@@ -33,12 +33,11 @@ core::Error refused() {
 constexpr int directory_flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC;
 } // namespace
 BundleDirectory::BundleDirectory(BundleDirectory&& other) noexcept
-    : handle_(std::exchange(other.handle_, -1)), path_(std::move(other.path_)) {}
+    : handle_(std::exchange(other.handle_, -1)) {}
 BundleDirectory& BundleDirectory::operator=(BundleDirectory&& other) noexcept {
     if (this != &other) {
         close();
         handle_ = std::exchange(other.handle_, -1);
-        path_ = std::move(other.path_);
     }
     return *this;
 }
@@ -63,6 +62,9 @@ core::Result<BundleDirectory> BundleDirectory::open(const std::filesystem::path&
     return result;
 }
 core::Result<BundleDirectory> BundleDirectory::child(const std::string& name) const {
+    if (!active() || !valid_name(name)) {
+        return std::unexpected(refused());
+    }
     // Native openat ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     const auto descriptor = openat(handle_, name.c_str(), directory_flags);
@@ -74,6 +76,9 @@ core::Result<BundleDirectory> BundleDirectory::child(const std::string& name) co
     return result;
 }
 core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
+    if (!active() || !valid_name(name)) {
+        return std::unexpected(refused());
+    }
     constexpr int flags = O_RDONLY | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK;
     // Native openat ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
@@ -97,6 +102,9 @@ core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
     return FileHandle{stream};
 }
 core::Result<std::vector<std::string>> BundleDirectory::entries() const {
+    if (!active()) {
+        return std::unexpected(refused());
+    }
     // A new descriptor gives this enumeration its own directory offset.
     // Native openat ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)

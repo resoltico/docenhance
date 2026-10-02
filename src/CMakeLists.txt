@@ -47,7 +47,7 @@ de_library(de_methods LAYER methods
           "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
-  SOURCES app/denoising.cpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
+  SOURCES app/observations.cpp app/observations.hpp app/denoising.cpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
           "${DE_INCLUDE}/app/verify.hpp"
   LINKS de_core de_contract de_methods de_image)
@@ -62,7 +62,7 @@ de_library(de_report LAYER report
   SOURCES report/render.cpp report/continuous.cpp report/continuous.hpp report/illumination.cpp report/illumination.hpp HEADERS "${DE_INCLUDE}/report/render.hpp"
   LINKS de_app de_bundle de_contract de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_cli LAYER cli
-  SOURCES cli/run.cpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
+  SOURCES cli/run.cpp cli/failures.hpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
   LINKS de_app de_contract de_core de_report CLI11::CLI11)
 
 de_library(de_io LAYER io

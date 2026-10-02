@@ -37,6 +37,28 @@ struct Error {
     ErrorCode code;
     std::string message;
     Publication publication = Publication::not_started;
+    [[nodiscard]] constexpr bool valid_publication() const noexcept {
+        switch (code) {
+        case ErrorCode::publication_unknown:
+            return publication == Publication::unknown;
+        case ErrorCode::output_verify:
+            return publication == Publication::not_started ||
+                   publication == Publication::not_published ||
+                   publication == Publication::completed;
+        case ErrorCode::cancelled:
+        case ErrorCode::argument:
+        case ErrorCode::input:
+        case ErrorCode::resource:
+        case ErrorCode::output:
+        case ErrorCode::unavailable:
+        case ErrorCode::method_inapplicable:
+        case ErrorCode::numerical:
+        case ErrorCode::invariant:
+            return publication == Publication::not_started ||
+                   publication == Publication::not_published;
+        }
+        return false;
+    }
     [[nodiscard]] constexpr ExitCode exit_code() const noexcept {
         switch (code) {
         case ErrorCode::cancelled:

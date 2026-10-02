@@ -9,7 +9,6 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
-#include <cstddef>
 #include <cstdint>
 #include <nlohmann/json.hpp>
 #include <optional>
@@ -27,8 +26,6 @@ using RecordJson = nlohmann::json;
 [[nodiscard]] double record_number(const RecordJson& value);
 [[nodiscard]] bool record_boolean(const RecordJson& value);
 [[nodiscard]] std::string record_text(const RecordJson& value);
-[[nodiscard]] bool record_hexadecimal(std::string_view value, std::size_t length);
-[[nodiscard]] bool record_instant(std::string_view value);
 [[nodiscard]] image::RasterShape record_shape(const RecordJson& value);
 [[nodiscard]] std::optional<image::Resolution> record_resolution(const RecordJson& value);
 [[nodiscard]] core::ContentIdentity record_identity(const RecordJson& value);

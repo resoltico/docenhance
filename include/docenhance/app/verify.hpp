@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/contract/command.hpp"
+#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
@@ -16,6 +17,20 @@ namespace docenhance::app {
 // was not validated, and nothing here touches a filesystem.
 class VerifyRequest {
   public:
+    VerifyRequest(const VerifyRequest&) = default;
+    VerifyRequest& operator=(const VerifyRequest&) = default;
+    VerifyRequest(VerifyRequest&& other) noexcept
+        : directory_(std::exchange(other.directory_, {})) {}
+    VerifyRequest& operator=(VerifyRequest&& other) noexcept {
+        if (this != &other) {
+            directory_ = std::exchange(other.directory_, {});
+        }
+        return *this;
+    }
+    ~VerifyRequest() = default;
+    [[nodiscard]] bool ready() const noexcept {
+        return contract::valid_path(directory_);
+    }
     [[nodiscard]] const std::string& directory() const& noexcept {
         return directory_;
     }

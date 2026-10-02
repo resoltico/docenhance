@@ -56,6 +56,10 @@ std::string dump(const Json& json) {
     return json.dump(json_indent) + "\n";
 }
 std::string_view diagnostic(const core::Error& error) noexcept {
+    if (error.message.empty()) {
+        return error.code == core::ErrorCode::resource ? "The system refused an allocation"
+                                                       : "No diagnostic was reported";
+    }
     return contract::valid_utf8(error.message) ? std::string_view{error.message}
                                                : "The diagnostic was not well-formed UTF-8";
 }

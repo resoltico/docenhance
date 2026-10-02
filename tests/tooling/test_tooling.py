@@ -228,7 +228,7 @@ class ContractTests(unittest.TestCase):
         contract = json.loads((ROOT / "spec/cli-contract.json").read_text())
         for fields in ({"contract_version": "8.0"}, {"invented": True}):
             with self.subTest(fields=fields), self.assertRaises(generate_spec.ContractError):
-                generate_spec.render_header(contract | fields, 3)
+                generate_spec.render_header(contract | fields, 3, 16)
 
     def test_option_binding_requires_one_valid_typed_member(self) -> None:
         """A missing, injected or duplicate storage binding cannot generate parser metadata."""
@@ -237,7 +237,7 @@ class ContractTests(unittest.TestCase):
             contract = json.loads(json.dumps(original))
             contract["options"][0]["binding"] = value
             with self.subTest(value=value), self.assertRaises(generate_spec.ContractError):
-                generate_spec.render_header(contract, 3)
+                generate_spec.render_header(contract, 3, 16)
 
     def test_compiler_rejects_incorrect_binding_types_and_missing_members(self) -> None:
         """Compile the actual header, then challenge its member identity and flag/value guard."""

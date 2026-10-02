@@ -24,12 +24,29 @@ class BundleDirectory {
     [[nodiscard]] core::Result<std::vector<std::string>> entries() const;
 
   private:
+    [[nodiscard]] bool active() const noexcept {
+#ifdef _WIN32
+        return handle_ != nullptr;
+#else
+        return handle_ != -1;
+#endif
+    }
+    [[nodiscard]] static bool valid_name(const std::string& name) noexcept {
+        const bool relative = !name.empty() && name != "." && name != ".." &&
+                              !name.contains('\0') && !name.contains('/');
+#ifdef _WIN32
+        return relative && !name.contains('\\') && !name.contains(':');
+#else
+        return relative;
+#endif
+    }
+
     void close() noexcept;
 #ifdef _WIN32
     void* handle_ = nullptr;
+    std::filesystem::path path_;
 #else
     int handle_ = -1;
 #endif
-    std::filesystem::path path_;
 };
 } // namespace docenhance::io

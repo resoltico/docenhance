@@ -33,6 +33,9 @@ consumer read the response or that a file is crash-durable. JSON `exit_code` des
 command outcome. A later delivery failure can make the process exit 5 even after a complete success
 object was emitted; callers inspect both statuses, and must not replay processing based on exit 5.
 
+Returned processing observations are checked against admitted requests and shared numerical
+validators; inconsistent errors or success facts retain unknown publication. Read-only verification
+validates returned identities/confirmations and contains exceptions with not_started publication.
 Before crossing the processing port, the application prepares a complete unknown-publication
 outcome. An escaping processor exception, including allocation failure or a non-standard exception,
 returns that outcome by a statically checked non-throwing move. It cannot imply `not_started` after
@@ -88,6 +91,8 @@ while destroying that same object is still invalid caller behavior.
 Buffer bytes and owning-plane views can be borrowed only from lvalues; converters likewise
 refuse temporary raster owners. A WorkRef can name only a live lvalue callable, and synchronous
 scheduler tasks remain in scope through all joins. Small shape/parameter accessors return values.
+Raster metadata borrows likewise require lvalues, and row adapters check their range before
+borrowing. Moved requests consume the source path; native ports reject unready values before I/O.
 These restrictions reject temporary-owner mistakes but do not extend backing storage lifetime.
 
 An owning `image::Plane` moves without copying samples; a moved-from plane is empty in both storage
@@ -296,3 +301,8 @@ application admission retains all domain rules. Prepared illumination is returne
 optional value and remains live through every row consumer.
 Generated files are rewritten only when their expected bytes change, so ordinary metadata
 changes do not invalidate unrelated native translation units through timestamp churn.
+
+The [execution/state/ownership audit](execution-ownership-audit.md) records deterministic ASan,
+native-handle, contradictory-return and sustained-allocation-refusal counterexamples. Directory
+access requires an active owner and confined entry names. CLI resource fallbacks allocate nothing;
+rendering remains separately fallible.
