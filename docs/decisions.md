@@ -310,3 +310,9 @@ before constructing a bounded DOM. Release admission bookkeeping between the pas
 selection sorts existing scratch instead of using average-linear partitioning; the worst-case
 comparison bound matters for hostile sample order. Quantiles and resource ledgers are unchanged.
 See [the resource design and separate challenge](resource-limits-audit.md).
+
+JSON cleanup must not allocate from noexcept destruction, including during failed parsing. The
+locked header's heap traversal stack violated that boundary under injected allocation refusal.
+Use a checked private header with ordinary recursive container destruction, relying on pre-DOM
+depth admission and fixed typed builder shapes. Keep upstream bytes/attribution intact, bind the
+recipe to fresh private builds, and inspect installed bytes separately from behavioral fault tests.

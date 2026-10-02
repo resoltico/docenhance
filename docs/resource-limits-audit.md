@@ -52,8 +52,38 @@ quadratic partition work is avoidable with the standard sort complexity guarante
 replacement with the maximum lattice scratch permutation, independent known ranks, repeated values,
 invalid inputs unchanged and an allocation observer; no timing-sleep test or latency promise.
 
+Inject each observed C++ allocation refusal through a nested JSON fixture reaching both SAX
+admission and DOM construction. Native/ASan must return resource errors and refund all observed
+payloads, including failures while producing the ordinary rejection diagnostic. TSan retains its
+allocator ABI; its bookkeeping and zero-allocation selection observations are separate evidence.
+
 Charged limits do not ensure every admitted pixel count/aspect ratio fits, bound aggregate concurrent
 library requests, certify allocator overhead or impose wall-clock deadlines. Native calls and
 filesystem I/O can block. Cancellation remains cooperative; preserve existing checkpoints, joins,
 error precedence and the publication cutoff. Full platform CI and local required workflows establish
 commit-specific evidence, not exhaustive resource safety or document authenticity.
+
+## Destruction ownership challenge
+
+The per-allocation experiment aborted with std::bad_alloc rather than reaching the record reader's
+catch. The debugger places termination in nlohmann JSON's noexcept data destructor: its flattened
+cleanup allocates a std::vector traversal stack. A caller-side cleanup wrapper cannot protect
+partially constructed objects inside the parser, and a custom JSON allocator does not control that
+stack's separate standard allocator. Replacing the JSON library/field mapping would expand the
+change without addressing this owning fault more simply.
+
+Compile a checked private copy of the locked single header with the allocating flattening block
+removed. Ordinary container destruction then recursively releases children without allocating.
+Every production untrusted DOM passes byte/depth/SAX admission first; the only other production
+parse reads the fixed-shape record serialization. Response/record builders construct bounded typed
+shapes, not arbitrary user-supplied DOMs. The existing 16-level admission bounds recursive cleanup;
+this is not permission to parse arbitrary-depth JSON. Challenge the maximum admitted depth and
+both ordinary and exceptional cleanup with each observed allocation refusal.
+
+Keep the immutable source cache and original upstream attribution untouched. Pin the reviewed
+header digest and correction feature in deps/features.json; reuse upstream CMake packaging through
+a private source copy instead of maintaining a parallel package configuration. Bind this recipe to
+fresh build trees/private prefixes and Docker cache identity. Verify that the actual installed header
+matches the reviewed corrected bytes against an independent output-digest reference, including a
+negative control altering both mutable copies; a cache flag or two copies agreeing proves neither
+review nor cleanup behavior. Native allocation-refusal tests establish the behavior separately.

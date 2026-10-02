@@ -63,6 +63,40 @@ bool record_bookkeeping() {
     return rejected && allocation::peak.load() <= fixture_payload_limit &&
            allocation::live.load() == 0;
 }
+bool record_allocation_refusal() {
+#if !DE_ALLOCATION_SANITIZER_OBSERVATION
+    const std::string input = std::string(docenhance::bundle::record_max_depth - 2, '[') +
+                              R"({"inner":[]})" +
+                              std::string(docenhance::bundle::record_max_depth - 2, ']');
+    begin();
+    {
+        const auto result = docenhance::bundle::read_record(std::as_bytes(std::span{input}));
+        if (result || result.error().code != docenhance::core::ErrorCode::input) {
+            allocation::observing.store(false);
+            return false;
+        }
+    }
+    allocation::observing.store(false);
+    const auto attempts = allocation::allocation_attempts.load();
+    if (attempts == 0 || allocation::live.load() != 0) {
+        return false;
+    }
+    for (std::size_t failure = 1; failure <= attempts; ++failure) {
+        begin(failure);
+        bool refused = false;
+        {
+            const auto result = docenhance::bundle::read_record(std::as_bytes(std::span{input}));
+            refused = !result && result.error().code == docenhance::core::ErrorCode::resource;
+        }
+        allocation::observing.store(false);
+        if (!refused || allocation::live.load() != 0) {
+            return false;
+        }
+    }
+    std::cout << "PASS: record SAX/DOM allocation refusals contained: " << attempts << '\n';
+#endif
+    return true;
+}
 bool ledger_refusal() {
 #if !DE_ALLOCATION_SANITIZER_OBSERVATION
     namespace core = docenhance::core;
@@ -101,8 +135,8 @@ bool ledger_refusal() {
 } // namespace
 int main() {
     try {
-        if (!allocation::initialize_hooks() || !record_bookkeeping() || !selection() ||
-            !ledger_refusal()) {
+        if (!allocation::initialize_hooks() || !record_bookkeeping() ||
+            !record_allocation_refusal() || !selection() || !ledger_refusal()) {
             return 1;
         }
         std::cout << "PASS: bounded record bookkeeping and allocation-free maximum selection\n";

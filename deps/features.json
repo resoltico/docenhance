@@ -194,7 +194,9 @@
     "json": {
       "JSON_BuildTests": false,
       "JSON_Install": true,
-      "JSON_MultipleHeaders": false
+      "JSON_MultipleHeaders": false,
+      "DOCENHANCE_JSON_BOUNDED_DESTRUCTION": true,
+      "DOCENHANCE_JSON_HEADER_SHA256": "aaf127c04cb31c406e5b04a63f1ae89369fccde6d8fa7cdda1ed4f32dfc5de63"
     },
     "picosha2": {},
     "catch2": {

@@ -87,6 +87,13 @@ class LinuxGateTests(unittest.TestCase):
             recipe.parent.mkdir()
             recipe.write_text("changed")
             self.assertNotEqual(before, check_linux.cache_identity(arm, "linux/arm64", root))
+            before_adapter = check_linux.cache_identity(arm, "linux/arm64", root)
+            adapter = root / "cmake/dependencies/json/CMakeLists.txt"
+            adapter.parent.mkdir(parents=True)
+            adapter.write_text("checked header recipe")
+            self.assertNotEqual(
+                before_adapter, check_linux.cache_identity(arm, "linux/arm64", root)
+            )
 
     def test_native_platform_and_job_spelling_are_explicit(self) -> None:
         """Ambient emulation and leading-zero job counts cannot diverge from CMake's contract."""

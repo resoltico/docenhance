@@ -6,11 +6,15 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
+# Independent reference for the reviewed corrected 3.12.0 single header. This proves identity;
+# native allocation-refusal tests separately prove cleanup behavior.
+JSON_BOUNDED_HEADER_SHA256 = "f504f6fa07b84e3e264a1f7757f15da1502bb539285c90e908c1cabab47b572e"
 
 
 def read_cache(path: Path) -> dict[str, str]:
@@ -22,6 +26,19 @@ def read_cache(path: Path) -> dict[str, str]:
         left, value = line.split("=", 1)
         values[left.split(":", 1)[0]] = value
     return values
+
+
+def json_header_failures(binary: Path) -> list[str]:
+    """Compare installed JSON bytes with the actual corrected dependency build input."""
+    owned = binary / "owned-source/single_include/nlohmann/json.hpp"
+    installed = binary.parents[1] / "prefix" / "include" / "nlohmann" / "json.hpp"
+    if not owned.is_file() or not installed.is_file():
+        return ["JSON: missing reviewed or installed bounded-destruction header"]
+    if owned.read_bytes() != installed.read_bytes():
+        return ["JSON: installed header differs from the reviewed private copy"]
+    if hashlib.sha256(installed.read_bytes()).hexdigest() != JSON_BOUNDED_HEADER_SHA256:
+        return ["JSON: header differs from the reviewed bounded-destruction output digest"]
+    return []
 
 
 def feature_failures(
@@ -47,6 +64,8 @@ def feature_failures(
         expected_modules = {"opencv_" + part for part in str(settings["BUILD_LIST"]).split(",")}
         if modules != expected_modules:
             failures.append(f"OpenCV module closure differs: {sorted(modules)}")
+    if name == "json":
+        failures.extend(json_header_failures(binary))
     if cache.get("BUILD_SHARED_LIBS", "").upper() not in FALSE:
         failures.append(f"{name}: unexpected shared-library build")
     return failures
