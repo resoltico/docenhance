@@ -4,6 +4,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+- Preserve double scalar precision through known sRGB/gamma interpretation and alpha composition;
+  keep the native color-engine precision boundary explicit and correct the independent I01 oracle.
+- Apply static PNG framing to stored-grayscale input, validate EXIF before physical precedence,
+  and reject unsupported decoder policies/limits instead of silently substituting them.
+
 - Reject temporary owners at borrowed-view/callable/converter boundaries, use closed processing
   success alternatives and typed publication observation, and report completed NLM resource
   charges from the native reservation owner. Tile traversal avoids uint32 extent wraparound.

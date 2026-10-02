@@ -20,6 +20,10 @@ namespace docenhance::io {
 core::Result<DecodedJpeg> decode_jpeg(std::span<const std::uint8_t> bytes, core::Budget& budget,
                                       image::ProfilePolicy profile,
                                       const core::Cancellation& cancellation, JpegLimits limits) {
+    if (profile != image::ProfilePolicy::embedded && profile != image::ProfilePolicy::srgb) {
+        return core::failure(core::ErrorCode::argument,
+                             "Unknown JPEG profile interpretation policy");
+    }
     auto scanned = scan_jpeg(bytes, budget, profile, cancellation, limits);
     if (!scanned) {
         return std::unexpected(scanned.error());

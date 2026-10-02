@@ -29,10 +29,10 @@ core::Result<void> native_transform(ConversionState& state) {
         return std::unexpected(state.context.error("Cannot construct source color profiles"));
     }
     const cmsUInt32Number format =
-        image::is_color(source.shape.model) ? TYPE_RGB_FLT : TYPE_GRAY_FLT;
+        image::is_color(source.shape.model) ? TYPE_RGB_DBL : TYPE_GRAY_DBL;
     state.transform.reset(cmsCreateTransformTHR(
         state.context.get(), state.input_profile.get(), format, state.linear_profile.get(),
-        TYPE_RGB_FLT, INTENT_RELATIVE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE));
+        TYPE_RGB_DBL, INTENT_RELATIVE_COLORIMETRIC, cmsFLAGS_NOOPTIMIZE | cmsFLAGS_NOCACHE));
     if (!state.transform || !state.context.good()) {
         return std::unexpected(state.context.error("Cannot interpret source color profile"));
     }
@@ -92,18 +92,21 @@ core::Result<void> prepare_transform(ConversionState& state) {
     return {};
 }
 core::Result<void> allocate_rows(ConversionState& state, core::Budget& budget) {
-    constexpr std::uint32_t colors = conversion_pixels * image::rgb_channels;
-    auto input = image::Plane<float>::allocate(budget, colors, 1);
+    const std::uint32_t channels =
+        image::is_color(state.source.get().shape.model) ? image::rgb_channels : 1;
+    const std::uint32_t colors = conversion_pixels * channels;
+    auto input = image::Plane<double>::allocate(budget, colors, 1);
     if (!input) {
         return std::unexpected(input.error());
     }
     state.input = std::move(*input);
-    auto linear = image::Plane<float>::allocate(budget, colors, 1);
+    auto linear =
+        image::Plane<double>::allocate(budget, conversion_pixels * image::rgb_channels, 1);
     if (!linear) {
         return std::unexpected(linear.error());
     }
     state.linear = std::move(*linear);
-    auto alpha = image::Plane<float>::allocate(budget, conversion_pixels, 1);
+    auto alpha = image::Plane<double>::allocate(budget, conversion_pixels, 1);
     if (!alpha) {
         return std::unexpected(alpha.error());
     }

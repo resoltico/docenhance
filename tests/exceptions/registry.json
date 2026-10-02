@@ -419,6 +419,12 @@
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@d1fc70a1": {
       "explanation": "The TSan allocator-observation ABI qualifies storage pointers as volatile const. This cast only records or removes the pointer identity in the fixed observation registry; it never dereferences or alters allocator storage. TSan retains its own allocator, instrumentation and all production concurrency checks."
+    },
+    "tests/cli/test_interpretation.py:ruff/S311@77c13403": {
+      "explanation": "Seeded Random builds deterministic numerical conformance fixtures; no secret or security-sensitive value is generated."
+    },
+    "tests/unit/input_admission.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@72944726": {
+      "explanation": "This negative codec-admission fixture deliberately constructs an unknown fixed-underlying enum value to prove it is rejected before allocation or decoding."
     }
   }
 }

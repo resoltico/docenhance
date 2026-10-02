@@ -10,6 +10,7 @@
 #include "docenhance/io/bundle.hpp"
 #include "docenhance/io/png.hpp"
 #include "exif.hpp"
+#include "png_chunks.hpp"
 
 #include <algorithm>
 #include <array>
@@ -18,8 +19,6 @@
 #include <expected>
 #include <span>
 #include <utility>
-#include <zconf.h>
-#include <zlib.h>
 
 namespace docenhance::io {
 namespace {
@@ -35,45 +34,6 @@ constexpr std::uint32_t chunk_actl = 0x6163544c;
 constexpr std::uint32_t chunk_fctl = 0x6663544c;
 constexpr std::uint32_t chunk_fdat = 0x66644154;
 constexpr std::uint32_t ancillary_bit = 0x20000000;
-constexpr std::size_t crc_bytes = png_integer_bytes;
-constexpr std::size_t transfer_bytes = std::size_t{64} * 1024;
-struct Chunk {
-    std::uint32_t type{};
-    std::span<const std::uint8_t> data;
-};
-core::Result<Chunk> take_chunk(std::span<const std::uint8_t>& bytes,
-                               const core::Cancellation& cancellation) {
-    if (bytes.size() < png_chunk_overhead) {
-        return core::failure(core::ErrorCode::input, "Truncated PNG chunk");
-    }
-    const auto size = png_integer(bytes);
-    if (size > bytes.size() - png_chunk_overhead) {
-        return core::failure(core::ErrorCode::input, "PNG chunk extent exceeds encoded input");
-    }
-    const auto name = bytes.subspan(png_integer_bytes, png_integer_bytes);
-    const bool letters = std::ranges::all_of(
-        name, [](auto c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'); });
-    if (!letters || name.subspan(2, 1).front() < 'A' || name.subspan(2, 1).front() > 'Z') {
-        return core::failure(core::ErrorCode::input, "PNG chunk name is invalid");
-    }
-    auto protected_bytes = bytes.subspan(png_integer_bytes, std::size_t{size} + crc_bytes);
-    uLong crc = crc32(0, Z_NULL, 0);
-    while (!protected_bytes.empty()) {
-        if (cancellation.requested(core::Checkpoint::decode)) {
-            return core::cancelled();
-        }
-        const auto part = protected_bytes.first(std::min(transfer_bytes, protected_bytes.size()));
-        crc = crc32(crc, part.data(), static_cast<uInt>(part.size()));
-        protected_bytes = protected_bytes.subspan(part.size());
-    }
-    const auto data = bytes.subspan(png_signature_bytes, size);
-    if (crc != png_integer(bytes.subspan(png_signature_bytes + size))) {
-        return core::failure(core::ErrorCode::input, "PNG chunk CRC mismatch");
-    }
-    const auto type = png_integer(name);
-    bytes = bytes.subspan(std::size_t{size} + png_chunk_overhead);
-    return Chunk{.type = type, .data = data};
-}
 struct ScanState {
     PngScan scan;
     std::uint64_t pixel_limit{};
@@ -84,7 +44,7 @@ struct ScanState {
     bool after_data = false;
     std::span<const std::uint8_t> exif;
 };
-core::Result<void> header(ScanState& state, const Chunk& chunk) {
+core::Result<void> header(ScanState& state, const PngChunk& chunk) {
     constexpr std::size_t header_size = 13;
     if (state.header || chunk.data.size() != header_size) {
         return core::failure(core::ErrorCode::input, "PNG must have one valid IHDR");
@@ -98,7 +58,7 @@ core::Result<void> header(ScanState& state, const Chunk& chunk) {
     }
     return {};
 }
-core::Result<void> ordering(ScanState& state, const Chunk& chunk) {
+core::Result<void> ordering(ScanState& state, const PngChunk& chunk) {
     if (chunk.type == chunk_ihdr) {
         return header(state, chunk);
     }
@@ -156,7 +116,7 @@ unsigned declaration_bit(std::uint32_t type) noexcept {
         return 0;
     }
 }
-core::Result<void> color_declaration(image::RasterMetadata& meta, const Chunk& chunk,
+core::Result<void> color_declaration(image::RasterMetadata& meta, const PngChunk& chunk,
                                      core::Budget& budget) {
     constexpr std::size_t chroma_bytes = 32;
     if (chunk.type == chunk_iccp) {
@@ -189,8 +149,24 @@ core::Result<void> color_declaration(image::RasterMetadata& meta, const Chunk& c
     }
     return {};
 }
-core::Result<void> declaration(ScanState& state, const Chunk& chunk, core::Budget& budget,
-                               image::ProfilePolicy policy) {
+core::Result<void> physical_resolution(image::RasterMetadata& metadata,
+                                       std::span<const std::uint8_t> data) {
+    constexpr std::size_t phys_bytes = 9;
+    if (data.size() != phys_bytes || data.back() > 1) {
+        return core::failure(core::ErrorCode::input, "Malformed PNG physical resolution");
+    }
+    if (data.back() == 1) {
+        const auto x = png_integer(data);
+        const auto y = png_integer(data.subspan(png_integer_bytes));
+        if (x == 0 || y == 0) {
+            return core::failure(core::ErrorCode::input, "Zero physical resolution");
+        }
+        metadata.resolution = image::Resolution{.x = x, .y = y};
+    }
+    return {};
+}
+core::Result<void> declaration(ScanState& state, const PngChunk& chunk, core::Budget& budget,
+                               PngReadPolicy policy) {
     const auto bit = declaration_bit(chunk.type);
     if (bit == 0) {
         return {};
@@ -200,38 +176,38 @@ core::Result<void> declaration(ScanState& state, const Chunk& chunk, core::Budge
     }
     state.seen |= bit;
     if (chunk.type == chunk_exif) {
-        state.exif = chunk.data;
+        if (policy.meaning == PngMeaning::interpreted) {
+            state.exif = chunk.data;
+        }
         return {};
     }
     if (state.data || (state.palette && chunk.type != chunk_phys)) {
         return core::failure(core::ErrorCode::input, "PNG metadata is out of order");
     }
-    if (chunk.type == chunk_phys) {
-        constexpr std::size_t phys_bytes = 9;
-        if (chunk.data.size() != phys_bytes || chunk.data.back() > 1) {
-            return core::failure(core::ErrorCode::input, "Malformed PNG physical resolution");
-        }
-        if (chunk.data.back() == 1) {
-            const auto x = png_integer(chunk.data);
-            const auto y = png_integer(chunk.data.subspan(png_integer_bytes));
-            if (x == 0 || y == 0) {
-                return core::failure(core::ErrorCode::input, "Zero physical resolution");
-            }
-            state.scan.metadata.resolution = image::Resolution{.x = x, .y = y};
-        }
+    if (policy.meaning == PngMeaning::stored_samples) {
         return {};
+    }
+    if (chunk.type == chunk_phys) {
+        return physical_resolution(state.scan.metadata, chunk.data);
     }
     if (chunk.data.size() > image::profile_limit) {
         return core::failure(core::ErrorCode::resource,
                              "PNG color metadata exceeds its byte ceiling");
     }
-    return policy == image::ProfilePolicy::srgb
+    return policy.profile == image::ProfilePolicy::srgb
                ? core::Result<void>{}
                : color_declaration(state.scan.metadata, chunk, budget);
 }
-core::Result<void> finish(ScanState& state, const Chunk& chunk) {
+core::Result<void> finish(ScanState& state, const PngChunk& chunk, PngMeaning meaning,
+                          std::span<const std::uint8_t> remaining) {
     if (!state.data || !chunk.data.empty()) {
         return core::failure(core::ErrorCode::input, "PNG has no image data or an invalid IEND");
+    }
+    if (!remaining.empty()) {
+        return core::failure(core::ErrorCode::input, "Bytes follow PNG IEND");
+    }
+    if (meaning == PngMeaning::stored_samples) {
+        return {};
     }
     if (!state.scan.metadata.icc.empty() && state.scan.metadata.png()->srgb) {
         return core::failure(core::ErrorCode::input, "PNG cannot declare both iCCP and sRGB");
@@ -239,6 +215,15 @@ core::Result<void> finish(ScanState& state, const Chunk& chunk) {
     return (state.seen & declaration_bit(chunk_exif)) == 0
                ? core::Result<void>{}
                : parse_exif(state.exif, state.scan.metadata);
+}
+bool valid_png_policy(PngReadPolicy policy, std::size_t maximum) noexcept {
+    return policy.limits.encoded_bytes > 0 && policy.limits.encoded_bytes <= maximum &&
+           policy.limits.pixels > 0 && policy.limits.pixels <= png_max_pixels &&
+           (policy.profile == image::ProfilePolicy::embedded ||
+            policy.profile == image::ProfilePolicy::srgb) &&
+           (policy.meaning == PngMeaning::interpreted ||
+            policy.meaning == PngMeaning::stored_samples) &&
+           (policy.content == PngContent::source || policy.content == PngContent::result);
 }
 } // namespace
 std::uint32_t png_integer(std::span<const std::uint8_t> bytes) noexcept {
@@ -256,7 +241,11 @@ core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes, core::Budget
                                PngReadPolicy policy, const core::Cancellation& cancellation) {
     const auto maximum =
         policy.content == PngContent::source ? png_max_encoded_bytes : bundle_max_file_bytes;
-    if (bytes.size() > std::min(maximum, policy.limits.encoded_bytes)) {
+    if (!valid_png_policy(policy, maximum)) {
+        return core::failure(core::ErrorCode::argument,
+                             "PNG decoding policy exceeds the admitted domain");
+    }
+    if (bytes.size() > policy.limits.encoded_bytes) {
         return core::failure(core::ErrorCode::resource, "PNG exceeds the encoded byte ceiling");
     }
     if (bytes.size() < signature.size() ||
@@ -265,9 +254,9 @@ core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes, core::Budget
     }
     bytes = bytes.subspan(signature.size());
     ScanState state;
-    state.pixel_limit = std::min(png_max_pixels, policy.limits.pixels);
+    state.pixel_limit = policy.limits.pixels;
     for (std::size_t count = 0; count < png_max_chunks && !bytes.empty(); ++count) {
-        auto chunk = take_chunk(bytes, cancellation);
+        auto chunk = take_png_chunk(bytes, cancellation);
         if (!chunk) {
             return std::unexpected(chunk.error());
         }
@@ -275,17 +264,14 @@ core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes, core::Budget
         if (!order) {
             return std::unexpected(order.error());
         }
-        auto meta = declaration(state, *chunk, budget, policy.profile);
+        auto meta = declaration(state, *chunk, budget, policy);
         if (!meta) {
             return std::unexpected(meta.error());
         }
         if (chunk->type == chunk_iend) {
-            auto end = finish(state, *chunk);
+            auto end = finish(state, *chunk, policy.meaning, bytes);
             if (!end) {
                 return std::unexpected(end.error());
-            }
-            if (!bytes.empty()) {
-                return core::failure(core::ErrorCode::input, "Bytes follow PNG IEND");
             }
             return std::move(state.scan);
         }

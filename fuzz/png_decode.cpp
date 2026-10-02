@@ -7,11 +7,42 @@
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <string_view>
 #include <vector>
 namespace {
+// Independent admission oracle: walk framing only, without importing the production scanner.
+bool static_container(std::span<const std::uint8_t> bytes) {
+    constexpr std::size_t signature = 8;
+    constexpr std::size_t overhead = 12;
+    constexpr std::size_t integer = 4;
+    if (bytes.size() < signature) {
+        return false;
+    }
+    bytes = bytes.subspan(signature);
+    while (bytes.size() >= overhead) {
+        std::size_t length = 0;
+        for (const auto value : bytes.first(integer)) {
+            length = (length * 256) + value;
+        }
+        if (length > bytes.size() - overhead) {
+            return false;
+        }
+        const auto name = bytes.subspan(integer, integer);
+        const auto is = [&](std::string_view wanted) { return std::ranges::equal(name, wanted); };
+        if (is("acTL") || is("fcTL") || is("fdAT")) {
+            return false;
+        }
+        bytes = bytes.subspan(length + overhead);
+        if (is("IEND")) {
+            return length == 0 && bytes.empty();
+        }
+    }
+    return false;
+}
 struct Decoded {
     bool accepted = false;
     docenhance::core::ErrorCode error = docenhance::core::ErrorCode::input;
@@ -28,6 +59,8 @@ Decoded decode(std::span<const std::uint8_t> bytes, std::size_t limit) {
         auto decoded = docenhance::io::decode_grayscale_png(
             bytes, budget, {.encoded_bytes = 65536, .pixels = 4096});
         if (decoded) {
+            require(static_container(bytes),
+                    "accepted grayscale PNG is one static framed container");
             snapshot.accepted = true;
             snapshot.width = decoded->width();
             snapshot.height = decoded->height();

@@ -331,7 +331,8 @@
                     16
                   ]
                 }
-              }
+              },
+              "description": "Decoded integer source samples before interpretation. Known sRGB/gamma and alpha use double scalar calculations; ICC/chromaticity interpretation retains the bounded native color engine precision."
             },
             "encoded_output": {
               "type": "object",

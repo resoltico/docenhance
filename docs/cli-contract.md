@@ -8,7 +8,7 @@ P = process.
 
 - `root` — `docenhance COMMAND [OPTIONS]`
 - `process` — `docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]`
-  Admit static PNG or bounded 8-bit baseline/progressive Huffman JPEG by signature. JPEG supports preserve/gray with opt-in I01; bw and protection masks retain their grayscale PNG contracts.
+  Admit static PNG or bounded 8-bit baseline/progressive Huffman JPEG by signature. JPEG supports preserve/gray with opt-in I01; bw and protection masks retain their grayscale PNG contracts. All PNG paths reject animation and trailing container bytes; binary processing retains stored grayscale samples.
 - `verify` — `docenhance verify DIRECTORY [--json]`
   Validate the complete supported run record, closed artifact inventory and observable PNG properties without executing the recorded request.
 - `methods` — `docenhance methods [ID] [--json]`
