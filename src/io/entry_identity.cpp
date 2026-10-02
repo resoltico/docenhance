@@ -65,7 +65,7 @@ HANDLE metadata_handle(const std::filesystem::path& path, bool directory) {
     }
     return handle;
 }
-HANDLE object_handle(HANDLE const named, const EntryIdentity& expected) {
+HANDLE object_handle(void* const named, const EntryIdentity& expected) {
     // The scalar descriptor represents an exactly zero-extended identifier, not a truncated one.
     // Every opened object is still compared using the complete 128-bit identity and volume.
     const auto size = static_cast<DWORD>(sizeof(FILE_ID_DESCRIPTOR));
@@ -73,11 +73,11 @@ HANDLE object_handle(HANDLE const named, const EntryIdentity& expected) {
         expected.object_high == 0
             ? FILE_ID_DESCRIPTOR{.dwSize = size,
                                  .Type = FileIdType,
-                                 .FileId = std::bit_cast<LARGE_INTEGER>(expected.object)}
+                                 .FileId = std::bit_cast<LARGE_INTEGER>(expected.object),}
             : FILE_ID_DESCRIPTOR{.dwSize = size,
                                  .Type = ExtendedFileIdType,
                                  .ExtendedFileId = std::bit_cast<FILE_ID_128>(
-                                     std::array{expected.object, expected.object_high})};
+                                     std::array{expected.object, expected.object_high}),};
     auto* const handle =
         OpenFileById(named, &descriptor, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
                      nullptr, FILE_FLAG_BACKUP_SEMANTICS);
