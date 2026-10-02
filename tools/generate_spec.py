@@ -97,6 +97,9 @@ def cxx_string(value: str) -> str:
 
 def render_header(contract: dict[str, Any], response_version: int) -> str:
     """Render the C++ contract: the command usage lines and the typed option catalog."""
+    if set(contract) != {"schema_version", "value_grammar", "commands", "options", "input_support"}:
+        msg = "The CLI authoring contract must use exactly the current fields"
+        raise ContractError(msg)
     commands: dict[str, dict[str, str]] = contract["commands"]
     symbols = {
         command["scope_symbol"]: name

@@ -84,7 +84,9 @@ bidirectional agreement between implemented method arguments and option applicab
 belongs to I01 and D01 and remains valid with both stages off. Derive format reporting and schema
 constants from the reviewed CLI matrix; retain actual PNG/JPEG processing/refusal tests as evidence
 that the declarations are implemented. Remove the unused CLI contract edition instead of giving
-it another reader. Derive the response envelope version from its schema template.
+it another reader; reject obsolete/unknown authoring fields rather than ignoring them. Capability
+entries now use contract::InputSupport; native consumers update directly, without an alias.
+Derive the response envelope version from its schema template.
 
 Denoising request/report schemas share method and parameter definitions and reject disconnected
 selection/settings. The complete typed reader still owns numerical and cross-field relationships

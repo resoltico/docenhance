@@ -8,6 +8,8 @@ Notable changes to this project are documented in this file. The format is based
 
 - Contract generation checks method-option attribution in both directions and derives D01 identities, format/mode reporting and the response envelope version from reviewed contracts. Protection help now identifies both I01 and D01. Denoising schemas share definitions and reject settings without a selected method; wire/record versions and numerical method definitions are unchanged.
 
+- **Breaking (C++/authoring):** capability entries use `contract::InputSupport` instead of `app::InputSupport`; update native consumers. The unused CLI `contract_version` field is removed, and obsolete or unknown authoring fields are rejected without aliases or migration.
+
 ### Internal
 
 - Real executable checks compare complete help descriptors and admitted default records with the reviewed contract, and reject empty values for every declared value option. Documentation distinguishes verification refusal before commit from integrity failure after known publication.
