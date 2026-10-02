@@ -6,7 +6,9 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
 import os
 import subprocess
 from pathlib import Path
@@ -25,6 +27,7 @@ from fuzz_manifest import (
     target_timeout,
     targets,
 )
+from test_evidence import complete_junit
 
 
 def configured_engine(build: Path) -> str:
@@ -85,12 +88,17 @@ def registration(ctest: str, build: Path, seconds: int) -> set[str]:
     return {name.removeprefix("fuzz-") for name in expected}
 
 
-def complete_reports(directory: Path, expected: set[str]) -> bool:
+def complete_reports(directory: Path, expected: set[str], build: Path, seconds: int) -> bool:
     """A fresh campaign needs exactly one successful, nonempty report per expected harness."""
     reports = [
         json.loads(path.read_text(encoding="utf-8")) for path in directory.glob("*/result.json")
     ]
     names = [report.get("target") for report in reports]
+    manifest_hash = hashlib.sha256((ROOT / "fuzz/targets.json").read_bytes()).hexdigest()
+    binary_hashes = {
+        name: hashlib.sha256((build / "fuzz" / f"de_fuzz_{name}").read_bytes()).hexdigest()
+        for name in expected
+    }
     return (
         len(names) == len(expected)
         and set(names) == expected
@@ -100,6 +108,14 @@ def complete_reports(directory: Path, expected: set[str]) -> bool:
             and type(report.get("executions")) is int
             and report["executions"] > 0
             and report.get("findings") == []
+            and type(report.get("seconds")) is int
+            and report["seconds"] == seconds
+            and type(report.get("engine_elapsed_seconds")) in {int, float}
+            and math.isfinite(report["engine_elapsed_seconds"])
+            and report["engine_elapsed_seconds"] >= seconds
+            and report.get("engine") == configured_engine(build)
+            and report.get("manifest_sha256") == manifest_hash
+            and report.get("binary_sha256") == binary_hashes[report["target"]]
             for report in reports
         )
     )
@@ -135,7 +151,10 @@ def campaign(args: argparse.Namespace) -> int:
             campaign_timeout(len(expected), args.seconds, args.jobs),
             graceful=True,
         )
-        report["passed"] = report["exit_code"] == 0 and complete_reports(directory, expected)
+        complete_junit(directory / "ctest.xml", {f"fuzz-{name}" for name in expected})
+        report["passed"] = report["exit_code"] == 0 and complete_reports(
+            directory, expected, build, args.seconds
+        )
     except (OSError, ValueError, KeyError, IndexError, subprocess.SubprocessError) as exc:
         report["error"] = str(exc)
     finally:

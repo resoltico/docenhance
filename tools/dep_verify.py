@@ -33,8 +33,8 @@ class CommandError(RuntimeError):
     """An external command exited with a non-zero status."""
 
 
-def run(*args: str, cwd: Path | None = None) -> str:
-    """Run a command without prompts or system Git configuration and return its stdout."""
+def command_environment() -> dict[str, str]:
+    """Exclude inherited Git identity/configuration overrides from repository-owned commands."""
     env = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
     env.update(
         GIT_TERMINAL_PROMPT="0",
@@ -42,6 +42,12 @@ def run(*args: str, cwd: Path | None = None) -> str:
         GIT_CONFIG_GLOBAL=os.devnull,
         GIT_DEFAULT_HASH="sha1",
     )
+    return env
+
+
+def run(*args: str, cwd: Path | None = None) -> str:
+    """Run a command without prompts or system Git configuration and return its stdout."""
+    env = command_environment()
     if args and args[0] == "git" and cwd is not None:
         args = ("git", "-c", f"safe.directory={cwd.resolve()}", *args[1:])
     result = subprocess.run(

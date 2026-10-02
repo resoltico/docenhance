@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -25,7 +24,7 @@ import run_fuzz_campaign
 
 # This is an orchestration fixture, NOT an image harness or claimed native engine result.
 CHILD = """
-import json, os, pathlib, sys, time
+import hashlib, json, os, pathlib, sys, time
 root = pathlib.Path(os.environ["DE_FUZZ_RUN_ROOT"])
 name = sys.argv[1]
 (root / (name + ".ready")).touch()
@@ -37,17 +36,28 @@ while not all((root / (item + ".ready")).exists() for item in ("a", "b")):
 out = root / (name + "-fixture")
 out.mkdir()
 (out / "result.json").write_text(json.dumps({
-    "target": name, "passed": True, "exit_code": 0, "executions": 1, "findings": []
+    "target": name, "passed": True, "exit_code": 0, "executions": 1, "findings": [],
+    "seconds": 1, "engine_elapsed_seconds": 1.0, "engine": "libfuzzer",
+    "binary_sha256": hashlib.sha256(
+        (pathlib.Path(__file__).parent / "fuzz" / ("de_fuzz_" + name)).read_bytes()
+    ).hexdigest(),
+    "manifest_sha256": hashlib.sha256(pathlib.Path(sys.argv[2]).read_bytes()).hexdigest()
 }))
 """
 
 
 def make_ctest_tree(root: Path, script: str) -> None:
     """Create only CTest fixtures; no compiler or replacement product implementation is used."""
+    (root / "CMakeCache.txt").write_text("DE_FUZZ_ENGINE:STRING=libfuzzer\n")
+    (root / "fuzz").mkdir(exist_ok=True)
+    for name in ("a", "b"):
+        (root / "fuzz" / ("de_fuzz_" + name)).write_bytes(b"synthetic coordinator evidence")
     child = root / "child.py"
     child.write_text(textwrap.dedent(script), encoding="utf-8")
+    manifest = (ROOT / "fuzz/targets.json").as_posix()
+    interpreter = Path(sys.executable).as_posix()
     tests = [
-        f'add_test(fuzz-{name} "{Path(sys.executable).as_posix()}" "{child.as_posix()}" {name})\n'
+        f'add_test(fuzz-{name} "{interpreter}" "{child.as_posix()}" {name} "{manifest}")\n'
         for name in ("a", "b")
     ]
     (root / "CTestTestfile.cmake").write_text("".join(tests), encoding="utf-8")
@@ -103,7 +113,7 @@ class CampaignOrchestrationTests(unittest.TestCase):
             self.assertFalse(work.exists())
 
     def test_codec_symbols_need_both_sanitizers_and_coverage(self) -> None:
-        """Wrapper-only or partially instrumented upstream archives cannot pass the check."""
+        """Missing sanitizer or coverage signatures fail the archive presence check."""
         symbols = "__asan_load1 __ubsan_handle_type_mismatch_v1 __sanitizer_cov_8bit_counters_init"
         self.assertTrue(fuzz_instrumentation.instrumented_symbols(symbols))
         for removed in (
@@ -115,7 +125,6 @@ class CampaignOrchestrationTests(unittest.TestCase):
                 fuzz_instrumentation.instrumented_symbols(symbols.replace(removed, ""))
             )
 
-    @unittest.skipUnless(os.name == "posix", "POSIX symlink semantics")
     def test_corpus_symlink_is_not_followed(self) -> None:
         """External bytes cannot silently enter a supposedly repository-owned seed inventory."""
         with tempfile.TemporaryDirectory() as temporary:

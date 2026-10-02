@@ -24,6 +24,8 @@ jobs:
         run: |
           python tools/install_build_tools.py
           python tools/install_build_tools.py --lint
+      - name: Install pinned compiler and AST checker
+        run: python tools/install_llvm.py --compiler
       - name: Source integrity and structural checks
         run: python tools/check_project.py
       - name: Quality-policy checks
@@ -37,7 +39,7 @@ jobs:
           python -m ruff check --output-format github
           python -m mypy
       - name: Tooling tests
-        run: python -m unittest discover -s tests/tooling -v
+        run: python tools/run_tooling_tests.py
       - name: Package deterministic source archive
         run: python tools/package_source.py
       - name: Attest source-archive provenance

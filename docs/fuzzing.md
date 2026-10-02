@@ -35,7 +35,9 @@ A hard runner/host kill can leave an incomplete report; incomplete evidence cann
 
 A passing campaign requires CTest success AND exactly one passing report per expected target.
 Each report requires engine exit zero, a positive native execution count, at least the requested
-engine wall time, and no saved findings. Early successful exits are incomplete runs.
+engine wall time, and no saved findings. The coordinator independently rechecks duration, engine,
+actual binary/manifest identities and complete executed JUnit results, rather than trusting the
+runner-provided passed flag. Early successful exits are incomplete runs.
 Missing statistics, zero executions, missing/duplicate reports, timeouts and saved crashes/hangs
 are failures. JUnit and CTest logs are retained as evidence; target reports establish completion
 without trusting a decorative PASS line or treating skipped tests as successes.
@@ -130,3 +132,7 @@ whole native call, checks correction identity and resource refunds. Isolated fuz
 OpenCV core/photo/imgproc alongside the codec archives; imported archive symbols establish actual
 ASan/UBSan and coverage presence. The required PR workload budget is 2100 seconds for the expanded
 complete target set. Native assembly remains outside the instrumentation claim.
+
+Archive sanitizer/coverage symbols establish their presence in the actual imported archives.
+Build flags and locked sources support the instrumentation configuration; neither symbol presence
+nor a passing campaign proves that every object, assembly instruction or possible input was covered.

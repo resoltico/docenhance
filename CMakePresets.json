@@ -213,7 +213,7 @@
       "name": "release",
       "configurePreset": "release",
       "generators": [
-        "TGZ"
+        "External"
       ],
       "output": {
         "verbose": true

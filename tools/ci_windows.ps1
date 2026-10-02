@@ -11,5 +11,5 @@ cmake --workflow --preset release
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 $packages = @(Get-ChildItem dist/*.tar.gz)
 if ($packages.Count -ne 1) { throw 'Expected one native package' }
-python tools/package_smoke.py $packages[0].FullName
+python tools/package_smoke.py $packages[0].FullName --build out/release/app
 exit $LASTEXITCODE

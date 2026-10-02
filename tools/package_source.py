@@ -6,19 +6,14 @@
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
-import io
 import os
-import tarfile
 import tempfile
 from pathlib import Path
-from typing import TYPE_CHECKING
 
-from project_version import project_version
-
-if TYPE_CHECKING:
-    from collections.abc import Iterator
+from archive_payload import write_payload
+from project_version import version_from_text
+from source_snapshot import snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED = frozenset(
@@ -53,17 +48,15 @@ class ArchiveError(ValueError):
     """The source tree or destination cannot produce a trustworthy archive."""
 
 
-def source_files(root: Path) -> Iterator[tuple[Path, Path]]:
-    """Yield (path, relative path) for every file that belongs in the source archive."""
-    for path in sorted(root.rglob("*")):
-        rel = path.relative_to(root)
-        if any(part in EXCLUDED for part in rel.parts):
-            continue
-        if path.is_symlink():
-            msg = f"Source archive does not accept symlinks: {rel}"
-            raise ArchiveError(msg)
-        if path.is_file() and rel.name not in EXCLUDED_NAMES and rel.suffix != ".pyc":
-            yield path, rel
+def source_files(root: Path) -> dict[str, bytes]:
+    """Select committed source blobs, excluding only declared build and machine artifacts."""
+    return {
+        name: data
+        for name, data in snapshot(root).items()
+        if not any(part in EXCLUDED for part in Path(name).parts)
+        and Path(name).name not in EXCLUDED_NAMES
+        and not name.endswith(".pyc")
+    }
 
 
 def file_mode(data: bytes) -> int:
@@ -71,27 +64,11 @@ def file_mode(data: bytes) -> int:
     return EXECUTABLE_MODE if data.startswith(b"#!") else REGULAR_MODE
 
 
-def write_tar(target: Path, entries: list[tuple[Path, Path]], manifest: str, epoch: int) -> None:
+def write_tar(target: Path, entries: dict[str, bytes], manifest: str, epoch: int) -> None:
     """Write a reproducible PAX tar.gz with normalized ownership, modes and times."""
-    with (
-        target.open("wb") as raw,
-        gzip.GzipFile(filename="", fileobj=raw, mode="wb", mtime=epoch, compresslevel=9) as zipped,
-        tarfile.open(fileobj=zipped, mode="w", format=tarfile.PAX_FORMAT) as tf,
-    ):
-
-        def add(name: str, data: bytes, mode: int) -> None:
-            info = tarfile.TarInfo("docenhance/" + name)
-            info.size = len(data)
-            info.mode = mode
-            info.mtime = epoch
-            info.uid = info.gid = 0
-            info.uname = info.gname = ""
-            tf.addfile(info, io.BytesIO(data))
-
-        for path, rel in entries:
-            data = path.read_bytes()
-            add(rel.as_posix(), data, file_mode(data))
-        add("SOURCE_MANIFEST.sha256", manifest.encode(), REGULAR_MODE)
+    files = {name: (data, file_mode(data)) for name, data in entries.items()}
+    files["SOURCE_MANIFEST.sha256"] = (manifest.encode(), REGULAR_MODE)
+    write_payload(target, files, "docenhance", epoch)
 
 
 def publish(temp_path: Path, target: Path) -> None:
@@ -110,17 +87,16 @@ def publish(temp_path: Path, target: Path) -> None:
 
 def make_archive(destination: Path, epoch: int = 0) -> Path:
     """Build the archive and its .sha256 file in destination and return the archive path."""
-    version = project_version()
+    entries = source_files(ROOT)
+    version = version_from_text(entries["CMakeLists.txt"].decode("utf-8"))
     destination.mkdir(parents=True, exist_ok=True)
     target = destination / f"docenhance-{version}-source.tar.gz"
-    entries = list(source_files(ROOT))
     inside_repository = target.resolve().is_relative_to(ROOT.resolve())
     if inside_repository and not destination.resolve().is_relative_to((ROOT / "dist").resolve()):
         msg = "Inside the repository, source archives must go under dist/"
         raise ArchiveError(msg)
     manifest = "".join(
-        f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {rel.as_posix()}\n"
-        for path, rel in entries
+        f"{hashlib.sha256(data).hexdigest()}  {name}\n" for name, data in sorted(entries.items())
     )
     with tempfile.NamedTemporaryFile(prefix=".docenhance-", dir=destination, delete=False) as temp:
         temp_path = Path(temp.name)

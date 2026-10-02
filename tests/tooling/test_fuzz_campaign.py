@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 import shlex
@@ -141,7 +142,18 @@ class EvidenceTests(unittest.TestCase):
             root = Path(temporary)
             directory = root / "probe-1"
             directory.mkdir()
+            (root / "fuzz").mkdir()
+            binary = root / "fuzz/de_fuzz_probe"
+            binary.write_bytes(b"coordinator fixture only")
+            (root / "CMakeCache.txt").write_text("DE_FUZZ_ENGINE:STRING=libfuzzer\n")
             report = {
+                "engine": "libfuzzer",
+                "seconds": 60,
+                "engine_elapsed_seconds": 61,
+                "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
+                "manifest_sha256": hashlib.sha256(
+                    (ROOT / "fuzz/targets.json").read_bytes()
+                ).hexdigest(),
                 "target": "probe",
                 "passed": True,
                 "exit_code": 0,
@@ -149,21 +161,27 @@ class EvidenceTests(unittest.TestCase):
                 "findings": [],
             }
             path = directory / "result.json"
-            self.assertFalse(run_fuzz_campaign.complete_reports(root, {"probe"}))
+            self.assertFalse(run_fuzz_campaign.complete_reports(root, {"probe"}, root, 60))
             for change in (
                 {"passed": False},
                 {"executions": 0},
                 {"executions": True},
                 {"exit_code": 7},
                 {"findings": ["crash"]},
+                {"engine_elapsed_seconds": 0},
+                {"engine_elapsed_seconds": float("inf")},
+                {"seconds": True},
+                {"seconds": 1},
+                {"binary_sha256": "not the executed binary"},
+                {"manifest_sha256": "not the reviewed declarations"},
             ):
                 fuzz_execution.write_json(path, report | change)
-                self.assertFalse(run_fuzz_campaign.complete_reports(root, {"probe"}))
+                self.assertFalse(run_fuzz_campaign.complete_reports(root, {"probe"}, root, 60))
             fuzz_execution.write_json(path, report)
-            self.assertTrue(run_fuzz_campaign.complete_reports(root, {"probe"}))
+            self.assertTrue(run_fuzz_campaign.complete_reports(root, {"probe"}, root, 60))
             (root / "probe-2").mkdir()
             fuzz_execution.write_json(root / "probe-2/result.json", report)
-            self.assertFalse(run_fuzz_campaign.complete_reports(root, {"probe"}))
+            self.assertFalse(run_fuzz_campaign.complete_reports(root, {"probe"}, root, 60))
 
     def test_early_exit_is_not_a_completed_campaign(self) -> None:
         """Native work statistics alone cannot justify a run that stopped before its budget."""

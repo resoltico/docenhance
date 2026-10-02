@@ -133,7 +133,7 @@ Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --t
 
 ```sh
 cmake --workflow --preset release
-python tools/package_smoke.py dist/docenhance-<project-version>-Linux-x86_64.tar.gz
+python tools/package_smoke.py dist/docenhance-<project-version>-Linux-x86_64.tar.gz --build out/release/app
 ```
 
 Use the actual platform-specific filename written by CPack. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates only the application and its metadata; upstream command-line tools, tests, compilers and Python are not included. A separate relocated-package smoke test is mandatory in CI.
@@ -151,13 +151,14 @@ artifacts, not signed final application releases.
 python tools/package_source.py
 ```
 
-This creates a deterministic source archive, with sorted entries, normalized ownership, a fixed timestamp (or explicit `SOURCE_DATE_EPOCH`), SHA-256 sidecar, and internal file manifest. No `.git`, downloaded sources, build outputs, personal presets, bytecode caches or local environment is included. It refuses to replace an existing archive with different bytes; choose a fresh output directory after changes.
+This archives the resolved committed Git tree, with sorted entries, normalized ownership, a fixed timestamp (or explicit `SOURCE_DATE_EPOCH`), SHA-256 sidecar, and internal file manifest. Dirty tracked files and untracked workspace files are excluded. Creating a release-source archive requires a Git checkout; ordinary builds from an extracted source archive remain supported. Each immutable blob supplies both its manifest hash and tar payload. No `.git`, downloaded sources, build outputs, personal presets, bytecode caches or local environment is included. It refuses to replace an existing archive with different bytes; choose a fresh output directory after changes.
 
 ## Offline reference tests without third-party sources
 
 ```sh
 python tools/check_project.py
 python -m unittest discover -s tests/tooling -v
+python tools/run_tooling_tests.py
 python tools/check_reference_suite.py --compiler g++
 python tools/check_reference_suite.py --compiler clang++-23
 python tools/check_reference_suite.py --compiler g++ --sanitize
@@ -199,3 +200,28 @@ The Docker gate selects the Linux daemon's native architecture explicitly. `DOCK
 is refused; its image and native volumes bind architecture, image contents and dependency/build
 policy. One gate owns a checkout at a time. Each run retains its own diagnostic log, with
 `latest.log` a convenience copy. An interrupted writer claim requires inspection before removal.
+
+## Complete execution and package evidence
+
+The native workflow reconciles actual compiler entries, Catch JSON discovery, CLI scripts,
+manifest-declared corpus replay and fresh CTest JUnit. Required tests cannot be disabled, skipped,
+empty assertion work or expected-failure cases. Catch uses `SKIP_IS_FAILURE`; its XML summaries
+prove assertion work, while CTest results prove every registered process completed. Passing output
+has a finite 1 MiB capture bound; truncation or missing evidence fails rather than becoming success.
+The strict tooling runner likewise requires every test module and refuses skipped cases.
+
+Package inspection requires the independently tested application build directory (`--build`). It
+compares the relocated executable byte-for-byte, all specs/schemas and the closed file inventory,
+regenerates upstream notices/licenses/SPDX from verified locked sources, checks complete runtime
+build/capability facts and native OS imports, then exercises B02/B03/I01/D01 and verifies their
+bundles. License regeneration replaces only its configured build's owned `package-metadata`
+directory after successful preparation, removing stale generated files.
+
+These checks establish execution, agreement and declared support. They do not establish exhaustive
+fuzz coverage, every-object/assembly instrumentation, legal clearance, document authenticity,
+performance or execution on every older OS named by a deployment load command.
+
+Native packaging uses CPack External for the owned install stage and a byte-payload tar writer.
+The resulting `.tar.gz` preserves intended executable permissions and excludes host extended
+attributes/resource forks; the generator's JSON is build metadata, not an additional runtime
+payload. Native binaries are still not claimed to be bit-reproducible across builds.

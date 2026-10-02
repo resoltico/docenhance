@@ -33,7 +33,7 @@ CHECKS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("ruff format", ("-m", "ruff", "format", "--check")),
     ("ruff lint", ("-m", "ruff", "check")),
     ("mypy", ("-m", "mypy")),
-    ("tooling tests", ("-m", "unittest", "discover", "-s", "tests/tooling")),
+    ("tooling tests", ("tools/run_tooling_tests.py",)),
 )
 
 

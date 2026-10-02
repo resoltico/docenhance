@@ -17,10 +17,9 @@ from pathlib import Path
 from typing import Any, override
 from unittest.mock import patch
 
-from tools_path import ROOT
-
 import architecture
 import architecture_build
+import run_native_suite
 
 LAYER_COUNT = 14
 
@@ -132,10 +131,7 @@ class ManifestBoundaryTests(unittest.TestCase):
 
     def test_allocator_calls_are_detected_by_the_real_ast(self) -> None:
         """Explicit allocator calls and allocation expressions are separate bypass attempts."""
-        try:
-            clang_query = architecture_build.find_clang_query()
-        except architecture.ArchitectureError as exc:
-            self.skipTest(str(exc))
+        clang_query = architecture_build.find_clang_query()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / "src/image/probe.cpp"
@@ -258,24 +254,15 @@ class LinkRuleTests(unittest.TestCase):
             self.assertEqual(layers, {"core"})
             self.assertEqual(packages, {"CLI11"})
 
-    def test_registration_covers_every_layer(self) -> None:
-        """The manifest and the build's own registration name the same targets."""
-        # The newest build tree: another preset's tree may predate a layer this one declares.
-        registrations = sorted(
-            ROOT.glob("out/*/app/architecture-targets.json"), key=lambda p: p.stat().st_mtime
-        )
-        registrations = [
-            path
-            for path in registrations
-            if "docenhance" in json.loads(path.read_text(encoding="utf-8"))
-        ]
-        if not registrations:
-            self.skipTest("no configured build tree to read the registration from")
-        registration = registrations[-1]
-        records = json.loads(registration.read_text(encoding="utf-8"))
-        self.assertEqual(
-            {record["layer"] for record in records.values()}, set(self.manifest.layers)
-        )
+    def test_registration_rejects_missing_and_misattributed_layers(self) -> None:
+        """The native owner rejects omitted layers; tooling needs no ambient build directory."""
+        records = {value["target"]: {"layer": name} for name, value in self.manifest.layers.items()}
+        self.assertEqual(run_native_suite.layer_records_errors(self.manifest.layers, records), [])
+        removed = dict(records)
+        removed.pop("de_core")
+        self.assertTrue(run_native_suite.layer_records_errors(self.manifest.layers, removed))
+        changed = records | {"de_core": {"layer": "image"}}
+        self.assertTrue(run_native_suite.layer_records_errors(self.manifest.layers, changed))
 
 
 if __name__ == "__main__":

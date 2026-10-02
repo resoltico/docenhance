@@ -35,7 +35,7 @@ REQUIRED_SOURCE_COMMANDS = (
     "python -m ruff format --check",
     "python -m ruff check --output-format github",
     "python -m mypy",
-    "python -m unittest discover -s tests/tooling -v",
+    "python tools/run_tooling_tests.py",
     "python tools/package_source.py",
     "python tools/publish_source_release.py --check",
 )
