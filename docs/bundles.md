@@ -188,7 +188,10 @@ privileged process. There is no rollback, automatic processing retry, copy fallb
 sweep, and atomic visibility still does not promise crash durability.
 Native leases keep object identifiers from being recycled while checks are live. The transaction
 retains at most 65 metadata handles: one root and at most 64 bounded owned entries. Windows compares
-the full 128-bit file identifier and volume identity; unsupported identity observation fails closed.
+the full 128-bit file identifier and volume identity, with object leases opened by ID so descendant
+path handles do not prevent directory commit. Windows publication requires native open-by-ID support;
+SMB output destinations are refused. Use a supported local volume. Unsupported identity observation
+or object opening fails closed.
 Root, parent and created-entry identities are checked around writer/validation callbacks and the
 commit cutoff. Known replacement prevents further effects, and copied record bytes cannot prove
 publication origin. Rename/unlink cannot atomically compare a caller-supplied object identity; these

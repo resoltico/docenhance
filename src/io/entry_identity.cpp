@@ -65,6 +65,28 @@ HANDLE metadata_handle(const std::filesystem::path& path, bool directory) {
     }
     return handle;
 }
+HANDLE object_handle(HANDLE const named, const EntryIdentity& expected) {
+    // The scalar descriptor represents an exactly zero-extended identifier, not a truncated one.
+    // Every opened object is still compared using the complete 128-bit identity and volume.
+    const auto size = static_cast<DWORD>(sizeof(FILE_ID_DESCRIPTOR));
+    auto descriptor =
+        expected.object_high == 0
+            ? FILE_ID_DESCRIPTOR{.dwSize = size,
+                                 .Type = FileIdType,
+                                 .FileId = std::bit_cast<LARGE_INTEGER>(expected.object)}
+            : FILE_ID_DESCRIPTOR{.dwSize = size,
+                                 .Type = ExtendedFileIdType,
+                                 .ExtendedFileId = std::bit_cast<FILE_ID_128>(
+                                     std::array{expected.object, expected.object_high})};
+    auto* const handle =
+        OpenFileById(named, &descriptor, 0, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                     nullptr, FILE_FLAG_BACKUP_SEMANTICS);
+    if (handle != INVALID_HANDLE_VALUE && handle_identity(handle) != expected) {
+        CloseHandle(handle);
+        return INVALID_HANDLE_VALUE;
+    }
+    return handle;
+}
 } // namespace
 std::optional<EntryIdentity> stream_identity(std::FILE* file) noexcept {
     const auto native = _get_osfhandle(_fileno(file));
@@ -96,11 +118,13 @@ EntryLease EntryLease::directory(const std::filesystem::path& path) {
     if (handle != INVALID_HANDLE_VALUE) {
         const auto identity = handle_identity(handle);
         if (identity) {
-            result.handle_ = handle;
-            result.identity_ = *identity;
-        } else {
-            CloseHandle(handle);
+            auto* const retained = object_handle(handle, *identity);
+            if (retained != INVALID_HANDLE_VALUE) {
+                result.handle_ = retained;
+                result.identity_ = *identity;
+            }
         }
+        CloseHandle(handle);
     }
     return result;
 }
@@ -110,11 +134,13 @@ EntryLease EntryLease::capture(std::FILE* file, const std::filesystem::path& pat
     if (handle != INVALID_HANDLE_VALUE) {
         const auto identity = handle_identity(handle);
         if (identity && identity == stream_identity(file)) {
-            result.handle_ = handle;
-            result.identity_ = *identity;
-        } else {
-            CloseHandle(handle);
+            auto* const retained = object_handle(handle, *identity);
+            if (retained != INVALID_HANDLE_VALUE) {
+                result.handle_ = retained;
+                result.identity_ = *identity;
+            }
         }
+        CloseHandle(handle);
     }
     return result;
 }

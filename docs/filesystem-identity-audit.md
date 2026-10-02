@@ -45,7 +45,12 @@ Challenge copied-content foreign stages, working-directory changes, root/parent 
 symlinks/reparse points, special files, moved native readers and object-identity leases. A held lease
 must prevent identifier reuse and must not prevent legitimate rename or decoded verification.
 Windows metadata leases therefore need compatible sharing and must retain the full supported native
-file identifier. Test native effects with deterministic callbacks/checkpoints and thread handshakes,
+file identifier without retaining a descendant pathname open. Native Windows tests disproved the
+assumption that sharing alone permits parent-directory rename. Open leases by file ID, verify their
+full identity, and close the temporary named handle. Releasing descendant leases before commit would
+lose cleanup ownership; extra hard links would add namespace effects and cleanup state. Neither is
+needed. The scalar open descriptor is used only for an exactly zero-extended ID; identity comparison
+always uses all 128 bits plus the volume, and unavailable object opening fails closed. Test native effects with deterministic callbacks/checkpoints and thread handshakes,
 not timing sleeps. Directory/file tables and native handle retention remain finite.
 
 Verify no writes through a known replaced parent, no success for a foreign stage, no foreign cleanup,
@@ -61,7 +66,12 @@ is needed, and the old partial-record API and observation enum are removed witho
 
 ## Native references and limits
 
-Windows metadata leases use compatible read/write/delete sharing and full file identity. The
+Windows metadata leases use compatible read/write/delete sharing and full file identity.
+The [directory-open detection rule](https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-fsa/133840e4-778e-44ca-9b41-da2323615075)
+explains the native parent-rename refusal; [OpenFileById](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-openfilebyid)
+provides object opening without keeping the descendant pathname open. This last property is also
+challenged by the real directory rename/readback fixtures. Windows publication requires native
+open-by-ID support; SMB destinations do not provide this API and must use a supported local volume. The
 [FILE_ID_INFO contract](https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_id_info)
 provides the volume and 128-bit identifier; the
 [legacy information contract](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/ns-fileapi-by_handle_file_information)

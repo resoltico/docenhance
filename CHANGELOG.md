@@ -6,7 +6,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
-- **Breaking (C++ I/O/Windows paths):** bundle validation uses one `validate` callback; the partial `read_bundle_record` API and publication-observation enum are removed. Windows drive-relative publication paths such as `C:result` are rejected; use a fully qualified drive path or an ordinary relative path. POSIX output files now use owner-only creation modes; explicitly grant file permissions when sharing results.
+- **Breaking (C++ I/O/Windows paths):** bundle validation uses one `validate` callback; the partial `read_bundle_record` API and publication-observation enum are removed. Windows drive-relative publication paths such as `C:result` are rejected; use a fully qualified drive path or an ordinary relative path. Windows publication requires native open-by-ID support and refuses SMB output destinations; use a supported local volume. POSIX output files now use owner-only creation modes; explicitly grant file permissions when sharing results.
 
 - **Breaking (build/C++ integration):** native builds use a checked private JSON header with allocation-free, bounded recursive destruction. Recreate build trees and private dependency prefixes for the changed recipe, and use that header consistently in integrations. Record DOM admission remains limited to 16 levels; arbitrary-depth JSON is unsupported.
 
