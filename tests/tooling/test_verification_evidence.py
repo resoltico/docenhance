@@ -146,6 +146,27 @@ class DeliveredBytesTests(unittest.TestCase):
         ):
             self.assertTrue(package_inspection.differences(changed, expected))
 
+    def test_windows_virtual_contract_requires_an_os_host(self) -> None:
+        """Synthetic resolution tests classification; Windows CI exercises the actual OS loader."""
+        with tempfile.TemporaryDirectory() as temporary:
+            system = Path(temporary)
+            (system / "KERNEL32.dll").write_bytes(b"OS fixture")
+            self.assertTrue(package_inspection.windows_system_import("KERNEL32.dll", system))
+            name = "api-ms-win-core-synch-l1-2-0.dll"
+            with patch(
+                "package_inspection.windows_api_host", return_value=system / "KernelBase.dll"
+            ):
+                self.assertTrue(package_inspection.windows_system_import(name, system))
+            for host in (None, system.parent / "foreign.dll"):
+                with patch("package_inspection.windows_api_host", return_value=host):
+                    self.assertFalse(package_inspection.windows_system_import(name, system))
+            self.assertFalse(
+                package_inspection.windows_system_import(
+                    "api-ms-win-crt-runtime-l1-1-0.dll", system
+                )
+            )
+            self.assertFalse(package_inspection.windows_system_import("opencv_photo.dll", system))
+
     def test_committed_snapshot_excludes_dirty_and_untracked_contents(self) -> None:
         """Source payloads and hashes describe the committed tree even in a dirty checkout."""
         with tempfile.TemporaryDirectory() as temporary:

@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import ctypes
 import hashlib
 import json
 import os
@@ -65,6 +66,55 @@ def expected_files(build: Path, executable: str) -> dict[str, bytes]:
     return expected
 
 
+LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
+WINDOWS_PATH_CHARS = 32768
+
+
+def windows_api_host(name: str, system_directory: Path) -> Path | None:
+    """Resolve a virtual core API contract through the OS-only loader and inspect its host path."""
+    loader = getattr(ctypes, "WinDLL", None)
+    if loader is None:
+        msg = "Windows OS library inspection requires the Windows ctypes loader"
+        raise ValueError(msg)
+    kernel = loader(
+        str(system_directory / "kernel32.dll"),
+        use_last_error=True,
+        winmode=LOAD_LIBRARY_SEARCH_SYSTEM32,
+    )
+    load = kernel.LoadLibraryExW
+    load.argtypes = [ctypes.c_wchar_p, ctypes.c_void_p, ctypes.c_uint32]
+    load.restype = ctypes.c_void_p
+    locate = kernel.GetModuleFileNameW
+    locate.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_wchar), ctypes.c_uint32]
+    locate.restype = ctypes.c_uint32
+    release = kernel.FreeLibrary
+    release.argtypes = [ctypes.c_void_p]
+    release.restype = ctypes.c_int
+    handle = load(name, None, LOAD_LIBRARY_SEARCH_SYSTEM32)
+    if not handle:
+        return None
+    try:
+        buffer = ctypes.create_unicode_buffer(WINDOWS_PATH_CHARS)
+        length = locate(handle, buffer, len(buffer))
+        return Path(buffer.value) if 0 < length < len(buffer) else None
+    finally:
+        if not release(handle):
+            msg = "Cannot release the inspected OS library handle"
+            raise ValueError(msg)
+
+
+def windows_system_import(name: str, system_directory: Path) -> bool:
+    """Require a physical OS DLL or a System32-backed virtual core contract, excluding CRT DLLs."""
+    if re.match(r"(?:msvcp|msvcr|vcruntime|ucrtbase|api-ms-win-crt)", name, re.IGNORECASE):
+        return False
+    if (system_directory / name).is_file():
+        return True
+    if not re.fullmatch(r"api-ms-win-core-[a-z0-9-]+\.dll", name, re.IGNORECASE):
+        return False
+    host = windows_api_host(name, system_directory)
+    return host is not None and host.parent == system_directory
+
+
 def imports(executable: Path) -> list[str]:
     """Read actual native imports; inspection tools are prerequisites, never optional coverage."""
     system = platform.system()
@@ -95,11 +145,7 @@ def imports(executable: Path) -> list[str]:
     if system == "Windows":
         values = re.findall(r"^\s+([\w.-]+\.dll)\s*$", text, re.MULTILINE | re.IGNORECASE)
         system_directory = Path(os.environ["SYSTEMROOT"]) / "System32"
-        if not values or any(
-            not (system_directory / name).is_file()
-            or re.match(r"(?:msvcp|msvcr|vcruntime|ucrtbase|api-ms-win-crt)", name, re.IGNORECASE)
-            for name in values
-        ):
+        if not values or not all(windows_system_import(name, system_directory) for name in values):
             msg = f"Executable imports a non-OS library or dynamic CRT: {values}"
             raise ValueError(msg)
         return values

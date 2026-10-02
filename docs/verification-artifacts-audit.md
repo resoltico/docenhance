@@ -89,3 +89,10 @@ shared byte-payload tar writer for source/native archives. It preserves intended
 and regular file contents with explicit portable metadata, rather than rewriting source attributes
 or relaxing inventory checks. Native archive bytes are stable for a given stage; reproducible
 compilation is still not claimed. See [CPack External](https://cmake.org/cmake/help/latest/cpack_gen/external.html).
+
+Windows inspection must distinguish physical DLLs from core API-set contracts. File existence
+incorrectly rejected a supported synchronization import after the full Windows suite passed.
+Resolve virtual core contracts with the System32-only OS loader, inspect their actual host path,
+and release the inspection handle. Keep dynamic CRT and non-OS import refusal unchanged, with
+negative controls for absent/foreign hosts. [Microsoft's API-set contract](https://learn.microsoft.com/en-us/windows/win32/apiindex/windows-apisets)
+explains why a successful link is not evidence of a physical DLL file.
