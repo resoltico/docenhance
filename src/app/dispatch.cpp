@@ -4,6 +4,7 @@
 
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
+#include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
@@ -14,7 +15,6 @@
 #include "docenhance/methods/illumination.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <string>
 #include <type_traits>
@@ -24,11 +24,9 @@ namespace docenhance::app {
 namespace {
 // Reported, never assumed: these are the lists the layers below actually implement.
 Capabilities capabilities() noexcept {
-    static constexpr auto support = std::to_array<InputSupport>(
-        {{.format = "png", .binary = true}, {.format = "jpeg", .binary = false}});
     return {
         .methods = methods::implemented_methods(),
-        .input_support = support,
+        .input_support = contract::input_support,
     };
 }
 Outcome succeeded(const contract::Invocation& invocation, Payload payload) {

@@ -213,10 +213,10 @@
       "name": "--protect-mask",
       "metavar": "PATH",
       "scope": "P",
-      "group": "Illumination arguments",
+      "group": "Protection arguments",
       "domain": "Absent",
-      "methods": "I01",
-      "description": "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination is disabled."
+      "methods": "I01,D01",
+      "description": "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled."
     },
     {
       "name": "--denoise",
@@ -264,5 +264,14 @@
       "description": "NLM only. Search at least patch; active processing requires fit in smaller oriented dimension."
     }
   ],
-  "contract_version": "8.0"
+  "input_support": [
+    {
+      "format": "png",
+      "binary": true
+    },
+    {
+      "format": "jpeg",
+      "binary": false
+    }
+  ]
 }

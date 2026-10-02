@@ -71,7 +71,51 @@ def implemented(
     if not active:
         msg = "The executable must declare at least one implemented method"
         raise ValueError(msg)
+    validate_attribution(options, active, ids)
     return active
+
+
+def validate_attribution(
+    options: list[dict[str, Any]], active: list[dict[str, Any]], ids: set[str]
+) -> None:
+    """Require both reviewed views of method-option applicability to agree."""
+    for option in options:
+        declared = option.get("methods", "").split(",") if option.get("methods") else []
+        if len(set(declared)) != len(declared) or any(identity not in ids for identity in declared):
+            msg = f"{option['name']}: invalid method attribution"
+            raise ValueError(msg)
+        for entry in active:
+            if (entry["id"] in declared) != (option["name"] in entry["arguments"]):
+                msg = f"{option['name']}: attribution disagrees with {entry['id']} arguments"
+                raise ValueError(msg)
+
+
+def support_matrix(support: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Validate reviewed format admission and derive its wire representation."""
+    names: set[str] = set()
+    matrix = []
+    for item in support:
+        name = item.get("format")
+        if (
+            set(item) != {"format", "binary"}
+            or not isinstance(name, str)
+            or re.fullmatch(r"[a-z][a-z0-9]*", name) is None
+            or name in names
+            or type(item["binary"]) is not bool
+        ):
+            msg = "Input support requires unique formats and explicit binary admission"
+            raise ValueError(msg)
+        names.add(name)
+        matrix.append(
+            {
+                "format": name,
+                "output_modes": ["preserve", "gray", *(["bw"] if item["binary"] else [])],
+            }
+        )
+    if not matrix:
+        msg = "Input support must not be empty"
+        raise ValueError(msg)
+    return matrix
 
 
 def render_catalog(active: list[dict[str, Any]]) -> str:
@@ -105,7 +149,10 @@ def render_catalog(active: list[dict[str, Any]]) -> str:
 
 
 def metadata_outputs(
-    root: Path, entries: list[dict[str, Any]], options: list[dict[str, Any]]
+    root: Path,
+    entries: list[dict[str, Any]],
+    options: list[dict[str, Any]],
+    support: list[dict[str, Any]],
 ) -> dict[Path, str]:
     """Produce reviewed descriptors and closed method/version schema alternatives together."""
     active = implemented(entries, options)
@@ -156,9 +203,23 @@ def metadata_outputs(
             if entry["family"] == "illumination"
         ]
     }
+    schema["$defs"]["denoising_method"] = {
+        **schema["$defs"]["method"],
+        "oneOf": [
+            alternative
+            for alternative in schema["$defs"]["method"]["oneOf"]
+            if alternative["properties"]["id"]["const"]
+            in {entry["id"] for entry in active if entry["family"] == "denoising"}
+        ],
+    }
+    matrix = support_matrix(support)
     for branch in schema["oneOf"]:
         if "methods" in branch.get("properties", {}):
             branch["properties"]["methods"].update(maxItems=len(active), uniqueItems=True)
+            branch["properties"]["input_support"] = {"const": matrix}
+            branch["properties"]["supported_formats"] = {
+                "const": [item["format"] for item in matrix]
+            }
     record = json.loads((root / "spec/run-record.schema.json").read_text(encoding="utf-8"))
     record["description"] = (
         "Generated from spec/run-record.schema.json, spec/command-response.schema.json "
@@ -175,6 +236,7 @@ def metadata_outputs(
         source_decoding=schema["$defs"]["source_decoding"],
         denoising=schema["$defs"]["denoising"],
         denoising_request=schema["$defs"]["denoising_request"],
+        denoising_method=schema["$defs"]["denoising_method"],
         conversion=record_conversion,
         resolution=conversion["properties"]["resolution"],
         illumination=schema["$defs"]["illumination"],

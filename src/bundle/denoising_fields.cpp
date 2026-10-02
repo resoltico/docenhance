@@ -14,7 +14,7 @@ nlohmann::ordered_json parameters_fields(const methods::NlmParameters& p) {
 nlohmann::ordered_json denoising_request_fields(const methods::DenoisingReport& r) {
     using Json = nlohmann::ordered_json;
     return {{"method", r.requested
-                           ? Json{{"id", "D01"},
+                           ? Json{{"id", methods::Nlm::descriptor().id},
                                   {"method_version", methods::Nlm::descriptor().method_version},}
                            : Json(nullptr),},
             {"parameters", r.requested ? parameters_fields(*r.requested) : Json(nullptr)},};

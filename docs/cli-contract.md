@@ -14,6 +14,11 @@ P = process.
 - `methods` — `docenhance methods [ID] [--json]`
 - `version` — `docenhance version [--json]`
 
+## Input support
+
+- `png`: `preserve`, `gray`, `bw`.
+- `jpeg`: `preserve`, `gray`.
+
 ## Value grammar
 
 **Decimal values.** Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale. Conversion overflow, subnormal results and nonzero magnitudes rounded to zero are rejected; signed zero is admitted.
@@ -168,9 +173,9 @@ Positive grid-Laplacian weight for fitting the logarithmic background.
 
 **Scope:** P. **Domain/default:** Absent.
 
-1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination is disabled.
+1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
 
-**Applicable methods:** I01.
+**Applicable methods:** I01,D01.
 
 ## `--denoise METHOD`
 

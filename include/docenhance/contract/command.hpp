@@ -30,6 +30,10 @@ class CommandSet {
     }
     unsigned bits_ = 0;
 };
+struct InputSupport {
+    std::string_view format;
+    bool binary = false;
+};
 struct Invocation {
     Command command = Command::root;
     bool json = false;

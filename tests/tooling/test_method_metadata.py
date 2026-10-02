@@ -49,14 +49,18 @@ class MethodMetadataTests(unittest.TestCase):
             {"arguments": "--binarize"},
         ):
             with self.subTest(change=change), self.assertRaises(ValueError):
-                method_metadata.implemented([self.entry() | change], [{"name": "--binarize"}])
+                method_metadata.implemented(
+                    [self.entry() | change], [{"name": "--binarize", "methods": "B02"}]
+                )
 
     def test_duplicate_ids_and_selectors_are_rejected(self) -> None:
         """Neither an ID nor an implemented selector can refer to two methods."""
         entry = self.entry()
         for second in (entry, entry | {"id": "B03"}):
             with self.subTest(second=second), self.assertRaises(ValueError):
-                method_metadata.implemented([entry, second], [{"name": "--binarize"}])
+                method_metadata.implemented(
+                    [entry, second], [{"name": "--binarize", "methods": "B02"}]
+                )
         with self.assertRaises(ValueError):
             method_metadata.implemented([entry | {"status": "not-implemented"}], [])
 
@@ -64,7 +68,9 @@ class MethodMetadataTests(unittest.TestCase):
         """Planned method arguments need not be CLI capabilities and never enter the catalog."""
         active, planned = self.entry(), self.entry() | {"id": "B01", "status": "not-implemented"}
         planned["arguments"] = ["--future-option"]
-        result = method_metadata.implemented([active, planned], [{"name": "--binarize"}])
+        result = method_metadata.implemented(
+            [active, planned], [{"name": "--binarize", "methods": "B02"}]
+        )
         self.assertEqual(result, [active])
         header = method_metadata.render_catalog(result)
         self.assertIn('"B02"', header)
@@ -119,3 +125,56 @@ class MethodMetadataTests(unittest.TestCase):
         validator.validate(capabilities)
         capabilities["methods"] *= 2
         self.assertFalse(validator.is_valid(capabilities))
+
+    def test_option_attribution_is_bidirectional(self) -> None:
+        """Unknown, duplicated, missing and contradictory method attributions fail."""
+        for attribution in ("", "B03", "B02,B02", "B02,B99"):
+            with self.subTest(attribution=attribution), self.assertRaises(ValueError):
+                method_metadata.implemented(
+                    [self.entry()], [{"name": "--binarize", "methods": attribution}]
+                )
+        with self.assertRaises(ValueError):
+            method_metadata.implemented(
+                [self.entry()],
+                [{"name": "--binarize", "methods": "B02"}, {"name": "--extra", "methods": "B02"}],
+            )
+
+    def test_format_support_requires_complete_unique_admission(self) -> None:
+        """No absent, duplicate or loosely typed format policy can generate capabilities."""
+        for support in (
+            [],
+            [{"format": "png"}],
+            [{"format": "png", "binary": 1}],
+            [{"format": "png", "binary": True}] * 2,
+        ):
+            with self.subTest(support=support), self.assertRaises(ValueError):
+                method_metadata.support_matrix(support)
+
+    def test_denoising_schema_follows_reviewed_identity_and_selection(self) -> None:
+        """Changing the reviewed D01 version updates both schemas; off cannot carry settings."""
+        methods = json.loads((ROOT / "spec/method-contract.json").read_text())["methods"]
+        contract = json.loads((ROOT / "spec/cli-contract.json").read_text())
+        for entry in methods:
+            if entry["id"] == "D01":
+                entry["method_version"] = 2
+        outputs = method_metadata.metadata_outputs(
+            ROOT, methods, contract["options"], contract["input_support"]
+        )
+        request = {
+            "method": {"id": "D01", "method_version": 2},
+            "parameters": {"h": 3, "patch": 7, "search": 21, "blend": 0.5},
+        }
+        for filename in ("command-response.schema.json", "run-record.schema.json"):
+            schema = json.loads(outputs[ROOT / "schemas" / filename])
+            validator = Draft202012Validator(
+                {"$defs": schema["$defs"], "$ref": "#/$defs/denoising_request"}
+            )
+            validator.validate(request)
+            validator.validate({"method": None, "parameters": None})
+            for change in (
+                {"method": None},
+                {"parameters": None},
+                {"method": {"id": "D01", "method_version": 1}},
+            ):
+                with self.subTest(filename=filename, change=change):
+                    self.assertFalse(validator.is_valid(request | change))

@@ -15,11 +15,11 @@ import zlib
 from pathlib import Path
 from typing import Any
 
+from continuous_fixtures import Fixture
 from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
 SHA256_HEX_LENGTH = 64
-PROCESS_OPTION_COUNT = 25
 EXIT_INVOCATION = 2
 EXIT_PROCESSING = 4
 PNG_FILTER_NONE = 0
@@ -31,6 +31,9 @@ BYTE_MODULUS = 256
 HALF = 2
 HELP_COMMANDS = ("", "process", "verify", "methods", "version")
 REJECTED_INVOCATIONS = (
+    ["plan"],
+    ["inspect"],
+    ["presets"],
     ["--version", "--json"],
     ["version", "--wat"],
     ["--help", "--help"],
@@ -167,7 +170,13 @@ def discovery_cases(exe: Path) -> None:
         "root help lists every current command",
     )
     options = call_json(exe, ["process", "--help", "--json"])["options"]
-    expect(len(options) == PROCESS_OPTION_COUNT, "process option count")
+    contract = json.loads((SCHEMA.parents[1] / "spec/cli-contract.json").read_text())
+    expected = [
+        {key: option[key] for key in ("name", "metavar", "description", "domain", "methods")}
+        for option in contract["options"]
+        if option["scope"] in {"P", "All commands"}
+    ]
+    expect(options == expected, "complete reviewed process option descriptors")
 
 
 def unavailable_cases(exe: Path) -> None:
@@ -231,6 +240,102 @@ def processing_case(exe: Path) -> None:
         expect(read_gray_png(target) == bytes([0, 0, 255, 255]), "threshold output")
 
 
+def default_cases(exe: Path) -> None:
+    """Compare actual admitted records with the defaults advertised in the reviewed contract."""
+    contract = json.loads((SCHEMA.parents[1] / "spec/cli-contract.json").read_text())
+    defaults = {item["name"]: item["domain"].split(";", 1)[0] for item in contract["options"]}
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        source = root / "source.png"
+        side = 32
+        source.write_bytes(Fixture(side, side, ((200,),) * (side * side)).encoded())
+        for option in contract["options"]:
+            if option["scope"] == "P" and option["metavar"]:
+                output = root / "refused"
+                response = call_json(
+                    exe,
+                    [
+                        "process",
+                        str(source),
+                        "--out-dir",
+                        str(output),
+                        option["name"],
+                        "",
+                        "--json",
+                    ],
+                    EXIT_INVOCATION,
+                )
+                expect(response["publication"] == "not_started", "empty value refuses execution")
+                expect(not output.exists(), "empty value publishes nothing")
+        records = []
+        for index, options in enumerate(
+            (
+                [],
+                ["--output-mode", "bw"],
+                ["--output-mode", "bw", "--binarize", "fixed"],
+                ["--illumination", "surface"],
+                ["--denoise", "nlm"],
+            )
+        ):
+            out = root / str(index)
+            call_json(exe, ["process", str(source), "--out-dir", str(out), *options, "--json"])
+            call_json(exe, ["verify", str(out), "--json"])
+            records.append(json.loads((out / "run.json").read_text()))
+        groups = (
+            (
+                records[0]["request"]["operation"]["parameters"],
+                {
+                    "output_mode": "--output-mode",
+                    "depth": "--bit-depth",
+                    "alpha": "--alpha",
+                    "profile": "--profile-policy",
+                },
+            ),
+            (
+                records[1]["request"]["operation"]["parameters"],
+                {"window": "--sauvola-window", "k": "--sauvola-k", "r": "--sauvola-r"},
+            ),
+            (records[2]["request"]["operation"]["parameters"], {"threshold": "--fixed-threshold"}),
+            (
+                records[3]["execution"]["illumination"]["requested"],
+                {
+                    "strength": "--background-strength",
+                    "max_gain": "--background-max-gain",
+                    "target": "--background-target",
+                    "cell": "--background-cell",
+                    "quantile": "--background-quantile",
+                    "smooth": "--background-smooth",
+                },
+            ),
+            (
+                records[4]["request"]["denoising"]["parameters"],
+                {
+                    "h": "--nlm-h",
+                    "patch": "--nlm-patch",
+                    "search": "--nlm-search",
+                    "blend": "--denoise-blend",
+                },
+            ),
+        )
+        for actual, names in groups:
+            for key, option in names.items():
+                value = defaults[option]
+                expected = float(value) if isinstance(actual[key], (int, float)) else value
+                if option == "--bit-depth":
+                    expected = "automatic" if value == "auto" else value
+                expect(
+                    actual[key] == expected, f"{option}: executed default matches reviewed default"
+                )
+        expect(records[1]["request"]["operation"]["method"]["id"] == "B02", "default bw is B02")
+        expect(defaults["--binarize"] == "sauvola for bw", "reviewed default binary selector")
+        for stage, option in (("illumination", "--illumination"), ("denoising", "--denoise")):
+            expect(defaults[option] == "off", f"{stage} defaults to off")
+            expect(
+                records[0]["execution"][stage]["status"] == "disabled", f"{stage} remains disabled"
+            )
+        expect(not records[0]["request"]["protection_supplied"], "default has no mask")
+
+
 def main() -> int:
     """Run every contract case against the executable named on the command line."""
     exe = Path(sys.argv[1]).resolve()
@@ -239,6 +344,7 @@ def main() -> int:
         call(exe, args, EXIT_INVOCATION)
     unavailable_cases(exe)
     processing_case(exe)
+    default_cases(exe)
     print("PASS: real-executable CLI contract")
     return 0
 

@@ -5,6 +5,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/method_catalog.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -35,7 +36,7 @@ class Nlm {
         return parameters_;
     }
     [[nodiscard]] static constexpr ImplementedMethod descriptor() noexcept {
-        return {.id = "D01", .method_version = 1, .selector = "nlm"};
+        return nlm_descriptor;
     }
 
   private:

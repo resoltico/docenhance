@@ -42,7 +42,8 @@
         "--denoise-blend",
         "--nlm-h",
         "--nlm-patch",
-        "--nlm-search"
+        "--nlm-search",
+        "--protect-mask"
       ],
       "selector": "nlm",
       "family": "denoising"

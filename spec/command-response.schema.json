@@ -89,12 +89,7 @@
           },
           "minItems": 1
         },
-        "supported_formats": {
-          "const": [
-            "png",
-            "jpeg"
-          ]
-        },
+        "supported_formats": {},
         "platform": {
           "type": "string"
         },
@@ -108,25 +103,7 @@
         "command": {
           "const": "version"
         },
-        "input_support": {
-          "const": [
-            {
-              "format": "png",
-              "output_modes": [
-                "preserve",
-                "gray",
-                "bw"
-              ]
-            },
-            {
-              "format": "jpeg",
-              "output_modes": [
-                "preserve",
-                "gray"
-              ]
-            }
-          ]
-        }
+        "input_support": {}
       },
       "required": [
         "methods",
@@ -149,34 +126,11 @@
           },
           "minItems": 1
         },
-        "supported_formats": {
-          "const": [
-            "png",
-            "jpeg"
-          ]
-        },
+        "supported_formats": {},
         "command": {
           "const": "methods"
         },
-        "input_support": {
-          "const": [
-            {
-              "format": "png",
-              "output_modes": [
-                "preserve",
-                "gray",
-                "bw"
-              ]
-            },
-            {
-              "format": "jpeg",
-              "output_modes": [
-                "preserve",
-                "gray"
-              ]
-            }
-          ]
-        }
+        "input_support": {}
       },
       "required": [
         "methods",
@@ -1690,20 +1644,7 @@
               "type": "null"
             },
             {
-              "type": "object",
-              "required": [
-                "id",
-                "method_version"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "id": {
-                  "const": "D01"
-                },
-                "method_version": {
-                  "const": 1
-                }
-              }
+              "$ref": "#/$defs/denoising_method"
             }
           ]
         },
@@ -1771,7 +1712,32 @@
             }
           ]
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
     },
     "denoising": {
       "type": "object",
@@ -1798,91 +1764,10 @@
       "additionalProperties": false,
       "properties": {
         "method": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "type": "object",
-              "required": [
-                "id",
-                "method_version"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "id": {
-                  "const": "D01"
-                },
-                "method_version": {
-                  "const": 1
-                }
-              }
-            }
-          ]
+          "$ref": "#/$defs/denoising_request/properties/method"
         },
         "parameters": {
-          "oneOf": [
-            {
-              "type": "null"
-            },
-            {
-              "type": "object",
-              "required": [
-                "h",
-                "patch",
-                "search",
-                "blend"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "h": {
-                  "type": "number",
-                  "minimum": 0.1,
-                  "maximum": 25
-                },
-                "patch": {
-                  "type": "integer",
-                  "enum": [
-                    3,
-                    5,
-                    7,
-                    9,
-                    11,
-                    13,
-                    15
-                  ]
-                },
-                "search": {
-                  "type": "integer",
-                  "enum": [
-                    7,
-                    9,
-                    11,
-                    13,
-                    15,
-                    17,
-                    19,
-                    21,
-                    23,
-                    25,
-                    27,
-                    29,
-                    31,
-                    33,
-                    35,
-                    37,
-                    39,
-                    41
-                  ]
-                },
-                "blend": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1
-                }
-              }
-            }
-          ]
+          "$ref": "#/$defs/denoising_request/properties/parameters"
         },
         "status": {
           "enum": [
@@ -1961,7 +1846,32 @@
           "minimum": 0,
           "maximum": 1073741824
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }

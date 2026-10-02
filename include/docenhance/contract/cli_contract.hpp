@@ -7,6 +7,11 @@
 #include <array>
 #include <string_view>
 namespace docenhance::contract {
+inline constexpr unsigned response_schema_version = 3U;
+inline constexpr auto input_support = std::to_array<InputSupport>({
+    {.format = "png", .binary = true},
+    {.format = "jpeg", .binary = false},
+});
 // The usage line of every command, as the reviewed contract states it.
 [[nodiscard]] constexpr std::string_view command_usage(Command command) noexcept {
     switch (command) {
@@ -56,7 +61,7 @@ inline constexpr auto option_catalog = std::to_array<OptionDescriptor>({
     {.name = "--background-cell", .metavar = "SIZE", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "auto; auto or integer [8,512]", .methods = "I01", .description = "Cell edge in oriented pixels. Auto is round(min(width,height)/24), clamped to [16,256]. Resource refusal never changes this value."},
     {.name = "--background-quantile", .metavar = "Q", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "0.90; finite [0.75,0.99]", .methods = "I01", .description = "Nearest-rank quantile of all eligible cell samples; protected samples are excluded."},
     {.name = "--background-smooth", .metavar = "BETA", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "1; finite [0.1,20]", .methods = "I01", .description = "Positive grid-Laplacian weight for fitting the logarithmic background."},
-    {.name = "--protect-mask", .metavar = "PATH", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "Absent", .methods = "I01", .description = "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination is disabled."},
+    {.name = "--protect-mask", .metavar = "PATH", .scope = CommandSet{Command::process}, .group = "Protection arguments", .domain = "Absent", .methods = "I01,D01", .description = "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled."},
     {.name = "--denoise", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "off; off|nlm", .methods = "D01", .description = "Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG after I01. No binary denoising."},
     {.name = "--denoise-blend", .metavar = "A", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "0.5; finite `[0,1]`", .methods = "D01", .description = "NLM only. Blend once; zero preserves entering samples after source/mask validation."},
     {.name = "--nlm-h", .metavar = "H", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "3; finite `[0.1,25]`", .methods = "D01", .description = "NLM only. Equivalent 8-bit perceptual strength; native float strength is 257 times float(H). Higher strengths may remove marks."},

@@ -12,8 +12,8 @@ alpha flattening, grayscale conversion, and requested quantization can discard i
 
 `process INPUT --out-dir DIRECTORY` defaults to `--output-mode preserve`: retain the decoded color
 versus grayscale category, not the original ICC space, file bytes, transparency or arbitrary metadata.
-`--output-mode gray` produces encoded relative luminance. Both modes perform only the interpretation,
-orientation and representation operations specified here. There is no hidden enhancement preset.
+`--output-mode gray` produces encoded relative luminance. By default both modes perform only the interpretation,
+orientation and representation operations specified here. I01 and [D01 denoising](denoising.md) are separately opt-in; there is no hidden enhancement preset.
 
 `--output-mode bw` explicitly selects the existing binary branch, defaulting to Sauvola when
 `--binarize` is absent. B02/B03 still accept only 1/2/4/8-bit grayscale PNG without transparency,
