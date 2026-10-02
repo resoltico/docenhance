@@ -22,6 +22,7 @@ namespace docenhance::bundle {
 // stack, not with an error.
 inline constexpr std::size_t record_max_bytes = std::size_t{1} * 1024 * 1024;
 inline constexpr std::size_t record_max_depth = 16;
+inline constexpr std::size_t record_max_events = 1024;
 inline constexpr std::size_t record_max_artifacts = 16;
 
 // What a record declares this bundle contains. The inventory is closed: a file that is present

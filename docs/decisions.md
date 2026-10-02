@@ -301,3 +301,12 @@ the prepared unknown outcome; readonly verification failures retain not_started.
 the source path when moved, native directory access requires active confined ownership, and borrowed
 metadata/rows enforce lifetime/range boundaries. The allocation-free CLI fallback remains separate
 from fallible rendering. See [the separate design/challenge](execution-ownership-audit.md).
+
+## Bound parser work and adversarial selection
+
+A JSON discard callback does not stop the parser and can suppress closing callbacks required by
+external bookkeeping. Admit through the library SAX interface, whose refusal terminates parsing,
+before constructing a bounded DOM. Release admission bookkeeping between the passes. Preserve byte/depth checks and duplicate-key rejection. Percentile
+selection sorts existing scratch instead of using average-linear partitioning; the worst-case
+comparison bound matters for hostile sample order. Quantiles and resource ledgers are unchanged.
+See [the resource design and separate challenge](resource-limits-audit.md).

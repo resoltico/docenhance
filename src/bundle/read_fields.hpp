@@ -19,6 +19,7 @@ struct DeclaredBundle;
 }
 namespace docenhance::bundle {
 using RecordJson = nlohmann::json;
+[[nodiscard]] core::Result<RecordJson> parse_record(std::string_view text);
 // Missing/type errors stay inside the reader's JSON exception boundary. Numeric conversion
 // always follows an explicit domain check; the JSON library does not check narrowing.
 [[nodiscard]] const RecordJson& record_field(const RecordJson& object, std::string_view name);

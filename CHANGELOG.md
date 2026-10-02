@@ -14,6 +14,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Fixed
 
+- Run-record parsing stops at its 1,024-event ceiling instead of continuing with growing discarded-object bookkeeping. Percentile selection uses caller-owned scratch with worst-case O(n log n) comparisons, avoiding adversarial quadratic work without changing I01 quantiles.
+
 - Validate binary row ranges before borrowing, preventing out-of-range memory access. Native bundle directory owners refuse inactive/moved access and escaping or NUL entry names; Windows alternate streams are refused. CLI resource-failure handling allocates no diagnostic, so sustained allocation refusal cannot escape the boundary or trigger execution retry.
 
 ### Internal

@@ -190,8 +190,9 @@ application may exist internally after failure, but the host never publishes it.
 expected results; numerical methods do not own files, process state, native color types or catches.
 
 Bounded measurement, solving and application checkpoints share the existing execution cancellation
-capability. Dense scalar reductions are bounded by the admitted grid; a checked selection call is
-bounded by its admitted scratch size. These are work bounds, not a universal millisecond deadline.
+capability. Dense scalar reductions are bounded by the admitted grid; nearest-rank selection sorts
+caller-owned scratch in place with O(n log n) worst-case comparisons, avoiding adversarial quadratic
+partitioning. These are work bounds, not a universal millisecond deadline.
 The publisher still encodes, verifies, closes and commits exclusively. The final precommit cutoff,
 unknown publication and cleanup semantics are unchanged; no automatic retry or rollback is added.
 

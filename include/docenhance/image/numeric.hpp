@@ -16,7 +16,8 @@ using Rgb = std::array<double, rgb_channels>;
 [[nodiscard]] core::Result<double> srgb_encode(double linear);
 [[nodiscard]] core::Result<double> luminance(const Rgb& rgb);
 [[nodiscard]] core::Result<Rgb> transport_luminance(const Rgb& rgb, double target);
-// Reorders caller-owned scratch in place. Invalid input is rejected before mutation.
+// Sorts caller-owned scratch in place with O(n log n) worst-case comparisons.
+// Invalid input is rejected before mutation.
 [[nodiscard]] core::Result<double> nearest_rank(std::span<double> values, double p);
 [[nodiscard]] core::Result<std::size_t> reflect101(std::int64_t coordinate, std::size_t extent);
 // The same fold without the validation, for a caller that has already validated the extent with

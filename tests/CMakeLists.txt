@@ -102,6 +102,13 @@ de_apply_options(de_cli_allocation)
 add_test(NAME cli-allocation-failure COMMAND de_cli_allocation)
 set_tests_properties(cli-allocation-failure PROPERTIES TIMEOUT 60)
 
+add_executable(de_resource_limits support/resource_limits.cpp support/allocation_observer.cpp)
+target_link_libraries(de_resource_limits PRIVATE de_bundle de_methods de_image de_core)
+target_compile_definitions(de_resource_limits PRIVATE DE_ALLOCATION_SANITIZER_OBSERVATION=$<BOOL:${DE_ENABLE_TSAN}>)
+de_apply_options(de_resource_limits)
+add_test(NAME resource-limits COMMAND de_resource_limits)
+set_tests_properties(resource-limits PROPERTIES TIMEOUT 60)
+
 get_property(de_static_tests DIRECTORY PROPERTY TESTS)
 string(JSON de_native_inventory SET "{}" "static_tests" "[]")
 de_json_array(de_native_inventory "static_tests" "${de_static_tests}")

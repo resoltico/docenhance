@@ -128,7 +128,9 @@ transform. Binary results additionally contain only
 or resolution; nonzero protects. Its dimensions, fixed polarity/frame declarations and protected
 sample count must agree with the oriented output and execution observations.
 
-Record bytes are bounded by 1 MiB, nesting by 16, and parser events by 1024. Directory enumeration
+Record bytes are bounded by 1 MiB, nesting by 16, and parser events by 1024. The first excessive
+event stops parsing before its bookkeeping or later tokens; discarded JSON does not bypass that
+ceiling. Directory enumeration
 is bounded by 64 entries, each artifact by 256 MiB, and snapshots plus decoding by a separate 1 GiB
 charged-buffer budget. The result and mask are decoded sequentially; their decoded planes need
 not coexist. This validation budget applies to staging and later verification and is additional

@@ -4,11 +4,9 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/denoise/nlm.hpp"
-#include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
 
-#include <array>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -89,14 +87,6 @@ NativeObservation observe_call(docenhance::image::PlaneView<const std::uint16_t>
         .allocations = allocation::allocation_attempts.load(),
     };
 }
-bool selection_without_allocation() {
-    std::array<double, 5> scratch{9, 1, 3, 3, 7};
-    allocation::observing.store(true);
-    const auto quantile = image::nearest_rank(scratch, 0.5);
-    allocation::observing.store(false);
-    return quantile && *quantile == 3 && allocation::allocation_attempts.load() == 0 &&
-           allocation::live.load() == 0 && allocation::peak.load() == 0;
-}
 int measure() {
     constexpr int requested_threads = 4;
     cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
@@ -170,7 +160,7 @@ int measure() {
 } // namespace
 int main() {
     try {
-        if (!allocation::initialize_hooks() || !selection_without_allocation()) {
+        if (!allocation::initialize_hooks()) {
             return 1;
         }
         return measure();
