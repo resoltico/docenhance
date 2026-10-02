@@ -82,9 +82,9 @@ def registrations(build: Path, tests: list[dict[str, Any]]) -> set[str]:
         msg = "CTest differs from executable unit discovery and configured static tests"
         raise EvidenceError(msg)
     commands = [test["command"] for test in tests]
-    scripts = {str(path) for path in (ROOT / "tests/cli").glob("test_*.py")}
+    scripts = set((ROOT / "tests/cli").glob("test_*.py"))
     for script in scripts:
-        if sum(script in command for command in commands) != 1:
+        if sum(any(Path(argument) == script for argument in command) for command in commands) != 1:
             msg = f"CLI script must be registered exactly once: {script}"
             raise EvidenceError(msg)
     names = {test["name"] for test in tests}

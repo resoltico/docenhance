@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+# SPDX-License-Identifier: MIT
+if(NOT CPACK_TEMPORARY_DIRECTORY OR NOT IS_DIRECTORY "${CPACK_TEMPORARY_DIRECTORY}")
+  message(FATAL_ERROR "Native packaging requires the owned installed CPack stage")
+endif()
+set(de_archive "${CPACK_TEMPORARY_DIRECTORY}.tar.gz")
+execute_process(COMMAND "@Python3_EXECUTABLE@" "@PROJECT_SOURCE_DIR@/tools/package_native.py"
+  --stage "${CPACK_TEMPORARY_DIRECTORY}" --archive "${de_archive}"
+  COMMAND_ERROR_IS_FATAL ANY)
+set(CPACK_EXTERNAL_BUILT_PACKAGES "${de_archive}")

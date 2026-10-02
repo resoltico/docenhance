@@ -8,6 +8,7 @@ import hashlib
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +19,7 @@ from tools_path import ROOT
 import deps
 import license_inventory
 import package_inspection
+import package_native
 import package_source
 import source_snapshot
 import test_evidence
@@ -221,3 +223,32 @@ class InventoryOwnershipTests(unittest.TestCase):
             with patch("sys.argv", arguments), self.assertRaises(license_inventory.InventoryError):
                 license_inventory.main()
             self.assertEqual(protected.read_text(), "unrelated")
+
+
+class NativeArchiveTests(unittest.TestCase):
+    """Payload archives preserve intended bytes/modes without incidental host attributes."""
+
+    def test_native_payload_is_closed_regular_and_byte_stable(self) -> None:
+        """Repack a stage twice and check the tar contains only intended regular payloads."""
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            stage = parent / "docenhance-fixture"
+            (stage / "bin").mkdir(parents=True)
+            (stage / "bin/docenhance").write_bytes(b"native fixture bytes")
+            (stage / "LICENSE").write_bytes(b"original license bytes")
+            target = parent / (stage.name + ".tar.gz")
+            package_native.package(stage, target)
+            first = target.read_bytes()
+            package_native.package(stage, target)
+            self.assertEqual(target.read_bytes(), first)
+            with tarfile.open(target) as archive:
+                entries = archive.getmembers()
+                self.assertEqual(
+                    {item.name for item in entries},
+                    {stage.name + "/bin/docenhance", stage.name + "/LICENSE"},
+                )
+                self.assertTrue(all(item.isfile() and not item.pax_headers for item in entries))
+                executable = archive.getmember(stage.name + "/bin/docenhance")
+                self.assertEqual(executable.mode, package_native.EXECUTABLE_MODE)
+            with self.assertRaises(ValueError):
+                package_native.package(stage, parent / "unowned.tar.gz")

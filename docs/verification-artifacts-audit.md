@@ -81,3 +81,11 @@ now belongs to the actual native owner, with isolated missing/misattributed-laye
 in tooling; the AST prerequisite is mandatory and installed in source-release CI. Platform link
 controls run rather than being silently excluded. Synthetic CTest projects explicitly use the
 pinned Ninja generator, so the minimal developer image does not depend on an unadmitted Make tool.
+
+The Apple package's closed inventory rejected 142 AppleDouble metadata entries generated from host
+extended attributes. Neither COPYFILE_DISABLE nor clearing staging attributes removed the platform
+provenance metadata. The revised producer uses CPack's existing External staging interface and one
+shared byte-payload tar writer for source/native archives. It preserves intended executable modes
+and regular file contents with explicit portable metadata, rather than rewriting source attributes
+or relaxing inventory checks. Native archive bytes are stable for a given stage; reproducible
+compilation is still not claimed. See [CPack External](https://cmake.org/cmake/help/latest/cpack_gen/external.html).

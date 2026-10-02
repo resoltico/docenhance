@@ -6,14 +6,12 @@
 from __future__ import annotations
 
 import argparse
-import gzip
 import hashlib
-import io
 import os
-import tarfile
 import tempfile
 from pathlib import Path
 
+from archive_payload import write_payload
 from project_version import version_from_text
 from source_snapshot import snapshot
 
@@ -68,24 +66,9 @@ def file_mode(data: bytes) -> int:
 
 def write_tar(target: Path, entries: dict[str, bytes], manifest: str, epoch: int) -> None:
     """Write a reproducible PAX tar.gz with normalized ownership, modes and times."""
-    with (
-        target.open("wb") as raw,
-        gzip.GzipFile(filename="", fileobj=raw, mode="wb", mtime=epoch, compresslevel=9) as zipped,
-        tarfile.open(fileobj=zipped, mode="w", format=tarfile.PAX_FORMAT) as tf,
-    ):
-
-        def add(name: str, data: bytes, mode: int) -> None:
-            info = tarfile.TarInfo("docenhance/" + name)
-            info.size = len(data)
-            info.mode = mode
-            info.mtime = epoch
-            info.uid = info.gid = 0
-            info.uname = info.gname = ""
-            tf.addfile(info, io.BytesIO(data))
-
-        for name, data in sorted(entries.items()):
-            add(name, data, file_mode(data))
-        add("SOURCE_MANIFEST.sha256", manifest.encode(), REGULAR_MODE)
+    files = {name: (data, file_mode(data)) for name, data in entries.items()}
+    files["SOURCE_MANIFEST.sha256"] = (manifest.encode(), REGULAR_MODE)
+    write_payload(target, files, "docenhance", epoch)
 
 
 def publish(temp_path: Path, target: Path) -> None:

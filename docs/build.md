@@ -220,3 +220,8 @@ directory after successful preparation, removing stale generated files.
 These checks establish execution, agreement and declared support. They do not establish exhaustive
 fuzz coverage, every-object/assembly instrumentation, legal clearance, document authenticity,
 performance or execution on every older OS named by a deployment load command.
+
+Native packaging uses CPack External for the owned install stage and a byte-payload tar writer.
+The resulting `.tar.gz` preserves intended executable permissions and excludes host extended
+attributes/resource forks; the generator's JSON is build metadata, not an additional runtime
+payload. Native binaries are still not claimed to be bit-reproducible across builds.
