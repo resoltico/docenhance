@@ -11,7 +11,9 @@
 #include <algorithm>
 #include <cstddef>
 #ifndef _WIN32
+#include <cerrno>
 #include <expected>
+#include <sys/stat.h>
 #endif
 #include <filesystem>
 #include <optional>
@@ -21,7 +23,20 @@
 namespace docenhance::io {
 namespace {
 constexpr unsigned staging_attempts = 64;
+bool private_directory(const std::filesystem::path& path, std::error_code& error) {
+#ifdef _WIN32
+    return std::filesystem::create_directory(path, error);
+#else
+    constexpr unsigned int owner_only = 0700;
+    if (mkdir(path.c_str(), owner_only) == 0) {
+        error.clear();
+        return true;
+    }
+    error = {errno, std::generic_category()};
+    return false;
+#endif
 }
+} // namespace
 [[nodiscard]] core::Error abandon(Stage& stage, core::Error error) {
     error.publication =
         stage.owned ? core::Publication::not_published : core::Publication::not_started;
@@ -41,6 +56,7 @@ constexpr unsigned staging_attempts = 64;
     const auto parent =
         target.parent_path().empty() ? std::filesystem::path{"."} : target.parent_path();
     std::error_code error;
+    stage.created.reserve(bundle_max_entries);
     if (target.filename().empty() || target.filename() == "." || target.filename() == ".." ||
         !std::filesystem::is_directory(parent, error) || error) {
         return core::failure(core::ErrorCode::output,
@@ -61,20 +77,16 @@ constexpr unsigned staging_attempts = 64;
         stage.directory = parent / (target.filename().native() +
                                     utf8_path(".staging-" + std::to_string(attempt)).native());
         error.clear();
-        if (std::filesystem::create_directory(stage.directory, error)) {
+        if (private_directory(stage.directory, error)) {
             stage.owned = true;
-            stage.identity = entry_identity(stage.directory);
-#ifndef _WIN32
-            std::filesystem::permissions(stage.directory, std::filesystem::perms::owner_all,
-                                         std::filesystem::perm_options::replace, error);
-            if (error) {
+            stage.owner = EntryLease::directory(stage.directory);
+            if (!stage.owner.matches(stage.directory)) {
                 return std::unexpected(
                     abandon(stage, {
                                        .code = core::ErrorCode::output,
-                                       .message = "Cannot make the staging directory private",
+                                       .message = "Cannot retain the created staging directory",
                                    }));
             }
-#endif
             return {};
         }
         if (error && error != std::errc::file_exists) {
@@ -85,10 +97,52 @@ constexpr unsigned staging_attempts = 64;
     return core::failure(core::ErrorCode::output,
                          "All bounded staging names are occupied; existing paths were preserved");
 }
+namespace {
+core::Result<std::filesystem::path> component_path(std::string_view part) {
+    if (part.empty() || part == "." || part == "..") {
+        return core::failure(core::ErrorCode::invariant,
+                             "A bundle file must be named relative to the bundle");
+    }
+    auto component = utf8_path(part);
+    if (component.has_root_path() || component.filename() != component
+#ifdef _WIN32
+        || part.contains(':')
+#endif
+    ) {
+        return core::failure(core::ErrorCode::argument,
+                             "A bundle component must be one relative native filename");
+    }
+    return component;
+}
+core::Result<std::optional<EntryIdentity>> owned_directory(Stage& stage,
+                                                           const std::filesystem::path& path) {
+    std::error_code error;
+    if (private_directory(path, error)) {
+        stage.created.insert(
+            stage.created.begin(),
+            {.path = path, .owner = EntryLease::directory(path), .directory = true});
+    } else if (error && error != std::errc::file_exists) {
+        return core::failure(core::ErrorCode::output,
+                             "Cannot create a directory inside the bundle");
+    }
+    const auto found = std::ranges::find(stage.created, path, &OwnedEntry::path);
+    if (found == stage.created.end() || !found->directory || !found->owner.matches(path)) {
+        return core::failure(core::ErrorCode::output, "The bundle directory is not owned");
+    }
+    return found->owner.identity();
+}
+} // namespace
 // The path a bundle file occupies inside staging. Directories are created as they are needed and
 // recorded in the order they were made, so cleanup can undo exactly this invocation's work.
-[[nodiscard]] core::Result<std::filesystem::path> place(Stage& stage, std::string_view relative) {
+[[nodiscard]] core::Result<BundleSlot> place(Stage& stage, std::string_view relative) {
+    if (relative.empty() || relative.back() == '/' || relative.contains('\0')) {
+        return core::failure(core::ErrorCode::argument, "A bundle needs a complete relative name");
+    }
+    if (!stage.owns_entries()) {
+        return core::failure(core::ErrorCode::output, "Staging ownership changed before creation");
+    }
     auto path = stage.directory;
+    auto parent = stage.owner.identity();
     std::size_t start = 0;
     while (start < relative.size()) {
         if (stage.created.size() >= bundle_max_entries) {
@@ -97,33 +151,21 @@ constexpr unsigned staging_attempts = 64;
         }
         const auto stop = std::min(relative.find('/', start), relative.size());
         const auto part = relative.substr(start, stop - start);
-        if (part.empty() || part == "." || part == "..") {
-            return core::failure(core::ErrorCode::invariant,
-                                 "A bundle file must be named relative to the bundle");
+        const auto component = component_path(part);
+        if (!component) {
+            return std::unexpected(component.error());
         }
-        const auto component = utf8_path(part);
-        if (component.has_root_path() || component.filename() != component) {
-            return core::failure(core::ErrorCode::argument,
-                                 "A bundle component must be one relative native filename");
-        }
-        path /= component;
+        path /= *component;
         if (stop != relative.size()) {
-            std::error_code error;
-            if (std::filesystem::create_directory(path, error)) {
-                stage.created.insert(
-                    stage.created.begin(),
-                    {.path = path, .identity = entry_identity(path), .directory = true});
-            } else if (error || !std::ranges::any_of(stage.created, [&](const OwnedEntry& entry) {
-                           return entry.directory && entry.path == path && entry.identity &&
-                                  entry_identity(path) == entry.identity;
-                       })) {
-                return core::failure(core::ErrorCode::output,
-                                     "Cannot create a directory inside the bundle");
+            auto owned = owned_directory(stage, path);
+            if (!owned) {
+                return std::unexpected(owned.error());
             }
+            parent = *owned;
         }
         start = stop + 1;
     }
-    stage.created.insert(stage.created.begin(), {.path = path, .identity = std::nullopt});
-    return path;
+    stage.created.insert(stage.created.begin(), {.path = path, .owner = {}});
+    return BundleSlot{.path = path, .created = &stage.created.front().owner, .parent = parent};
 }
 } // namespace docenhance::io

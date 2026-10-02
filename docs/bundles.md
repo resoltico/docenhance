@@ -20,6 +20,10 @@ The files are written into a staging directory this invocation owns, in that ord
 complete directory is committed with one exclusive rename. A failure before commit prevents publication. A successful rename establishes completed publication;
 a later integrity failure does not undo that fact. Cleanup removes only what the
 invocation created, never a foreign entry and never a directory it did not make.
+Effect paths are anchored before callbacks without lexical normalization; response spelling retains
+the admitted directory text. Windows drive-relative publication paths such as `C:result` are refused;
+use a fully qualified drive path or an ordinary path relative to the operation's initial directory.
+POSIX staging directories and files are created with owner-only modes, not chmodded after creation.
 
 The record comes last because it carries the digests of the files before it. A `run.json` therefore
 exists only if the image — and the mask, when there is one — was written, verified and identified
@@ -101,6 +105,9 @@ snapshot; its digest, parsing and decoding use those same bytes. Verification ne
 arbitrary record-supplied pathname or walks arbitrary nesting: only the root and optional `assets`
 directory are visited. Output ancestors remain trusted, and arbitrary concurrent content tampering
 is outside the guarantee; observing snapshots is not a globally atomic snapshot of a live directory.
+Enumeration is repeated after acquisition to refuse observed added or removed entries. Windows
+path-based child access checks the retained root binding before and after access, refusing observed
+ancestor relocation rather than following a replacement root.
 
 The inventory is closed in both directions:
 
@@ -155,20 +162,21 @@ blocks. A delayed stream failure takes precedence over cancellation; earlier gen
 primary. Before the final cancellation cutoff, the
 host rereads and validates the staged bundle using the same reader and artifact checks as `verify`.
 It compares the exact manifest digest and run identity with the values this invocation prepared.
-I/O owns the native transaction and invokes host validation callbacks; it contains no processing
+I/O owns the native transaction and invokes one host validator before and after commit; it contains no processing
 record parser or method admission rules.
 
-After the existing exclusive rename, reconciliation observes this run identity and exact manifest
-digest without executing processing again. Observation after the cutoff does not accept cancellation
+After the exclusive rename, I/O checks that the destination is the retained owned directory object.
+The host validates this run identity, exact manifest digest and complete artifacts through one native
+bundle root without a separate record reopening. Observation after the cutoff does not accept cancellation
 as a replacement for an irreversible outcome.
 
 | Commit and observation | Outcome |
 |---|---|
 | Successful rename and matching complete bundle | Success, `completed` |
-| Ambiguous rename error and matching complete bundle | Success, `completed` |
+| Ambiguous rename error, matching owned native directory and matching complete bundle | Success, `completed` |
 | Conclusive refusal | Output failure; clean only proven-owned staging |
 | Ambiguous error with absent, foreign or unreadable destination | `E_PUBLICATION_UNKNOWN`, exit 7, `unknown`; preserve potentially relevant staging |
-| This run's manifest is present but artifacts disagree | `E_OUTPUT_VERIFY`, exit 5, `completed`; retain the published directory |
+| Owned directory is at the destination but record/artifacts are unavailable or disagree | `E_OUTPUT_VERIFY`, exit 5, `completed`; retain the published directory |
 | Successful rename followed by unavailable or disagreeing inspection | `E_OUTPUT_VERIFY`, exit 5, `completed`; retain the published directory |
 
 Known publication is never downgraded to uncertainty by a later inspection failure. A foreign
@@ -178,6 +186,17 @@ replacement or unverifiable ownership preserves the entry and produces uncertain
 nonrecursive and is not a guarantee against arbitrary simultaneous tampering by an equally
 privileged process. There is no rollback, automatic processing retry, copy fallback or stale-stage
 sweep, and atomic visibility still does not promise crash durability.
+Native leases keep object identifiers from being recycled while checks are live. The transaction
+retains at most 65 metadata handles: one root and at most 64 bounded owned entries. Windows compares
+the full 128-bit file identifier and volume identity, with object leases opened by ID so descendant
+path handles do not prevent directory commit. Windows publication requires native open-by-ID support;
+SMB output destinations are refused. Use a supported local volume. Unsupported identity observation
+or object opening fails closed.
+Root, parent and created-entry identities are checked around writer/validation callbacks and the
+commit cutoff. Known replacement prevents further effects, and copied record bytes cannot prove
+publication origin. Rename/unlink cannot atomically compare a caller-supplied object identity; these
+checks remain outside a guarantee against arbitrary equally privileged namespace changes between
+checks and native operations.
 
 ## What agreement is not
 

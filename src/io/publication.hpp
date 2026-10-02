@@ -18,7 +18,14 @@ namespace docenhance::io {
 // The reserved place a bundle file occupies while the transaction owns it.
 struct BundleSlot {
     std::filesystem::path path;
-    std::optional<EntryIdentity>* created = nullptr;
+    EntryLease* created = nullptr;
+    std::optional<EntryIdentity> parent;
+    [[nodiscard]] bool valid_parent() const {
+        return parent && entry_identity(path.parent_path()) == parent;
+    }
+    [[nodiscard]] bool owned_file() const {
+        return valid_parent() && created != nullptr && created->matches(path);
+    }
 };
 // Private stream-operation seam for deterministic write, flush and close failure tests.
 // A close operation consumes the stream even when it reports an error.

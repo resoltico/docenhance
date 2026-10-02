@@ -29,7 +29,7 @@ P = process.
 
 **Scope:** P. **Domain/default:** Required; a new result directory.
 
-Paths must be well-formed UTF-8 and are never normalized or repaired. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced.
+Paths must be well-formed UTF-8 and are never normalized or repaired. Relative effects bind to the operation's initial working directory; reported spelling is retained. Windows drive-relative publication paths are rejected. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced.
 
 ## `--output-mode MODE`
 

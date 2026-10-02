@@ -56,3 +56,7 @@ fixtures verify binary/continuous records, masks, I01/D01 composition, native ca
 publication failures and delivery after commit. Run complete native/reference/tooling/fuzz and
 Docker gates, then exact-head CI before merge. Their concrete outcomes belong to the PR and logs,
 not a claim that the design is exhaustive proof of safety.
+
+The later [filesystem identity audit](filesystem-identity-audit.md) supersedes record-first
+reconciliation with retained native ownership and one complete validator. The earlier rationale
+remains historical: it applied before native publication origin could be established independently.

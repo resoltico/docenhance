@@ -16,12 +16,15 @@ core::Result<void> write_verified_png(const BundleSlot& slot,
                                       image::PlaneView<const std::uint8_t> image,
                                       core::Budget& budget,
                                       const core::Cancellation& cancellation) {
-    auto encoded = encode_png(slot.path, image, budget, cancellation, slot.created);
+    if (!slot.valid_parent() || slot.created == nullptr) {
+        return core::failure(core::ErrorCode::output, "The reserved PNG parent changed");
+    }
+    auto encoded = encode_png(slot, image, budget, cancellation);
     if (!encoded) {
         return encoded;
     }
     // Earn the claim the same way continuous output does: reopen what was written and compare it
     // against the intended samples and metadata.
-    return verify_png_image(slot.path, image, budget, cancellation);
+    return verify_png_image(slot.path, image, budget, cancellation, slot.created);
 }
 } // namespace docenhance::io

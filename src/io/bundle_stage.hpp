@@ -4,7 +4,9 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "entry_identity.hpp"
+#include "publication.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <optional>
 #include <string_view>
@@ -12,14 +14,14 @@
 namespace docenhance::io {
 struct OwnedEntry {
     std::filesystem::path path;
-    std::optional<EntryIdentity> identity;
+    EntryLease owner;
     bool directory = false;
 };
 struct Stage {
     std::filesystem::path directory;
     // Everything this invocation created, newest first, so cleanup removes only its own work.
     std::vector<OwnedEntry> created;
-    std::optional<EntryIdentity> identity;
+    EntryLease owner;
     bool owned = false;
     bool retained = false;
     bool committed = false;
@@ -38,27 +40,32 @@ struct Stage {
     Stage& operator=(const Stage&) = delete;
     Stage(Stage&&) = delete;
     Stage& operator=(Stage&&) = delete;
+    [[nodiscard]] bool owns_entries() const {
+        if (!owned || !owner.matches(directory)) {
+            return false;
+        }
+        return std::ranges::all_of(
+            created, [](const OwnedEntry& entry) { return entry.owner.matches(entry.path); });
+    }
     // Never recursively delete: a foreign entry is evidence that cleanup cannot be guaranteed.
     [[nodiscard]] bool cleanup() noexcept {
         if (!owned) {
             return true;
         }
         try {
-            if (!identity || entry_identity(directory) != identity) {
+            if (!owner.matches(directory)) {
                 return false;
             }
             // Validate every owned directory before touching any descendant. A replaced assets
             // directory must never become a route through a link during cleanup.
             for (const auto& entry : created) {
-                if (entry.directory &&
-                    (!entry.identity || entry_identity(entry.path) != entry.identity)) {
+                if (entry.directory && !entry.owner.matches(entry.path)) {
                     return false;
                 }
             }
             bool failed = false;
-            for (const auto& entry : created) {
-                const auto observed = entry_identity(entry.path);
-                if (!entry.identity || observed != entry.identity) {
+            for (auto& entry : created) {
+                if (!entry.owner.matches(entry.path)) {
                     std::error_code status_error;
                     const auto status = std::filesystem::symlink_status(entry.path, status_error);
                     const bool absent = status.type() == std::filesystem::file_type::not_found;
@@ -68,9 +75,15 @@ struct Stage {
                 std::error_code error;
                 std::filesystem::remove(entry.path, error);
                 failed = failed || static_cast<bool>(error);
+                if (!error) {
+                    entry.owner = {}; // Finish Windows delete-pending removal before its parent.
+                }
             }
             std::error_code directory_error;
             std::filesystem::remove(directory, directory_error);
+            if (!directory_error) {
+                owner = {};
+            }
             owned = failed || static_cast<bool>(directory_error);
             return !owned;
         } catch (...) {
@@ -87,5 +100,5 @@ struct Stage {
 [[nodiscard]] core::Error abandon(Stage& stage, core::Error error);
 [[nodiscard]] core::Result<void> reserve_stage(Stage& stage, const std::filesystem::path& target,
                                                const core::Cancellation& cancellation);
-[[nodiscard]] core::Result<std::filesystem::path> place(Stage& stage, std::string_view relative);
+[[nodiscard]] core::Result<BundleSlot> place(Stage& stage, std::string_view relative);
 } // namespace docenhance::io

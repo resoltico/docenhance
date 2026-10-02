@@ -14,10 +14,12 @@
 #include "docenhance/io/protection_png.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/surface.hpp"
+#include "entry_identity.hpp"
 #include "linear_rows.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
 #include "png_transaction.hpp"
+#include "publication.hpp"
 #include "temporary_directory.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -93,7 +95,10 @@ TEST_CASE("Independent output verification checks metadata not just pixels", "[c
     const auto converter =
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     const auto path = directory.path / "encoded.png";
-    REQUIRE(io::encode_png_rows(path, *converter, budget, {}));
+    const auto parent = io::EntryLease::directory(directory.path);
+    io::EntryLease created;
+    const io::BundleSlot slot{.path = path, .created = &created, .parent = parent.identity()};
+    REQUIRE(io::encode_png_rows(slot, *converter, budget, {}));
     AlteredRows altered{*converter};
     altered.alter_metadata();
     const auto result = io::verify_png_rows(path, altered, budget, {});

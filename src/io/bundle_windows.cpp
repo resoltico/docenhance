@@ -4,6 +4,7 @@
 #include "bundle_native.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/bundle.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 #include "windows_sdk.hpp" // NOLINT(misc-include-cleaner): Native SDK prerequisite types precede direct API headers.
 
@@ -18,6 +19,7 @@
 #include <iterator>
 #include <minwinbase.h>
 #include <minwindef.h>
+#include <optional>
 #include <stdio.h> // NOLINT(modernize-deprecated-headers): Native CRT _fdopen/_fileno declarations require stdio.h.
 #include <string>
 #include <utility>
@@ -84,17 +86,22 @@ core::Result<BundleDirectory> BundleDirectory::open(const std::filesystem::path&
     return result;
 }
 core::Result<BundleDirectory> BundleDirectory::child(const std::string& name) const {
-    if (!active() || !valid_name(name)) {
+    if (!bound() || !valid_name(name)) {
         return std::unexpected(refused());
     }
-    return open(path_ / utf8_path(name));
+    auto child = open(path_ / utf8_path(name));
+    return bound() ? std::move(child) : core::Result<BundleDirectory>{std::unexpected(refused())};
 }
 core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
-    if (!active() || !valid_name(name)) {
+    if (!bound() || !valid_name(name)) {
         return std::unexpected(refused());
     }
     auto* const handle = open_entry(path_ / utf8_path(name), false);
     if (handle == INVALID_HANDLE_VALUE) {
+        return std::unexpected(refused());
+    }
+    if (!bound()) {
+        CloseHandle(handle);
         return std::unexpected(refused());
     }
     // CRT descriptor ownership requires the native handle's intptr_t representation.
@@ -115,7 +122,7 @@ core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
     return FileHandle{stream};
 }
 core::Result<std::vector<std::string>> BundleDirectory::entries() const {
-    if (!active()) {
+    if (!bound()) {
         return std::unexpected(refused());
     }
     WIN32_FIND_DATAW data{};
@@ -143,11 +150,15 @@ core::Result<std::vector<std::string>> BundleDirectory::entries() const {
         FindClose(search);
         return core::failure(core::ErrorCode::resource, "Bundle enumeration exhausted memory");
     }
-    failed = FindClose(search) == 0 || failed;
+    failed = FindClose(search) == 0 || !bound() || failed;
     if (failed) {
         return std::unexpected(refused());
     }
     return names;
+}
+bool BundleDirectory::bound() const {
+    const auto identity = active() ? handle_identity(handle_) : std::nullopt;
+    return identity && entry_identity(path_) == identity;
 }
 } // namespace docenhance::io
 #endif

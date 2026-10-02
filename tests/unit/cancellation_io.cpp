@@ -218,7 +218,7 @@ TEST_CASE("The final commit checkpoint is the cancellation cutoff", "[cancellati
     CHECK(control.requested(core::Checkpoint::processing));
     CHECK(std::filesystem::is_regular_file(directory.path / "output" / "result.png"));
 }
-TEST_CASE("A late cancellation never erases refused or uncertain publication",
+TEST_CASE("Late cancellation preserves refusal, proven completion and unresolved publication",
           "[cancellation][io]") {
     for (const auto commit : {refused_commit, ambiguous_commit, unclean_commit}) {
         const TemporaryDirectory directory{"docenhance-stop"};
@@ -230,17 +230,19 @@ TEST_CASE("A late cancellation never erases refused or uncertain publication",
         const auto result =
             publish_png_fixture(output, plane.view().as_const(), budget,
                                 core::Cancellation{commit_source().get_token()}, commit);
-        REQUIRE(!result);
-        if (commit == refused_commit) {
-            CHECK(result.error().code == core::ErrorCode::output);
-            CHECK(result.error().publication == core::Publication::not_published);
-            CHECK(empty_directory(directory.path / "output"));
-        } else {
-            CHECK(result.error().code == core::ErrorCode::publication_unknown);
-            CHECK(result.error().publication == core::Publication::unknown);
-        }
         if (commit == ambiguous_commit) {
+            REQUIRE(result);
             CHECK(std::filesystem::is_regular_file(directory.path / "output" / "result.png"));
+        } else {
+            REQUIRE(!result);
+            if (commit == refused_commit) {
+                CHECK(result.error().code == core::ErrorCode::output);
+                CHECK(result.error().publication == core::Publication::not_published);
+                CHECK(empty_directory(directory.path / "output"));
+            } else {
+                CHECK(result.error().code == core::ErrorCode::publication_unknown);
+                CHECK(result.error().publication == core::Publication::unknown);
+            }
         }
         if (commit == unclean_commit) {
             CHECK(std::filesystem::is_regular_file(directory.path / "output.staging-0" /

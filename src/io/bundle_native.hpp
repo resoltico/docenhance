@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/core/result.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 
 #include <filesystem>
@@ -22,6 +23,7 @@ class BundleDirectory {
     [[nodiscard]] core::Result<BundleDirectory> child(const std::string& name) const;
     [[nodiscard]] core::Result<FileHandle> file(const std::string& name) const;
     [[nodiscard]] core::Result<std::vector<std::string>> entries() const;
+    [[nodiscard]] bool bound() const;
 
   private:
     [[nodiscard]] bool active() const noexcept {
@@ -44,9 +46,9 @@ class BundleDirectory {
     void close() noexcept;
 #ifdef _WIN32
     void* handle_ = nullptr;
-    std::filesystem::path path_;
 #else
     int handle_ = -1;
 #endif
+    std::filesystem::path path_;
 };
 } // namespace docenhance::io

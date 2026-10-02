@@ -63,3 +63,7 @@ zero record identities, empty/unbounded verification inventories and publication
 The typed boundary additionally checks calendar and cross-field relationships. These observations
 are not exhaustive lifetime safety, process-RSS limits, authenticity or crash durability. Explicitly
 moving/destroying an lvalue owner during use still violates the caller's borrowing contract.
+
+The later [filesystem identity audit](filesystem-identity-audit.md) supersedes record-first
+reconciliation with retained native ownership and one complete validator. The earlier rationale
+remains historical: it applied before native publication origin could be established independently.

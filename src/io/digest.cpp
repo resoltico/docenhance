@@ -5,6 +5,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 #include "publication.hpp"
 
@@ -22,9 +23,15 @@
 namespace docenhance::io {
 core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::uint64_t limit,
                                                   const core::Cancellation& cancellation) {
+    if (!slot.owned_file()) {
+        return core::failure(core::ErrorCode::output_verify, "The bundle file identity changed");
+    }
     const auto file = open_for_reading(slot.path);
     if (file == nullptr) {
         return core::failure(core::ErrorCode::output, "Cannot open a bundle file to identify it");
+    }
+    if (stream_identity(file.get()) != slot.created->identity()) {
+        return core::failure(core::ErrorCode::output_verify, "The identified file object changed");
     }
     constexpr std::size_t transfer = std::size_t{64} * 1024;
     std::array<std::uint8_t, transfer> buffer{};

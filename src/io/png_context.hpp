@@ -21,6 +21,7 @@
 #include <utility>
 
 namespace docenhance::io {
+struct BundleSlot;
 // The callback registry, diagnostics and C handles live OUTSIDE every setjmp frame. No longjmp
 // crosses a live non-trivial C++ automatic object. Codec allocations must pass through Budget.
 inline constexpr std::size_t codec_allocation_slots = 64;
@@ -59,8 +60,8 @@ class PngContext {
     PngContext(PngContext&&) = delete;
     PngContext& operator=(PngContext&&) = delete;
     ~PngContext();
-    [[nodiscard]] bool open(const std::filesystem::path& path,
-                            std::optional<EntryIdentity>* created = nullptr);
+    [[nodiscard]] bool create(const BundleSlot& slot);
+    [[nodiscard]] bool open_reading(const std::filesystem::path& path);
     [[nodiscard]] bool close_output() noexcept;
     [[nodiscard]] core::Result<void> finish_output(core::Result<void> result);
     [[nodiscard]] core::Error error(core::ErrorCode fallback) const;
@@ -79,9 +80,8 @@ void install_png_reader(const PngContext& context, PngInput& input);
 // characters they are converted, never through the active code page, which cannot express the
 // characters a document's name is most likely to carry.
 [[nodiscard]] std::string utf8_spelling(const std::filesystem::path& value);
-[[nodiscard]] core::Result<void> encode_png(const std::filesystem::path& output,
+[[nodiscard]] core::Result<void> encode_png(const BundleSlot& slot,
                                             image::PlaneView<const std::uint8_t> view,
                                             core::Budget& budget,
-                                            const core::Cancellation& cancellation = {},
-                                            std::optional<EntryIdentity>* created = nullptr);
+                                            const core::Cancellation& cancellation = {});
 } // namespace docenhance::io

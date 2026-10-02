@@ -4,6 +4,7 @@
 #include "bundle_native.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/bundle.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 
 #include <cerrno>
@@ -16,6 +17,7 @@
 #endif
 #include <filesystem>
 #include <iterator>
+#include <optional>
 #include <stdio.h> // NOLINT(modernize-deprecated-headers): POSIX fdopen is declared by the public native stdio header.
 #include <string>
 #include <sys/stat.h>
@@ -33,11 +35,12 @@ core::Error refused() {
 constexpr int directory_flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC;
 } // namespace
 BundleDirectory::BundleDirectory(BundleDirectory&& other) noexcept
-    : handle_(std::exchange(other.handle_, -1)) {}
+    : handle_(std::exchange(other.handle_, -1)), path_(std::move(other.path_)) {}
 BundleDirectory& BundleDirectory::operator=(BundleDirectory&& other) noexcept {
     if (this != &other) {
         close();
         handle_ = std::exchange(other.handle_, -1);
+        path_ = std::move(other.path_);
     }
     return *this;
 }
@@ -51,13 +54,14 @@ BundleDirectory::~BundleDirectory() {
     close();
 }
 core::Result<BundleDirectory> BundleDirectory::open(const std::filesystem::path& path) {
+    BundleDirectory result;
+    result.path_ = path.is_absolute() ? path : std::filesystem::current_path() / path;
     // Native open ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
-    const auto descriptor = ::open(path.c_str(), directory_flags);
+    const auto descriptor = ::open(result.path_.c_str(), directory_flags);
     if (descriptor < 0) {
         return std::unexpected(refused());
     }
-    BundleDirectory result;
     result.handle_ = descriptor;
     return result;
 }
@@ -65,15 +69,20 @@ core::Result<BundleDirectory> BundleDirectory::child(const std::string& name) co
     if (!active() || !valid_name(name)) {
         return std::unexpected(refused());
     }
+    BundleDirectory result;
+    result.path_ = path_ / name;
     // Native openat ABI; no creation mode is passed.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     const auto descriptor = openat(handle_, name.c_str(), directory_flags);
     if (descriptor < 0) {
         return std::unexpected(refused());
     }
-    BundleDirectory result;
     result.handle_ = descriptor;
     return result;
+}
+bool BundleDirectory::bound() const {
+    const auto identity = active() ? descriptor_identity(handle_) : std::nullopt;
+    return identity && entry_identity(path_) == identity;
 }
 core::Result<FileHandle> BundleDirectory::file(const std::string& name) const {
     if (!active() || !valid_name(name)) {

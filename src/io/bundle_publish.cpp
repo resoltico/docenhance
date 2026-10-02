@@ -28,12 +28,11 @@ core::Result<void> write_files(Stage& stage, std::span<const BundleFile> files,
         if (cancellation.requested(core::Checkpoint::staging)) {
             return core::cancelled();
         }
-        const auto path = place(stage, file.relative);
-        if (!path) {
-            return std::unexpected(path.error());
+        const auto slot = place(stage, file.relative);
+        if (!slot) {
+            return std::unexpected(slot.error());
         }
-        const BundleSlot slot{.path = *path, .created = &stage.created.front().identity};
-        auto written = file.write(file.state, slot);
+        auto written = file.write(file.state, *slot);
         if (!written) {
             return std::unexpected(std::move(written.error()));
         }
@@ -43,8 +42,24 @@ core::Result<void> write_files(Stage& stage, std::span<const BundleFile> files,
 core::Result<void> commit_bundle(Stage& stage, const std::filesystem::path& target,
                                  const core::Cancellation& cancellation, PublishRename commit,
                                  BundleValidation validation) {
+    if (!stage.owns_entries()) {
+        return std::unexpected(
+            abandon(stage, {
+                               .code = core::ErrorCode::output_verify,
+                               .message = "Staging objects changed before commit",
+                           }));
+    }
     if (cancellation.requested(core::Checkpoint::commit)) {
         return std::unexpected(abandon(stage, core::cancelled().error()));
+    }
+    // A normal-execution cancellation observer can itself expose a namespace change. This is
+    // ownership validation, not another stop observation or a change to the cancellation cutoff.
+    if (!stage.owns_entries()) {
+        return std::unexpected(
+            abandon(stage, {
+                               .code = core::ErrorCode::output_verify,
+                               .message = "Staging objects changed at the commit cutoff",
+                           }));
     }
     const auto error = commit(stage.directory, target);
     if (error && definitely_not_published(error)) {
@@ -55,20 +70,24 @@ core::Result<void> commit_bundle(Stage& stage, const std::filesystem::path& targ
                            }));
     }
     stage.committed = !error;
-    stage.owned = static_cast<bool>(error);
-    stage.retained = static_cast<bool>(error);
+    stage.owned = !stage.committed;
+    stage.retained = !stage.committed;
+    const bool same_object = stage.owner.matches(target);
+    stage.committed = stage.committed || same_object;
+    stage.owned = !stage.committed;
+    stage.retained = !stage.committed;
+    if (!same_object) {
+        return std::unexpected(stage.committed ? std::move(stage.integrity)
+                                               : std::move(stage.uncertain));
+    }
     // No cancellation after the cutoff: observations explain an authorized irreversible effect.
-    const auto observed = validation.observe == nullptr
-                              ? BundleObservation::unobservable
-                              : validation.observe(validation.state, utf8_spelling(target));
-    if (observed == BundleObservation::consistent ||
-        (stage.committed && validation.observe == nullptr)) {
+    const auto verified = validation.validate == nullptr
+                              ? core::Result<void>{}
+                              : validation.validate(validation.state, utf8_spelling(target), {});
+    if (stage.owner.matches(target) && verified) {
         return {};
     }
-    if (stage.committed || observed == BundleObservation::integrity_failure) {
-        return std::unexpected(std::move(stage.integrity));
-    }
-    return std::unexpected(std::move(stage.uncertain));
+    return std::unexpected(std::move(stage.integrity));
 }
 core::Error contain_failure(Stage& stage, core::ErrorCode code) {
     if (stage.committed) {
@@ -91,7 +110,15 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
     }
     Stage stage;
     try {
-        const auto target = utf8_path(output_directory);
+        const auto admitted = utf8_path(output_directory);
+#ifdef _WIN32
+        if (admitted.has_root_name() && !admitted.has_root_directory()) {
+            return core::failure(core::ErrorCode::argument,
+                                 "Drive-relative publication paths are unsupported");
+        }
+#endif
+        const auto target =
+            admitted.is_absolute() ? admitted : std::filesystem::current_path() / admitted;
         // All potentially allocating return metadata is prepared before the commit point.
 #ifdef _WIN32
         const auto separator_index = output_directory.find_last_of("/\\");
@@ -110,9 +137,16 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
         if (!written) {
             return std::unexpected(abandon(stage, std::move(written.error())));
         }
-        if (validation.prepare != nullptr) {
+        if (!stage.owns_entries()) {
+            return std::unexpected(
+                abandon(stage, {
+                                   .code = core::ErrorCode::output_verify,
+                                   .message = "Written bundle objects changed before validation",
+                               }));
+        }
+        if (validation.validate != nullptr) {
             auto ready =
-                validation.prepare(validation.state, utf8_spelling(stage.directory), cancellation);
+                validation.validate(validation.state, utf8_spelling(stage.directory), cancellation);
             if (!ready) {
                 return std::unexpected(abandon(stage, std::move(ready.error())));
             }
@@ -155,12 +189,16 @@ core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
     if (cancellation.requested(core::Checkpoint::encode)) {
         return core::cancelled();
     }
+    if (!slot.valid_parent() || slot.created == nullptr) {
+        return core::failure(core::ErrorCode::output, "The reserved file parent changed");
+    }
     auto file = open_for_writing(slot.path);
     if (file == nullptr) {
         return core::failure(core::ErrorCode::output, "Cannot create a file inside the bundle");
     }
-    if (slot.created != nullptr) {
-        *slot.created = stream_identity(file.get());
+    *slot.created = EntryLease::capture(file.get(), slot.path);
+    if (!slot.created->identity()) {
+        return core::failure(core::ErrorCode::output, "Cannot retain the created bundle file");
     }
     auto written = write_content(file.get(), content, cancellation, operations);
     const bool flushed = operations.flush(file.get()) == 0;

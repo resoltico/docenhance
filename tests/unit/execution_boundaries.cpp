@@ -9,6 +9,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/bundle.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 #include "png_reader.hpp"
 #include "png_rows.hpp"
@@ -41,11 +42,19 @@ class CountingVerifier final : public app::Verifier {
         return core::failure(core::ErrorCode::input, "Unexpected verification effect");
     }
 };
-core::Result<void> refuse_preparation(void* /*state*/, const std::string& /*directory*/,
-                                      const core::Cancellation& /*cancellation*/) {
-    throw std::bad_alloc{};
-}
-io::BundleObservation throw_observation(void* /*state*/, const std::string& /*directory*/) {
+struct ValidationInjection {
+    bool preparing = false;
+    unsigned calls = 0;
+};
+core::Result<void> throw_validation(void* const state, const std::string& /*directory*/,
+                                    const core::Cancellation& /*cancellation*/) {
+    auto& injection = *static_cast<ValidationInjection*>(state);
+    if (++injection.calls == 1) {
+        if (injection.preparing) {
+            throw std::bad_alloc{};
+        }
+        return {};
+    }
     throw std::runtime_error("Cannot inspect publication");
 }
 std::error_code ambiguous(const std::filesystem::path& /*from*/,
@@ -140,9 +149,10 @@ TEST_CASE("Publication exception containment respects the irreversible boundary"
                 .write = write_text,
             };
             const std::array files{file};
+            ValidationInjection injection{.preparing = preparing};
             const io::BundleValidation validation{
-                .prepare = preparing ? refuse_preparation : nullptr,
-                .observe = throw_observation,
+                .state = &injection,
+                .validate = throw_validation,
             };
             const auto result =
                 io::publish_bundle(utf8_spelling(target), files, {}, commit, validation);
@@ -237,7 +247,10 @@ TEST_CASE("Every wide PNG reread checkpoint cancels with full resource refunds")
         sample = static_cast<std::uint8_t>(value >> 24U);
     }
     const auto path = temporary.path / "result.png";
-    REQUIRE(io::encode_png(path, image.view().as_const(), budget));
+    const auto parent = io::EntryLease::directory(temporary.path);
+    io::EntryLease created;
+    const io::BundleSlot slot{.path = path, .created = &created, .parent = parent.identity()};
+    REQUIRE(io::encode_png(slot, image.view().as_const(), budget));
     const auto held = budget.used();
     bool complete = false;
     for (std::size_t after = 0; after < 256; ++after) {

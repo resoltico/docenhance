@@ -21,11 +21,11 @@ TEST_CASE("Bundle cleanup preserves replacement files and directories", "[bundle
         REQUIRE(io::reserve_stage(stage, output, {}));
         const auto file = io::place(stage, "run.json");
         REQUIRE(file);
-        const io::BundleSlot slot{.path = *file, .created = &stage.created.front().identity};
+        const auto& slot = *file;
         REQUIRE(io::write_bytes(slot, "owned"));
         SECTION("a different object occupies the known file name") {
-            std::filesystem::rename(*file, stage_path / "retained-original");
-            std::ofstream{*file} << "foreign";
+            std::filesystem::rename(file->path, stage_path / "retained-original");
+            std::ofstream{file->path} << "foreign";
         }
         SECTION("a different directory occupies the stage name") {
             std::filesystem::rename(stage_path, temporary.path / "retained-stage");
@@ -48,18 +48,18 @@ TEST_CASE("Bundle cleanup refuses a link replacement without touching its target
     REQUIRE(io::reserve_stage(stage, temporary.path / "result", {}));
     const auto file = io::place(stage, "run.json");
     REQUIRE(file);
-    const io::BundleSlot slot{.path = *file, .created = &stage.created.front().identity};
+    const auto& slot = *file;
     REQUIRE(io::write_bytes(slot, "owned"));
-    std::filesystem::rename(*file, stage.directory / "retained-original");
+    std::filesystem::rename(file->path, stage.directory / "retained-original");
     std::error_code error;
-    std::filesystem::create_symlink(outside, *file, error);
+    std::filesystem::create_symlink(outside, file->path, error);
     if (error) {
         return;
     } // Windows link creation may require a privilege unavailable to tests.
     const auto failure =
         io::abandon(stage, {.code = core::ErrorCode::output, .message = "Stop before commit"});
     CHECK(failure.publication == core::Publication::unknown);
-    CHECK(std::filesystem::is_symlink(*file));
+    CHECK(std::filesystem::is_symlink(file->path));
     CHECK(file_contents(outside) == "preserve");
 }
 TEST_CASE("Bundle cleanup does not traverse a replaced assets directory", "[bundle][publication]") {
@@ -68,7 +68,7 @@ TEST_CASE("Bundle cleanup does not traverse a replaced assets directory", "[bund
     REQUIRE(io::reserve_stage(stage, temporary.path / "result", {}));
     const auto file = io::place(stage, "assets/protect-mask.png");
     REQUIRE(file);
-    const io::BundleSlot slot{.path = *file, .created = &stage.created.front().identity};
+    const auto& slot = *file;
     REQUIRE(io::write_bytes(slot, "owned"));
     const auto retained = temporary.path / "retained-assets";
     std::filesystem::rename(stage.directory / "assets", retained);
@@ -82,5 +82,26 @@ TEST_CASE("Bundle cleanup does not traverse a replaced assets directory", "[bund
     CHECK(failure.publication == core::Publication::unknown);
     CHECK(file_contents(retained / "protect-mask.png") == "owned");
     CHECK(std::filesystem::is_symlink(stage.directory / "assets"));
+}
+TEST_CASE("Bundle staging reuses only retained owned directories", "[bundle][publication]") {
+    const TemporaryDirectory temporary{"docenhance-bundle-shared-parent"};
+    io::Stage stage;
+    REQUIRE(io::reserve_stage(stage, temporary.path / "result", {}));
+    const auto first = io::place(stage, "assets/first.png");
+    REQUIRE(first);
+    REQUIRE(io::write_bytes(*first, "first"));
+    const auto second = io::place(stage, "assets/second.png");
+    REQUIRE(second);
+    REQUIRE(io::write_bytes(*second, "second"));
+    CHECK(stage.created.size() == 3);
+    CHECK(stage.owns_entries());
+    CHECK(stage.cleanup());
+    CHECK(!std::filesystem::exists(stage.directory));
+
+    io::Stage foreign;
+    REQUIRE(io::reserve_stage(foreign, temporary.path / "foreign", {}));
+    REQUIRE(std::filesystem::create_directory(foreign.directory / "assets"));
+    CHECK(!io::place(foreign, "assets/first.png"));
+    CHECK(std::filesystem::is_directory(foreign.directory / "assets"));
 }
 } // namespace docenhance::tests

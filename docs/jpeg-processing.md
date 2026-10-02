@@ -13,6 +13,9 @@ checks, cancellation and hashing concern those same bytes. Signature dispatch se
 extensions do not govern decoding and there is no decoder retry. The PNG-only and protection APIs
 retain their domains. The source is preserved. Acquisition is not a transactional snapshot of an
 arbitrarily concurrently edited file or a hostile-filesystem sandbox.
+Regular-file status belongs to the opened native handle, including when a source link resolves to
+a regular file. Name replacement after opening does not redirect acquisition; POSIX type admission
+uses nonblocking open before fstat. Protection masks use the same acquisition boundary.
 
 `Raster` holds decoded integer samples and shared ICC/orientation/resolution observations.
 Container declarations are a closed PNG/JPEG alternative: PNG color chunks retain their original

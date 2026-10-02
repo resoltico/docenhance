@@ -98,3 +98,7 @@ reviewed contract, exercise every declared value option's empty-value refusal, a
 numerical references. Generator negative controls mutate identity/version, attribution and format
 policy. Current documentation distinguishes precommit verification refusal from integrity failure
 after a known commit; AGENTS.md lists D01 alongside the other implemented methods.
+
+The later [filesystem identity audit](filesystem-identity-audit.md) supersedes record-first
+reconciliation with retained native ownership and one complete validator. The earlier rationale
+remains historical: it applied before native publication origin could be established independently.

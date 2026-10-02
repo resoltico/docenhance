@@ -75,9 +75,6 @@
     "src/io/bundle_posix.cpp:clang-tidy/concurrency-mt-unsafe@810416d9": {
       "explanation": "Each enumeration owns a private DIR stream, used by one caller. POSIX readdir storage is copied before the next call, and independent streams are never shared; directory replacement tests exercise the retained descriptor boundary."
     },
-    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@0012caf4": {
-      "explanation": "Native POSIX open/openat use a variadic ABI even for read-only access. These calls pass no creation flags or mode arguments and immediately retain the returned descriptor for handle-relative non-following bundle access."
-    },
     "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@0d9f5483": {
       "explanation": "POSIX openat uses a variadic native ABI even for read-only access. These calls pass only a retained directory descriptor, relative entry name and explicit non-following flags; no creation-mode varargs are passed."
     },
@@ -105,12 +102,6 @@
     "src/io/digest.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@ac5c6e27": {
       "explanation": "One byte-view boundary: the hash reads the same immutable storage the caller already holds, as unsigned bytes, without changing any object's lifetime or value. The span it builds carries the original size, so the read stays inside the buffer that was consumed."
     },
-    "src/io/entry_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@dd6ab30e": {
-      "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
-    },
-    "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@458195cb": {
-      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
-    },
     "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@ead70b70": {
       "explanation": "The private SDK prerequisite wrapper includes Windows.h before individual public SDK headers. It supplies required declaration context rather than a separately referenced symbol; this narrow inclusion exception retains standalone public API header ownership."
     },
@@ -119,9 +110,6 @@
     },
     "src/io/entry_identity.cpp:clang-tidy/modernize-deprecated-headers@a28a8819": {
       "explanation": "The native CRT _fdopen and _fileno declarations are specified in the public stdio.h interface. The explicit native header avoids nonexistent or implementation-specific CRT header assumptions and does not replace the standard C++ stream abstraction elsewhere."
-    },
-    "src/io/entry_identity.cpp:clang-tidy/performance-no-int-to-ptr@dd6ab30e": {
-      "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
     },
     "src/io/jpeg_context.cpp:clang-tidy/cert-err52-cpp@18b02ec2": {
       "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner."
@@ -147,29 +135,11 @@
     "src/io/jpeg_memory.cpp:clang-tidy/readability-function-size@4ede62c2": {
       "explanation": "The public libjpeg memory-manager callback fixes six arguments for virtual-array requests. The short adapter validates the pool and fixed control-slot bound, charges aligned arrays before entropy work, and returns an opaque control. Only this unavoidable ABI parameter count is excepted; code and file size limits remain enforced."
     },
-    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@1bb56840": {
-      "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
-    },
-    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@2a132410": {
-      "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
-    },
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@bc0db12c": {
       "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
     },
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@cd3cd5d9": {
       "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
-    },
-    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@ffd0216a": {
-      "explanation": "The std::FILE returned by fopen is immediately transferred to a std::unique_ptr with FileCloser. clang-tidy's gsl::owner-only legacy-resource heuristic does not recognize unique_ptr::reset as an ownership transfer. Checked explicit close and RAII failure cleanup are exercised by codec/publication tests."
-    },
-    "src/io/png_context.cpp:clang-tidy/misc-include-cleaner@4420a099": {
-      "explanation": "MSVC exposes the Windows-only _wfopen_s C runtime extension through implementation internals that clang's include cleaner cannot attribute to a usable direct header. This narrow adapter call is the sole native wide-path file-opening boundary; the Windows package and Unicode-path checks exercise it."
-    },
-    "src/io/png_context.cpp:clang-tidy/misc-include-cleaner@915e5ad2": {
-      "explanation": "MSVC exposes the Windows-only _wfopen_s C runtime extension through implementation internals that clang's include cleaner cannot attribute to a usable direct header. This narrow adapter call is the sole native wide-path file-opening boundary; the Windows package and Unicode-path checks exercise it."
-    },
-    "src/io/png_context.cpp:clang-tidy/misc-include-cleaner@b67b9f80": {
-      "explanation": "MSVC exposes the Windows-only _wfopen_s C runtime extension through implementation internals that clang's include cleaner cannot attribute to a usable direct header. This narrow adapter call is the sole native wide-path file-opening boundary; the Windows package and Unicode-path checks exercise it."
     },
     "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
       "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
@@ -464,6 +434,54 @@
     },
     "tests/unit/verify.cpp:clang-tidy/clang-analyzer-cplusplus.Move@fee6ae2c": {
       "explanation": "This deterministic regression exercises the explicitly supported moved-from contract: request ready() is a const noexcept state observer, and inactive native directory operations refuse access before touching paths. The source is consumed by the production move operation; these checks must observe/refuse it rather than reinitialize it or hide the counterexample. Generic move analyzers cannot infer that checked class contract."
+    },
+    "src/io/bundle_posix.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@6bf89785": {
+      "explanation": "Native POSIX open/openat use a variadic ABI even for read-only access. These calls pass no creation flags or mode arguments and immediately retain the returned descriptor for handle-relative non-following bundle access."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@6f263044": {
+      "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/performance-no-int-to-ptr@6f263044": {
+      "explanation": "The Windows CRT requires native OS handles to cross its descriptor ABI as intptr_t. This single conversion transfers or observes an opaque kernel token without dereferencing it as memory; ordinary directory ownership now retains a pointer and avoids integer-to-pointer round trips."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@5fcc7818": {
+      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@db3506d3": {
+      "explanation": "The fixed POSIX open/fcntl ABI is variadic. This site passes constant flags and a bounded creation mode or duplicate-descriptor floor, never a format string or caller-controlled variadic arguments. Descriptor admission validates native type; leases keep object identity live and use close-on-exec. The FIFO regression opens a nonblocking peer so refusal is tested without timing sleeps."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@0131e154": {
+      "explanation": "The fixed POSIX open/fcntl ABI is variadic. This site passes constant flags and a bounded creation mode or duplicate-descriptor floor, never a format string or caller-controlled variadic arguments. Descriptor admission validates native type; leases keep object identity live and use close-on-exec. The FIFO regression opens a nonblocking peer so refusal is tested without timing sleeps."
+    },
+    "src/io/entry_identity.cpp:clang-tidy/misc-include-cleaner@0131e154": {
+      "explanation": "This native Windows SDK or POSIX CRT entry point is declared through the platform umbrella header and its internal declarations. The adapter directly includes the supported public header rather than a platform-private implementation header; access and object identity tests exercise the boundary."
+    },
+    "src/io/file_stream.cpp:clang-tidy/misc-include-cleaner@ec52610f": {
+      "explanation": "This specific native fdopen/fileno or Windows SDK boundary requires the direct public stdio.h/SDK prerequisite wrapper. Those declarations are outside ISO cstdio or are attributed by include-cleaner to inaccessible SDK internals. The opened descriptor is validated and immediately owned; the native filesystem and full compiler workflows exercise the ABI."
+    },
+    "src/io/file_stream.cpp:clang-tidy/modernize-deprecated-headers@83e555db": {
+      "explanation": "This specific native fdopen/fileno or Windows SDK boundary requires the direct public stdio.h/SDK prerequisite wrapper. Those declarations are outside ISO cstdio or are attributed by include-cleaner to inaccessible SDK internals. The opened descriptor is validated and immediately owned; the native filesystem and full compiler workflows exercise the ABI."
+    },
+    "src/io/file_stream.cpp:clang-tidy/modernize-deprecated-headers@ebfef559": {
+      "explanation": "This specific native fdopen/fileno or Windows SDK boundary requires the direct public stdio.h/SDK prerequisite wrapper. Those declarations are outside ISO cstdio or are attributed by include-cleaner to inaccessible SDK internals. The opened descriptor is validated and immediately owned; the native filesystem and full compiler workflows exercise the ABI."
+    },
+    "src/io/file_stream.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@8835979c": {
+      "explanation": "The Windows CRT _open_osfhandle/_get_osfhandle boundary transports an opaque OS HANDLE through intptr_t, never dereferenced as C++ storage. Native type/identity is checked and stream ownership consumes the validated handle; failure closes the handle."
+    },
+    "src/io/file_stream.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@6fd70b4c": {
+      "explanation": "The fixed POSIX open/fcntl ABI is variadic. This site passes constant flags and a bounded creation mode or duplicate-descriptor floor, never a format string or caller-controlled variadic arguments. Descriptor admission validates native type; leases keep object identity live and use close-on-exec. The FIFO regression opens a nonblocking peer so refusal is tested without timing sleeps."
+    },
+    "src/io/file_stream.cpp:clang-tidy/misc-include-cleaner@ae42921d": {
+      "explanation": "This specific native fdopen/fileno or Windows SDK boundary requires the direct public stdio.h/SDK prerequisite wrapper. Those declarations are outside ISO cstdio or are attributed by include-cleaner to inaccessible SDK internals. The opened descriptor is validated and immediately owned; the native filesystem and full compiler workflows exercise the ABI."
+    },
+    "src/io/file_stream.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@2217510d": {
+      "explanation": "The fixed POSIX open/fcntl ABI is variadic. This site passes constant flags and a bounded creation mode or duplicate-descriptor floor, never a format string or caller-controlled variadic arguments. Descriptor admission validates native type; leases keep object identity live and use close-on-exec. The FIFO regression opens a nonblocking peer so refusal is tested without timing sleeps."
+    },
+    "src/io/file_stream.cpp:clang-tidy/misc-include-cleaner@18883ea4": {
+      "explanation": "This specific native fdopen/fileno or Windows SDK boundary requires the direct public stdio.h/SDK prerequisite wrapper. Those declarations are outside ISO cstdio or are attributed by include-cleaner to inaccessible SDK internals. The opened descriptor is validated and immediately owned; the native filesystem and full compiler workflows exercise the ABI."
+    },
+    "tests/unit/filesystem_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@b7da1737": {
+      "explanation": "The fixed POSIX open/fcntl ABI is variadic. This site passes constant flags and a bounded creation mode or duplicate-descriptor floor, never a format string or caller-controlled variadic arguments. Descriptor admission validates native type; leases keep object identity live and use close-on-exec. The FIFO regression opens a nonblocking peer so refusal is tested without timing sleeps."
     }
   }
 }

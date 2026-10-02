@@ -134,6 +134,12 @@ Malformed/truncated data, strict CRC failures and refused allocations are regres
 
 ## Exclusive publication
 
+Filesystem effects bind relative paths before callbacks; admitted/report spelling remains intact.
+The [filesystem design and challenge](filesystem-identity-audit.md) records native object leases,
+opened-handle admission and deterministic namespace mutation cases. Staging retains at most one
+root and 64 entry leases. Native publication ownership stays in I/O; one complete host validator
+serves before and after commit, with no separate partial-record reopen or observation enum.
+
 The output must be a new directory whose parent already exists. Prechecking the target improves
 errors but is not the correctness boundary. A bounded search exclusively creates a private sibling
 staging directory; occupied paths are never adopted. The encoder closes the staged PNG before commit.

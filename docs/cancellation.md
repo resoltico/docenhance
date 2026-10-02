@@ -99,6 +99,10 @@ The final precommit checkpoint is the cutoff. If it observes cancellation, aband
 stage and do not call the rename operation. If it observes no cancellation, it authorizes the native
 atomic no-replace rename. A request arriving after that snapshot is late, including one arriving just
 before the actual system call. It does not retroactively revoke the authorized operation.
+Ownership checks surround that normal-execution observer and reject observed namespace changes.
+They do not reread cancellation after the cutoff. Native leases distinguish this invocation's
+directory from copied contents at a foreign destination; an observed owned destination after a lost
+reply establishes completed publication, even if later integrity verification fails.
 
 | Outcome | Report |
 |---|---|

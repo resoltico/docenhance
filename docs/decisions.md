@@ -316,3 +316,14 @@ locked header's heap traversal stack violated that boundary under injected alloc
 Use a checked private header with ordinary recursive container destruction, relying on pre-DOM
 depth admission and fixed typed builder shapes. Keep upstream bytes/attribution intact, bind the
 recipe to fresh private builds, and inspect installed bytes separately from behavioral fault tests.
+
+## Bind filesystem effects to live native ownership
+
+Resolve relative effect paths once without lexical normalization and preserve report spelling.
+Check regular-file admission on the opened source handle. Retain native object leases for staging
+and owned entries so identifiers cannot be recycled during checks; Windows uses the full supported
+128-bit identifier. Create private POSIX modes directly and refuse observed parent/object changes.
+I/O establishes publication origin by native directory ownership; the host validates contents through
+one callback before and after commit. Retire partial-record reopening and its observation enum.
+Keep trusted-ancestor and equally privileged mutation limits explicit: pathname rename/unlink cannot
+atomically compare an expected object identifier. See [filesystem identity](filesystem-identity-audit.md).

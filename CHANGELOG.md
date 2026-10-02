@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (C++ I/O/Windows paths):** bundle validation uses one `validate` callback; the partial `read_bundle_record` API and publication-observation enum are removed. Windows drive-relative publication paths such as `C:result` are rejected; use a fully qualified drive path or an ordinary relative path. Windows publication requires native open-by-ID support and refuses SMB output destinations; use a supported local volume. POSIX output files now use owner-only creation modes; explicitly grant file permissions when sharing results.
+
 - **Breaking (build/C++ integration):** native builds use a checked private JSON header with allocation-free, bounded recursive destruction. Recreate build trees and private dependency prefixes for the changed recipe, and use that header consistently in integrations. Record DOM admission remains limited to 16 levels; arbitrary-depth JSON is unsupported.
 
 - **Breaking (execution ports/borrowing):** processing and verification results must supply coherent identities, publication states and request/stage observations. Invalid processing returns retain unknown publication; invalid read-only returns are invariant failures with no publication. Metadata borrowing rejects temporary owners, and moved-from requests cannot execute. Response validation rejects zero record sizes, empty/oversized confirmation inventories and publication claims outside processing; wire/record versions remain unchanged.
@@ -15,6 +17,9 @@ Notable changes to this project are documented in this file. The format is based
 - **Breaking (C++/authoring):** capability entries use `contract::InputSupport` instead of `app::InputSupport`; update native consumers. The unused CLI `contract_version` field is removed, and obsolete or unknown authoring fields are rejected without aliases or migration.
 
 ### Fixed
+
+- Publication binds relative effects before callbacks and refuses observed replacement of staging, parent directories or created files. Retained native object leases prevent identity reuse during checks; copied record bytes cannot establish publication origin. A matching owned directory after a lost rename reply establishes `completed`, with `E_OUTPUT_VERIFY` if subsequent validation fails. Cleanup remains nonrecursive, and arbitrary equally privileged changes between checks and native operations remain outside the guarantee.
+- Source and mask acquisition validate the opened regular file instead of checking a pathname before opening it; POSIX opening cannot block on a substituted FIFO before type admission. Opened objects remain the source of snapshot bytes when names are replaced. Bundle reads reject observed inventory changes and Windows root-binding changes during acquisition.
 
 - Run-record parsing stops at its 1,024-event ceiling instead of continuing with growing discarded-object bookkeeping. JSON cleanup no longer allocates a traversal stack that could terminate the process under memory pressure. Percentile selection uses caller-owned scratch with worst-case O(n log n) comparisons, avoiding adversarial quadratic work without changing I01 quantiles.
 

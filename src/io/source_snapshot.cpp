@@ -12,10 +12,8 @@
 #include <cstddef>
 #include <cstdio>
 #include <expected>
-#include <filesystem>
 #include <span>
 #include <string>
-#include <system_error>
 #include <utility>
 
 namespace docenhance::io {
@@ -25,11 +23,6 @@ core::Result<core::Buffer> read_source_snapshot(const std::string& input, core::
         return core::cancelled();
     }
     const auto path = utf8_path(input);
-    std::error_code error;
-    if (!std::filesystem::is_regular_file(path, error) || error) {
-        return core::failure(core::ErrorCode::input,
-                             "Source input must be a readable regular file");
-    }
     // Reading bytes needs no codec: building a libpng context here would charge the budget for
     // structures this function never uses, and would report exhaustion as an unreadable input.
     const auto file = open_for_reading(path);

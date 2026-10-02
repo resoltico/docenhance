@@ -52,6 +52,9 @@ native warnings are errors, not silent acceptance of repaired input.
 The file adapter reads one bounded immutable encoded snapshot. It checks observed file size and
 actual byte reads, including an extra EOF check. This is not a transactional point-in-time snapshot
 of a concurrently edited source. The source is opened read-only and is never overwritten.
+Regular-file admission checks the opened native handle. Source leaf links may resolve once to a
+regular file; replacing that name afterward does not redirect the retained handle. POSIX opening
+is nonblocking before type admission so a substituted FIFO cannot block that check.
 
 A separate bounded chunk scan validates framing, order and CRCs before pixel allocation. It extracts
 only supported metadata. The borrowed pixel stream presented to libpng contains IHDR, PLTE, tRNS,
