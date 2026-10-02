@@ -166,7 +166,7 @@ struct ManifestWriter {
 };
 core::Result<void> write_manifest(void* const state, const io::BundleSlot& slot) {
     auto const& writer = *static_cast<ManifestWriter*>(state);
-    const auto written = io::write_bytes(slot, writer.content, writer.stream);
+    const auto written = io::write_bytes(slot, writer.content, {}, writer.stream);
     if (!written) {
         return written;
     }

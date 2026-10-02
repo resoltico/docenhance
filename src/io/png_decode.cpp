@@ -15,7 +15,6 @@
 #include <cstdint>
 #include <expected>
 #include <png.h>
-#include <pngconf.h>
 #include <span>
 #include <utility>
 
@@ -24,23 +23,6 @@ namespace {
 constexpr std::uintmax_t mebibyte = std::uintmax_t{1024} * 1024;
 constexpr unsigned max_cached_chunks = 32;
 constexpr int nibble_depth = 4;
-// The jump target contains only trivial automatic state. All owning C++ objects are in its caller.
-void read_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
-    auto& input = *static_cast<PngInput*>(png_get_io_ptr(png));
-    constexpr std::size_t transfer_bytes = std::size_t{64} * 1024;
-    auto output = std::span{bytes, count};
-    while (!output.empty()) {
-        if (observe_cancellation(png, core::Checkpoint::decode)) {
-            png_error(png, "Cancelled");
-        }
-        const auto chunk = output.first(std::min(transfer_bytes, output.size()));
-        if (chunk.size() > input.remaining || !input.read(input.state, chunk)) {
-            png_error(png, "The PNG input is truncated or exceeds its encoded-byte bound");
-        }
-        input.remaining -= chunk.size();
-        output = output.subspan(chunk.size());
-    }
-}
 [[nodiscard]] bool read_header(const PngContext& context, PngInput& input) {
     // libpng requires a C jump frame; all C++ owners are in the caller.
 #ifdef _MSC_VER
@@ -54,7 +36,7 @@ void read_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
-    png_set_read_fn(context.png, &input, read_bytes);
+    install_png_reader(context, input);
     png_set_crc_action(context.png, PNG_CRC_ERROR_QUIT, PNG_CRC_ERROR_QUIT);
     png_set_chunk_malloc_max(context.png, mebibyte);
     png_set_chunk_cache_max(context.png, max_cached_chunks);

@@ -46,9 +46,10 @@ struct PngMemory {
 };
 // Reader state and its remaining-byte bound also live outside every libpng jump frame.
 struct PngInput {
-    void* state;
-    bool (*read)(void*, std::span<std::uint8_t>) noexcept;
-    std::size_t remaining;
+    void* state = nullptr;
+    bool (*read)(void*, std::span<std::uint8_t>) noexcept = nullptr;
+    std::size_t remaining = 0;
+    core::Checkpoint checkpoint = core::Checkpoint::decode;
 };
 class PngContext {
   public:
@@ -61,6 +62,7 @@ class PngContext {
     [[nodiscard]] bool open(const std::filesystem::path& path,
                             std::optional<EntryIdentity>* created = nullptr);
     [[nodiscard]] bool close_output() noexcept;
+    [[nodiscard]] core::Result<void> finish_output(core::Result<void> result);
     [[nodiscard]] core::Error error(core::ErrorCode fallback) const;
     PngMemory memory;
     png_structp png = nullptr;
@@ -69,6 +71,7 @@ class PngContext {
     int passes = 1;
     bool writing;
 };
+void install_png_reader(const PngContext& context, PngInput& input);
 [[nodiscard]] bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept;
 [[nodiscard]] std::filesystem::path utf8_path(std::string_view value);
 // The UTF-8 bytes of a path. Where a platform spells paths in bytes those bytes are returned

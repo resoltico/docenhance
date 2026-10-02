@@ -121,6 +121,10 @@ class ResponseSchemaTests(unittest.TestCase):
         validator = Draft202012Validator(SCHEMA)
         validator.validate(response)
         validator.validate(response | {"publication": "not_published"})
+        validator.validate(response | {"command": "verify"})
+        self.assertFalse(
+            validator.is_valid(response | {"command": "verify", "publication": "not_published"})
+        )
         for change in (
             {"publication": "completed"},
             {"publication": "unknown"},

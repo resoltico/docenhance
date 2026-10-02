@@ -147,7 +147,10 @@ record names outside the bundle.
 
 ## Preparing and reconciling publication
 
-Every writer checks write, flush and close completion. Before the final cancellation cutoff, the
+Every writer checks write, flush and close completion, including returned cancellation paths.
+Manifest transfers and PNG reread sample comparisons observe cancellation in at most 64 KiB
+blocks. A delayed stream failure takes precedence over cancellation; earlier genuine errors remain
+primary. Before the final cancellation cutoff, the
 host rereads and validates the staged bundle using the same reader and artifact checks as `verify`.
 It compares the exact manifest digest and run identity with the values this invocation prepared.
 I/O owns the native transaction and invokes host validation callbacks; it contains no processing

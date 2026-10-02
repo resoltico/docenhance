@@ -16,12 +16,30 @@
 #include <png.h>
 #include <pngconf.h>
 #include <ranges>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 
 namespace docenhance::io {
 namespace {
+// The jump target contains only trivial automatic state. All owning C++ objects are in its caller.
+void read_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
+    auto& input = *static_cast<PngInput*>(png_get_io_ptr(png));
+    constexpr std::size_t transfer_bytes = std::size_t{64} * 1024;
+    auto output = std::span{bytes, count};
+    while (!output.empty()) {
+        if (observe_cancellation(png, input.checkpoint)) {
+            png_error(png, "Cancelled");
+        }
+        const auto chunk = output.first(std::min(transfer_bytes, output.size()));
+        if (chunk.size() > input.remaining || !input.read(input.state, chunk)) {
+            png_error(png, "The PNG input is truncated or exceeds its encoded-byte bound");
+        }
+        input.remaining -= chunk.size();
+        output = output.subspan(chunk.size());
+    }
+}
 [[nodiscard]] png_voidp allocate_block(PngMemory& memory, png_alloc_size_t size) {
     for (core::Buffer& slot : memory.blocks) {
         if (!slot.empty()) {
@@ -170,6 +188,16 @@ bool PngContext::close_output() noexcept {
     const bool closed = std::fclose(closing) == 0; // NOLINT(cppcoreguidelines-owning-memory)
     return flushed && closed;
 }
+core::Result<void> PngContext::finish_output(core::Result<void> result) {
+    if (file == nullptr) {
+        return result;
+    }
+    const bool closed = close_output();
+    if (!closed && (result || result.error().code == core::ErrorCode::cancelled)) {
+        return core::failure(core::ErrorCode::output, "Cannot finish writing the PNG output");
+    }
+    return result;
+}
 core::Error PngContext::error(core::ErrorCode fallback) const {
     if (memory.exhausted) {
         return {
@@ -185,6 +213,9 @@ core::Error PngContext::error(core::ErrorCode fallback) const {
         .message = memory.message.front() == '\0' ? "Cannot open or initialize the PNG stream"
                                                   : memory.message.data(),
     };
+}
+void install_png_reader(const PngContext& context, PngInput& input) {
+    png_set_read_fn(context.png, &input, read_bytes);
 }
 bool observe_cancellation(png_structp png, core::Checkpoint at) noexcept {
     auto& memory = *static_cast<PngMemory*>(png_get_error_ptr(png));

@@ -7,9 +7,22 @@
 #include "signals.hpp"
 
 #include <cstddef>
+#include <cstdio>
 #include <iostream>
 #include <span>
 #include <vector>
+
+namespace docenhance::entry {
+namespace {
+bool prepare_delivery() noexcept {
+    // Configure before any I/O. A failed explicit flush must leave no buffered response for
+    // libc to retry after the interrupt scope restores the inherited signal dispositions.
+    const bool output = std::setvbuf(stdout, nullptr, _IONBF, 0) == 0;
+    const bool diagnostic = std::setvbuf(stderr, nullptr, _IONBF, 0) == 0;
+    return output && diagnostic;
+}
+} // namespace
+} // namespace docenhance::entry
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -68,7 +81,7 @@ int run_windows(std::span<wchar_t* const> raw) {
 int wmain(int argc, wchar_t** const argv) {
     try {
         docenhance::entry::InterruptScope interrupts;
-        if (!interrupts.install()) {
+        if (!docenhance::entry::prepare_delivery() || !interrupts.install()) {
             return static_cast<int>(docenhance::core::ExitCode::invariant);
         }
         return docenhance::entry::run_windows({argv, static_cast<std::size_t>(argc)});
@@ -80,7 +93,7 @@ int wmain(int argc, wchar_t** const argv) {
 int main(int argc, char** const argv) { // NOLINT(misc-const-correctness)
     try {
         docenhance::entry::InterruptScope interrupts;
-        if (!interrupts.install()) {
+        if (!docenhance::entry::prepare_delivery() || !interrupts.install()) {
             return static_cast<int>(docenhance::core::ExitCode::invariant);
         }
         const std::span<char* const> raw(argv, static_cast<std::size_t>(argc));

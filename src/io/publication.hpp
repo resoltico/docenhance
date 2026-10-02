@@ -28,6 +28,7 @@ struct BundleStream {
     int (*close)(std::FILE*) = std::fclose;
 };
 [[nodiscard]] core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
+                                             const core::Cancellation& cancellation,
                                              BundleStream operations);
 // A single native operation. Unsupported filesystems fail closed, never check-then-rename.
 [[nodiscard]] std::error_code rename_exclusive(const std::filesystem::path& source,

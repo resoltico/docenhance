@@ -18,6 +18,7 @@
 #include <png.h>
 #include <pngconf.h>
 #include <span>
+#include <utility>
 
 namespace docenhance::io {
 namespace {
@@ -103,27 +104,24 @@ core::Result<void> encode_png_rows(const std::filesystem::path& path, image::Row
     }
     PngContext context{budget, true, cancellation};
     if (!context.open(path, created) || !begin_rows(context, description)) {
-        return std::unexpected(context.error(core::ErrorCode::output));
+        return context.finish_output(std::unexpected(context.error(core::ErrorCode::output)));
     }
     for (std::uint32_t y = 0; y < description.shape.height; ++y) {
         if (cancellation.requested(core::Checkpoint::encode)) {
-            return core::cancelled();
+            return context.finish_output(core::cancelled());
         }
         // Color work and Result ownership are outside every native setjmp frame.
         auto generated = source.row(y, row->view().row(0), image::RowUse::output);
         if (!generated) {
-            return generated;
+            return context.finish_output(std::move(generated));
         }
         if (!write_row(context, row->view().row(0))) {
-            return std::unexpected(context.error(core::ErrorCode::output));
+            return context.finish_output(std::unexpected(context.error(core::ErrorCode::output)));
         }
     }
     if (!finish_rows(context)) {
-        return std::unexpected(context.error(core::ErrorCode::output));
+        return context.finish_output(std::unexpected(context.error(core::ErrorCode::output)));
     }
-    if (!context.close_output()) {
-        return core::failure(core::ErrorCode::output, "Cannot close the continuous-tone PNG");
-    }
-    return {};
+    return context.finish_output({});
 }
 } // namespace docenhance::io

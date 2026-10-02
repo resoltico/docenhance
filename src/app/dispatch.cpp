@@ -120,6 +120,9 @@ Outcome verify(const contract::Invocation& invocation, Verifier& verifier,
     if (!request) {
         return failure(invocation, std::move(request.error()));
     }
+    if (cancellation.requested(core::Checkpoint::admission)) {
+        return failure(invocation, core::cancelled().error());
+    }
     auto verified = verifier.verify(*request, cancellation);
     if (!verified) {
         return failure(invocation, std::move(verified.error()));

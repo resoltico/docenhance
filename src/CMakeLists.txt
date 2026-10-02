@@ -74,7 +74,7 @@ de_library(de_io LAYER io
           io/png_inventory.cpp io/png_verify_rows.cpp io/png_verified_rows.cpp
           io/png_protection.cpp io/source_snapshot.hpp io/digest.cpp
   HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp" "${DE_INCLUDE}/io/source.hpp" "${DE_INCLUDE}/io/jpeg.hpp"
-          "${DE_INCLUDE}/io/protection_png.hpp" "${DE_INCLUDE}/io/digest.hpp"
+          "${DE_INCLUDE}/io/protection_png.hpp" "${DE_INCLUDE}/io/digest.hpp" "${DE_INCLUDE}/io/bundle.hpp"
   LINKS de_core de_image DE::png DE::jpeg DE::zlib DE::picosha2)
 de_library(de_color LAYER color
   SOURCES color/context.cpp color/context.hpp color/profiles.cpp color/interpretation.cpp

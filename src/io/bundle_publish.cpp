@@ -9,6 +9,8 @@
 #include "publication.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdio>
 #include <expected>
 #include <filesystem>
 #include <new>
@@ -20,8 +22,12 @@
 namespace docenhance::io {
 
 namespace {
-core::Result<void> write_files(Stage& stage, std::span<const BundleFile> files) {
+core::Result<void> write_files(Stage& stage, std::span<const BundleFile> files,
+                               const core::Cancellation& cancellation) {
     for (const auto& file : files) {
+        if (cancellation.requested(core::Checkpoint::staging)) {
+            return core::cancelled();
+        }
         const auto path = place(stage, file.relative);
         if (!path) {
             return std::unexpected(path.error());
@@ -100,7 +106,7 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
         if (!reserved) {
             return std::unexpected(std::move(reserved.error()));
         }
-        auto written = write_files(stage, files);
+        auto written = write_files(stage, files, cancellation);
         if (!written) {
             return std::unexpected(abandon(stage, std::move(written.error())));
         }
@@ -123,11 +129,32 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
     }
 }
 
-core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content) {
-    return write_bytes(slot, content, {});
+namespace {
+core::Result<void> write_content(std::FILE* file, std::string_view content,
+                                 const core::Cancellation& cancellation, BundleStream operations) {
+    constexpr std::size_t transfer = std::size_t{64} * 1024;
+    while (!content.empty()) {
+        if (cancellation.requested(core::Checkpoint::encode)) {
+            return core::cancelled();
+        }
+        const auto part = content.substr(0, std::min(transfer, content.size()));
+        if (operations.write(part.data(), 1, part.size(), file) != part.size()) {
+            return core::failure(core::ErrorCode::output, "A bundle file could not be written");
+        }
+        content.remove_prefix(part.size());
+    }
+    return {};
+}
+} // namespace
+core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
+                               const core::Cancellation& cancellation) {
+    return write_bytes(slot, content, cancellation, {});
 }
 core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
-                               BundleStream operations) {
+                               const core::Cancellation& cancellation, BundleStream operations) {
+    if (cancellation.requested(core::Checkpoint::encode)) {
+        return core::cancelled();
+    }
     auto file = open_for_writing(slot.path);
     if (file == nullptr) {
         return core::failure(core::ErrorCode::output, "Cannot create a file inside the bundle");
@@ -135,15 +162,17 @@ core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
     if (slot.created != nullptr) {
         *slot.created = stream_identity(file.get());
     }
-    if (!content.empty() &&
-        operations.write(content.data(), 1, content.size(), file.get()) != content.size()) {
-        return core::failure(core::ErrorCode::output, "A bundle file could not be written");
-    }
+    auto written = write_content(file.get(), content, cancellation, operations);
     const bool flushed = operations.flush(file.get()) == 0;
     const bool closed = operations.close(file.release()) == 0;
-    return flushed && closed
-               ? core::Result<void>{}
-               : core::failure(core::ErrorCode::output, "A bundle file could not be completed");
+    // A real write failure wins; delayed stream errors also outrank cooperative cancellation.
+    if (!written && written.error().code != core::ErrorCode::cancelled) {
+        return written;
+    }
+    if (!flushed || !closed) {
+        return core::failure(core::ErrorCode::output, "A bundle file could not be completed");
+    }
+    return written;
 }
 std::string file_name(const std::string& path) {
     const auto name = utf8_spelling(utf8_path(path).filename());
