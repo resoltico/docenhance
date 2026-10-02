@@ -27,6 +27,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
+- Independent executable references now check complete color/orientation/protection → I01 → D01 → quantization composition, including direct-window integer NLM-L1, maximal windows, native strength rounding and once-only observations. A real producer mutation proves detection of premature 16-bit quantization that processing decode-back and bundle verification can both accept. Processing mathematics and method versions are unchanged.
+
 - CLI parsing binds generated option metadata directly to typed invocation storage, removing parallel maps and handwritten transfer assignments. Regeneration preserves unchanged files. Host publication groups each representation with its operation and observation owners; prepared illumination returns an owned value. Distinct codec, admission and publication safety boundaries remain.
 - Real executable checks compare complete help descriptors and admitted default records with the reviewed contract, and reject empty values for every declared value option. Documentation distinguishes verification refusal before commit from integrity failure after known publication.
 

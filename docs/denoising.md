@@ -96,6 +96,12 @@ completed native calls; a failed attempted call does not manufacture a reservati
 
 ## Required evidence
 
+The [composition audit](numerical-composition-audit.md) adds an independently written direct-window
+integer NLM-L1 oracle and complete executable composition checks. It includes native distance
+binning, binary32 strength arithmetic, fixed weights/cutoff and integer weighted-mean rounding,
+without reusing rolling sums or native calls. Its producer-mutation control demonstrates that
+processing-time decode-back agreement alone cannot establish numerical correctness.
+
 Independent scalar tests cover transfer/quantization, signed correction, blend, transport, exact
 between-level no-op/protection, extremes and resource arithmetic. Native comparisons cover tile
 seams/exteriors/partial tiles/all patch/search extrema, worker settings and 16-bit patterns.
