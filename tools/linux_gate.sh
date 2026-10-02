@@ -18,4 +18,4 @@ cmake -P cmake/AcquireDependencies.cmake
 python tools/check_all.py
 # GCC/libstdc++ supplies Linux's release compiler; the pinned clang-tidy also runs on every TU.
 CC=gcc CXX=g++ cmake --workflow --preset release
-python tools/package_smoke.py "dist/docenhance-$(python -c "import sys; sys.path.insert(0, 'tools'); from project_version import project_version; print(project_version())")-Linux-$(uname -m).tar.gz"
+python tools/package_smoke.py "dist/docenhance-$(python -c "import sys; sys.path.insert(0, 'tools'); from project_version import project_version; print(project_version())")-Linux-$(uname -m).tar.gz" --build out/release/app

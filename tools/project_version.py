@@ -18,7 +18,12 @@ class VersionError(ValueError):
 
 def project_version(root: Path = ROOT) -> str:
     """Return the version declared by project(... VERSION x.y.z ...)."""
-    match = PROJECT_VERSION.search((root / "CMakeLists.txt").read_text(encoding="utf-8"))
+    return version_from_text((root / "CMakeLists.txt").read_text(encoding="utf-8"))
+
+
+def version_from_text(text: str) -> str:
+    """Read the same strict project version from an immutable committed source snapshot."""
+    match = PROJECT_VERSION.search(text)
     if match is None or SEMVER.fullmatch(match.group(1)) is None:
         msg = "CMakeLists.txt must declare project(... VERSION <major>.<minor>.<patch> ...)"
         raise VersionError(msg)

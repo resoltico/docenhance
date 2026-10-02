@@ -150,10 +150,22 @@ class ArchiveTests(unittest.TestCase):
             (root / "keep.txt").write_text("source\n")
             for name in (".DS_Store", "Thumbs.db", "desktop.ini"):
                 (root / name).write_text("metadata\n")
-            self.assertEqual(
-                [relative.as_posix() for _, relative in package_source.source_files(root)],
-                ["keep.txt"],
+            deps.run("git", "init", str(root))
+            deps.run("git", "add", ".", cwd=root)
+            deps.run(
+                "git",
+                "-c",
+                "user.name=Fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "-m",
+                "source",
+                cwd=root,
             )
+            self.assertEqual(set(package_source.source_files(root)), {"keep.txt"})
 
 
 class ExtractionTests(unittest.TestCase):

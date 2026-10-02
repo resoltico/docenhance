@@ -268,3 +268,18 @@ resource estimates without native types. The host composes linear interpretation
 prepared D01 and final integer rows. Completed earlier-stage observations survive downstream
 failures; publication remains one complete bundle transaction. The prepared scalar planes and
 original source/model outlive encoding and verification. See [denoising](denoising.md).
+
+## Verification observes execution and delivered bytes
+
+The native suite reconciles executable case discovery and actual translation-unit compilation with
+fresh per-process results. Catch XML establishes nonzero assertion work without hidden skips or
+expected failures; CTest JUnit establishes complete process execution. CLI scripts and fuzz corpus
+replays have independent source/manifest registration checks. Strict tooling discovery rejects
+empty modules and skipped cases. Fuzz campaigns additionally check declared duration, selected
+engine, exact binary/manifest identities and native work reports.
+
+Relocated package inspection compares the tested executable, reviewed schemas/specs and regenerated
+locked-source license inventory byte-for-byte, checks OS-only native imports and exercises every
+advertised method. A source SPDX inventory remains explicitly separate from binary composition or
+legal clearance. Source release archives snapshot one resolved committed Git tree; local workspace
+changes cannot silently enter release contents. See [the verification/artifact audit](verification-artifacts-audit.md).

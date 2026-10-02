@@ -271,3 +271,13 @@ completion happens before staged cleanup even on cancellation; actual read/write
 a subsequent stop observation. PNG rereads share bounded native input callbacks, with reader
 state outside jump frames. The [execution/publication audit](execution-publication-audit.md)
 records the design and separate QA challenges.
+
+## Completion and artifacts need independent observations
+
+A successful test process is necessary, not sufficient: reconcile complete discovery and fresh
+results, with actual assertion work and no skipped required cases. Source mentions in build files
+are not compiler coverage. Package metadata must agree with the independently tested binary,
+reviewed contracts and verified upstream license bytes; its own existence or hashes cannot prove
+that agreement. Archive the committed source snapshot, so local work is neither leaked nor given
+an inconsistent manifest. The [verification/artifact audit](verification-artifacts-audit.md) records
+separate design and challenge passes and real negative controls.

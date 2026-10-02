@@ -13,10 +13,12 @@ import argparse
 import hashlib
 import json
 import shutil
+import tempfile
 import uuid
 from pathlib import Path
 from typing import Any
 
+from audit_build import read_cache
 from deps import ROOT, Dependency, load_lock, verify
 from project_version import project_version
 
@@ -138,6 +140,32 @@ def write_json(path: Path, value: dict[str, Any]) -> None:
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
 
 
+def generate(cache: Path, out: Path, target_platform: str, compiler: str) -> None:
+    """Write the exact verified source inventory into a caller-owned empty directory."""
+    lock = load_lock(ROOT / "deps/lock.json")
+    lock_hash = hashlib.sha256((ROOT / "deps/lock.json").read_bytes()).hexdigest()
+    version = project_version()
+    out.mkdir(parents=True, exist_ok=True)
+    packages, notices = [], list(NOTICE_PREAMBLE)
+    for dep in lock["dependencies"]:
+        receipt = verify(dep, cache)
+        copy_licenses(dep, receipt, cache / "sources" / dep["name"], out)
+        notices += notice_lines(dep)
+        packages.append(spdx_package(dep, receipt))
+    (out / "THIRD_PARTY_NOTICES.md").write_text("\n".join(notices) + "\n", encoding="utf-8")
+    write_json(out / "sbom.spdx.json", spdx_document(version, lock_hash, packages))
+    info = {
+        "schema_version": 1,
+        "version": version,
+        "platform": target_platform,
+        "compiler": compiler,
+        "dependency_lock_sha256": lock_hash,
+        "inventory_kind": "declared-source-dependencies",
+        "binary_composition_verified": False,
+    }
+    write_json(out / "build-info.json", info)
+
+
 def main() -> int:
     """Verify every dependency and write licenses, notices, SBOM and build info."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -146,33 +174,21 @@ def main() -> int:
     parser.add_argument("--platform", required=True)
     parser.add_argument("--compiler", required=True)
     args = parser.parse_args()
-    lock = load_lock(ROOT / "deps/lock.json")
-    lock_hash = hashlib.sha256((ROOT / "deps/lock.json").read_bytes()).hexdigest()
-    version = project_version()
-    # Managed build directory only. Do not accept the repository or any parent as output.
-    resolved = args.out.resolve()
-    if resolved == ROOT or ROOT.is_relative_to(resolved):
-        msg = "Unsafe metadata output directory"
+    configured = read_cache(args.out.parent / "CMakeCache.txt")
+    if (
+        args.out.name != "package-metadata"
+        or args.out.is_symlink()
+        or configured.get("CMAKE_PROJECT_NAME") != "DocEnhance"
+        or Path(configured.get("CMAKE_HOME_DIRECTORY", "")).resolve() != ROOT
+    ):
+        msg = "Inventory output must be the configured project's owned package-metadata directory"
         raise InventoryError(msg)
-    args.out.mkdir(parents=True, exist_ok=True)
-    packages, notices = [], list(NOTICE_PREAMBLE)
-    for dep in lock["dependencies"]:
-        receipt = verify(dep, args.cache)
-        copy_licenses(dep, receipt, args.cache / "sources" / dep["name"], args.out)
-        notices += notice_lines(dep)
-        packages.append(spdx_package(dep, receipt))
-    (args.out / "THIRD_PARTY_NOTICES.md").write_text("\n".join(notices) + "\n", encoding="utf-8")
-    write_json(args.out / "sbom.spdx.json", spdx_document(version, lock_hash, packages))
-    info = {
-        "schema_version": 1,
-        "version": version,
-        "platform": args.platform,
-        "compiler": args.compiler,
-        "dependency_lock_sha256": lock_hash,
-        "inventory_kind": "declared-source-dependencies",
-        "binary_composition_verified": False,
-    }
-    write_json(args.out / "build-info.json", info)
+    with tempfile.TemporaryDirectory(prefix="inventory-", dir=args.out.parent) as temporary:
+        prepared = Path(temporary) / "package-metadata"
+        generate(args.cache, prepared, args.platform, args.compiler)
+        if args.out.exists():
+            shutil.rmtree(args.out)
+        prepared.rename(args.out)
     return 0
 
 

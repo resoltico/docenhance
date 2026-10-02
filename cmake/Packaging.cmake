@@ -6,7 +6,7 @@ add_custom_target(de_license_inventory ALL
   COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/license_inventory.py"
     --cache "${DE_SOURCE_CACHE}" --out "${de_package_meta}"
     --platform "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}"
-    --compiler "${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION}"
+    --compiler "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}"
   VERBATIM)
 add_dependencies(docenhance de_license_inventory)
 install(TARGETS docenhance RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")

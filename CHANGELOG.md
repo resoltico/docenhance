@@ -4,6 +4,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+- Required verification now rejects skipped, missing and zero-work tests, reconciles actual
+  compilation and execution evidence, and inspects relocated binary/contract/license bytes.
+  Source archives contain the committed Git snapshot, excluding dirty and untracked local work;
+  package inspection requires the independently tested build directory.
+
 - Keep closed response pipes as delivery failures, admit truthful verification cancellation, and
   check bounded codec/manifest work and delayed stream errors before publication cleanup.
 

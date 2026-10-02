@@ -31,7 +31,7 @@ jobs:
       - run: python -m ruff check --output-format github
       - run: python -m mypy
       - run: python tools/check_format.py
-      - run: python -m unittest discover -s tests/tooling -v
+      - run: python tools/run_tooling_tests.py
       - run: python tools/check_reference_suite.py --compiler g++
       - run: python tools/check_reference_suite.py --compiler clang++-23 --sanitize
   native:
@@ -108,7 +108,7 @@ jobs:
           set -euo pipefail
           packages=(dist/*.tar.gz)
           test "${#packages[@]}" = 1
-          python tools/package_smoke.py "${packages[0]}"
+          python tools/package_smoke.py "${packages[0]}" --build out/release/app
       - name: Build, test and package with MSVC
         if: runner.os == 'Windows'
         shell: pwsh
