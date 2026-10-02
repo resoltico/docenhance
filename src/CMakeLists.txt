@@ -68,7 +68,7 @@ de_library(de_cli LAYER cli
 de_library(de_io LAYER io
   SOURCES io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_write_image.cpp io/bundle_publish.cpp io/bundle_stage.cpp io/bundle_stage.hpp io/bundle_inspect.cpp io/bundle_png.cpp io/entry_identity.hpp io/entry_identity.cpp io/bundle_native.hpp io/bundle_posix.cpp io/bundle_windows.cpp io/windows_sdk.hpp
           io/publication.cpp io/png_context.hpp io/png_reader.hpp io/publication.hpp
-          io/png_metadata.cpp io/png_metadata.hpp io/png_profile.cpp io/exif.cpp io/exif.hpp
+          io/png_metadata.cpp io/png_metadata.hpp io/png_chunks.cpp io/png_chunks.hpp io/png_profile.cpp io/exif.cpp io/exif.hpp
           io/jpeg_context.hpp io/jpeg_context.cpp io/jpeg_memory.cpp io/jpeg_scan.hpp io/jpeg_markers.hpp io/jpeg_scan.cpp io/jpeg_metadata.cpp io/jpeg_decode.cpp io/source.cpp
           io/png_raster.cpp io/source_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
           io/png_inventory.cpp io/png_verify_rows.cpp io/png_verified_rows.cpp

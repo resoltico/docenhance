@@ -6,6 +6,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_context.hpp"
+#include "png_metadata.hpp"
 #include "png_reader.hpp"
 
 #include <algorithm>
@@ -165,6 +166,11 @@ bool read_memory(void* const state, std::span<std::uint8_t> output) noexcept {
 core::Result<image::Plane<std::uint8_t>>
 decode_grayscale_png(std::span<const std::uint8_t> input, core::Budget& budget, PngLimits limits,
                      const core::Cancellation& cancellation) {
+    auto framing = scan_png(
+        input, budget, {.limits = limits, .meaning = PngMeaning::stored_samples}, cancellation);
+    if (!framing) {
+        return std::unexpected(framing.error());
+    }
     PngContext context{budget, false, cancellation};
     PngInput reader{.state = &input, .read = read_memory, .remaining = input.size()};
     return decode_png(context, reader, limits);

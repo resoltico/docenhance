@@ -96,15 +96,13 @@ core::Result<void> assign_fields(const ExifFields& fields, image::RasterMetadata
         return core::failure(core::ErrorCode::input,
                              "EXIF orientation or resolution unit is invalid");
     }
-    if (metadata.png() == nullptr) {
-        const bool partial = fields.x.has_value() != fields.y.has_value();
-        const bool invalid = (fields.x && *fields.x <= 0) || (fields.y && *fields.y <= 0);
-        if (partial || invalid) {
-            return core::failure(core::ErrorCode::input,
-                                 "JPEG EXIF resolution fields must form a positive pair");
-        }
+    const bool partial = fields.x.has_value() != fields.y.has_value();
+    const bool invalid = (fields.x && *fields.x <= 0) || (fields.y && *fields.y <= 0);
+    if (partial || invalid) {
+        return core::failure(core::ErrorCode::input,
+                             "EXIF resolution fields must form a positive pair");
     }
-    if (metadata.resolution || !fields.x || !fields.y || fields.unit.value_or(2) == 1) {
+    if (!fields.x || fields.unit.value_or(2) == 1) {
         return {};
     }
     constexpr double inches_per_meter = 100.0 / 2.54;
@@ -117,8 +115,12 @@ core::Result<void> assign_fields(const ExifFields& fields, image::RasterMetadata
         return core::failure(core::ErrorCode::input,
                              "EXIF physical resolution is outside its range");
     }
-    metadata.resolution =
-        image::Resolution{.x = static_cast<std::uint32_t>(x), .y = static_cast<std::uint32_t>(y)};
+    if (!metadata.resolution) {
+        metadata.resolution = image::Resolution{
+            .x = static_cast<std::uint32_t>(x),
+            .y = static_cast<std::uint32_t>(y),
+        };
+    }
     return {};
 }
 } // namespace

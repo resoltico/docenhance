@@ -68,10 +68,8 @@ def gray_fixture(width: int, height: int, values: list[float]) -> Fixture:
 
 
 def source_values(fixture: Fixture) -> list[float]:
-    """Match the documented float color-engine ingress, independently of the production adapter."""
-    return [
-        struct.unpack("f", struct.pack("f", pixel[0] / WORD_MAX))[0] for pixel in fixture.pixels
-    ]
+    """Normalize declared linear-gray codes directly in the independent scalar reference."""
+    return [pixel[0] / WORD_MAX for pixel in fixture.pixels]
 
 
 def identity_and_mask_validation(exe: Path, root: Path) -> None:
@@ -223,7 +221,7 @@ def colored_transport(exe: Path, root: Path) -> None:
     mask.write_bytes(Fixture(8, 8, ((1,),) + ((0,),) * 63).encoded())
     baseline, _ = run(exe, root, fixture, [])
     baseline = require_output(baseline)
-    rgb = [struct.unpack("f", struct.pack("f", c / WORD_MAX))[0] for c in color]
+    rgb = [c / WORD_MAX for c in color]
     y = sum(c * w for c, w in zip(rgb, (0.2126, 0.7152, 0.0722), strict=True))
     target = min(1.0, 2 * y)
     expected = [c + ((target - y) / (1 - y)) * (1 - c) for c in rgb]

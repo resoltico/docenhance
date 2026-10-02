@@ -248,3 +248,16 @@ is also the rendered outcome's typed value. Required stage observations stay tog
 cross-field checks remain at admission. The native reservation owner returns completed resource
 observations, so the surrounding tile code neither predicts a charge nor duplicates the estimate.
 The separate design and QA are in the [ownership/resource audit](ownership-resource-audit.md).
+
+## Interpretation precision and metadata precedence
+
+Known scalar interpretation normalizes integer samples in double and keeps that precision through
+transfer, alpha, compositing and final quantization. The bounded native color engine is a separate
+float32 precision boundary exposed through double row formatters. References must describe the
+mathematics instead of repeating a private adapter's intermediate rounding.
+
+All PNG operations share strict static framing; stored grayscale remains independent of color
+and orientation interpretation. Validate selected EXIF fields before choosing physical metadata,
+so a preferred declaration cannot hide malformed lower-priority fields. Strict decoder-policy
+admission refuses unsupported values instead of clamping them. The [input/numerical audit](input-numerical-audit.md)
+records the design and separate challenge cases.

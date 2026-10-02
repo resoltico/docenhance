@@ -50,14 +50,13 @@ core::Result<void> gather(ConversionState& state, RowPart part, image::RowUse us
         if (opacity < 1 && use == image::RowUse::output) {
             ++state.report.flattened_pixels;
         }
-        alpha.subspan(i, 1).front() = static_cast<float>(opacity);
+        alpha.subspan(i, 1).front() = opacity;
         for (unsigned c = 0; c < channels; ++c) {
             input.subspan((std::size_t{i} * channels) + c, 1).front() =
-                opacity == 0 ? 0.0F
-                             : static_cast<float>(
-                                   static_cast<double>(image::read_sample(
-                                       pixel.subspan(std::size_t{c} * bytes), source.shape.depth)) /
-                                   maximum);
+                opacity == 0 ? 0.0
+                             : static_cast<double>(image::read_sample(
+                                   pixel.subspan(std::size_t{c} * bytes), source.shape.depth)) /
+                                   maximum;
         }
     }
     return {};
@@ -76,16 +75,15 @@ core::Result<void> interpret(ConversionState& state, std::uint32_t count) {
     }
     for (std::uint32_t i = 0; i < count; ++i) {
         for (unsigned c = 0; c < image::rgb_channels; ++c) {
-            const double sample = static_cast<double>(
-                input.subspan((std::size_t{i} * channels) + (channels == 1 ? 0 : c), 1).front());
+            const double sample =
+                input.subspan((std::size_t{i} * channels) + (channels == 1 ? 0 : c), 1).front();
             const auto value = state.power_exponent
                                    ? core::Result<double>{std::pow(sample, *state.power_exponent)}
                                    : image::srgb_decode(sample);
             if (!value) {
                 return std::unexpected(value.error());
             }
-            linear.subspan((std::size_t{i} * image::rgb_channels) + c, 1).front() =
-                static_cast<float>(*value);
+            linear.subspan((std::size_t{i} * image::rgb_channels) + c, 1).front() = *value;
         }
     }
     return {};
@@ -94,11 +92,11 @@ core::Result<std::array<double, image::rgb_channels>>
 opaque_pixel(ConversionState& state, std::uint32_t pixel, image::RowUse use) {
     const auto in = state.linear.view().row(0).subspan(std::size_t{pixel} * image::rgb_channels,
                                                        image::rgb_channels);
-    const double alpha = static_cast<double>(state.alpha.view().row(0).subspan(pixel, 1).front());
+    const double alpha = state.alpha.view().row(0).subspan(pixel, 1).front();
     const double matte = state.parameters.alpha == image::AlphaPolicy::black ? 0.0 : 1.0;
     std::array<double, image::rgb_channels> values{};
     for (unsigned c = 0; c < image::rgb_channels; ++c) {
-        const double value = static_cast<double>(in.subspan(c, 1).front());
+        const double value = in.subspan(c, 1).front();
         if (!std::isfinite(value)) {
             return core::failure(core::ErrorCode::input,
                                  "Color transform produced a non-finite sample");

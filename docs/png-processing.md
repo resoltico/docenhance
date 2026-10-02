@@ -94,8 +94,10 @@ No exception crosses a native callback. All profile/transform owners are destroy
 
 The target is linear-light RGB with sRGB primaries and D65. Known sRGB and gamma-only cases use the
 same checked scalar transfer primitives as the image numerical layer; they are not a second
-inconsistent implementation. Conversion works in bounded 4096-pixel chunks, using float32 native
-color values and double-precision transfer/compositing/quantization calculations. Nonfinite color
+inconsistent implementation. Conversion works in bounded 4096-pixel chunks. Normalized integer samples, known sRGB/gamma
+transfer, alpha and compositing/quantization use double precision throughout. Native ICC/chromaticity
+transforms receive and return double API rows, while the locked library's internal color pipeline
+remains float32; this is an explicit precision boundary, not a float64 ICC-engine claim. Nonfinite color
 results fail. Count native float components outside [0,1] before clamping; this is not a measurement
 of every internal clipping/gamut-mapping decision made by the profile engine.
 
@@ -116,7 +118,9 @@ EXIF interpretation is limited to bounded IFD0 orientation and physical resoluti
 byte-order, offset, type, count, denominator and duplicate checks. It does not traverse GPS, maker
 notes, thumbnails or secondary IFDs. Orientation 1..8 is an exact gather permutation; no interpolation
 or second orientation pass occurs. Missing orientation means normal. Malformed selected metadata
-fails. pHYs physical resolution takes precedence over EXIF resolution, and transposed orientations
+fails. Selected EXIF resolution fields must form a positive pair and fit the supported physical range,
+even when pHYs takes precedence. Unitless values remain nonphysical. pHYs physical resolution
+takes precedence over valid EXIF resolution, and transposed orientations
 swap X/Y densities. No resolution is invented. Unitless pHYs aspect information is not promoted to DPI.
 
 Output retains only a deterministic output ICC profile and valid physical resolution. Original text,
@@ -136,7 +140,7 @@ at 4 MiB compressed/uncompressed; EXIF at 64 KiB; source chunk count at 65,536. 
 refusals, never instructions to downsample, discard color or reduce precision.
 
 Peak live storage includes the encoded snapshot while decoding; the full integer raster needed
-for interlacing/arbitrary orientation; bounded profiles/native blocks; three small float row buffers;
+for interlacing/arbitrary orientation; bounded profiles/native blocks; bounded double input/linear/alpha rows;
 and the encoder row or two verification rows. The conversion and its processing-time decode-back comparison use no full-page float working
 frames or second full decoded verification image. Complete bundle preparation and later verification
 add a separately bounded encoded snapshot and decoded integer artifact plane; see
@@ -187,3 +191,11 @@ recipe/preset system, TIFF adapter or public release artifact is introduced.
 - Pinned libpng API/manual and source, as identified in `deps/lock.json`.
 - Pinned Little CMS base API, memory context and profile implementation, as identified in `deps/lock.json`.
 - The existing scalar sRGB numerical contract in `src/image/numeric.cpp` and its independent tests.
+
+## Interpretation audit
+
+The [input/numerical audit](input-numerical-audit.md) records the design and separate QA for exact
+scalar sample interpretation, shared static binary framing and metadata validation before
+precedence. Decoder APIs reject unknown policies and zero/relaxed limits explicitly. Scalar
+references include quantization-boundary and alpha adversaries; native engine precision remains
+separately tested rather than hidden in a scalar oracle.

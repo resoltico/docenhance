@@ -29,9 +29,9 @@ struct ConversionState {
     Profile linear_profile;
     Transform transform;
     std::optional<double> power_exponent;
-    image::Plane<float> input;
-    image::Plane<float> linear;
-    image::Plane<float> alpha;
+    image::Plane<double> input;
+    image::Plane<double> linear;
+    image::Plane<double> alpha;
     ConversionState(const image::Raster& raster, image::Continuous operation, core::Budget& budget,
                     core::Cancellation control)
         : context(budget), source(raster), parameters(operation.parameters()),

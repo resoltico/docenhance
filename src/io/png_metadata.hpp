@@ -29,10 +29,12 @@ struct PngScan {
     image::RasterMetadata metadata;
 };
 enum class PngContent { source, result };
+enum class PngMeaning { interpreted, stored_samples };
 struct PngReadPolicy {
     image::ProfilePolicy profile = image::ProfilePolicy::embedded;
     PngLimits limits{};
     PngContent content = PngContent::source;
+    PngMeaning meaning = PngMeaning::interpreted;
 };
 [[nodiscard]] core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes,
                                              core::Budget& budget, PngReadPolicy policy,

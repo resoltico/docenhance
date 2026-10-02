@@ -45,7 +45,9 @@ based on the magnitude of an argument is performed.
 ## Samples and mathematical definition
 
 Input is the same grayscale PNG subset as B03: 1/2/4/8-bit samples without transparency, expanded
-to unsigned 8-bit stored samples. PNG gamma metadata does not change the threshold samples. Color,
+to unsigned 8-bit stored samples. PNG gamma/orientation metadata does not change the stored threshold samples. The shared bounded
+CRC/framing scan refuses animation, nonconsecutive IDAT, duplicate known declarations and bytes
+after IEND before native grayscale decoding. Color,
 alpha and 16-bit input remain rejected. Output is 8-bit grayscale containing only 0 and 255.
 
 For B03, an input sample `p` is black exactly when `double(p)/255 <= threshold`. Its existing
