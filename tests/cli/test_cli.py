@@ -252,17 +252,12 @@ def default_cases(exe: Path) -> None:
         for option in contract["options"]:
             if option["scope"] == "P" and option["metavar"]:
                 output = root / "refused"
+                arguments = ["process", str(source)]
+                if option["name"] != "--out-dir":
+                    arguments.extend(["--out-dir", str(output)])
                 response = call_json(
                     exe,
-                    [
-                        "process",
-                        str(source),
-                        "--out-dir",
-                        str(output),
-                        option["name"],
-                        "",
-                        "--json",
-                    ],
+                    [*arguments, option["name"], "", "--json"],
                     EXIT_INVOCATION,
                 )
                 expect(response["publication"] == "not_started", "empty value refuses execution")
