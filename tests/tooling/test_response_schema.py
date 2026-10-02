@@ -46,6 +46,9 @@ class ResponseSchemaTests(unittest.TestCase):
         mutations: list[dict[str, Any]] = [
             {"command": "plan"},
             {"schema_version": True},
+            {"schema_version": 1},
+            {"schema_version": 2},
+            {"schema_version": 4},
             {"exit_code": True},
             {"methods": [{"id": "B03", "method_version": True}]},
             {"methods": [{"id": "B03", "method_version": 1, "invented": 1}]},

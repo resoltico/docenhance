@@ -10,20 +10,15 @@
 #include "docenhance/methods/catalog.hpp"
 
 #include <span>
-#include <string_view>
 #include <variant>
 namespace docenhance::app {
 // What an invocation produced, in types. Nothing here is formatted: how an outcome reaches a
 // person or another program is the report layer's decision, and this layer never makes it.
 
 // Capabilities admitted by the application and verified by real end-to-end tests.
-struct InputSupport {
-    std::string_view format;
-    bool binary = false;
-};
 struct Capabilities {
     std::span<const methods::ImplementedMethod> methods;
-    std::span<const InputSupport> input_support;
+    std::span<const contract::InputSupport> input_support;
 };
 struct Help {
     bool list_commands = false;

@@ -24,6 +24,7 @@
 "source"
 "31"
 "0.2"
+"nlm"
 "--out-dir"
 "--output-mode"
 "--bit-depth"

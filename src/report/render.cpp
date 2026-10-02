@@ -24,9 +24,6 @@ namespace docenhance::report {
 namespace {
 using Json = nlohmann::ordered_json;
 constexpr int json_indent = 2;
-// The envelope version of schemas/command-response.schema.json, which the CLI contract test
-// validates every response against.
-constexpr int schema_version = 3;
 
 std::string_view publication_name(core::Publication publication) noexcept {
     switch (publication) {
@@ -45,7 +42,7 @@ std::string_view publication_name(core::Publication publication) noexcept {
 // Common fields first, then the payload's own fields in their given order.
 Json envelope(const app::Outcome& outcome, const Json& fields) {
     Json json = {
-        {"schema_version", schema_version},
+        {"schema_version", contract::response_schema_version},
         {"command", contract::command_name(outcome.command)},
         {"version", outcome.build.version},
         {"exit_code", static_cast<int>(outcome.exit_code())},
@@ -101,8 +98,8 @@ std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     text += "Implemented: static PNG and bounded 8-bit JPEG input; color-managed continuous-tone "
             "PNG output; explicit "
             "B02/B03 binary output on stored 1/2/4/8-bit grayscale PNG samples.\n";
-    text += "JPEG supports preserve/gray output, never bw. Opt-in I01 illumination supports "
-            "protected regions and opt-in D01 16-bit NLM-L1 denoising. TIFF input, "
+    text += "JPEG supports preserve/gray output, never bw. Opt-in I01 illumination and "
+            "D01 16-bit NLM-L1 denoising support protected regions independently. TIFF input, "
             "batching and presets are not implemented.\n\n";
     if (help.list_commands) {
         text += "Commands: process, verify, methods, version\n\n";

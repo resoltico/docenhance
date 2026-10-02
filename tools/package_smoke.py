@@ -21,6 +21,7 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from deps import ROOT, safe_extract
+from method_metadata import support_matrix
 from package_inspection import binary_identity, contents, differences, expected_files, imports
 from project_version import project_version
 
@@ -144,10 +145,9 @@ def smoke(root: Path, build: Path) -> list[str]:
         for m in contract["methods"]
         if m["status"] == "implemented"
     ]
-    if version["methods"] != expected or version["input_support"] != [
-        {"format": "png", "output_modes": ["preserve", "gray", "bw"]},
-        {"format": "jpeg", "output_modes": ["preserve", "gray"]},
-    ]:
+    if version["methods"] != expected or version["input_support"] != support_matrix(
+        json.loads((ROOT / "spec/cli-contract.json").read_bytes())["input_support"]
+    ):
         failures.append("Packaged capability matrix disagrees with supported admission")
     if not failures:
         exercise(exe, root)

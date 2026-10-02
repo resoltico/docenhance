@@ -65,3 +65,36 @@ Current documentation also contained historical false-verification admission and
 capability claims. Correct those descriptions and require root help to list `verify` alongside the
 other implemented commands. Actual verification results belong to the delivered commit and logs;
 this audit document does not certify unexecuted platforms or eliminate all possible future debt.
+
+## Contract authority and consistency
+
+The authority pass traces reviewed inputs through generation, typed factories, compiled capability
+discovery, emitted records/responses and documentation. Typed method values remain executable
+admission; the reviewed catalog alone cannot add an implementation. Numeric defaults remain at
+their typed owners and are checked against advertised defaults through actual processing records.
+
+Separate design challenges reproduced three gaps before implementation: changing the reviewed
+D01 version left both denoising schemas at version 1; contradictory method-option attribution
+passed generation; and denoising requests admitted parameters without a selected method. The
+format/mode matrix was repeated in application code, both schema branches and package inspection.
+
+Use existing generators and schema references rather than a new configuration framework. Generate
+D01's identity for both schemas and use its descriptor in the native type and serializer. Require
+bidirectional agreement between implemented method arguments and option applicability. Protection
+belongs to I01 and D01 and remains valid with both stages off. Derive format reporting and schema
+constants from the reviewed CLI matrix; retain actual PNG/JPEG processing/refusal tests as evidence
+that the declarations are implemented. Remove the unused CLI contract edition instead of giving
+it another reader; reject obsolete/unknown authoring fields rather than ignoring them. Capability
+entries now use contract::InputSupport; native consumers update directly, without an alias.
+Derive the response envelope version from its schema template.
+
+Denoising request/report schemas share method and parameter definitions and reject disconnected
+selection/settings. The complete typed reader still owns numerical and cross-field relationships
+that JSON Schema does not express. Current record/wire versions and method mathematics do not
+change; obsolete records, commands and empty/wrong-operation options remain explicit refusals.
+
+Real executable checks compare complete help descriptors and admitted default records with the
+reviewed contract, exercise every declared value option's empty-value refusal, and retain independent
+numerical references. Generator negative controls mutate identity/version, attribution and format
+policy. Current documentation distinguishes precommit verification refusal from integrity failure
+after a known commit; AGENTS.md lists D01 alongside the other implemented methods.

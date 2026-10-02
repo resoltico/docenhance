@@ -5,7 +5,7 @@
 The application owns meaning; adapters own effects. The command line parses syntax into
 `contract::Invocation`. `de_app` validates it and constructs a private-construction
 `ProcessRequest` containing a validated binary/continuous operation and a separate closed
-illumination choice. Only that admitted value can cross `app::Processor`, the processing port.
+illumination/denoising choices. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
 production composition root: it supplies the concrete host to the CLI. On Windows it converts
 wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
@@ -204,7 +204,12 @@ reason; no blanket waiver or historical-grandfathering path is introduced.
 
 The top-level CMake project owns versioning. `deps/lock.json` owns source identities;
 `deps/features.json` owns upstream feature policy; `deps/tools.json` owns developer-tool versions.
-`spec/cli-contract.json` and `spec/method-contract.json` generate descriptors, reference docs and
+`spec/cli-contract.json` owns the format/mode matrix; its generated descriptor supplies runtime
+reporting and both capability schema branches. Response-envelope version comes from the response
+schema template. `spec/method-contract.json` owns all implemented method identities, including D01;
+the generated descriptors feed typed method values and serialization, with compiled alternatives
+checked against the reviewed catalog. Method-option attribution is checked in both directions.
+These contracts generate descriptors, reference docs and
 fuzz dictionaries. `spec/command-response.schema.json` owns the response template; reviewed method
 identities generate its closed alternatives into `schemas/command-response.schema.json`. The run-record template in `spec/run-record.schema.json` shares conversion/illumination report
 definitions and reviewed method identities with the response schema during generation. Both schemas

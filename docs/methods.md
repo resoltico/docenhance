@@ -18,7 +18,7 @@ Method-specific argument references: `--illumination`, `--background-strength`, 
 
 Status: **implemented**.
 
-Method-specific argument references: `--denoise`, `--denoise-blend`, `--nlm-h`, `--nlm-patch`, `--nlm-search`.
+Method-specific argument references: `--denoise`, `--denoise-blend`, `--nlm-h`, `--nlm-patch`, `--nlm-search`, `--protect-mask`.
 
 ## D02 — Floating-point TV-L1
 

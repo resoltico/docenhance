@@ -218,6 +218,13 @@ class ContractTests(unittest.TestCase):
         for path, text in generate_spec.outputs().items():
             self.assertEqual(path.read_text(encoding="utf-8"), text)
 
+    def test_obsolete_or_unconsumed_authoring_fields_are_refused(self) -> None:
+        """A retired edition or an unknown field cannot be accepted and silently ignored."""
+        contract = json.loads((ROOT / "spec/cli-contract.json").read_text())
+        for fields in ({"contract_version": "8.0"}, {"invented": True}):
+            with self.subTest(fields=fields), self.assertRaises(generate_spec.ContractError):
+                generate_spec.render_header(contract | fields, 3)
+
     def test_clang_tidy_is_strict(self) -> None:
         """clang-tidy stays zero-tolerance and pinned."""
         tidy = (ROOT / ".clang-tidy").read_text(encoding="utf-8")
