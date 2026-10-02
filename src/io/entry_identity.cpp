@@ -10,10 +10,12 @@
 #ifdef _WIN32
 #include "windows_sdk.hpp" // NOLINT(misc-include-cleaner): Native SDK prerequisite types precede direct API headers.
 
+#include <array>
+#include <bit>
 #include <corecrt_io.h>
-#include <cstring>
 #include <fileapi.h>
 #include <handleapi.h>
+#include <minwinbase.h>
 #include <minwindef.h>
 #include <stdio.h> // NOLINT(modernize-deprecated-headers): Native CRT _fdopen/_fileno declarations require stdio.h.
 #include <winbase.h>
@@ -30,7 +32,7 @@
 #endif
 namespace docenhance::io {
 #ifdef _WIN32
-std::optional<EntryIdentity> handle_identity(void* handle) noexcept {
+std::optional<EntryIdentity> handle_identity(void* const handle) noexcept {
     BY_HANDLE_FILE_INFORMATION info{};
     FILE_ID_INFO identifier{};
     if (GetFileInformationByHandle(handle, &info) == 0 ||
@@ -40,11 +42,12 @@ std::optional<EntryIdentity> handle_identity(void* handle) noexcept {
                                      static_cast<DWORD>(sizeof(identifier))) == 0) {
         return std::nullopt;
     }
-    EntryIdentity result{.volume = identifier.VolumeSerialNumber};
-    std::memcpy(&result.object, identifier.FileId.Identifier, sizeof(result.object));
-    std::memcpy(&result.object_high, identifier.FileId.Identifier + sizeof(result.object),
-                sizeof(result.object_high));
-    return result;
+    const auto words = std::bit_cast<std::array<std::uint64_t, 2>>(identifier.FileId.Identifier);
+    return EntryIdentity{
+        .volume = identifier.VolumeSerialNumber,
+        .object = words.front(),
+        .object_high = words.back(),
+    };
 }
 namespace {
 HANDLE metadata_handle(const std::filesystem::path& path, bool directory) {
