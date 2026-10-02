@@ -17,6 +17,7 @@
 #include <span>
 #include <sstream>
 #include <streambuf>
+#include <string>
 
 namespace docenhance::tests {
 namespace {
@@ -29,7 +30,15 @@ class CountingProcessor final : public app::Processor {
     app::ProcessResult process(const app::ProcessRequest& /*request*/,
                                const core::Cancellation& /*cancellation*/) override {
         ++calls;
-        return app::PublishedBinary{.output = "result/result.png", .run = {}, .record = {}};
+        return app::PublishedBinary{
+            .output = "result/result.png",
+            .run = std::string(32, 'a'),
+            .record =
+                {
+                    .sha256 = std::string(64, 'b'),
+                    .bytes = 512,
+                },
+        };
     }
 };
 class CapturingProcessor final : public app::Processor {

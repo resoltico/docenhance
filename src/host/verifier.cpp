@@ -14,6 +14,11 @@
 namespace docenhance::host {
 core::Result<app::Verified> Verifier::verify(const app::VerifyRequest& request,
                                              const core::Cancellation& cancellation) {
+    if (!request.ready()) {
+        return core::failure(core::ErrorCode::argument,
+                             "Verification request no longer owns its admitted path");
+    }
+
     if (cancellation.requested(core::Checkpoint::admission)) {
         return core::cancelled();
     }

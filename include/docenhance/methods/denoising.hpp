@@ -75,4 +75,5 @@ struct DenoisingReport {
 [[nodiscard]] core::Result<std::size_t> nlm_native_scratch(image::Extent e, const Nlm& method);
 [[nodiscard]] bool valid_denoising(const DenoisingReport& report,
                                    const Denoising& requested) noexcept;
+[[nodiscard]] bool valid_denoising_extent(const DenoisingReport& report, image::Extent extent);
 } // namespace docenhance::methods

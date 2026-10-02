@@ -64,4 +64,7 @@ namespace docenhance::contract {
     }
     return remaining == 0;
 }
+[[nodiscard]] constexpr bool valid_path(std::string_view value) noexcept {
+    return !value.empty() && !value.contains('\0') && valid_utf8(value);
+}
 } // namespace docenhance::contract

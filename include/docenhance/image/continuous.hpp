@@ -47,6 +47,8 @@ struct ConversionReport {
     bool depth_reduced = false;
     bool verified = false;
 };
+[[nodiscard]] bool valid_conversion(const ConversionReport& report,
+                                    const Continuous& operation) noexcept;
 struct OutputDescriptor {
     RasterShape shape;
     std::span<const std::uint8_t> profile;

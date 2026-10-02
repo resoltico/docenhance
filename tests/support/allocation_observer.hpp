@@ -10,6 +10,7 @@ extern std::atomic<std::size_t> live;
 extern std::atomic<std::size_t> peak;
 extern std::atomic<std::size_t> allocation_attempts;
 extern std::atomic<std::size_t> failure_at;
+extern std::atomic<bool> persistent_failure;
 extern std::size_t worker_count;
 [[nodiscard]] bool initialize_hooks() noexcept;
 [[nodiscard]] bool refuse_allocation() noexcept;

@@ -11,11 +11,11 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
-#include "docenhance/methods/denoising.hpp"
-#include "docenhance/methods/illumination.hpp"
+#include "observations.hpp"
 
 #include <algorithm>
 #include <cstddef>
+#include <new>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -41,18 +41,6 @@ Outcome unavailable(const contract::Invocation& invocation, std::string message)
                    {.code = core::ErrorCode::unavailable, .message = std::move(message)});
 }
 
-bool matches(const ProcessRequest& request, const methods::IlluminationReport& report) {
-    if (!report.complete || report.status == methods::SurfaceStatus::failed) {
-        return false;
-    }
-    const auto* const selected = std::get_if<methods::Surface>(&request.illumination());
-    if (selected == nullptr) {
-        return report.status == methods::SurfaceStatus::disabled && !report.requested;
-    }
-    return report.requested && *report.requested == selected->parameters() &&
-           report.status != methods::SurfaceStatus::disabled;
-}
-
 Outcome process(const contract::Invocation& invocation, Processor& processor,
                 const core::Cancellation& cancellation) {
     auto request = prepare_process(invocation);
@@ -75,11 +63,13 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
     try {
         auto result = processor.process(*request, cancellation);
         if (!result) {
-            return succeeded(invocation, std::move(result.error()));
+            return valid_failure(result.error(), *request)
+                       ? succeeded(invocation, std::move(result.error()))
+                       : std::move(unknown_outcome);
         }
         if (const auto* const method = std::get_if<methods::Binarization>(&request->operation())) {
             auto* const image = std::get_if<PublishedBinary>(&*result);
-            if (image == nullptr) {
+            if (image == nullptr || !valid_published(*image, *request)) {
                 return unknown_outcome;
             }
             return succeeded(invocation, Processed{
@@ -91,11 +81,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                          });
         }
         auto* const image = std::get_if<PublishedContinuous>(&*result);
-        if (image == nullptr || !image->conversion.verified ||
-            !matches(*request, image->illumination) ||
-            !methods::valid_denoising(image->denoising, request->denoising()) ||
-            image->denoising.eligible_samples != image->illumination.eligible_samples ||
-            image->denoising.protected_samples != image->illumination.protected_samples) {
+        if (image == nullptr || !valid_published(*image, *request)) {
             return unknown_outcome;
         }
         return succeeded(invocation, std::move(*image));
@@ -121,16 +107,47 @@ Outcome verify(const contract::Invocation& invocation, Verifier& verifier,
     if (cancellation.requested(core::Checkpoint::admission)) {
         return failure(invocation, core::cancelled().error());
     }
-    auto verified = verifier.verify(*request, cancellation);
-    if (!verified) {
-        return failure(invocation, std::move(verified.error()));
+    // Read-only execution cannot publish. Prepare fallbacks before opening anything so catches
+    // and malformed returns need no diagnostic allocation after the port starts.
+    auto invalid =
+        failure(invocation, {
+                                .code = core::ErrorCode::invariant,
+                                .message = "Verification returned inconsistent observations",
+                            });
+    auto exhausted = failure(invocation, {
+                                             .code = core::ErrorCode::resource,
+                                             .message = "Verification exhausted a system resource",
+                                         });
+    try {
+        auto verified = verifier.verify(*request, cancellation);
+        if (!verified) {
+            const auto& error = verified.error();
+            if (!error.valid_publication() || error.publication != core::Publication::not_started ||
+                error.code == core::ErrorCode::output_verify ||
+                error.code == core::ErrorCode::method_inapplicable ||
+                error.code == core::ErrorCode::numerical) {
+                return invalid;
+            }
+            return failure(invocation, std::move(verified.error()));
+        }
+        return valid_verified(*verified, *request) ? succeeded(invocation, std::move(*verified))
+                                                   : std::move(invalid);
+    } catch (const std::bad_alloc&) {
+        return exhausted;
+    } catch (...) {
+        return invalid;
     }
-    return succeeded(invocation, std::move(*verified));
 }
 } // namespace
 
 Outcome dispatch(const contract::Invocation& invocation, Processor& processor, Verifier& verifier,
                  const core::Cancellation& cancellation) {
+    if (!contract::CommandSet::all().contains(invocation.command)) {
+        auto refused = failure(
+            invocation, {.code = core::ErrorCode::argument, .message = "Unknown command value"});
+        refused.command = contract::Command::root;
+        return refused;
+    }
     const bool bare_root =
         invocation.command == contract::Command::root && !invocation.root_version;
     if (invocation.help || bare_root) {

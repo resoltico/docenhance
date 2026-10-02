@@ -137,3 +137,67 @@ class ResponseSchemaTests(unittest.TestCase):
         ):
             with self.subTest(change=change):
                 self.assertFalse(validator.is_valid(response | change))
+
+    def test_readonly_and_discovery_failures_cannot_claim_publication(self) -> None:
+        """Only processing failures can describe staging, commit or uncertainty."""
+        response: dict[str, Any] = {
+            "schema_version": 3,
+            "command": "verify",
+            "version": "0.5.0",
+            "exit_code": 3,
+            "publication": "not_started",
+            "error": {"code": "E_INPUT", "message": "Refused input"},
+        }
+        validator = Draft202012Validator(SCHEMA)
+        for command in ("verify", "root", "methods", "version"):
+            validator.validate(response | {"command": command})
+            for publication in ("not_published", "completed", "unknown"):
+                with self.subTest(command=command, publication=publication):
+                    self.assertFalse(
+                        validator.is_valid(
+                            response | {"command": command, "publication": publication}
+                        )
+                    )
+
+    def test_verification_success_requires_bounded_confined_identity(self) -> None:
+        """Empty/unbounded inventories, zero identities and escaping paths are refused."""
+        response: dict[str, Any] = {
+            "schema_version": 3,
+            "command": "verify",
+            "version": "0.5.0",
+            "exit_code": 0,
+            "directory": "bundle",
+            "run": "a" * 32,
+            "recorded": "2026-10-02T00:00:00Z",
+            "establishes": "artifacts_agree_with_record",
+            "confirmed": [{"path": "result.png", "sha256": "b" * 64, "bytes": 1}],
+        }
+        validator = Draft202012Validator(SCHEMA)
+        validator.validate(response)
+        changes: list[dict[str, Any]] = [
+            {"directory": ""},
+            {"recorded": "yesterday"},
+            {"confirmed": []},
+            {"confirmed": response["confirmed"] * 17},
+        ]
+        for change in changes:
+            with self.subTest(change=change):
+                self.assertFalse(validator.is_valid(response | change))
+        for path in (
+            "",
+            "/foreign",
+            "../foreign",
+            "a/../foreign",
+            "a//b",
+            "a/",
+            "a\\b",
+            "a:b",
+            "a\0b",
+        ):
+            altered = copy.deepcopy(response)
+            altered["confirmed"][0]["path"] = path
+            with self.subTest(path=path):
+                self.assertFalse(validator.is_valid(altered))
+        altered = copy.deepcopy(response)
+        altered["confirmed"][0]["bytes"] = 0
+        self.assertFalse(validator.is_valid(altered))

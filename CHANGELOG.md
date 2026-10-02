@@ -6,10 +6,15 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (execution ports/borrowing):** processing and verification results must supply coherent identities, publication states and request/stage observations. Invalid processing returns retain unknown publication; invalid read-only returns are invariant failures with no publication. Metadata borrowing rejects temporary owners, and moved-from requests cannot execute. Response validation rejects zero record sizes, empty/oversized confirmation inventories and publication claims outside processing; wire/record versions remain unchanged.
 - **Breaking (CLI authoring/C++ metadata):** each option descriptor requires a unique typed invocation-member `binding`; update custom authoring inputs and descriptor consumers. Generated bindings preserve absent versus explicitly empty values and are checked against flag/value spelling. There is no fallback transfer list.
 - Contract generation checks method-option attribution in both directions and derives D01 identities, format/mode reporting and the response envelope version from reviewed contracts. Protection help now identifies both I01 and D01. Denoising schemas share definitions and reject settings without a selected method; wire/record versions and numerical method definitions are unchanged.
 
 - **Breaking (C++/authoring):** capability entries use `contract::InputSupport` instead of `app::InputSupport`; update native consumers. The unused CLI `contract_version` field is removed, and obsolete or unknown authoring fields are rejected without aliases or migration.
+
+### Fixed
+
+- Validate binary row ranges before borrowing, preventing out-of-range memory access. Native bundle directory owners refuse inactive/moved access and escaping or NUL entry names; Windows alternate streams are refused. CLI resource-failure handling allocates no diagnostic, so sustained allocation refusal cannot escape the boundary or trigger execution retry.
 
 ### Internal
 

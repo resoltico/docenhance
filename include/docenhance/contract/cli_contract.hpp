@@ -13,6 +13,7 @@
 #include <variant>
 namespace docenhance::contract {
 inline constexpr unsigned response_schema_version = 3U;
+inline constexpr unsigned response_confirmed_limit = 16U;
 inline constexpr auto input_support = std::to_array<InputSupport>({
     {.format = "png", .binary = true},
     {.format = "jpeg", .binary = false},

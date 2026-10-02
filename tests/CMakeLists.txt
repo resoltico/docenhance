@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
-add_executable(de_tests unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
+add_executable(de_tests unit/execution_states.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
   unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/illumination.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
 target_link_libraries(de_tests PRIVATE de_app de_bundle de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color de_denoise Catch2::Catch2WithMain)
@@ -93,6 +93,14 @@ set_tests_properties(denoising-native-resources PROPERTIES TIMEOUT 60)
 
 add_test(NAME delivery-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_delivery.py" "$<TARGET_FILE:docenhance>")
 set_tests_properties(delivery-contract PROPERTIES TIMEOUT 60)
+
+add_executable(de_cli_allocation support/cli_allocation.cpp support/allocation_observer.cpp)
+target_link_libraries(de_cli_allocation PRIVATE de_cli de_app de_contract de_core)
+target_include_directories(de_cli_allocation PRIVATE "${PROJECT_SOURCE_DIR}/src/cli")
+target_compile_definitions(de_cli_allocation PRIVATE DE_ALLOCATION_SANITIZER_OBSERVATION=$<BOOL:${DE_ENABLE_TSAN}>)
+de_apply_options(de_cli_allocation)
+add_test(NAME cli-allocation-failure COMMAND de_cli_allocation)
+set_tests_properties(cli-allocation-failure PROPERTIES TIMEOUT 60)
 
 get_property(de_static_tests DIRECTORY PROPERTY TESTS)
 string(JSON de_native_inventory SET "{}" "static_tests" "[]")

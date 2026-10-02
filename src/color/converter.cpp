@@ -25,10 +25,9 @@ core::Result<std::unique_ptr<Converter>> Converter::create(const image::Raster& 
                                                            core::Budget& budget,
                                                            const core::Cancellation& cancellation) {
     auto bytes = image::raster_row_bytes(source.shape);
-    constexpr unsigned last_orientation = 8;
     if (!bytes || source.pixels.empty() || source.pixels.width() != *bytes ||
         source.pixels.height() != source.shape.height || source.metadata.orientation == 0 ||
-        source.metadata.orientation > last_orientation) {
+        source.metadata.orientation > image::orientation_max) {
         return core::failure(core::ErrorCode::argument,
                              "Color conversion requires a valid decoded raster");
     }

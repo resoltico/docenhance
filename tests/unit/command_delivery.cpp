@@ -74,7 +74,15 @@ class RecordingProcessor final : public app::Processor {
         case Behavior::unknown_exception:
             throw 42; // NOLINT(bugprone-std-exception-baseclass): Exercise catch-all containment.
         default:
-            return app::PublishedBinary{.output = "result/result.png", .run = {}, .record = {}};
+            return app::PublishedBinary{
+                .output = "result/result.png",
+                .run = std::string(32, 'a'),
+                .record =
+                    {
+                        .sha256 = std::string(64, 'b'),
+                        .bytes = 512,
+                    },
+            };
         }
     }
 };

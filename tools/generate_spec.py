@@ -97,7 +97,7 @@ def cxx_string(value: str) -> str:
     )
 
 
-def render_header(contract: dict[str, Any], response_version: int) -> str:
+def render_header(contract: dict[str, Any], response_version: int, confirmed_limit: int) -> str:
     """Render the C++ contract: the command usage lines and the typed option catalog."""
     if set(contract) != {"schema_version", "value_grammar", "commands", "options", "input_support"}:
         msg = "The CLI authoring contract must use exactly the current fields"
@@ -110,6 +110,7 @@ def render_header(contract: dict[str, Any], response_version: int) -> str:
     }
     text = HEADER_PREAMBLE
     text += f"inline constexpr unsigned response_schema_version = {response_version}U;\n"
+    text += f"inline constexpr unsigned response_confirmed_limit = {confirmed_limit}U;\n"
     support_matrix(contract["input_support"])
     text += "inline constexpr auto input_support = std::to_array<InputSupport>({\n"
     for item in contract["input_support"]:
@@ -229,7 +230,13 @@ def outputs() -> dict[Path, str]:
         raise ContractError(msg)
     return {
         ROOT / "include/docenhance/contract/cli_contract.hpp": render_header(
-            contract, schema["properties"]["schema_version"]["const"]
+            contract,
+            schema["properties"]["schema_version"]["const"],
+            next(
+                branch["properties"]["confirmed"]["maxItems"]
+                for branch in schema["oneOf"]
+                if "confirmed" in branch.get("properties", {})
+            ),
         ),
         ROOT / "docs/cli-contract.md": render_reference(contract),
         ROOT / "docs/methods.md": render_methods(methods["methods"]),

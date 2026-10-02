@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/app/verify.hpp"
 
+#include "bundle_native.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/bundle/inventory.hpp"
 #include "docenhance/bundle/record.hpp"
@@ -19,6 +20,7 @@
 #include <fstream>
 #include <ios>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace docenhance::tests {
@@ -130,5 +132,50 @@ TEST_CASE("A bundle that disagrees with its record is refused", "[verify]") {
         padding.close();
         CHECK(!read_back(bundle));
     }
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE(
+    "Inactive and moved directory owners cannot borrow the current directory or foreign paths") {
+    const TemporaryDirectory temporary{"docenhance-directory-ownership"};
+    const auto file = temporary.path / "owned.txt";
+    {
+        std::ofstream write{file};
+        write << "owned bytes";
+    }
+    io::BundleDirectory const inactive;
+    CHECK(!inactive.file(utf8_spelling(file)));
+    CHECK(!inactive.child(utf8_spelling(temporary.path)));
+    CHECK(!inactive.entries());
+    auto owner = io::BundleDirectory::open(temporary.path).value();
+    auto retained = std::move(owner);
+    CHECK(retained.file("owned.txt"));
+    // NOLINTNEXTLINE(bugprone-use-after-move): inactive owners must explicitly refuse path access.
+    CHECK(!owner.file(utf8_spelling(file)));
+    CHECK(!owner.child(utf8_spelling(temporary.path)));
+    CHECK(!owner.entries());
+    for (const auto* const name : {"", ".", "..", "../owned.txt", "sub/owned.txt"}) {
+        CHECK(!retained.file(name));
+        CHECK(!retained.child(name));
+    }
+    const auto nul = std::string("owned.txt") + '\0' + "ignored";
+    CHECK(!retained.file(nul));
+    CHECK(!retained.file(utf8_spelling(file)));
+    owner = std::move(retained);
+    CHECK(owner.file("owned.txt"));
+    // NOLINTNEXTLINE(bugprone-use-after-move): moved-from enumeration must refuse.
+    CHECK(!retained.entries());
+#ifndef _WIN32
+    const auto literal = temporary.path / "literal\\byte";
+    {
+        std::ofstream write{literal};
+        write << "literal filename";
+    }
+    CHECK(owner.file("literal\\byte"));
+#else
+    CHECK(!owner.file("owned.txt:alternate"));
+    CHECK(!owner.file("sub\\owned.txt"));
+#endif
 }
 } // namespace docenhance::tests

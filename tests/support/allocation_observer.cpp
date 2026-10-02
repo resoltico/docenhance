@@ -32,12 +32,15 @@ std::mutex worker_mutex;
 std::size_t worker_count = 0;
 std::atomic<std::size_t> allocation_attempts{0};
 std::atomic<std::size_t> failure_at{0};
+std::atomic<bool> persistent_failure{false};
 bool refuse_allocation() noexcept {
     if (!observing.load()) {
         return false;
     }
     const auto attempt = allocation_attempts.fetch_add(1) + 1;
-    return failure_at.load() != 0 && attempt == failure_at.load();
+    const auto failure = failure_at.load();
+    return failure != 0 &&
+           (attempt == failure || (persistent_failure.load() && attempt >= failure));
 }
 void acquire_bytes(std::size_t bytes) {
     const std::scoped_lock lock{worker_mutex};

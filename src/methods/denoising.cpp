@@ -155,4 +155,28 @@ bool valid_denoising(const DenoisingReport& r, const Denoising& requested) noexc
     return r.reason == DenoiseReason::no_effect && r.evaluated_samples == r.eligible_samples &&
            r.native_calls > 0;
 }
+bool valid_denoising_extent(const DenoisingReport& report, image::Extent extent) {
+    const auto& r = report;
+    if (r.native_calls == 0) {
+        return true;
+    }
+    if (!r.requested) {
+        return false;
+    }
+    auto method = Nlm::create(*r.requested);
+    if (!method || r.requested->search > std::min(extent.width, extent.height)) {
+        return false;
+    }
+    const auto p = method->parameters();
+    const auto radius = (p.search + p.patch - 2) / 2;
+    auto scratch = nlm_native_scratch(
+        {
+            .width = std::min(nlm_tile_width, extent.width) + (2 * radius),
+            .height = std::min(nlm_tile_width, extent.height) + (2 * radius),
+        },
+        *method);
+    const auto expected = ((std::uint64_t{extent.width} + nlm_tile_width - 1) / nlm_tile_width) *
+                          ((std::uint64_t{extent.height} + nlm_tile_width - 1) / nlm_tile_width);
+    return scratch && r.native_reserved_peak == *scratch && r.native_calls == expected;
+}
 } // namespace docenhance::methods

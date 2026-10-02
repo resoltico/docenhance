@@ -88,6 +88,13 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
 } // namespace
 app::ProcessResult Processor::process(const app::ProcessRequest& request,
                                       const core::Cancellation& cancellation) {
+    if (!request.ready()) {
+        return app::process_failure({
+            .code = core::ErrorCode::argument,
+            .message = "Processing request no longer owns valid admitted paths",
+        });
+    }
+
     if (cancellation.requested(core::Checkpoint::admission)) {
         return app::process_failure(core::cancelled().error());
     }

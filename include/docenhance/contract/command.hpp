@@ -26,7 +26,8 @@ class CommandSet {
 
   private:
     [[nodiscard]] static constexpr unsigned bit(Command command) noexcept {
-        return 1U << static_cast<unsigned>(command);
+        const auto index = static_cast<unsigned>(command);
+        return index < command_count ? 1U << index : 0U;
     }
     unsigned bits_ = 0;
 };

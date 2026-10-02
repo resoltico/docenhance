@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 #pragma once
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/linear.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/method_catalog.hpp"
 
@@ -103,4 +104,6 @@ struct IlluminationReport {
     double min_gain = 1;
     double max_gain = 1;
 };
+[[nodiscard]] bool valid_illumination(const IlluminationReport& report, image::Extent extent,
+                                      bool protection);
 } // namespace docenhance::methods

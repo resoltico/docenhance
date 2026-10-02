@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: MIT
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
+#include "docenhance/app/verify.hpp"
 #include "docenhance/color/converter.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/scheduler.hpp"
+#include "docenhance/host/processor.hpp"
+#include "docenhance/host/verifier.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
@@ -21,6 +24,8 @@
 #include <future>
 #include <limits>
 #include <optional>
+#include <span>
+#include <stop_token>
 #include <type_traits>
 #include <utility>
 namespace docenhance::tests {
@@ -35,6 +40,10 @@ template <typename T>
 concept BorrowsRaster = requires(T&& owner, image::Continuous operation, core::Budget& budget) {
     color::Converter::create(std::forward<T>(owner), operation, budget);
 };
+template <typename T>
+concept BorrowsPng = requires(T&& owner) { std::forward<T>(owner).png(); };
+static_assert(BorrowsPng<image::RasterMetadata&> && BorrowsPng<const image::RasterMetadata&>);
+static_assert(!BorrowsPng<image::RasterMetadata> && !BorrowsPng<const image::RasterMetadata>);
 struct Task {
     core::Result<void> operator()(std::size_t /*index*/) const {
         return {};
@@ -165,5 +174,68 @@ TEST_CASE("Copying a mutable work reference retains the callable rather than the
     REQUIRE((*copied)(0));
     REQUIRE(calls == 2);
     REQUIRE(other_calls == 0);
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Moved requests become unready and native ports refuse them before cancellation") {
+    contract::Invocation invocation;
+    invocation.command = contract::Command::process;
+    invocation.subject = "input.png";
+    invocation.output_directory = "output";
+    auto original = app::prepare_process(invocation).value();
+    auto moved = std::move(original);
+    CHECK(moved.ready());
+    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    CHECK(!original.ready());
+    auto replacement = app::prepare_process(invocation).value();
+    replacement = std::move(moved);
+    CHECK(replacement.ready());
+    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    CHECK(!moved.ready());
+    std::stop_source source;
+    static_cast<void>(source.request_stop());
+    const core::Cancellation stopped{source.get_token()};
+    source = std::stop_source{std::nostopstate};
+    CHECK(stopped.requested(core::Checkpoint::admission));
+    CHECK(!source.stop_possible());
+    host::Processor processor{{.identity = "unused", .recorded = "unused"}};
+    const auto refused = processor.process(original, stopped);
+    REQUIRE(!refused);
+    CHECK(refused.error().error.code == core::ErrorCode::argument);
+    CHECK(refused.error().error.publication == core::Publication::not_started);
+    invocation.command = contract::Command::verify;
+    auto reading = app::prepare_verify(invocation).value();
+    auto retained = std::move(reading);
+    CHECK(retained.ready());
+    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    CHECK(!reading.ready());
+    reading = std::move(retained);
+    CHECK(reading.ready());
+    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    CHECK(!retained.ready());
+    host::Verifier verifier;
+    const auto denied = verifier.verify(retained, stopped);
+    REQUIRE(!denied);
+    CHECK(denied.error().code == core::ErrorCode::argument);
+    CHECK(denied.error().publication == core::Publication::not_started);
+}
+TEST_CASE("Binary row adapters validate bounds before borrowing and preserve rejected output") {
+    const std::array<std::uint8_t, 4> samples{1, 2, 3, 4};
+    const auto view = image::PlaneView<const std::uint8_t>::create(
+                          samples, {.width = 4, .height = 1, .stride = 4})
+                          .value();
+    image::PlaneRows rows{view};
+    std::array<std::uint8_t, 4> output{9, 9, 9, 9};
+    const auto original = output;
+    CHECK(!rows.row(1, output, image::RowUse::output));
+    CHECK(
+        !rows.row(std::numeric_limits<std::uint32_t>::max(), output, image::RowUse::verification));
+    CHECK(!rows.row(0, std::span{output}.first(1), image::RowUse::output));
+    CHECK(output == original);
+    CHECK(rows.row(0, output, image::RowUse::output));
+    CHECK(output == samples);
+    image::PlaneRows empty{{}};
+    CHECK(!empty.row(0, output, image::RowUse::output));
 }
 } // namespace docenhance::tests

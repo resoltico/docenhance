@@ -185,3 +185,8 @@ reconstruction block. A native tile is not interruptible; maximum patch/search a
 bound its work, while measured latency remains platform-dependent. Native errors take precedence
 before the next cancellation observation. Completed I01/D01 numerical reports survive later
 verification/publication failures; the existing final commit cutoff remains authoritative.
+
+Moved-from requests are unready and refused before cancellation/I/O. Returned cancellation must
+be coherent with publication; contradictory port observations retain unknown processing state.
+Verification exceptions and malformed returns are contained at its read-only boundary and cannot
+claim staging or commit. See [execution ownership](execution-ownership-audit.md).

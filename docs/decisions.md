@@ -291,3 +291,13 @@ cannot carry a converter, mask or continuous stage owners. Derived record fields
 configuration. Prepared models remain owned by their caller through all row consumers. Keep codec
 jump frames, error containment and commit/reconciliation boundaries distinct. See the separate
 [simplicity design and challenge](architecture-simplicity-audit.md).
+
+## Validate observations at the execution boundary
+
+Typed success/error alternatives do not make supplied facts coherent. Application dispatch validates
+returned identities, request agreement, successful numerical observations and error/publication
+pairing. Shared pure validators also serve record verification. Malformed processing returns retain
+the prepared unknown outcome; readonly verification failures retain not_started. Requests consume
+the source path when moved, native directory access requires active confined ownership, and borrowed
+metadata/rows enforce lifetime/range boundaries. The allocation-free CLI fallback remains separate
+from fallible rendering. See [the separate design/challenge](execution-ownership-audit.md).

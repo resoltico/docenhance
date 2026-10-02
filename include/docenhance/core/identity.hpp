@@ -28,6 +28,10 @@ struct NamedContent {
 // The number of characters a rendered digest always has.
 inline constexpr std::size_t sha256_hex_length = 64;
 
+inline constexpr std::size_t run_identity_hex_length = 32;
+[[nodiscard]] bool valid_hexadecimal(std::string_view value, std::size_t length);
+[[nodiscard]] bool valid_instant(std::string_view value);
+
 // The identity of this build, as the build system recorded it.
 struct BuildFacts {
     std::string_view version;

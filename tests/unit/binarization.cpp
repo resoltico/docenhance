@@ -51,7 +51,15 @@ class SuccessfulProcessor final : public app::Processor {
     app::ProcessResult process(const app::ProcessRequest& /*request*/,
                                const core::Cancellation& /*cancellation*/) override {
         ++calls;
-        return app::PublishedBinary{.output = "output/result.png", .run = {}, .record = {}};
+        return app::PublishedBinary{
+            .output = "output/result.png",
+            .run = std::string(32, 'a'),
+            .record =
+                {
+                    .sha256 = std::string(64, 'b'),
+                    .bytes = 512,
+                },
+        };
     }
 };
 void check_samples(image::PlaneView<const std::uint8_t> output, const SauvolaReference& reference) {
