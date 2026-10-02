@@ -4,6 +4,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-02
+
 ### Added
 
 - Bounded 8-bit Huffman baseline/progressive JPEG input supports gray/RGB/YCbCr continuous `preserve`/`gray` processing, ICC/EXIF/JFIF interpretation, exact orientation and oriented PNG protection masks. Signature admission identifies and decodes one immutable source snapshot. Corruption, decoder warnings and exceeded scan, marker or resource limits are refused; decoder buffers are charged and cancellation is supported. Output remains a verified PNG bundle. JPEG `bw`, arithmetic/lossless/higher-precision/CMYK/multi-image/gain-map input and JPEG output remain unsupported. See [JPEG](docs/jpeg-processing.md).
