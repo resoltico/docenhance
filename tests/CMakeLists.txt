@@ -80,6 +80,9 @@ target_include_directories(de_jpeg_resources PRIVATE "${CMAKE_CURRENT_SOURCE_DIR
 target_link_libraries(de_jpeg_resources PRIVATE de_io de_image de_core)
 de_apply_options(de_jpeg_resources)
 
+add_test(NAME composition-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_composition.py" "$<TARGET_FILE:docenhance>")
+set_tests_properties(composition-contract PROPERTIES TIMEOUT 90)
+
 add_test(NAME denoising-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_denoising.py" "$<TARGET_FILE:docenhance>")
 set_tests_properties(denoising-contract PROPERTIES TIMEOUT 90)
 
