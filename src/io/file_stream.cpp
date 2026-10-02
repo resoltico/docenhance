@@ -11,7 +11,6 @@
 #include <fcntl.h>
 #include <fileapi.h>
 #include <handleapi.h>
-#include <minwindef.h>
 #include <stdio.h> // NOLINT(modernize-deprecated-headers): Native CRT stream/descriptor declarations.
 #include <winbase.h>
 #include <winnt.h>
