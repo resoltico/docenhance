@@ -236,14 +236,15 @@ TEST_CASE("Staged bundle disagreement prevents any commit", "[bundle][publicatio
     CHECK(result.error().publication == core::Publication::not_published);
     CHECK(empty_directory(temporary.path));
 }
-TEST_CASE("Unreadable ambiguous publication stays unknown and never rolls back",
+TEST_CASE("Owned publication with a lost reply and unreadable record stays completed",
           "[bundle][publication]") {
     const TemporaryDirectory temporary{"docenhance-bundle-unreadable"};
     auto written = written_bundle();
     const auto output = temporary.path / "result";
     const auto result = publish(output, written, unreadable_after_commit);
     REQUIRE(!result);
-    CHECK(result.error().publication == core::Publication::unknown);
+    CHECK(result.error().publication == core::Publication::completed);
+    CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(std::filesystem::exists(output / bundle::image_name));
 }
 TEST_CASE("Another run at the destination is preserved during reconciliation",

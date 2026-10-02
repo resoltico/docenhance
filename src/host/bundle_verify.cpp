@@ -57,8 +57,8 @@ core::Result<void> artifacts(const bundle::DeclaredBundle& declared,
     }
     return {};
 }
-core::Result<void> prepare_bundle(void* const state, const std::string& directory,
-                                  const core::Cancellation& cancellation) {
+core::Result<void> validate_bundle(void* const state, const std::string& directory,
+                                   const core::Cancellation& cancellation) {
     const auto& expected = *static_cast<ExpectedBundle*>(state);
     auto checked = verify_bundle(directory, cancellation);
     if (!checked) {
@@ -71,40 +71,13 @@ core::Result<void> prepare_bundle(void* const state, const std::string& director
     if (checked->declared.run != expected.run || checked->record.sha256 != expected.record.sha256 ||
         checked->record.bytes != expected.record.bytes) {
         return core::failure(core::ErrorCode::output_verify,
-                             "Staged bundle identity disagrees with this run");
+                             "Bundle identity disagrees with this run");
     }
     return {};
 }
-io::BundleObservation observe_bundle(void* const state, const std::string& directory) {
-    const auto& expected = *static_cast<ExpectedBundle*>(state);
-    core::Budget budget{bundle::record_max_bytes};
-    auto bytes = io::read_bundle_record(directory, bundle::record_max_bytes, budget);
-    if (!bytes) {
-        return io::BundleObservation::unobservable;
-    }
-    const auto identity = io::identify(bytes->bytes());
-    if (!identity) {
-        return io::BundleObservation::unobservable;
-    }
-    if (identity->sha256 != expected.record.sha256 || identity->bytes != expected.record.bytes) {
-        return io::BundleObservation::other_or_absent;
-    }
-    // Only the digest is needed now; release this snapshot before the full validation ledger.
-    *bytes = {};
-    const auto checked = verify_bundle(directory, {});
-    if (!checked) {
-        return checked.error().code == core::ErrorCode::input
-                   ? io::BundleObservation::integrity_failure
-                   : io::BundleObservation::unobservable;
-    }
-    if (checked->record.sha256 != expected.record.sha256 || checked->declared.run != expected.run) {
-        return io::BundleObservation::unobservable;
-    }
-    return io::BundleObservation::consistent;
-}
 } // namespace
 io::BundleValidation bundle_validation(ExpectedBundle& expected) {
-    return {.state = &expected, .prepare = prepare_bundle, .observe = observe_bundle};
+    return {.state = &expected, .validate = validate_bundle};
 }
 core::Result<VerifiedBundle> verify_bundle(const std::string& directory,
                                            const core::Cancellation& cancellation) {

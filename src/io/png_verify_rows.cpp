@@ -7,6 +7,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/io/bundle.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
 
@@ -134,12 +135,14 @@ bool read_output_end(PngContext const& context) {
 } // namespace
 core::Result<void> verify_png_image(const std::filesystem::path& path,
                                     image::PlaneView<const std::uint8_t> image,
-                                    core::Budget& budget, const core::Cancellation& cancellation) {
+                                    core::Budget& budget, const core::Cancellation& cancellation,
+                                    const EntryLease* const owner) {
     image::PlaneRows rows{image};
-    return verify_png_rows(path, rows, budget, cancellation);
+    return verify_png_rows(path, rows, budget, cancellation, owner);
 }
 core::Result<void> verify_png_rows(const std::filesystem::path& path, image::RowSource& source,
-                                   core::Budget& budget, const core::Cancellation& cancellation) {
+                                   core::Budget& budget, const core::Cancellation& cancellation,
+                                   const EntryLease* const owner) {
     const auto description = source.descriptor();
     const auto bytes = image::raster_row_bytes(description.shape);
     if (!bytes) {
@@ -156,8 +159,13 @@ core::Result<void> verify_png_rows(const std::filesystem::path& path, image::Row
         .remaining = bundle_max_file_bytes,
         .checkpoint = core::Checkpoint::verification,
     };
-    if (!context.open(path)) {
+    if (!context.open_reading(path)) {
         return std::unexpected(context.error(core::ErrorCode::output_verify));
+    }
+    if (owner != nullptr &&
+        (!owner->identity() || stream_identity(context.file.get()) != owner->identity() ||
+         !owner->matches(path))) {
+        return core::failure(core::ErrorCode::output_verify, "The written PNG object changed");
     }
     input.state = context.file.get();
     if (!output_inventory(context, cancellation) || !read_output_header(context, input)) {

@@ -12,10 +12,13 @@ namespace docenhance::io {
 core::Result<void> write_verified_png_rows(const BundleSlot& slot, image::RowSource& rows,
                                            core::Budget& budget,
                                            const core::Cancellation& cancellation) {
-    auto encoded = encode_png_rows(slot.path, rows, budget, cancellation, slot.created);
+    if (!slot.valid_parent() || slot.created == nullptr) {
+        return core::failure(core::ErrorCode::output, "The reserved PNG parent changed");
+    }
+    auto encoded = encode_png_rows(slot, rows, budget, cancellation);
     if (!encoded) {
         return encoded;
     }
-    return verify_png_rows(slot.path, rows, budget, cancellation);
+    return verify_png_rows(slot.path, rows, budget, cancellation, slot.created);
 }
 } // namespace docenhance::io

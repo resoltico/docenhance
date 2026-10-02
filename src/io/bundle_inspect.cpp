@@ -91,6 +91,11 @@ core::Result<void> read_mask(const BundleDirectory& root, BundleSnapshot& result
     if (!mask) {
         return std::unexpected(mask.error());
     }
+    auto after = assets->entries();
+    if (!after || *after != *names) {
+        return core::failure(core::ErrorCode::input,
+                             "Bundle assets changed during snapshot acquisition");
+    }
     result.contents.directories.emplace_back("assets");
     return append(result, "assets/protect-mask.png", std::move(*mask), cancellation);
 }
@@ -129,14 +134,16 @@ core::Result<BundleSnapshot> read_bundle(const std::string& directory, core::Bud
             return std::unexpected(stored.error());
         }
     }
-    return result;
-}
-core::Result<core::Buffer> read_bundle_record(const std::string& directory, std::size_t limit,
-                                              core::Budget& budget) {
-    auto root = BundleDirectory::open(utf8_path(directory));
-    if (!root) {
-        return std::unexpected(root.error());
+    auto after = root->entries();
+    if (!after) {
+        return std::unexpected(after.error());
     }
-    return read(*root, "run.json", std::min(limit, bundle_max_file_bytes), budget, {});
+    std::ranges::sort(*names);
+    std::ranges::sort(*after);
+    if (*names != *after) {
+        return core::failure(core::ErrorCode::input,
+                             "Bundle inventory changed during snapshot acquisition");
+    }
+    return result;
 }
 } // namespace docenhance::io

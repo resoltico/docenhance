@@ -6,13 +6,13 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "entry_identity.hpp"
+#include "publication.hpp"
 
 #include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
-#include <optional>
 #include <png.h>
 #include <pngconf.h>
 #include <ranges>
@@ -128,56 +128,26 @@ void FileCloser::operator()(std::FILE* file) const noexcept {
     // Best-effort cleanup. Success is possible only after close_output explicitly checks fclose.
     static_cast<void>(std::fclose(file)); // NOLINT(cppcoreguidelines-owning-memory)
 }
-FileHandle open_for_reading(const std::filesystem::path& path) {
-#ifdef _WIN32
-    std::FILE* opened = nullptr;
-    // NOLINTNEXTLINE(misc-include-cleaner): MSVC exposes _wfopen_s through C runtime internals.
-    if (_wfopen_s(&opened, path.c_str(), L"rb") != 0) {
-        return {};
-    }
-    return FileHandle{opened};
-#else
-    // The handle immediately takes ownership of the C stream.
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
-    return FileHandle{std::fopen(path.c_str(), "rb")};
-#endif
-}
-FileHandle open_for_writing(const std::filesystem::path& path) {
-#ifdef _WIN32
-    std::FILE* opened = nullptr;
-    // NOLINTNEXTLINE(misc-include-cleaner): MSVC exposes _wfopen_s through C runtime internals.
-    if (_wfopen_s(&opened, path.c_str(), L"wbx") != 0) {
-        return {};
-    }
-    return FileHandle{opened};
-#else
-    // The handle immediately takes ownership of the C stream.
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
-    return FileHandle{std::fopen(path.c_str(), "wbx")};
-#endif
-}
-bool PngContext::open(const std::filesystem::path& path,
-                      std::optional<EntryIdentity>* const created) {
+bool PngContext::create(const BundleSlot& slot) {
     if (png == nullptr || info == nullptr) {
         memory.exhausted = true;
         return false;
     }
-#ifdef _WIN32
-    std::FILE* opened = nullptr;
-    // NOLINTNEXTLINE(misc-include-cleaner): MSVC exposes _wfopen_s through C runtime internals.
-    if (_wfopen_s(&opened, path.c_str(), writing ? L"wbx" : L"rb") != 0) {
+    if (!writing || !slot.valid_parent() || slot.created == nullptr) {
         return false;
     }
-    file.reset(opened);
-#else
-    // The unique_ptr immediately takes ownership of the C stream.
-    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory)
-    file.reset(std::fopen(path.c_str(), writing ? "wbx" : "rb"));
-#endif
-    if (file != nullptr && created != nullptr) {
-        *created = stream_identity(file.get());
+    file = open_for_writing(slot.path);
+    if (file != nullptr) {
+        *slot.created = EntryLease::capture(file.get(), slot.path);
     }
-    return file != nullptr && (created == nullptr || created->has_value());
+    return file != nullptr && slot.created->identity().has_value();
+}
+bool PngContext::open_reading(const std::filesystem::path& path) {
+    if (writing || png == nullptr || info == nullptr) {
+        return false;
+    }
+    file = open_for_reading(path);
+    return file != nullptr;
 }
 bool PngContext::close_output() noexcept {
     std::FILE* const closing = file.release();

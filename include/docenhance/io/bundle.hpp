@@ -24,13 +24,11 @@ struct BundleFile {
     void* state;
     core::Result<void> (*write)(void*, const BundleSlot&);
 };
-enum class BundleObservation { consistent, integrity_failure, other_or_absent, unobservable };
 // Processing meaning stays in the host. The I/O transaction invokes the supplied validator
-// before commit and observes this invocation's identity afterward; it never parses a record.
+// before and after commit; native publication ownership stays in I/O. It never parses a record.
 struct BundleValidation {
     void* state = nullptr;
-    core::Result<void> (*prepare)(void*, const std::string&, const core::Cancellation&) = nullptr;
-    BundleObservation (*observe)(void*, const std::string&) = nullptr;
+    core::Result<void> (*validate)(void*, const std::string&, const core::Cancellation&) = nullptr;
 };
 // Writes exactly these bytes into the reserved slot. No directory is created and no existing file
 // is replaced: the transaction owns the staging directory.
@@ -77,9 +75,6 @@ struct BundleSnapshot {
                                                        core::Budget& budget,
                                                        const core::Cancellation& cancellation,
                                                        std::size_t record_limit);
-// Read only the root record snapshot to identify this invocation before full reconciliation.
-[[nodiscard]] core::Result<core::Buffer>
-read_bundle_record(const std::string& directory, std::size_t limit, core::Budget& budget);
 // Writes every declared file into an owned staging directory, observes the one cancellation
 // cutoff, then commits the complete directory with a single exclusive rename. A failure before
 // commit prevents publication; cleanup removes only what this invocation created. Returns the path
