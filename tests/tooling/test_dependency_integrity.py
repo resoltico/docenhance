@@ -206,6 +206,30 @@ class DependencyIntegrityTests(unittest.TestCase):
             (root / "build-identity.json").write_text('{"CMAKE_SYSTEM_NAME":"Linux"}')
             self.assertTrue(audit_build.audit(root))
 
+    def test_installed_json_header_must_match_private_build_input(self) -> None:
+        """A feature cache flag cannot substitute for the actual installed header bytes."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "deps/json"
+            cache = {"BUILD_SHARED_LIBS": "OFF"}
+            self.assertTrue(audit_build.feature_failures("json", {}, cache, binary))
+            owned = binary / "owned-source/single_include/nlohmann/json.hpp"
+            installed = root / "prefix/include/nlohmann/json.hpp"
+            owned.parent.mkdir(parents=True)
+            installed.parent.mkdir(parents=True)
+            owned.write_bytes(b"reviewed private header")
+            installed.write_bytes(b"unmodified upstream header")
+            self.assertTrue(audit_build.feature_failures("json", {}, cache, binary))
+            installed.write_bytes(owned.read_bytes())
+            # Two mutable copies agreeing is not independent identity evidence.
+            self.assertTrue(audit_build.feature_failures("json", {}, cache, binary))
+            expected = hashlib.sha256(owned.read_bytes()).hexdigest()
+            with patch("audit_build.JSON_BOUNDED_HEADER_SHA256", expected):
+                self.assertFalse(audit_build.feature_failures("json", {}, cache, binary))
+                owned.write_bytes(b"both copies altered")
+                installed.write_bytes(owned.read_bytes())
+                self.assertTrue(audit_build.feature_failures("json", {}, cache, binary))
+
 
 if __name__ == "__main__":
     unittest.main()

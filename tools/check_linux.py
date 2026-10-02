@@ -60,7 +60,12 @@ def cache_identity(image: str, platform: str, root: Path = ROOT) -> str:
     digest = hashlib.sha256((str(root.resolve()) + image + platform).encode())
     for name in ("deps/tools.json", "deps/lock.json", "deps/features.json"):
         digest.update((root / name).read_bytes())
-    for path in sorted((root / "cmake").rglob("*.cmake")):
+    recipes = (
+        path
+        for path in (root / "cmake").rglob("*")
+        if path.suffix == ".cmake" or path.name == "CMakeLists.txt"
+    )
+    for path in sorted(recipes):
         digest.update(path.relative_to(root).as_posix().encode())
         digest.update(path.read_bytes())
     return f"docenhance-linux-{digest.hexdigest()[:20]}"

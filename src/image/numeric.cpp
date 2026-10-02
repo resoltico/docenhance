@@ -89,7 +89,8 @@ core::Result<double> nearest_rank(std::span<double> values, double p) {
     }
     const auto rank = static_cast<std::size_t>(std::ceil(p * static_cast<double>(values.size())));
     const auto index = rank == 0 ? 0 : std::min(rank - 1, values.size() - 1);
-    std::ranges::nth_element(values, values.begin() + static_cast<std::ptrdiff_t>(index));
+    // Sorting caller-owned scratch bounds adversarial comparison work by O(n log n).
+    std::ranges::sort(values);
     return values.subspan(index, 1).front();
 }
 std::size_t reflect101_folded(std::int64_t coordinate, std::size_t extent) noexcept {

@@ -13,7 +13,6 @@
 #include <expected>
 #include <new>
 #include <nlohmann/json.hpp>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -128,33 +127,6 @@ constexpr std::size_t max_path_length = 128;
     };
 }
 
-Json parse_record(std::string_view text) {
-    std::vector<std::set<std::string>> keys;
-    bool duplicate = false;
-    std::size_t events = 0;
-    constexpr std::size_t event_limit = 1024;
-    const auto callback = [&](int, Json::parse_event_t event, Json& value) {
-        ++events;
-        if (event == Json::parse_event_t::object_start) {
-            keys.emplace_back();
-        }
-        if (event == Json::parse_event_t::key) {
-            duplicate =
-                (events <= event_limit && !keys.back().insert(value.get<std::string>()).second) ||
-                duplicate;
-        }
-        if (event == Json::parse_event_t::object_end) {
-            keys.pop_back();
-        }
-        return events <= event_limit;
-    };
-    auto document = Json::parse(text, callback, false);
-    if (duplicate || events > event_limit) {
-        return {Json::value_t::discarded};
-    }
-    return document;
-}
-
 // Every artifact a record declares, in the order the record lists them.
 [[nodiscard]] core::Result<std::vector<Artifact>> inventory_of(const Json& document) {
     std::vector<Artifact> inventory;
@@ -245,10 +217,11 @@ core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         const std::string_view text{reinterpret_cast<const char*>(bytes.data()), bytes.size()};
         // Parsed without exceptions: a malformed document comes back discarded, not thrown.
-        const auto document = parse_record(text);
-        if (document.is_discarded()) {
-            return std::unexpected(rejected("is not well-formed JSON"));
+        auto parsed = parse_record(text);
+        if (!parsed) {
+            return std::unexpected(parsed.error());
         }
+        const auto& document = *parsed;
         const auto* const header = member(document, "record");
         const auto* const version = header == nullptr ? nullptr : member(*header, "version");
         const auto* const run = header == nullptr ? nullptr : member(*header, "run");

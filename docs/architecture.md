@@ -170,7 +170,8 @@ sandbox or a defense against another process with equivalent permissions tamperi
 
 ## Numerical work and scheduling
 
-Percentile selection validates first and reorders caller-owned scratch in place; it never
+Percentile selection validates first and sorts caller-owned scratch in place with O(n log n)
+worst-case comparisons; it never
 creates an input-sized private copy. I01 uses this same nearest-rank primitive over charged
 measurement planes. Independent sorted-input and allocation-observation checks cover it.
 

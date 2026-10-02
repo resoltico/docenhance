@@ -160,4 +160,32 @@ TEST_CASE("Record serialization never repairs malformed identity bytes", "[bundl
     REQUIRE(!rejected);
     CHECK(rejected.error().code == core::ErrorCode::invariant);
 }
+TEST_CASE("Record parsing stops at its event boundary before later malformed tokens",
+          "[bundle][resource]") {
+    const auto array = [](std::size_t values) {
+        std::string text = "[";
+        for (std::size_t i = 0; i < values; ++i) {
+            text += i == 0 ? "0" : ",0";
+        }
+        return text + "]";
+    };
+    const auto exact = bundle::read_record(as_bytes(array(bundle::record_max_events - 2)));
+    REQUIRE(!exact);
+    CHECK(exact.error().message.contains("identifying header"));
+    const auto excess = bundle::read_record(as_bytes(array(bundle::record_max_events - 1)));
+    REQUIRE(!excess);
+    CHECK(excess.error().message.contains("parser event ceiling"));
+    auto unread = array(bundle::record_max_events);
+    unread.insert(unread.size() - 1, ",?");
+    const auto stopped = bundle::read_record(as_bytes(unread));
+    REQUIRE(!stopped);
+    CHECK(stopped.error().code == core::ErrorCode::input);
+    CHECK(stopped.error().message.contains("parser event ceiling"));
+
+    auto record = binarized_record();
+    record.source.name = "braces{}[]\\\".png";
+    const auto written = bundle::serialize(record);
+    REQUIRE(written);
+    CHECK(bundle::read_record(as_bytes(*written)));
+}
 } // namespace docenhance::tests

@@ -89,6 +89,8 @@ io::BundleObservation observe_bundle(void* const state, const std::string& direc
     if (identity->sha256 != expected.record.sha256 || identity->bytes != expected.record.bytes) {
         return io::BundleObservation::other_or_absent;
     }
+    // Only the digest is needed now; release this snapshot before the full validation ledger.
+    *bytes = {};
     const auto checked = verify_bundle(directory, {});
     if (!checked) {
         return checked.error().code == core::ErrorCode::input

@@ -25,6 +25,16 @@ without links or duplicate names.
 The cache is local working state, not source control and not a second authority. See the [build
 guide](build.md#acquisition-is-a-separate-phase) for concurrency and recovery rules.
 
+The JSON build uses a checked private copy of the locked single header. Its recursive destruction
+avoids an allocating traversal stack inside noexcept cleanup; production DOM inputs are admitted
+at depth <=16, while record/response builders have fixed typed shapes. The source cache and upstream
+attribution are untouched. Feature policy pins the reviewed source-header digest; the build audit
+compares the installed header with the private build input and an independent reviewed output
+digest. Allocation-failure tests establish the
+cleanup behavior separately from that byte-identity check. See [the resource audit](resource-limits-audit.md).
+Native C++ integrations must consistently use the corrected installed header from the project's
+private prefix; mixing it with stock JSON headers would violate the inline definition contract.
+
 ## Runtime boundary
 
 The lock distinguishes `runtime-candidate` dependencies from test-only dependencies. A selected

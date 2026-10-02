@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -77,6 +78,41 @@ de_commit_build_identity()
         """A rejection is meaningful only when the intended production guard caused it."""
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(diagnostic, result.stdout + result.stderr)
+
+    def test_json_destruction_recipe_requires_reviewed_source(self) -> None:
+        """The real dependency recipe refuses disabled correction, drift and absent cleanup."""
+        recipe = ROOT / "cmake/dependencies/json/CMakeLists.txt"
+        (self.source / "CMakeLists.txt").write_text(recipe.read_text())
+        upstream = self.root / "upstream"
+        header = upstream / "single_include/nlohmann/json.hpp"
+        header.parent.mkdir(parents=True)
+        header.write_bytes(b"unreviewed header")
+        settings = (
+            f"-DDE_UPSTREAM_SOURCE={upstream}",
+            "-DJSON_MultipleHeaders=OFF",
+            "-DJSON_BuildTests=OFF",
+        )
+        self.assert_refused(
+            self.configure(*settings, "-DDOCENHANCE_JSON_BOUNDED_DESTRUCTION=OFF"),
+            "reviewed bounded JSON destruction configuration",
+        )
+        self.assert_refused(
+            self.configure(
+                *settings,
+                "-DDOCENHANCE_JSON_BOUNDED_DESTRUCTION=ON",
+                "-DDOCENHANCE_JSON_HEADER_SHA256=" + "0" * 64,
+            ),
+            "Review bounded JSON destruction",
+        )
+        self.assert_refused(
+            self.configure(
+                *settings,
+                "-DDOCENHANCE_JSON_BOUNDED_DESTRUCTION=ON",
+                "-DDOCENHANCE_JSON_HEADER_SHA256="
+                + hashlib.sha256(header.read_bytes()).hexdigest(),
+            ),
+            "reviewed JSON cleanup sequence is absent",
+        )
 
     def test_configuration_binding_refuses_reuse_and_shared_prefix(self) -> None:
         """Identical reuse succeeds; changing the build kind or sharing another prefix fails."""

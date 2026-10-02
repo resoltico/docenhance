@@ -32,7 +32,7 @@ namespace core = docenhance::core;
 namespace image = docenhance::image;
 namespace methods = docenhance::methods;
 
-constexpr std::size_t max_document = 4096;
+constexpr std::size_t max_document = bundle::record_max_bytes + 1;
 
 std::span<const std::byte> as_bytes(std::string_view text) {
     // char is the narrow-character view of the same immutable bytes.
