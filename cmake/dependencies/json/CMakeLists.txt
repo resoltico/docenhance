@@ -30,6 +30,7 @@ file(MAKE_DIRECTORY "${de_owned}")
 file(COPY "${DE_UPSTREAM_SOURCE}/CMakeLists.txt" "${DE_UPSTREAM_SOURCE}/cmake"
   "${DE_UPSTREAM_SOURCE}/single_include" "${DE_UPSTREAM_SOURCE}/nlohmann_json.natvis"
   DESTINATION "${de_owned}")
-file(WRITE "${de_owned}/single_include/nlohmann/json.hpp"
-  "${de_prefix}            // DocEnhance admits DOM depth before parsing. Recursive bounded cleanup\n            // must not allocate from this noexcept destruction boundary.\n${de_suffix}")
+file(CONFIGURE OUTPUT "${de_owned}/single_include/nlohmann/json.hpp"
+  CONTENT "${de_prefix}            // DocEnhance admits DOM depth before parsing. Recursive bounded cleanup\n            // must not allocate from this noexcept destruction boundary.\n${de_suffix}"
+  @ONLY NEWLINE_STYLE LF)
 add_subdirectory("${de_owned}" upstream)

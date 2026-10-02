@@ -2,16 +2,22 @@
 // SPDX-License-Identifier: MIT
 #include "allocation_observer.hpp"
 #include "docenhance/bundle/inventory.hpp"
-#include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/surface.hpp"
 
+#include <array>
+#include <atomic>
 #include <cstddef>
 #include <iostream>
+#include <latch>
 #include <span>
 #include <string>
+#include <thread>
 #include <vector>
+#if !DE_ALLOCATION_SANITIZER_OBSERVATION
+#include "docenhance/core/memory.hpp"
+#endif
 
 namespace {
 namespace allocation = docenhance::tests::allocation_observer;
@@ -132,11 +138,44 @@ bool ledger_refusal() {
     return true;
 #endif
 }
+bool concurrent_observation() {
+    constexpr unsigned worker_count = 4;
+    const std::string input = "[]";
+    std::latch ready{worker_count};
+    std::latch start{1};
+    std::atomic<unsigned> refusals{0};
+    const auto work = [&] {
+        ready.count_down();
+        start.wait();
+        const auto result = docenhance::bundle::read_record(std::as_bytes(std::span{input}));
+        if (!result && result.error().code == docenhance::core::ErrorCode::input) {
+            refusals.fetch_add(1);
+        }
+    };
+    begin();
+    {
+        std::array<std::jthread, worker_count> workers;
+        try {
+            for (auto& worker : workers) {
+                worker = std::jthread{work};
+            }
+        } catch (...) {
+            start.count_down(); // Release and join every successfully launched worker.
+            throw;
+        }
+        ready.wait();
+        start.count_down();
+    }
+    allocation::observing.store(false);
+    return refusals.load() == worker_count && allocation::live.load() == 0 &&
+           allocation::worker_count == worker_count + 1;
+}
 } // namespace
 int main() {
     try {
         if (!allocation::initialize_hooks() || !record_bookkeeping() ||
-            !record_allocation_refusal() || !selection() || !ledger_refusal()) {
+            !record_allocation_refusal() || !selection() || !ledger_refusal() ||
+            !concurrent_observation()) {
             return 1;
         }
         std::cout << "PASS: bounded record bookkeeping and allocation-free maximum selection\n";

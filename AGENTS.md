@@ -140,6 +140,7 @@ An exit code establishes only what that command's success criteria mean. Check t
 
 - After a meaningful state-changing operation or related batch, inspect its effects: changed files, commit contents, generated outputs or installed versions. Preserve failure visibility; do not let a later success mask an earlier failure.
 - Check expected outputs and test discovery, including skipped tests and exclusions. Investigate unexpectedly empty, small or missing results before treating them as success; expected quiet output is not itself a failure.
+- Run relevant workflows that are available locally before pushing a candidate for CI, including affected compiler, sanitizer and fuzz-engine modes. Check prerequisites early and use pinned, isolated environments. Fix local failures first; identify unavailable platforms or runtime conditions precisely. CI still supplies authoritative platform evidence and does not replace locally available verification.
 - Diagnose from the full relevant failure output, retaining details without dumping sensitive or excessive content.
 - Use targeted checks during iteration; run required verification where authorized and available. Prefer an isolated, clean environment matching the required platform, toolchain and restore mode without discarding user work.
 - Verify the delivered state, not an earlier working tree. Report what ran, outcomes and untested platforms or conditions.

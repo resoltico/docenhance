@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <mutex>
+#include <span>
 #include <thread>
 #if !DE_ALLOCATION_SANITIZER_OBSERVATION
 #include <new>
@@ -48,7 +49,7 @@ void acquire_bytes(std::size_t bytes) {
     const bool known = std::ranges::find(workers, worker) != workers.end();
     if (!known) {
         if (worker_count < workers.size()) {
-            workers.at(worker_count) = worker;
+            std::span{workers}.subspan(worker_count, 1).front() = worker;
             ++worker_count;
         } else {
             worker_count = observer_worker_limit + 1;
@@ -157,29 +158,68 @@ void release_bytes(void* const pointer) noexcept {
 } // namespace
 #if DE_ALLOCATION_SANITIZER_OBSERVATION
 namespace {
-thread_local bool hook_active = false;
-void observe_malloc(const volatile void* const pointer, std::size_t bytes) noexcept {
-    if (!observing.load() || hook_active) {
-        return;
+// Compiler TLS can allocate on first access on Darwin, recursively entering the malloc hook.
+// Track active callback threads in fixed storage instead; never drop another thread's event.
+std::array<std::thread::id, observer_worker_limit> active_hooks{};
+std::atomic_flag hooks_lock{};
+void lock_hooks() noexcept {
+    while (hooks_lock.test_and_set(std::memory_order_acquire)) {
     }
-    hook_active = true;
-    // The sanitizer's observation ABI is const even though allocation storage is owned/mutable.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-    const bool recorded = register_allocation(const_cast<void*>(pointer), bytes);
-    if (!recorded) {
+}
+bool enter_hook() noexcept {
+    const auto thread = std::this_thread::get_id();
+    lock_hooks();
+    if (std::ranges::find(active_hooks, thread) != active_hooks.end()) {
+        hooks_lock.clear(std::memory_order_release);
+        return false;
+    }
+    auto* const slot = std::ranges::find(active_hooks, std::thread::id{});
+    if (slot == active_hooks.end()) {
         std::abort();
     }
-    hook_active = false;
+    *slot = thread;
+    hooks_lock.clear(std::memory_order_release);
+    return true;
 }
-void observe_free(const volatile void* const pointer) noexcept {
-    if (hook_active || (!observing.load() && live.load() == 0)) {
+void leave_hook() noexcept {
+    const auto thread = std::this_thread::get_id();
+    lock_hooks();
+    auto* const slot = std::ranges::find(active_hooks, thread);
+    if (slot == active_hooks.end()) {
+        std::abort();
+    }
+    *slot = {};
+    hooks_lock.clear(std::memory_order_release);
+}
+void observe_malloc(const volatile void* const pointer, std::size_t bytes) noexcept {
+    if (!observing.load() || !enter_hook()) {
         return;
     }
-    hook_active = true;
-    // The sanitizer exposes the pointer with volatile observation qualification.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-    static_cast<void>(forget_allocation(const_cast<const void*>(pointer)));
-    hook_active = false;
+    try {
+        // The sanitizer's ABI is const even though allocation storage is owned/mutable.
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+        const bool recorded = register_allocation(const_cast<void*>(pointer), bytes);
+        if (!recorded) {
+            std::abort();
+        }
+    } catch (...) {
+        // Observation failure cannot cross a native callback or manufacture passing evidence.
+        std::abort();
+    }
+    leave_hook();
+}
+void observe_free(const volatile void* const pointer) noexcept {
+    if ((!observing.load() && live.load() == 0) || !enter_hook()) {
+        return;
+    }
+    try {
+        // The sanitizer exposes the pointer with volatile observation qualification.
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
+        static_cast<void>(forget_allocation(const_cast<const void*>(pointer)));
+    } catch (...) {
+        std::abort();
+    }
+    leave_hook();
 }
 } // namespace
 #endif

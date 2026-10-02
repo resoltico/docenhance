@@ -36,8 +36,9 @@ def json_header_failures(binary: Path) -> list[str]:
         return ["JSON: missing reviewed or installed bounded-destruction header"]
     if owned.read_bytes() != installed.read_bytes():
         return ["JSON: installed header differs from the reviewed private copy"]
-    if hashlib.sha256(installed.read_bytes()).hexdigest() != JSON_BOUNDED_HEADER_SHA256:
-        return ["JSON: header differs from the reviewed bounded-destruction output digest"]
+    actual = hashlib.sha256(installed.read_bytes()).hexdigest()
+    if actual != JSON_BOUNDED_HEADER_SHA256:
+        return [f"JSON: header differs from reviewed output digest: {actual}"]
     return []
 
 

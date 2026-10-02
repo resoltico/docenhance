@@ -87,3 +87,23 @@ fresh build trees/private prefixes and Docker cache identity. Verify that the ac
 matches the reviewed corrected bytes against an independent output-digest reference, including a
 negative control altering both mutable copies; a cache flag or two copies agreeing proves neither
 review nor cleanup behavior. Native allocation-refusal tests establish the behavior separately.
+
+## Local sanitizer and platform challenge
+
+Run locally available compiler, sanitizer and engine modes before another CI candidate. The
+TSan-only observer mode must include only the headers it uses. Generated private headers explicitly
+use LF so Windows generation must match the same reviewed byte reference, rather than accepting a
+second output identity.
+
+Local macOS TSan exposed recursion in the observation hook: first access to compiler thread-local
+storage allocated through the malloc hook itself. Use the existing eight-worker observation bound
+for fixed active-thread storage and allocation-free thread identity, with short atomic locking.
+Suppress only re-entry by that same active thread; a global flag would silently drop concurrent
+allocations. Contain observation exceptions and fail the process if accounting becomes impossible.
+Four new workers start together through latches; require all four refusals, all five allocating
+thread identities including the controller, and complete payload refunds. Release started workers
+on launch failure before joining. No timing sleeps or production observer linkage is introduced.
+
+Native macOS AFL++ refuses crash-report forwarding, which could delay failure detection. Keep that
+check and the machine's diagnostic services intact; run the pinned engine in the local Linux Docker
+environment instead. Native platform CI remains independent of these local checks.
