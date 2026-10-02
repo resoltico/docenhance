@@ -29,7 +29,7 @@ refused before the commit point rather than published into a bundle `verify` wou
 
 ## What the record says
 
-`run.json` is a closed, versioned object. Versions 1 and 2 admit exactly the supported binary or
+`run.json` is a closed, versioned object. Version 3 admits exactly the supported binary or
 continuous operation, with reviewed method versions and validated parameters. Missing or unknown
 fields, duplicate object keys (including escaped equivalents), out-of-range numbers and inconsistent
 observations are refused. Numeric domains are checked before narrowing. Run identities are 32
