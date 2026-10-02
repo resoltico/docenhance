@@ -281,3 +281,13 @@ reviewed contracts and verified upstream license bytes; its own existence or has
 that agreement. Archive the committed source snapshot, so local work is neither leaked nor given
 an inconsistent manifest. The [verification/artifact audit](verification-artifacts-audit.md) records
 separate design and challenge passes and real negative controls.
+
+## Reduce coordination at syntax and publication owners
+
+Generated typed option bindings register CLI syntax directly against stable invocation storage.
+Keep presence and domain admission separate, with no second option-name transfer list or map.
+Publication chooses its representation, operation and observation owners together; binary values
+cannot carry a converter, mask or continuous stage owners. Derived record fields are not separate
+configuration. Prepared models remain owned by their caller through all row consumers. Keep codec
+jump frames, error containment and commit/reconciliation boundaries distinct. See the separate
+[simplicity design and challenge](architecture-simplicity-audit.md).

@@ -6,12 +6,14 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (CLI authoring/C++ metadata):** each option descriptor requires a unique typed invocation-member `binding`; update custom authoring inputs and descriptor consumers. Generated bindings preserve absent versus explicitly empty values and are checked against flag/value spelling. There is no fallback transfer list.
 - Contract generation checks method-option attribution in both directions and derives D01 identities, format/mode reporting and the response envelope version from reviewed contracts. Protection help now identifies both I01 and D01. Denoising schemas share definitions and reject settings without a selected method; wire/record versions and numerical method definitions are unchanged.
 
 - **Breaking (C++/authoring):** capability entries use `contract::InputSupport` instead of `app::InputSupport`; update native consumers. The unused CLI `contract_version` field is removed, and obsolete or unknown authoring fields are rejected without aliases or migration.
 
 ### Internal
 
+- CLI parsing binds generated option metadata directly to typed invocation storage, removing parallel maps and handwritten transfer assignments. Regeneration preserves unchanged files. Host publication groups each representation with its operation and observation owners; prepared illumination returns an owned value. Distinct codec, admission and publication safety boundaries remain.
 - Real executable checks compare complete help descriptors and admitted default records with the reviewed contract, and reject empty values for every declared value option. Documentation distinguishes verification refusal before commit from integrity failure after known publication.
 
 ## [0.5.0] - 2026-10-02

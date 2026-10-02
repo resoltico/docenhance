@@ -10,6 +10,8 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
+#include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <cstdint>
@@ -29,11 +31,20 @@ struct MaskFacts {
     image::PlaneView<const std::uint8_t> canonical;
 };
 
-// What is being published: continuous rows, which carry a colour profile, or a binary plane,
-// which carries none. The two encoders differ because the outputs mean different things.
-using Artwork =
-    std::variant<std::reference_wrapper<image::RowSource>, image::PlaneView<const std::uint8_t>>;
-
+// Representation selects its matching operation and observation owners together.
+struct BinaryArtwork {
+    image::PlaneView<const std::uint8_t> samples;
+    methods::Binarization method;
+};
+struct ContinuousArtwork {
+    std::reference_wrapper<image::RowSource> rows;
+    image::Continuous operation;
+    std::reference_wrapper<const color::Converter> converter;
+    std::optional<MaskFacts> mask;
+    std::reference_wrapper<const methods::IlluminationReport> illumination;
+    std::reference_wrapper<const methods::DenoisingReport> denoising;
+};
+using Artwork = std::variant<BinaryArtwork, ContinuousArtwork>;
 struct RunPublication {
     std::reference_wrapper<const std::string> output_directory;
     Artwork artwork;
@@ -43,13 +54,6 @@ struct RunPublication {
     core::ContentIdentity source;
     std::string source_name;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
-    bundle::Operation operation;
-    std::optional<MaskFacts> mask;
-    // Read after the image is written, because a conversion counts what producing those rows
-    // observed. A snapshot taken earlier would describe a run that had not happened yet.
-    std::optional<std::reference_wrapper<const color::Converter>> converter;
-    std::reference_wrapper<const methods::IlluminationReport> illumination;
-    methods::DenoisingReport denoising{};
 };
 
 // What was published, and what the response needs to identify it.

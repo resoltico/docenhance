@@ -3,7 +3,7 @@
 ## Authority and composition
 
 The application owns meaning; adapters own effects. The command line parses syntax into
-`contract::Invocation`. `de_app` validates it and constructs a private-construction
+`contract::Invocation` through generated typed option bindings, retaining raw presence. `de_app` validates it and constructs a private-construction
 `ProcessRequest` containing a validated binary/continuous operation and a separate closed
 illumination/denoising choices. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
@@ -242,8 +242,9 @@ ownership of encoding/verification/publication. There is no plugin or generic re
 observations. The processing port has closed binary and continuous success alternatives. Continuous success
 carries conversion, illumination and denoising observations together; the application still checks
 verification and agreement with the admitted request. The report consumes that same continuous
-result rather than a second copied representation. Publication observes conversion through a
-typed borrowed converter, with no independent callback/void-pointer pair. Successful continuous
+result rather than a second copied representation. Publication selects binary or continuous artwork together with its matching operation;
+continuous artwork requires the borrowed converter, mask and stage-observation owners.
+Record facts derive from that single selection rather than independently configured fields. Successful continuous
 results require complete matching illumination diagnostics;
 `complete` describes the numerical stage, not a later publication outcome. The generated schema
 and executable catalog distinguish method families. [Illumination](illumination.md) owns the exact
@@ -288,3 +289,10 @@ locked-source license inventory byte-for-byte, checks OS-only native imports and
 advertised method. A source SPDX inventory remains explicitly separate from binary composition or
 legal clearance. Source release archives snapshot one resolved committed Git tree; local workspace
 changes cannot silently enter release contents. See [the verification/artifact audit](verification-artifacts-audit.md).
+
+The [simplicity/change-coupling audit](architecture-simplicity-audit.md) records the separate
+design challenges. CLI storage transfer has no parallel option maps or handwritten assignment list;
+application admission retains all domain rules. Prepared illumination is returned as an owned
+optional value and remains live through every row consumer.
+Generated files are rewritten only when their expected bytes change, so ordinary metadata
+changes do not invalidate unrelated native translation units through timestamp churn.
