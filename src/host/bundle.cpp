@@ -12,8 +12,9 @@
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
+#include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/illumination.hpp"
 
-#include <cstdint>
 #include <expected>
 #include <functional>
 #include <optional>
@@ -46,14 +47,14 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
     auto written = std::visit(
         [&](const auto& artwork) {
             using Kind = std::decay_t<decltype(artwork)>;
-            if constexpr (std::is_same_v<Kind, image::PlaneView<const std::uint8_t>>) {
-                const image::PlaneRows rows{artwork};
+            if constexpr (std::is_same_v<Kind, BinaryArtwork>) {
+                const image::PlaneRows rows{artwork.samples};
                 descriptor = rows.descriptor();
-                return io::write_verified_png(slot, artwork, run.budget.get(),
+                return io::write_verified_png(slot, artwork.samples, run.budget.get(),
                                               run.cancellation.get());
             } else {
-                descriptor = artwork.get().descriptor();
-                return io::write_verified_png_rows(slot, artwork.get(), run.budget.get(),
+                descriptor = artwork.rows.get().descriptor();
+                return io::write_verified_png_rows(slot, artwork.rows.get(), run.budget.get(),
                                                    run.cancellation.get());
             }
         },
@@ -65,8 +66,8 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
     if (!identity) {
         return std::unexpected(identity.error());
     }
-    if (run.converter.has_value()) {
-        composed.conversion = run.converter->get().report();
+    if (const auto* const artwork = std::get_if<ContinuousArtwork>(&run.artwork)) {
+        composed.conversion = artwork->converter.get().report();
         composed.conversion->verified = true;
     }
     composed.output = {
@@ -84,10 +85,11 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
 core::Result<void> write_mask(void* const state, const io::BundleSlot& slot) {
     auto& composed = *static_cast<Composition*>(state);
     const auto& run = composed.run.get();
-    if (!run.mask) {
+    const auto* const artwork = std::get_if<ContinuousArtwork>(&run.artwork);
+    if (artwork == nullptr || !artwork->mask) {
         return core::failure(core::ErrorCode::invariant, "A mask was declared but not supplied");
     }
-    const auto canonical = run.mask->canonical;
+    const auto canonical = artwork->mask->canonical;
     auto written =
         io::write_verified_png(slot, canonical, run.budget.get(), run.cancellation.get());
     if (!written) {
@@ -98,7 +100,7 @@ core::Result<void> write_mask(void* const state, const io::BundleSlot& slot) {
         return std::unexpected(identity.error());
     }
     composed.protection = bundle::ProtectionFacts{
-        .original = run.mask->supplied,
+        .original = artwork->mask->supplied,
         .stored = {.name = bundle::mask_name, .identity = std::move(*identity)},
         .width = canonical.width(),
         .height = canonical.height(),
@@ -109,7 +111,19 @@ core::Result<void> write_mask(void* const state, const io::BundleSlot& slot) {
 core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     auto& composed = *static_cast<Composition*>(state);
     const auto& run = composed.run.get();
-    const bundle::RunRecord record{
+    const auto operation = std::visit(
+        [](const auto& artwork) -> bundle::Operation {
+            using Kind = std::decay_t<decltype(artwork)>;
+            if constexpr (std::is_same_v<Kind, BinaryArtwork>) {
+                return artwork.method;
+            } else {
+                return artwork.operation;
+            }
+        },
+        run.artwork);
+    const methods::IlluminationReport none;
+    const methods::DenoisingReport disabled{.complete = true};
+    bundle::RunRecord record{
         .context = run.context.get(),
         .build = core::build_facts(),
         .source =
@@ -118,14 +132,23 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
                 .name = run.source_name,
                 .decoding = run.source_decoding,
             },
-        .operation = run.operation,
-        .protection_supplied = run.mask.has_value(),
+        .operation = operation,
+        .protection_supplied = composed.protection.has_value(),
         .output = composed.output,
         .protection = composed.protection,
         .conversion = composed.conversion,
-        .illumination = run.illumination.get(),
-        .denoising = run.denoising,
+        .illumination = none,
+        .denoising = disabled,
     };
+    std::visit(
+        [&record](const auto& artwork) {
+            using Kind = std::decay_t<decltype(artwork)>;
+            if constexpr (std::is_same_v<Kind, ContinuousArtwork>) {
+                record.illumination = artwork.illumination.get();
+                record.denoising = artwork.denoising.get();
+            }
+        },
+        run.artwork);
     auto written = bundle::serialize(record);
     if (!written) {
         return std::unexpected(written.error());
@@ -151,7 +174,8 @@ core::Result<PublishedRun> publish_run(const RunPublication& run) {
     Composition composed{run};
     std::vector<io::BundleFile> files;
     files.push_back({.relative = bundle::image_name, .state = &composed, .write = write_image});
-    if (run.mask) {
+    const auto* const artwork = std::get_if<ContinuousArtwork>(&run.artwork);
+    if (artwork != nullptr && artwork->mask) {
         files.push_back({.relative = bundle::mask_name, .state = &composed, .write = write_mask});
     }
     files.push_back({.relative = bundle::record_name, .state = &composed, .write = write_record});

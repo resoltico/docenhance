@@ -7,10 +7,15 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import os
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from tools_path import ROOT
 
@@ -224,6 +229,87 @@ class ContractTests(unittest.TestCase):
         for fields in ({"contract_version": "8.0"}, {"invented": True}):
             with self.subTest(fields=fields), self.assertRaises(generate_spec.ContractError):
                 generate_spec.render_header(contract | fields, 3)
+
+    def test_option_binding_requires_one_valid_typed_member(self) -> None:
+        """A missing, injected or duplicate storage binding cannot generate parser metadata."""
+        original = json.loads((ROOT / "spec/cli-contract.json").read_text())
+        for value in (None, "x; injected", original["options"][1]["binding"]):
+            contract = json.loads(json.dumps(original))
+            contract["options"][0]["binding"] = value
+            with self.subTest(value=value), self.assertRaises(generate_spec.ContractError):
+                generate_spec.render_header(contract, 3)
+
+    def test_compiler_rejects_incorrect_binding_types_and_missing_members(self) -> None:
+        """Compile the actual header, then challenge its member identity and flag/value guard."""
+        compiler = shutil.which("clang++") or shutil.which("c++")
+        self.assertIsNotNone(compiler, "The declared C++ compiler is a tooling prerequisite")
+        if compiler is None:
+            msg = "No C++ compiler is available"
+            raise RuntimeError(msg)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            headers = root / "docenhance/contract"
+            headers.mkdir(parents=True)
+            shutil.copyfile(
+                ROOT / "include/docenhance/contract/command.hpp", headers / "command.hpp"
+            )
+            source = root / "binding.cpp"
+            source.write_text('#include "docenhance/contract/cli_contract.hpp"\n')
+            original = (ROOT / "include/docenhance/contract/cli_contract.hpp").read_text()
+            for member, expected in (("help", 0), ("output_directory", 1), ("absent_member", 1)):
+                (headers / "cli_contract.hpp").write_text(
+                    original.replace(
+                        ".binding = &Invocation::help", f".binding = &Invocation::{member}", 1
+                    )
+                )
+                result = subprocess.run(
+                    [compiler, "-std=c++23", "-fsyntax-only", "-I", str(root), str(source)],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=30,
+                )
+                with self.subTest(member=member):
+                    if expected == 0:
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                    else:
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertIn(
+                            "Option spelling" if member == "output_directory" else member,
+                            result.stderr,
+                        )
+
+    def test_regeneration_touches_only_changed_contract_outputs(self) -> None:
+        """Changing help prose updates its two consumers without rebuilding unrelated metadata."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copytree(ROOT / "spec", root / "spec")
+            with (
+                patch.object(generate_spec, "ROOT", root),
+                patch("sys.argv", ["generate_spec.py"]),
+                redirect_stdout(io.StringIO()),
+            ):
+                self.assertEqual(generate_spec.main(), 0)
+                paths = list(generate_spec.outputs())
+                epoch = 1_000_000_000
+                for path in paths:
+                    os.utime(path, ns=(epoch, epoch))
+                self.assertEqual(generate_spec.main(), 0)
+                self.assertTrue(all(path.stat().st_mtime_ns == epoch for path in paths))
+                source = root / "spec/cli-contract.json"
+                contract = json.loads(source.read_text())
+                contract["options"][0]["description"] = "Changed help description."
+                source.write_text(json.dumps(contract))
+                self.assertEqual(generate_spec.main(), 0)
+                changed = {
+                    path.relative_to(root).as_posix()
+                    for path in paths
+                    if path.stat().st_mtime_ns != epoch
+                }
+                self.assertEqual(
+                    changed,
+                    {"include/docenhance/contract/cli_contract.hpp", "docs/cli-contract.md"},
+                )
 
     def test_clang_tidy_is_strict(self) -> None:
         """clang-tidy stays zero-tolerance and pinned."""

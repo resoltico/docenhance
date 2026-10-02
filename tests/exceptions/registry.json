@@ -21,9 +21,6 @@
     "src/bundle/inventory.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@65d26e5a": {
       "explanation": "One narrow-character view of the same immutable bytes, so the parser can read a range of characters. No object's lifetime or value changes, and the span supplies the length, so the parser cannot read past the record that was handed to it."
     },
-    "src/cli/run.cpp:clang-tidy/bugprone-exception-escape@140fdeff": {
-      "explanation": "CLI11 parsing allocates standard containers, and parse_and_dispatch is called inside the adapter's sole exception boundary; MSVC's STL model otherwise attributes those caught allocation failures to this local record declaration."
-    },
     "src/color/context.cpp:clang-tidy/misc-const-correctness@6003c9a2": {
       "explanation": "Little CMS fixes its free/realloc callback ABI to a mutable void pointer. This callback never modifies the old pointee except via the owned replacement allocation; changing the parameter pointee type makes the callback assignment ill-formed. Native allocation/refund tests cover these adapters."
     },

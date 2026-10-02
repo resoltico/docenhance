@@ -62,14 +62,15 @@ core::Result<void> disabled_observations(ContinuousRun run,
 // through the illumination model. Publication happens once, afterwards, for the whole bundle.
 // The model outlives the rows that reference it, so both belong to the caller: the rows are read
 // during publication, long after this function returns.
-struct Prepared {
-    std::optional<methods::SurfaceModel> model;
-};
-core::Result<void> prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection,
-                           Prepared& prepared) {
+core::Result<std::optional<methods::SurfaceModel>>
+prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
     const auto* const surface = std::get_if<methods::Surface>(&run.request.get().illumination());
     if (surface == nullptr) {
-        return disabled_observations(run, protection);
+        auto observed = disabled_observations(run, protection);
+        if (!observed) {
+            return std::unexpected(observed.error());
+        }
+        return std::nullopt;
     }
     auto model =
         methods::SurfaceModel::prepare({run.converter.get(), protection}, *surface,
@@ -77,11 +78,7 @@ core::Result<void> prepare(ContinuousRun run, image::PlaneView<const std::uint8_
     if (!model) {
         return std::unexpected(model.error());
     }
-    if (!model->active()) {
-        return {};
-    }
-    prepared.model = std::move(*model);
-    return {};
+    return model->active() ? std::optional{std::move(*model)} : std::nullopt;
 }
 void initialize_stages(const app::ProcessRequest& request,
                        methods::IlluminationReport& illumination,
@@ -118,12 +115,19 @@ core::Result<Protection> load_protection(const app::ProcessRequest& request,
     }
     return result;
 }
-app::PublishedContinuous published_image(PublishedRun published, image::SourceDescription source,
-                                         const methods::IlluminationReport& illumination,
-                                         const methods::DenoisingReport& denoising,
-                                         image::ConversionReport fallback) {
+core::Result<app::PublishedContinuous>
+published_image(PublishedRun published, image::SourceDescription source,
+                const methods::IlluminationReport& illumination,
+                const methods::DenoisingReport& denoising) {
     // The conversion the record states, so the response and the record cannot disagree.
-    auto report = published.conversion.value_or(fallback);
+    if (!published.conversion) {
+        return std::unexpected(core::Error{
+            .code = core::ErrorCode::output_verify,
+            .message = "Published continuous record has no conversion observations",
+            .publication = core::Publication::completed,
+        });
+    }
+    auto report = *published.conversion;
     // Derived from the comparison that ran, not asserted because publication returned.
     report.verified = published.verification == bundle::Verification::decoded_and_compared;
     return app::PublishedContinuous{
@@ -160,8 +164,7 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     if (!protection) {
         return std::unexpected(protection.error());
     }
-    Prepared prepared;
-    auto ready = prepare(
+    auto prepared = prepare(
         {
             .request = request,
             .converter = **converter,
@@ -169,13 +172,13 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
             .cancellation = cancellation,
             .report = illumination,
         },
-        protection->mask.view().as_const(), prepared);
-    if (!ready) {
-        return std::unexpected(ready.error());
+        protection->mask.view().as_const());
+    if (!prepared) {
+        return std::unexpected(prepared.error());
     }
     denoising.eligible_samples = illumination.eligible_samples;
     denoising.protected_samples = illumination.protected_samples;
-    IlluminatedSource entering{**converter, prepared.model ? &*prepared.model : nullptr,
+    IlluminatedSource entering{**converter, *prepared ? &**prepared : nullptr,
                                protection->mask.view().as_const(), illumination, cancellation};
     auto planes = prepare_denoising(entering, request, budget, cancellation, denoising);
     if (!planes) {
@@ -195,26 +198,28 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     }
     ContinuousRows rows{final_source, (*converter)->descriptor(), std::move(*block),
                         !planes->input.empty()};
-    const Artwork artwork{std::ref(rows)};
     auto published = publish_run({
         .output_directory = request.output_directory(),
-        .artwork = artwork,
+        .artwork =
+            ContinuousArtwork{
+                .rows = rows,
+                .operation = operation,
+                .converter = std::cref(**converter),
+                .mask = protection->facts,
+                .illumination = illumination,
+                .denoising = denoising,
+            },
         .budget = budget,
         .cancellation = cancellation,
         .context = context,
         .source = decoded->source,
         .source_name = io::file_name(request.input()),
         .source_decoding = decoded->description,
-        .operation = operation,
-        .mask = protection->facts,
-        .converter = std::cref(**converter),
-        .illumination = illumination,
-        .denoising = denoising,
+
     });
     if (!published) {
         return std::unexpected(std::move(published.error()));
     }
-    return published_image(std::move(*published), decoded->description, illumination, denoising,
-                           (*converter)->report());
+    return published_image(std::move(*published), decoded->description, illumination, denoising);
 }
 } // namespace docenhance::host

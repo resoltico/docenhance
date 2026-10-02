@@ -17,7 +17,6 @@
 #include <exception>
 #include <ios>
 #include <limits>
-#include <map>
 #include <new>
 #include <optional>
 #include <ostream>
@@ -25,28 +24,18 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
+#include <variant>
 namespace docenhance::cli {
 namespace {
 using docenhance::app::Outcome;
 using docenhance::contract::Command;
 using docenhance::contract::Invocation;
 using docenhance::core::ErrorCode;
-// NOLINTNEXTLINE(bugprone-exception-escape): parse_and_dispatch is caught at the adapter boundary.
 struct ParsedCommand {
-    ParsedCommand(Command value, CLI::App* app) : command(value), parser(app) {}
-    Command command;
     CLI::App* parser;
-    bool json = false;
-    bool help = false;
-    std::string subject;
-    std::map<std::string, std::string> options;
-    std::map<std::string, bool> flags;
-};
-struct RootFlags {
-    bool help = false;
-    bool json = false;
-    bool version = false;
+    Invocation invocation;
 };
 Outcome argument_error(const Invocation& invocation, std::string message) {
     return docenhance::app::failure(invocation,
@@ -56,74 +45,47 @@ bool has_repeated_option(const CLI::App& app) {
     return std::ranges::any_of(app.get_options(),
                                [](const CLI::Option* option) { return option->count() > 1; });
 }
-void add_switches(ParsedCommand& command) {
-    command.parser
-        ->set_help_flag(); // Application/reporting own help; CLI11 only recognizes syntax.
-    command.parser->add_flag("--help", command.help)->disable_flag_override();
-    command.parser->add_flag("--json", command.json)->disable_flag_override();
+template <typename Member>
+void bind_option(ParsedCommand& command, const docenhance::contract::OptionDescriptor& option,
+                 Member member) {
+    const std::string name(option.name);
+    const std::string description(option.description);
+    if constexpr (std::is_same_v<Member, bool Invocation::*>) {
+        command.parser->add_flag(name, command.invocation.*member, description)
+            ->disable_flag_override();
+    } else {
+        command.parser
+            ->add_option_function<std::string>(
+                name,
+                [&command, member](const std::string& value) {
+                    command.invocation.*member = value;
+                },
+                description)
+            ->type_name(std::string(option.metavar))
+            ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
+    }
 }
-// The contract states which commands an option belongs to; this adapter only asks.
-void add_target_options(ParsedCommand& command) {
+// Metadata binds syntax directly to caller-owned invocation storage. Application factories still
+// own all domains and cross-option meaning; this adapter preserves raw presence, including empty.
+void add_options(ParsedCommand& command) {
+    command.parser->set_help_flag();
     for (const auto& option : docenhance::contract::option_catalog) {
-        if (!option.scope.contains(command.command) || option.name == "--help" ||
-            option.name == "--json") {
-            continue;
-        }
-        const std::string name(option.name);
-        if (option.metavar.empty()) {
-            command.parser->add_flag(name, command.flags[name], std::string(option.description))
-                ->disable_flag_override();
-        } else {
-            command.parser->add_option(name, command.options[name], std::string(option.description))
-                ->type_name(std::string(option.metavar))
-                ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
+        if (option.scope.contains(command.invocation.command)) {
+            std::visit([&](auto member) { bind_option(command, option, member); }, option.binding);
         }
     }
 }
 // Copies the parsed subcommand into the invocation and rejects flags placed before it.
-std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const RootFlags& root,
+std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const Invocation& root,
                                       Invocation& invocation) {
     for (auto& command : commands) {
         if (!command.parser->parsed()) {
             continue;
         }
-        invocation.command = command.command;
-        invocation.help = command.help;
-        // Keep a --json seen by the pre-scan: errors below must still be reported as JSON.
-        invocation.json = invocation.json || command.json;
-        invocation.subject = std::move(command.subject);
-        if (command.command == Command::process) {
-            invocation.output_directory = command.options["--out-dir"];
-            const auto optional_value = [&](const std::string& name) -> std::optional<std::string> {
-                return command.parser->get_option(name)->count() == 0
-                           ? std::nullopt
-                           : std::optional{command.options.at(name)};
-            };
-            invocation.output_mode = optional_value("--output-mode");
-            invocation.bit_depth = optional_value("--bit-depth");
-            invocation.alpha = optional_value("--alpha");
-            invocation.profile_policy = optional_value("--profile-policy");
-            invocation.illumination = optional_value("--illumination");
-            invocation.background_strength = optional_value("--background-strength");
-            invocation.background_max_gain = optional_value("--background-max-gain");
-            invocation.background_target = optional_value("--background-target");
-            invocation.background_cell = optional_value("--background-cell");
-            invocation.background_quantile = optional_value("--background-quantile");
-            invocation.background_smooth = optional_value("--background-smooth");
-            invocation.protect_mask = optional_value("--protect-mask");
-            invocation.denoise = optional_value("--denoise");
-            invocation.denoise_blend = optional_value("--denoise-blend");
-            invocation.nlm_h = optional_value("--nlm-h");
-            invocation.nlm_patch = optional_value("--nlm-patch");
-            invocation.nlm_search = optional_value("--nlm-search");
-
-            invocation.binarize = optional_value("--binarize");
-            invocation.fixed_threshold = optional_value("--fixed-threshold");
-            invocation.sauvola_window = optional_value("--sauvola-window");
-            invocation.sauvola_k = optional_value("--sauvola-k");
-            invocation.sauvola_r = optional_value("--sauvola-r");
-        }
-        if (root.help || root.json || root.version) {
+        // Keep the exact --json pre-scan even when syntax later fails.
+        command.invocation.json = command.invocation.json || invocation.json;
+        invocation = std::move(command.invocation);
+        if (root.help || root.json || root.root_version) {
             return argument_error(invocation, "Root flags cannot be combined with a subcommand; "
                                               "place --help/--json after the command");
         }
@@ -133,15 +95,14 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const R
     }
     return std::nullopt;
 }
-std::optional<Outcome> apply_root_flags(const CLI::App& cli, const RootFlags& root,
+std::optional<Outcome> apply_root_flags(const CLI::App& cli, Invocation root,
                                         Invocation& invocation) {
-    invocation.help = root.help;
-    invocation.json = root.json;
-    invocation.root_version = root.version;
+    root.json = root.json || invocation.json;
+    invocation = std::move(root);
     if (has_repeated_option(cli)) {
         return argument_error(invocation, "Repeated root options are not allowed");
     }
-    if (root.version && (root.help || root.json)) {
+    if (invocation.root_version && (invocation.help || invocation.json)) {
         return argument_error(
             invocation, "Use 'version --json'; --version cannot be combined with other flags");
     }
@@ -155,31 +116,32 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
     CLI::App cli{"DocEnhance"};
     cli.set_help_flag();
     cli.require_subcommand(0, 1);
-    RootFlags root;
-    cli.add_flag("--help", root.help)->disable_flag_override();
-    cli.add_flag("--json", root.json)->disable_flag_override();
-    cli.add_flag("--version", root.version)->disable_flag_override();
-    // Braced-list elements are evaluated in order, so subcommands register in this order.
+    ParsedCommand root{.parser = &cli, .invocation = {}};
+    add_options(root);
+    const auto add_command = [&cli](const char* name, Command command) {
+        Invocation raw;
+        raw.command = command;
+        return ParsedCommand{.parser = cli.add_subcommand(name), .invocation = std::move(raw)};
+    };
     auto commands = std::to_array<ParsedCommand>({
-        {Command::process, cli.add_subcommand("process")},
-        {Command::verify, cli.add_subcommand("verify")},
-        {Command::methods, cli.add_subcommand("methods")},
-        {Command::version, cli.add_subcommand("version")},
+        add_command("process", Command::process),
+        add_command("verify", Command::verify),
+        add_command("methods", Command::methods),
+        add_command("version", Command::version),
     });
     for (auto& command : commands) {
-        add_switches(command);
-        if (command.command != Command::version) {
-            command.parser->add_option("subject", command.subject)
+        add_options(command);
+        if (command.invocation.command != Command::version) {
+            command.parser->add_option("subject", command.invocation.subject)
                 ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
         }
     }
-    add_target_options(commands.at(0));
     cli.parse(static_cast<int>(args.size()), args.data());
-    if (auto rejected = select_command(commands, root, invocation)) {
+    if (auto rejected = select_command(commands, root.invocation, invocation)) {
         return std::move(*rejected);
     }
     if (invocation.command == Command::root) {
-        if (auto rejected = apply_root_flags(cli, root, invocation)) {
+        if (auto rejected = apply_root_flags(cli, std::move(root.invocation), invocation)) {
             return std::move(*rejected);
         }
     }

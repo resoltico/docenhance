@@ -64,22 +64,16 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
     if (!applied) {
         return std::unexpected(applied.error());
     }
-    const methods::IlluminationReport none;
-    const methods::DenoisingReport disabled{.complete = true};
     auto published = publish_run({
         .output_directory = request.output_directory(),
-        .artwork = destination->view().as_const(),
+        .artwork = BinaryArtwork{.samples = destination->view().as_const(), .method = method},
         .budget = budget,
         .cancellation = cancellation,
         .context = context,
         .source = loaded->source,
         .source_name = io::file_name(request.input()),
         .source_decoding = loaded->description,
-        .operation = method,
-        .mask = std::nullopt,
-        .converter = std::nullopt,
-        .illumination = none,
-        .denoising = disabled,
+
     });
     if (!published) {
         return std::unexpected(std::move(published.error()));
