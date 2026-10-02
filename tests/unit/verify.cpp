@@ -151,7 +151,7 @@ TEST_CASE(
     auto owner = io::BundleDirectory::open(temporary.path).value();
     auto retained = std::move(owner);
     CHECK(retained.file("owned.txt"));
-    // NOLINTNEXTLINE(bugprone-use-after-move): inactive owners must explicitly refuse path access.
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!owner.file(utf8_spelling(file)));
     CHECK(!owner.child(utf8_spelling(temporary.path)));
     CHECK(!owner.entries());
@@ -164,7 +164,7 @@ TEST_CASE(
     CHECK(!retained.file(utf8_spelling(file)));
     owner = std::move(retained);
     CHECK(owner.file("owned.txt"));
-    // NOLINTNEXTLINE(bugprone-use-after-move): moved-from enumeration must refuse.
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!retained.entries());
 #ifndef _WIN32
     const auto literal = temporary.path / "literal\\byte";

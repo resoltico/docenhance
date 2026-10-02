@@ -186,12 +186,12 @@ TEST_CASE("Moved requests become unready and native ports refuse them before can
     auto original = app::prepare_process(invocation).value();
     auto moved = std::move(original);
     CHECK(moved.ready());
-    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!original.ready());
     auto replacement = app::prepare_process(invocation).value();
     replacement = std::move(moved);
     CHECK(replacement.ready());
-    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!moved.ready());
     std::stop_source source;
     static_cast<void>(source.request_stop());
@@ -208,11 +208,11 @@ TEST_CASE("Moved requests become unready and native ports refuse them before can
     auto reading = app::prepare_verify(invocation).value();
     auto retained = std::move(reading);
     CHECK(retained.ready());
-    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!reading.ready());
     reading = std::move(retained);
     CHECK(reading.ready());
-    // NOLINTNEXTLINE(bugprone-use-after-move): ready() explicitly observes the consumed state.
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!retained.ready());
     host::Verifier verifier;
     const auto denied = verifier.verify(retained, stopped);

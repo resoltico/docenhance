@@ -46,6 +46,10 @@ precommit cutoff, object-identity cleanup, exclusive rename, record-first reconc
 flush/close. Existing deterministic counterexamples protect these boundaries. A retaining-pointer
 framework, retry/recovery path or filesystem sandbox would not repair the observed faults.
 
+Windows compilation additionally runs clang-analyzer-cplusplus.Move, which cannot infer the
+supported consumed-state observers/refusals. Its exceptions, like bugprone-use-after-move, are
+registered only at the six deterministic moved-state test sites; production checks remain active.
+
 ## Verification obligations and limits
 
 Run real executable and complete native/reference/tooling/fuzz/Docker workflows, then exact-head CI
