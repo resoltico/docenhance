@@ -17,6 +17,7 @@ from deps import ROOT, load_lock
 from documentation import local_link_errors
 from fuzz_manifest import inventory_errors
 from project_version import VersionError, project_version
+from workflow_config import python_errors
 
 PRESET_SCHEMA = 12
 MIN_CLANG_TOOLS_MAJOR = 23
@@ -177,6 +178,7 @@ def wiring_errors() -> list[str]:
     errors.extend(
         f"CI does not run {command}" for command in REQUIRED_CI_COMMANDS if command not in ci
     )
+    errors.extend(python_errors(ROOT))
     errors.extend(compiler_pin_errors())
     return errors
 

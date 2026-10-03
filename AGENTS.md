@@ -39,9 +39,9 @@ Edit `spec/cli-contract.json`, `spec/method-contract.json` and the response sche
 `python tools/generate_spec.py`. Extend typed admission together with a complete processing method;
 a JSON catalog is not executable validation, and unsupported options must not be silently ignored.
 
-Run `python tools/check_project.py`, `python tools/check_gates.py`, `python tools/check_format.py`,
-`python -m ruff check`, `python -m mypy`, `python -m unittest discover -s tests/tooling -v`, relevant
-reference tests and the real CMake workflow. Fix findings, rather than weakening the gates. Every
+Run `python tools/check_all.py` (the authoritative source/local gate set),
+`python -m unittest discover -s tests/tooling -v`, relevant reference tests and the real CMake
+workflows. Fix findings, rather than weakening the gates. Every
 suppression names its rule and has a code-bound reason in `tests/exceptions/registry.json`; size
 limits have no waivers. Fuzz parser/CLI changes with `cmake --workflow --preset fuzz` and retain
 reproducers in `fuzz/regressions/`. Report precisely which checks and platforms ran; authored CI,

@@ -49,11 +49,20 @@ def validate_command(command: list[str], build: Path, name: str, seconds: int) -
         "--engine": configured_engine(build),
         "--binary": str(build / "fuzz" / f"de_fuzz_{name}"),
     }
-    if str(ROOT / "tools/run_fuzzers.py") not in command:
+    if len(command) <= 1 or Path(command[1]).resolve() != ROOT / "tools/run_fuzzers.py":
         msg = f"Unexpected harness runner: {name}"
         raise FuzzError(msg)
     for flag, value in expected.items():
-        if command.count(flag) != 1 or command[command.index(flag) + 1] != value:
+        if command.count(flag) != 1 or command.index(flag) + 1 >= len(command):
+            msg = f"Harness {name} has a missing or duplicate {flag}"
+            raise FuzzError(msg)
+        actual = command[command.index(flag) + 1]
+        agrees = (
+            Path(actual).resolve() == Path(value).resolve()
+            if flag == "--binary"
+            else actual == value
+        )
+        if not agrees:
             msg = f"Harness {name} has a mismatched {flag}"
             raise FuzzError(msg)
 

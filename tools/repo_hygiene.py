@@ -34,7 +34,8 @@ REQUIRED_DOCUMENTS = (
     ".github/SECURITY.md",
     "THIRD_PARTY_NOTICES.md",
     "docs/status.md",
-    "docs/status.md",
+    "docs/architecture.md",
+    "docs/decisions.md",
     ".github/pull_request_template.md",
 )
 # Markdown that quotes repository paths.

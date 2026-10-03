@@ -113,5 +113,17 @@
   },
   "build": {
     "max_jobs": 64
+  },
+  "pyyaml": {
+    "version": "6.0.3",
+    "package": "PyYAML",
+    "source": "https://pypi.org/project/PyYAML/6.0.3/",
+    "runtime_dependency": false
+  },
+  "types_pyyaml": {
+    "version": "6.0.12.20260906",
+    "package": "types-PyYAML",
+    "source": "https://pypi.org/project/types-PyYAML/6.0.12.20260906/",
+    "runtime_dependency": false
   }
 }
