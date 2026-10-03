@@ -25,5 +25,5 @@ def local_link_errors(root: Path) -> list[str]:
             target = link.split("#", 1)[0]
             external = "://" in link or link.startswith(("#", "mailto:"))
             if not external and target and not (path.parent / target).exists():
-                errors.append(f"Broken local link: {path.relative_to(root)} -> {link}")
+                errors.append(f"Broken local link: {path.relative_to(root).as_posix()} -> {link}")
     return errors
