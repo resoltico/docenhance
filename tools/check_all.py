@@ -4,8 +4,8 @@
 """Run every local check: the authoritative list used by the Git hooks.
 
 This is the one place the local check set is defined. `.pre-commit-config.yaml` invokes this
-script. The GitHub source-archive workflow deliberately runs only the checks that do not need a
-native dependency build; the full local gate remains the contributor standard. Non-Linux
+script. Linux CI and source-archive jobs run this same source gate set; non-Linux contributor
+hosts additionally run the Docker native gate. Non-Linux
 developer hosts also run the real Linux release workflow through Docker. Linux hosts avoid
 container recursion; their native CI workflows remain authoritative. Fuzzing and
 additional sanitizer workflows remain explicit commands.

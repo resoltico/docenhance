@@ -4,8 +4,8 @@
 """Explicit online install of pinned developer tools into the active Python environment.
 
 Installs the CMake/Ninja wheels, or with --lint only Ruff, mypy, clang-format and pre-commit, so
-that an existing build tree keeps the CMake it was configured with. JSON Schema and YAML
-verification packages are installed in both modes. Every version comes from
+that an existing build tree keeps the CMake it was configured with. JSON Schema, YAML and
+clang-format verification packages are installed in both modes. Every version comes from
 deps/tools.json. Use a virtual environment locally. This script is never invoked by
 application runtime, configure, build, or test. It is an opt-in developer convenience.
 """
@@ -19,9 +19,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TEST_TOOLS = ("jsonschema", "types_jsonschema", "pyyaml", "types_pyyaml")
+TEST_TOOLS = ("jsonschema", "types_jsonschema", "pyyaml", "types_pyyaml", "clang_format")
 BUILD_TOOLS = ("cmake", "ninja", *TEST_TOOLS)
-LINT_TOOLS = ("ruff", "mypy", "clang_format", "pre_commit", *TEST_TOOLS)
+LINT_TOOLS = ("ruff", "mypy", "pre_commit", *TEST_TOOLS)
 
 
 def requirements(names: tuple[str, ...]) -> list[str]:

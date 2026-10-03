@@ -58,6 +58,9 @@ def main() -> int:
         print(f"clang-format {major} is required (found: {seen}); see docs/build.md")
         return 1
     files = [str(path) for path, _, kind in code_files(ROOT) if kind == "cxx"]
+    if not files:
+        print("FAIL: no first-party C/C++ sources were discovered for formatting")
+        return 1
     mode = ["-i"] if args.fix else ["--dry-run", "--Werror"]
     result = subprocess.run([executable, *mode, "--style=file", *files], check=False)
     if result.returncode == 0:
