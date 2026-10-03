@@ -7,7 +7,7 @@ neither workflow publishes binary artifacts. The reasoning behind the strictness
 [design decisions](decisions.md).
 
 ```sh
-python tools/install_build_tools.py          # pinned CMake, Ninja and test dependencies
+python tools/install_build_tools.py          # pinned CMake, Ninja and development/test dependencies
 python tools/install_build_tools.py --lint   # pinned Ruff, mypy, clang-format, pre-commit
 python tools/install_llvm.py --compiler      # the pinned clang, its runtimes and clang-tidy
 python tools/check_all.py                    # source checks + Docker Linux native gate on macOS/Windows
@@ -78,7 +78,7 @@ Every linter is pinned in `deps/tools.json`:
 | mypy (strict) | Every Python file | `mypy.ini` | `python -m mypy` |
 | Quality gates | Everything above | `tools/check_gates.py` | `python tools/check_gates.py` |
 
-Install the pinned Python-distributed tools into the project virtual environment with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the required major and reports the actual patch version (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm` is equivalent. Homebrew does not preserve every historical formula name, so the major-version gate remains the authority. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
+Install the pinned Python-distributed tools into the external build-tool environment described in [build setup](build.md) with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the required major and reports the actual patch version (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm` is equivalent. Homebrew does not preserve every historical formula name, so the major-version gate remains the authority. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
 
 The gates allow nothing to be grandfathered:
 
@@ -93,12 +93,7 @@ Fuzzing is strict and engine-agnostic; see [design decisions](decisions.md) and 
 
 ```sh
 python tools/install_llvm.py --fuzzing          # or: brew install llvm (macOS)
-python tools/deps.py fetch --dependency zlib
-python tools/deps.py fetch --dependency png
-python tools/deps.py fetch --dependency cli11
-python tools/deps.py fetch --dependency json
-python tools/deps.py fetch --dependency lcms
-python tools/deps.py fetch --dependency picosha2
+python tools/deps.py fetch                   # acquire the complete reviewed source lock
 CC=clang-23 CXX=clang++-23 cmake --workflow --preset fuzz
 ```
 

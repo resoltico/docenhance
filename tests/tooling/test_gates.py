@@ -273,6 +273,16 @@ class HygieneTests(GateTestCase):
         self.prepare()
         self.assertEqual(self.errors(), [])
 
+    def test_required_contract_documents(self) -> None:
+        """Required reading is unique and missing architectural authorities are refused."""
+        self.assertEqual(
+            len(repo_hygiene.REQUIRED_DOCUMENTS), len(set(repo_hygiene.REQUIRED_DOCUMENTS))
+        )
+        self.prepare()
+        for name in ("docs/architecture.md", "docs/decisions.md"):
+            (self.root / name).unlink()
+            self.assertIn(f"Missing required document: {name}", self.errors())
+
     def test_stray_and_ignored_files(self) -> None:
         """Unignored droppings fail; names .gitignore already excludes do not."""
         self.prepare()

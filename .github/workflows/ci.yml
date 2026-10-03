@@ -20,7 +20,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.13'
+          python-version: '3.12'
       - run: python tools/install_build_tools.py
       - run: python tools/install_build_tools.py --lint
       - run: python tools/install_llvm.py --compiler
@@ -67,7 +67,7 @@ jobs:
           git reset --hard
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.13'
+          python-version: '3.12'
       - name: Restore pinned Intel LLVM tools
         id: intel-llvm-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -136,7 +136,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.13'
+          python-version: '3.12'
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
       - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 2 --job-budget 2100
@@ -146,14 +146,7 @@ jobs:
           python tools/install_aflplusplus.py
           echo core | sudo tee /proc/sys/kernel/core_pattern
       - run: |
-          python tools/deps.py fetch --dependency opencv
-          python tools/deps.py fetch --dependency jpeg
-          python tools/deps.py fetch --dependency zlib
-          python tools/deps.py fetch --dependency png
-          python tools/deps.py fetch --dependency cli11
-          python tools/deps.py fetch --dependency json
-          python tools/deps.py fetch --dependency lcms
-          python tools/deps.py fetch --dependency picosha2
+          python tools/deps.py fetch
       - name: Build and fuzz every target (60 s each)
         env:
           CC: ${{ matrix.cc }}
@@ -188,7 +181,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.13'
+          python-version: '3.12'
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
       - run: cmake -P cmake/AcquireDependencies.cmake

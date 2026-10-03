@@ -84,7 +84,10 @@ def registrations(build: Path, tests: list[dict[str, Any]]) -> set[str]:
     commands = [test["command"] for test in tests]
     scripts = set((ROOT / "tests/cli").glob("test_*.py"))
     for script in scripts:
-        if sum(any(Path(argument) == script for argument in command) for command in commands) != 1:
+        if (
+            sum(len(command) > 1 and Path(command[1]).resolve() == script for command in commands)
+            != 1
+        ):
             msg = f"CLI script must be registered exactly once: {script}"
             raise EvidenceError(msg)
     names = {test["name"] for test in tests}

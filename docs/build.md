@@ -253,3 +253,8 @@ workspace. On Windows, enable Developer Mode or provide the symbolic-link creati
 the test process. Failure to create a required link is a failed prerequisite, not a passing cleanup
 or refusal test. POSIX FIFO checks remain POSIX-specific; Windows handle replacement has its own
 native cases. These test prerequisites do not add a product runtime privilege requirement.
+
+Python CI jobs execute the minimum declared in `deps/tools.json`; source checks compare their
+setup declarations and the Ruff/mypy targets with that authority. Local environments may use
+newer supported Python versions. A cached obsolete `BUILD_TESTING` value is refused; select a
+fresh native tree and private prefix rather than migrating its configuration.

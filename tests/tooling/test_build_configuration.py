@@ -79,6 +79,15 @@ de_commit_build_identity()
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn(diagnostic, result.stdout + result.stderr)
 
+    def test_obsolete_cached_control_requires_fresh_tree(self) -> None:
+        """A real old cache is refused with a fresh-tree action, without migration."""
+        self.policy_project()
+        build = self.root / "build"
+        build.mkdir()
+        (build / "CMakeCache.txt").write_text("BUILD_TESTING:BOOL=ON\n")
+        self.assert_refused(self.configure(), "select a fresh build tree")
+        self.assertIn("BUILD_TESTING:BOOL=ON", (build / "CMakeCache.txt").read_text())
+
     def test_json_destruction_recipe_requires_reviewed_source(self) -> None:
         """The real dependency recipe refuses disabled correction, drift and absent cleanup."""
         recipe = ROOT / "cmake/dependencies/json/CMakeLists.txt"
