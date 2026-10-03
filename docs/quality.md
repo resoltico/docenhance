@@ -2,9 +2,9 @@
 
 Every check here is strict, pinned and enforced in three places: the build, the local hooks
 (`python tools/check_all.py`, which `.pre-commit-config.yaml` runs) and the GitHub quality
-workflow. The separate source-archive workflow runs the source-level checks before packaging, but
-neither workflow publishes binary artifacts. The reasoning behind the strictness is in
-[design decisions](decisions.md).
+workflow. Linux CI and source packaging execute the same aggregate source checks. Native,
+sanitizer and fuzz workflows remain separate required execution evidence; neither workflow
+publishes binary artifacts. The reasoning behind the strictness is in [design decisions](decisions.md).
 
 ```sh
 python tools/install_build_tools.py          # pinned CMake, Ninja and development/test dependencies
@@ -28,6 +28,14 @@ The build also runs the [architecture rules](architecture.md#enforced-boundaries
 `architecture` test, over the real include graph, the real abstract syntax tree, the links the build
 declares and every public header on its own. The rules that need no build run in `check_all.py` too,
 and a forbidden link fails the configure step before anything is compiled.
+
+The workflow guard parses actual YAML fields, requires standalone source-gate commands, checks the
+reviewed platform/engine/sanitizer matrices and compiler bindings, and requires the aggregate to
+refuse every non-success result. Comments, echoed commands, conditional/optional checks, missing
+matrix members and duplicate mapping keys are refused. The reviewed workflow inventory is closed;
+new execution contracts must extend the guard and its rejection controls. This establishes wiring,
+not arbitrary script correctness or completed CI. Hosted execution and native evidence remain
+necessary, including Windows' distinct compiler-shell helper.
 
 ## Local Linux verification with Docker
 

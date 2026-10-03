@@ -6,18 +6,16 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 from typing import Any
 
-from check_all import CHECKS
 from check_gates import code_files, iter_files
 from deps import ROOT, load_lock
 from documentation import local_link_errors
 from fuzz_manifest import inventory_errors
 from project_version import VersionError, project_version
-from workflow_config import python_errors
+from workflow_integrity import integrity_errors
 
 PRESET_SCHEMA = 12
 MIN_CLANG_TOOLS_MAJOR = 23
@@ -28,30 +26,7 @@ COPYRIGHT = "SPDX-FileCopyrightText: 2026 Ervins Strauhmanis"
 LICENSE_TAG = "SPDX-License-Identifier: MIT"
 REQUIRED_TIDY_SETS = ("bugprone-*", "clang-analyzer-*", "cppcoreguidelines-*", "misc-*")
 PINNED_LINTERS = ("clang_tidy", "clang_format", "ruff", "mypy")
-# GitHub runs the full native quality workflow and a lighter source-archive preflight.
-SOURCE_WORKFLOW = ".github/workflows/source.yml"
-REQUIRED_SOURCE_COMMANDS = (
-    "python tools/check_project.py",
-    "python tools/check_gates.py",
-    "python tools/check_format.py",
-    "python -m ruff format --check",
-    "python -m ruff check --output-format github",
-    "python -m mypy",
-    "python tools/run_tooling_tests.py",
-    "python tools/package_source.py",
-    "python tools/publish_source_release.py --check",
-)
-REQUIRED_CI_COMMANDS = (
-    "cmake --workflow --preset release",
-    "cmake --workflow --preset ${{ matrix.preset }}",
-    "preset: fuzz\n",
-    "preset: fuzz-afl\n",
-    "python tools/install_aflplusplus.py",
-    "python tools/run_fuzz_campaign.py --plan",
-)
 SANITIZED_TEST_PRESETS = ("sanitize", "tsan", "fuzz", "fuzz-afl")
-# The workflows whose jobs must name the pinned compiler rather than the runner's default.
-PINNED_COMPILER_WORKFLOWS = (".github/workflows/ci.yml", ".github/workflows/nightly.yml")
 
 
 def read_json(relative: str) -> dict[str, Any]:
@@ -158,46 +133,6 @@ def pinned_llvm_major(tools: dict[str, Any]) -> str:
     return str(tools["clang_tidy"]["version"]).split(".")[0]
 
 
-def wiring_errors() -> list[str]:
-    """The hooks and CI retain the full gate; source packaging has a lighter preflight."""
-    hooks = (ROOT / ".pre-commit-config.yaml").read_text(encoding="utf-8")
-    source = (ROOT / SOURCE_WORKFLOW).read_text(encoding="utf-8")
-    ci = (ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8")
-    errors = []
-    if "tools/check_all.py" not in hooks:
-        errors.append("pre-commit does not run tools/check_all.py")
-    errors.extend(
-        f"Source workflow does not run {command}"
-        for command in REQUIRED_SOURCE_COMMANDS
-        if command not in source
-    )
-    for name, arguments in CHECKS:
-        command = " ".join(arguments).replace("-m ", "")
-        if command not in ci:
-            errors.append(f"CI does not run the {name} check ({command})")
-    errors.extend(
-        f"CI does not run {command}" for command in REQUIRED_CI_COMMANDS if command not in ci
-    )
-    errors.extend(python_errors(ROOT))
-    errors.extend(compiler_pin_errors())
-    return errors
-
-
-def compiler_pin_errors() -> list[str]:
-    """Sanitized and fuzzing jobs name the pinned compiler instead of the runner's default."""
-    major = pinned_llvm_major(read_json("deps/tools.json"))
-    expected = (f"CC: clang-{major}", f"CXX: clang++-{major}")
-    errors: list[str] = []
-    for workflow in PINNED_COMPILER_WORKFLOWS:
-        text = (ROOT / workflow).read_text(encoding="utf-8")
-        errors.extend(
-            f"{workflow} does not pin the compiler with {name}"
-            for name in expected
-            if name not in text
-        )
-    return errors
-
-
 def fuzz_errors() -> list[str]:
     """Harnesses, settings, engine targets, replay tests, corpora and sanitizer options agree."""
     settings = read_json("fuzz/targets.json")
@@ -215,22 +150,6 @@ def fuzz_errors() -> list[str]:
     return errors
 
 
-def workflow_errors() -> list[str]:
-    """External Actions are immutable commits; local composite actions are exempt."""
-    errors: list[str] = []
-    for path in (ROOT / ".github/workflows").glob("*.yml"):
-        text = path.read_text(encoding="utf-8")
-        actions = re.findall(r"^\s*-?\s*uses:\s*([^\s#]+)", text, flags=re.MULTILINE)
-        errors.extend(
-            f"Unpinned action in {path.name}: {action}"
-            for action in actions
-            if not action.startswith("./") and not re.fullmatch(r"[^@]+@[0-9a-f]{40}", action)
-        )
-        if "pull_request_target:" in text:
-            errors.append("Privileged pull-request trigger prohibited")
-    return errors
-
-
 def check() -> list[str]:
     """Run every structural check."""
     errors = [
@@ -239,8 +158,7 @@ def check() -> list[str]:
         *metadata_errors(),
         *link_errors(),
         *toolchain_errors(),
-        *wiring_errors(),
-        *workflow_errors(),
+        *integrity_errors(ROOT),
         *fuzz_errors(),
     ]
     spec = subprocess.run(

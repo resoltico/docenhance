@@ -30,7 +30,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
-- CI exercises the declared Python 3.12 minimum, with setup and static-analysis declarations checked against `deps/tools.json`. Standard and strict tooling discovery agree, required architecture documents are checked, and fuzz setup acquires the complete reviewed source lock.
+- CI exercises the declared Python 3.12 minimum, with setup and static-analysis declarations checked against `deps/tools.json`. Standard and strict tooling discovery agree, required architecture documents are checked, and fuzz setup acquires the complete reviewed source lock. CI and local hooks share the aggregate source gate; parsed workflow checks reject decorative or optional commands, lost matrix coverage and untruthful aggregate success. Formatting refuses empty discovery, and real Git controls challenge pinned AFL source-tag drift.
 
 - Native and isolated-fuzz verification checks every application compilation command for requested fatal sanitizer instrumentation and rejects source opt-outs/recovery. Native sanitizer workflows require real benign/fault detection controls; failures report bounded child diagnostics and retain full logs in the tested build tree. Color fuzzing uses independent structured sample references and treats unexpected conversion errors as findings; native link refusal/cleanup tests fail on missing fixtures instead of silently returning. Windows contributors need symbolic-link creation capability for the complete native suite.
 
