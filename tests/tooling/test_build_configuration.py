@@ -169,6 +169,9 @@ de_commit_build_identity()
         self.environment["CXXFLAGS"] = "-ffast-math"
         self.assert_refused(self.configure(), "CXXFLAGS is unsupported")
         self.environment.pop("CXXFLAGS")
+        self.environment["CPATH"] = str(self.root)
+        self.assert_refused(self.configure(), "CPATH is unsupported")
+        self.environment.pop("CPATH")
         self.assert_refused(
             self.configure("-DBUILD_TESTING=OFF", build="testing"), "BUILD_TESTING is not"
         )

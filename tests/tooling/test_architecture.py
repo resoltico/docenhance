@@ -17,6 +17,8 @@ from pathlib import Path
 from typing import Any, override
 from unittest.mock import patch
 
+import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone unittest discovery.
+
 import architecture
 import architecture_build
 import run_native_suite

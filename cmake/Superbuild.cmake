@@ -154,7 +154,9 @@ add_custom_target(de_verify_configuration ALL
     --build "${PROJECT_BINARY_DIR}" DEPENDS ${de_previous} VERBATIM)
 add_dependencies(de_native de_verify_configuration)
 # The audit cannot be skipped merely because ExternalProject's configure stamps exist.
-add_custom_target(de_verify_sources ALL ${de_verify_commands} VERBATIM)
+add_custom_target(de_verify_sources ALL
+  COMMAND "${CMAKE_COMMAND}" -P "${PROJECT_SOURCE_DIR}/cmake/BuildEnvironment.cmake"
+  ${de_verify_commands} VERBATIM)
 list(GET de_names 0 de_first)
 add_dependencies(de_dep_${de_first} de_verify_sources)
 if(DE_BUILD_TESTS)

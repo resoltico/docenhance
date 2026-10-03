@@ -77,7 +77,7 @@ if(APPLE)
   endif()
 endif()
 set(de_recipe_files deps/tools.json deps/lock.json deps/features.json
-  cmake/BuildPolicy.cmake cmake/BuildIdentity.cmake cmake/CompilerPolicy.cmake
+  cmake/BuildPolicy.cmake cmake/BuildEnvironment.cmake cmake/BuildIdentity.cmake cmake/CompilerPolicy.cmake
   cmake/Options.cmake cmake/Superbuild.cmake cmake/DependencyPlan.cmake
   cmake/DependencyPaths.cmake cmake/DependencyFeatures.cmake cmake/Dependencies.cmake cmake/ProjectOptions.cmake
   cmake/dependencies/picosha2/CMakeLists.txt cmake/dependencies/json/CMakeLists.txt)

@@ -16,6 +16,8 @@ from audit_build import read_cache
 from fuzz_manifest import settings
 from sanitizer_evidence import required
 
+DIAGNOSTIC_BYTES = 16_384
+
 
 def check(binary: Path, modes: set[str], directory: Path) -> list[str]:
     """Exit zero and arbitrary crashes are insufficient; require the intended diagnostic."""
@@ -37,8 +39,14 @@ def check(binary: Path, modes: set[str], directory: Path) -> list[str]:
         )
         (directory / f"{mode}-fault.log").write_bytes(bad.stdout + bad.stderr)
         if benign.returncode != 0 or bad.returncode == 0 or diagnostic.encode() not in bad.stderr:
+            benign_text = benign.stderr[:DIAGNOSTIC_BYTES].decode("utf-8", errors="replace")
+            fault_text = bad.stderr[:DIAGNOSTIC_BYTES].decode("utf-8", errors="replace")
             failures.append(
-                f"{mode} did not establish benign execution and intended fault detection"
+                f"{mode} did not establish benign execution and intended fault detection; "
+                f"evidence: {directory}\n"
+                f"benign exit={benign.returncode}, fault exit={bad.returncode}\n"
+                f"benign stderr:\n{benign_text}\n"
+                f"fault stderr:\n{fault_text}"
             )
     return failures
 

@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 // Deliberate faults in isolated test processes; never linked into product execution.
 #include <array>
+#include <atomic>
 #include <charconv>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
-#include <latch>
 #include <memory>
 #include <span>
 #include <string_view>
@@ -41,21 +41,34 @@ int arithmetic(const char* const value_text) {
     return 0;
 }
 int race() {
-    int shared = 0;
-    std::latch ready{2};
-    auto first = std::thread{[&] {
-        ready.arrive_and_wait();
-        shared = 1;
+    constexpr std::size_t rounds = 32768;
+    constexpr std::size_t extent = 64;
+    const auto shared = std::make_unique<std::array<volatile int, extent>>();
+    std::atomic<bool> start{false};
+    std::atomic<bool> done{false};
+    auto writer = std::thread{[&] {
+        while (!start.load(std::memory_order_relaxed)) {
+        }
+        for (std::size_t round = 0; round < rounds; ++round) {
+            for (auto& value : *shared) {
+                value = 1;
+            }
+        }
+        while (!done.load(std::memory_order_relaxed)) {
+        }
     }};
-    auto second = std::thread{[&] {
-        ready.arrive_and_wait();
-        shared = 2;
-    }};
-    first.join();
-    second.join();
-    observed(shared);
+    start.store(true, std::memory_order_relaxed);
+    for (std::size_t round = 0; round < rounds; ++round) {
+        for (auto& value : *shared) {
+            value = 2;
+        }
+    }
+    done.store(true, std::memory_order_relaxed);
+    writer.join();
+    observed(shared->front());
     return 0;
 }
+
 int probe(std::span<char* const> args) {
     if (args.size() != 3) {
         return 2;

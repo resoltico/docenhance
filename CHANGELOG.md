@@ -6,6 +6,9 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (build):** unset ambient compiler search/flag overrides, including `CPATH`, `LIBRARY_PATH`, `CL` and `LINK`, before configuring or building. Keep CMake outside source/build trees; the documented setup uses an external tool environment. Recreate existing build trees/private prefixes for the changed build recipe.
+- Native validation packages place their README and complete reviewed Markdown documentation under `share/docenhance/`, beside the schemas and original upstream notices. Use that README location; build instructions require the separate source distribution.
+
 - **Breaking (C++ I/O/Windows paths):** bundle validation uses one `validate` callback; the partial `read_bundle_record` API and publication-observation enum are removed. Windows drive-relative publication paths such as `C:result` are rejected; use a fully qualified drive path or an ordinary relative path. Windows publication requires native open-by-ID support and refuses SMB output destinations; use a supported local volume. POSIX output files now use owner-only creation modes; explicitly grant file permissions when sharing results.
 
 - **Breaking (build/C++ integration):** native builds use a checked private JSON header with allocation-free, bounded recursive destruction. Recreate build trees and private dependency prefixes for the changed recipe, and use that header consistently in integrations. Record DOM admission remains limited to 16 levels; arbitrary-depth JSON is unsupported.
@@ -27,7 +30,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
-- Native and isolated-fuzz verification checks every application compilation command for requested fatal sanitizer instrumentation and rejects source opt-outs/recovery. Native sanitizer workflows require real benign/fault detection controls. Color fuzzing uses independent structured sample references and treats unexpected conversion errors as findings; native link refusal/cleanup tests fail on missing fixtures instead of silently returning. Windows contributors need symbolic-link creation capability for the complete native suite.
+- Native and isolated-fuzz verification checks every application compilation command for requested fatal sanitizer instrumentation and rejects source opt-outs/recovery. Native sanitizer workflows require real benign/fault detection controls; failures report bounded child diagnostics and retain full logs in the tested build tree. Color fuzzing uses independent structured sample references and treats unexpected conversion errors as findings; native link refusal/cleanup tests fail on missing fixtures instead of silently returning. Windows contributors need symbolic-link creation capability for the complete native suite.
 
 - Independent executable references now check complete color/orientation/protection → I01 → D01 → quantization composition, including direct-window integer NLM-L1, maximal windows, native strength rounding and once-only observations. A real producer mutation proves detection of premature 16-bit quantization that processing decode-back and bundle verification can both accept. Processing mathematics and method versions are unchanged.
 

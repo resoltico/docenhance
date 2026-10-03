@@ -93,7 +93,7 @@ response and process status; do not retry blindly. Flushing is not acknowledgeme
 
 CLI tokens and admitted paths must be well-formed UTF-8, with no embedded path NUL. Identity bytes
 are not normalized or repaired. Invalid diagnostic text alone gets an explanatory fallback.
-The [executable method tests](../tests/cli/test_sauvola.py) cover admission, decoding, method
+The `tests/cli/test_sauvola.py` in the source distribution cover admission, decoding, method
 execution, published samples, selected discovery and response conformance together.
 
 ## Interrupting processing

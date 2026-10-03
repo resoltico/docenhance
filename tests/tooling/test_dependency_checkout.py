@@ -5,13 +5,13 @@
 from __future__ import annotations
 
 import os
-import sys
 import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tools"))
+import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone unittest discovery.
+
 import dep_acquire
 import dep_verify
 
