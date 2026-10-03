@@ -84,7 +84,7 @@ These are complementary oracles: structured inputs reach successful decode paths
 exercise malformed headers, compressed streams, truncation and strict rejection behavior.
 
 The isolated fuzz build instruments the actual pinned libpng, zlib and Little CMS C archives with ASan,
-UBSan and the selected coverage engine. Before a campaign, the imported archive paths are checked
+UBSan and the selected coverage engine. Before a campaign, application compilation commands are checked against requested fatal sanitizer modes, and the imported archive paths are checked
 for sanitizer/coverage symbols and hashed. Native sanitizer builds still make only their existing
 first-party instrumentation promise; this change does not instrument every planned dependency.
 The CLI harness still does not link the production host or codec layer. Only codec harnesses gain
@@ -116,7 +116,12 @@ with 4,096 pixels and 65,536 encoded bytes as tighter input limits. It repeats i
 checks complete budget refunds. It tests both embedded interpretation and explicit sRGB override,
 without filesystem writes. `color_profile` feeds raw ICC bytes directly to the native adapter on
 tiny gray/RGB rasters, so profile mutations need not survive an unrelated PNG CRC first. Both use
-first-party, generated corpus profiles/images. `fuzz-codecs.json` identifies all three actual
+first-party, generated corpus profiles/images. Unexpected conversion/row failures are findings;
+only named input/resource refusals belong to malformed input. Continuous fuzzing also constructs
+bounded valid RGBA8/16 rasters and compares every oriented gray/RGB8/16 sample with an independent
+scalar transfer/compositing/quantization reference. This path needs no valid PNG CRC, exercises
+black/white matte and all orientations, and must succeed within its finite budget. Raw PNG and
+ICC parsing remain separate mutation paths. `fuzz-codecs.json` identifies all three actual
 instrumented native archives; the campaign rejects a missing ASan, UBSan or coverage signature.
 
 The `jpeg_decode` target exercises raw framing, metadata and the production decoder, with real

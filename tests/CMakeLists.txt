@@ -112,6 +112,15 @@ de_apply_options(de_resource_limits)
 add_test(NAME resource-limits COMMAND de_resource_limits)
 set_tests_properties(resource-limits PROPERTIES TIMEOUT 60)
 
+# The same project options as production must detect actual faults, not only link runtimes.
+add_executable(de_sanitizer_probe support/sanitizer_probe.cpp)
+de_apply_options(de_sanitizer_probe)
+if(DE_ENABLE_ASAN OR DE_ENABLE_UBSAN OR DE_ENABLE_TSAN)
+  add_test(NAME sanitizer-detection COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_sanitizers.py"
+    --binary "$<TARGET_FILE:de_sanitizer_probe>" --build "${PROJECT_BINARY_DIR}")
+  set_tests_properties(sanitizer-detection PROPERTIES TIMEOUT 120)
+endif()
+
 get_property(de_static_tests DIRECTORY PROPERTY TESTS)
 string(JSON de_native_inventory SET "{}" "static_tests" "[]")
 de_json_array(de_native_inventory "static_tests" "${de_static_tests}")

@@ -10,7 +10,9 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from audit_build import read_cache
 from fuzz_manifest import FuzzError
+from sanitizer_evidence import check_compilation
 
 
 def instrumented_symbols(text: str) -> bool:
@@ -21,6 +23,10 @@ def instrumented_symbols(text: str) -> bool:
 
 def inspect_archives(build: Path) -> dict[str, str]:
     """Check resolved imported-target files, retaining their exact SHA-256 identities."""
+    check_compilation(
+        read_cache(build / "CMakeCache.txt"),
+        json.loads((build / "compile_commands.json").read_text()),
+    )
     archives = json.loads((build / "fuzz-codecs.json").read_text(encoding="utf-8"))
     if not isinstance(archives, dict) or set(archives) != {
         "jpeg",

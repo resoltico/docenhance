@@ -225,3 +225,11 @@ Native packaging uses CPack External for the owned install stage and a byte-payl
 The resulting `.tar.gz` preserves intended executable permissions and excludes host extended
 attributes/resource forks; the generator's JSON is build metadata, not an additional runtime
 payload. Native binaries are still not claimed to be bit-reproducible across builds.
+
+## Required filesystem test fixtures
+
+The full native suite must be able to create file and directory symbolic links in its temporary
+workspace. On Windows, enable Developer Mode or provide the symbolic-link creation privilege for
+the test process. Failure to create a required link is a failed prerequisite, not a passing cleanup
+or refusal test. POSIX FIFO checks remain POSIX-specific; Windows handle replacement has its own
+native cases. These test prerequisites do not add a product runtime privilege requirement.

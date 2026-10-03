@@ -1,0 +1,81 @@
+// SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+// SPDX-License-Identifier: MIT
+// Deliberate faults in isolated test processes; never linked into product execution.
+#include <array>
+#include <charconv>
+#include <cstddef>
+#include <cstdlib>
+#include <exception>
+#include <iostream>
+#include <latch>
+#include <memory>
+#include <span>
+#include <stdexcept>
+#include <string_view>
+#include <system_error>
+#include <thread>
+
+namespace {
+int memory(const char* const index_text) {
+    constexpr std::size_t extent = 8;
+    const auto values = std::make_unique<std::array<int, extent>>();
+    const auto index = static_cast<std::size_t>(std::strtoul(index_text, nullptr, 10));
+    // Unchecked access is the ASan negative control, not production container policy.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    std::cout << values->data()[index] << '\n';
+    return 0;
+}
+int arithmetic(const char* const value_text) {
+    const std::string_view text{value_text};
+    int value = 0;
+    const auto parsed = std::from_chars(text.begin(), text.end(), value);
+    if (parsed.ec != std::errc{} || parsed.ptr != text.end()) {
+        throw std::runtime_error("Invalid probe integer");
+    }
+    std::cout << value + 1 << '\n';
+    return 0;
+}
+int race() {
+    int shared = 0;
+    std::latch ready{2};
+    auto first = std::thread{[&] {
+        ready.arrive_and_wait();
+        shared = 1;
+    }};
+    auto second = std::thread{[&] {
+        ready.arrive_and_wait();
+        shared = 2;
+    }};
+    first.join();
+    second.join();
+    std::cout << shared << '\n';
+    return 0;
+}
+int probe(std::span<char* const> args) {
+    if (args.size() != 3) {
+        return 2;
+    }
+    const std::string_view mode{args.subspan(1, 1).front()};
+    const auto* const value = args.subspan(2, 1).front();
+    if (mode == "memory") {
+        return memory(value);
+    }
+    if (mode == "arithmetic") {
+        return arithmetic(value);
+    }
+    if (mode == "race") {
+        return race();
+    }
+    return 2;
+}
+} // namespace
+int main(int argc, char** const argv) {
+    try {
+        return probe({argv, static_cast<std::size_t>(argc)});
+    } catch (const std::exception& error) {
+        std::cerr << error.what() << '\n';
+    } catch (...) {
+        std::cerr << "Probe failed before its intended diagnostic\n";
+    }
+    return 2;
+}

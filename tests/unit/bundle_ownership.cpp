@@ -53,9 +53,7 @@ TEST_CASE("Bundle cleanup refuses a link replacement without touching its target
     std::filesystem::rename(file->path, stage.directory / "retained-original");
     std::error_code error;
     std::filesystem::create_symlink(outside, file->path, error);
-    if (error) {
-        return;
-    } // Windows link creation may require a privilege unavailable to tests.
+    REQUIRE(!error);
     const auto failure =
         io::abandon(stage, {.code = core::ErrorCode::output, .message = "Stop before commit"});
     CHECK(failure.publication == core::Publication::unknown);
@@ -74,9 +72,7 @@ TEST_CASE("Bundle cleanup does not traverse a replaced assets directory", "[bund
     std::filesystem::rename(stage.directory / "assets", retained);
     std::error_code error;
     std::filesystem::create_directory_symlink(retained, stage.directory / "assets", error);
-    if (error) {
-        return;
-    }
+    REQUIRE(!error);
     const auto failure =
         io::abandon(stage, {.code = core::ErrorCode::output, .message = "Stop before commit"});
     CHECK(failure.publication == core::Publication::unknown);

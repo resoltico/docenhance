@@ -482,6 +482,9 @@
     },
     "tests/unit/filesystem_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@b7da1737": {
       "explanation": "The fixed POSIX open/fcntl ABI is variadic. This site passes constant flags and a bounded creation mode or duplicate-descriptor floor, never a format string or caller-controlled variadic arguments. Descriptor admission validates native type; leases keep object identity live and use close-on-exec. The FIFO regression opens a nonblocking peer so refusal is tested without timing sleeps."
+    },
+    "tests/support/sanitizer_probe.cpp:clang-tidy/cppcoreguidelines-pro-bounds-pointer-arithmetic@e18da5af": {
+      "explanation": "Deliberate unchecked heap read in the isolated ASan fault probe. Library bounds assertions would mask the intended sanitizer diagnostic; the binary is never linked into product execution, and the supervising test requires both benign success and an ASan heap-buffer-overflow report."
     }
   }
 }
