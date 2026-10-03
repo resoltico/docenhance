@@ -4,9 +4,9 @@
 #include <array>
 #include <charconv>
 #include <cstddef>
+#include <cstdio>
 #include <cstdlib>
 #include <exception>
-#include <iostream>
 #include <latch>
 #include <memory>
 #include <span>
@@ -15,13 +15,16 @@
 #include <thread>
 
 namespace {
+void observed(int value) noexcept {
+    static_cast<void>(std::fwrite(&value, sizeof(value), 1, stdout));
+}
 int memory(const char* const index_text) {
     constexpr std::size_t extent = 8;
     const auto values = std::make_unique<std::array<int, extent>>();
     const auto index = static_cast<std::size_t>(std::strtoul(index_text, nullptr, 10));
     // Unchecked access is the ASan negative control, not production container policy.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    std::cout << values->data()[index] << '\n';
+    observed(values->data()[index]);
     return 0;
 }
 int arithmetic(const char* const value_text) {
@@ -34,7 +37,7 @@ int arithmetic(const char* const value_text) {
     if (parsed.ec != std::errc{} || parsed.ptr != end) {
         return 2;
     }
-    std::cout << value + 1 << '\n';
+    observed(value + 1);
     return 0;
 }
 int race() {
@@ -50,7 +53,7 @@ int race() {
     }};
     first.join();
     second.join();
-    std::cout << shared << '\n';
+    observed(shared);
     return 0;
 }
 int probe(std::span<char* const> args) {
@@ -75,9 +78,10 @@ int main(int argc, char** const argv) {
     try {
         return probe({argv, static_cast<std::size_t>(argc)});
     } catch (const std::exception& error) {
-        std::cerr << error.what() << '\n';
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputc('\n', stderr));
     } catch (...) {
-        std::cerr << "Probe failed before its intended diagnostic\n";
+        static_cast<void>(std::fputs("Probe failed before its intended diagnostic\n", stderr));
     }
     return 2;
 }
