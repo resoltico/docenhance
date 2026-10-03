@@ -99,3 +99,8 @@ unsynchronized accesses. Forty native macOS ARM64 controls and eighty optimized 
 controls detect the array fault. Strict debug/release/ASan/UBSan/TSan builds and actual detection
 checks pass. These finite controls challenge compiler elimination and detection; they do not
 establish exhaustive detector completeness. An uninstrumented binary must still fail.
+
+The large JPEG marker-byte contract repeatedly passes its original subprocess deadline alone but
+can exceed it beside other expensive TSan cases. CTest now schedules that existing contract
+serially. Its input, assertions, deadline, discovery and complete-result reconciliation remain
+unchanged; this is test CPU scheduling, not a product latency guarantee or an accepted timeout.

@@ -39,6 +39,9 @@ set_tests_properties(interpretation-contract PROPERTIES TIMEOUT 90)
 add_test(NAME bundle-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_bundles.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME jpeg-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME jpeg-pipeline-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg_pipeline.py" "$<TARGET_FILE:docenhance>")
+# The multi-megabyte admission fixture retains its subprocess deadline under instrumentation;
+# run it without other CTest cases competing for the same native CPU budget.
+set_tests_properties(jpeg-pipeline-contract PROPERTIES RUN_SERIAL TRUE)
 add_test(NAME generated-contract COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/generate_spec.py" --check)
 # The compiler-driven architecture rules need GNU-style options (-M, -fsyntax-only) and a pinned
 # clang-query, which an MSVC compilation database cannot provide; there only the source rules run.
