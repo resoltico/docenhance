@@ -16,6 +16,7 @@ from architecture import load_manifest
 from audit_build import FALSE, read_cache
 from fuzz_manifest import targets
 from parallel import MAX_JOBS, available_jobs
+from sanitizer_evidence import check_compilation
 from test_evidence import EvidenceError, complete_junit, discovery
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,10 +36,9 @@ def compilation(build: Path) -> None:
     if errors:
         raise EvidenceError("; ".join(errors))
     cache = read_cache(build / "CMakeCache.txt")
-    compiled = {
-        Path(item["file"]).resolve()
-        for item in json.loads((build / "compile_commands.json").read_text())
-    }
+    entries = json.loads((build / "compile_commands.json").read_text())
+    check_compilation(cache, entries)
+    compiled = {Path(item["file"]).resolve() for item in entries}
     roots = ["src", "tests", "fuzz"]
     if cache.get("DE_BUILD_TOOLS", "").upper() not in FALSE:
         roots.append("tools")

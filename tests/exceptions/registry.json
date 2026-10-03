@@ -482,6 +482,12 @@
     },
     "tests/unit/filesystem_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@b7da1737": {
       "explanation": "The fixed POSIX open/fcntl ABI is variadic. This site passes constant flags and a bounded creation mode or duplicate-descriptor floor, never a format string or caller-controlled variadic arguments. Descriptor admission validates native type; leases keep object identity live and use close-on-exec. The FIFO regression opens a nonblocking peer so refusal is tested without timing sleeps."
+    },
+    "tests/support/sanitizer_probe.cpp:clang-tidy/cppcoreguidelines-pro-bounds-pointer-arithmetic@ab57c09f": {
+      "explanation": "std::from_chars requires raw begin/end pointers; MSVC string_view iterators are checked wrapper types. Both pointers refer to the same live argv string, with the end derived from its measured string_view size; parsing must consume the complete bounded range. Confined to test-probe argument admission."
+    },
+    "tests/support/sanitizer_probe.cpp:clang-tidy/cppcoreguidelines-pro-bounds-pointer-arithmetic@273313ff": {
+      "explanation": "Deliberate unchecked heap read in the isolated ASan fault probe; library bounds assertions would mask the intended diagnostic. C stream output keeps the read observable without a throwing locale/iostream path. The binary is never linked into product execution, and supervision requires benign success and the specific ASan fault report."
     }
   }
 }

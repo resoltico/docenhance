@@ -45,6 +45,11 @@ void attempt(std::span<const std::uint8_t> profile, docenhance::image::SampleMod
                     "native ICC samples produce valid output or a named input/resource failure");
             }
         }
+        if (!converter) {
+            de::fuzz::require(converter.error().code == de::core::ErrorCode::input ||
+                                  converter.error().code == de::core::ErrorCode::resource,
+                              "raw ICC refuses only input or resource failures");
+        }
         de::fuzz::require(budget.used() <= memory_limit,
                           "native color allocations respect their budget");
     }

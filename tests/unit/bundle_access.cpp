@@ -29,9 +29,8 @@ TEST_CASE("Bundle native access refuses links and special files at opening", "[b
     std::ofstream{temporary.path / "outside"} << "outside";
     std::error_code error;
     std::filesystem::create_symlink(temporary.path / "outside", root / "run.json", error);
-    if (!error) {
-        CHECK(!directory->file("run.json"));
-    }
+    REQUIRE(!error);
+    CHECK(!directory->file("run.json"));
     REQUIRE(std::filesystem::create_directory(root / "result.png"));
     CHECK(!directory->file("result.png"));
 #ifndef _WIN32

@@ -7,6 +7,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/io/continuous_png.hpp"
+#include "support/color_samples.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 
@@ -28,6 +29,12 @@ void rows(docenhance::image::RowSource& producer, docenhance::core::Budget& budg
         const auto second =
             producer.row(row, storage->view().row(1), docenhance::image::RowUse::verification);
         docenhance::fuzz::require(first.has_value() == second.has_value(), "row outcome repeats");
+        if (!first) {
+            docenhance::fuzz::require(first.error().code == docenhance::core::ErrorCode::input ||
+                                          first.error().code ==
+                                              docenhance::core::ErrorCode::resource,
+                                      "color rows refuse only input or resource failures");
+        }
         if (first) {
             docenhance::fuzz::require(
                 std::ranges::equal(storage->view().row(0), storage->view().row(1)),
@@ -51,6 +58,11 @@ void decode(std::span<const std::uint8_t> bytes, docenhance::image::ProfilePolic
     auto converter = docenhance::color::Converter::create(*source, operation, budget);
     if (converter) {
         rows(**converter, budget);
+    } else {
+        docenhance::fuzz::require(converter.error().code == docenhance::core::ErrorCode::input ||
+                                      converter.error().code ==
+                                          docenhance::core::ErrorCode::resource,
+                                  "color conversion refuses only input or resource failures");
     }
 }
 void attempt(std::span<const std::uint8_t> bytes, docenhance::image::ProfilePolicy policy) {
@@ -62,6 +74,7 @@ void attempt(std::span<const std::uint8_t> bytes, docenhance::image::ProfilePoli
 }
 } // namespace
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
+    docenhance::fuzz::check_color_samples({data, size});
     attempt({data, size}, docenhance::image::ProfilePolicy::embedded);
     attempt({data, size}, docenhance::image::ProfilePolicy::srgb);
     return 0;
