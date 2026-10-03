@@ -10,6 +10,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone unittest discovery.
+
 import check_all
 import check_linux
 

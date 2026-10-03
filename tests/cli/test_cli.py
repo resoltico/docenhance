@@ -19,6 +19,7 @@ from continuous_fixtures import Fixture
 from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
+COMMAND_TIMEOUT_SECONDS = 30
 SHA256_HEX_LENGTH = 64
 EXIT_INVOCATION = 2
 EXIT_PROCESSING = 4
@@ -63,7 +64,7 @@ def call(exe: Path, args: list[str], code: int = 0) -> str:
         capture_output=True,
         text=True,
         encoding="utf-8",
-        timeout=10,
+        timeout=COMMAND_TIMEOUT_SECONDS,
         check=False,
     )
     expect(

@@ -488,6 +488,15 @@
     },
     "tests/support/sanitizer_probe.cpp:clang-tidy/cppcoreguidelines-pro-bounds-pointer-arithmetic@273313ff": {
       "explanation": "Deliberate unchecked heap read in the isolated ASan fault probe; library bounds assertions would mask the intended diagnostic. C stream output keeps the read observable without a throwing locale/iostream path. The binary is never linked into product execution, and supervision requires benign success and the specific ASan fault report."
+    },
+    "tests/tooling/test_architecture.py:ruff/F401@45adf22b": {
+      "explanation": "The tools_path import is executed for its shared sys.path bootstrap before direct tool-module imports; standard unittest discovery must work without the strict runner providing tools/."
+    },
+    "tests/tooling/test_dependency_checkout.py:ruff/F401@45adf22b": {
+      "explanation": "The tools_path import is executed for its shared sys.path bootstrap before direct tool-module imports; standard unittest discovery must work without the strict runner providing tools/."
+    },
+    "tests/tooling/test_linux_gate.py:ruff/F401@45adf22b": {
+      "explanation": "The tools_path import is executed for its shared sys.path bootstrap before direct tool-module imports; standard unittest discovery must work without the strict runner providing tools/."
     }
   }
 }

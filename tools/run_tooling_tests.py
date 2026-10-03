@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 import unittest
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -44,6 +45,7 @@ def run(directory: Path) -> bool:
 
 def main() -> int:
     """Run the repository suite or an explicitly supplied isolated negative control."""
+    sys.path[:] = [entry for entry in sys.path if Path(entry).resolve() != ROOT / "tools"]
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--directory", type=Path, default=ROOT / "tests/tooling")
     return 0 if run(parser.parse_args().directory.resolve()) else 1

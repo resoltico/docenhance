@@ -100,7 +100,13 @@ controls detect the array fault. Strict debug/release/ASan/UBSan/TSan builds and
 checks pass. These finite controls challenge compiler elimination and detection; they do not
 establish exhaustive detector completeness. An uninstrumented binary must still fail.
 
-The large JPEG marker-byte contract repeatedly passes its original subprocess deadline alone but
-can exceed it beside other expensive TSan cases. CTest now schedules that existing contract
-serially. Its input, assertions, deadline, discovery and complete-result reconciliation remain
-unchanged; this is test CPU scheduling, not a product latency guarantee or an accepted timeout.
+The large JPEG marker-byte contract exposes an invalid ten-second throughput assumption under
+instrumentation and host contention. Its semantics establish byte/work limits, not a wall-clock
+latency promise. The shared CLI supervisor uses a finite thirty-second command watchdog; full
+workflow and individual CTest bounds, inputs, assertions, discovery and result reconciliation
+remain enforced. A real blocked child is terminated and refused. Serial scheduling alone did not
+solve the host-dependent limit and is removed rather than retained as ineffective scaffolding.
+
+Standard unittest discovery must bootstrap each tooling module independently. The strict runner
+removes its script-directory advantage before discovery; required modules explicitly import the
+common project-root bootstrap. Both entry points must discover and execute the same full set.
