@@ -83,15 +83,19 @@ message, establishing missed fault detection rather than a runtime startup failu
 
 ## Race-control revision and separate challenge
 
-The two-write latch control could complete without a TSan report on hosted x86-64. Replace it
-with one worker and the calling thread, a relaxed readiness flag and 16,384 deliberate volatile
-stores per writer. Volatile keeps the accesses observable and does not make them atomic; relaxed
-readiness establishes no happens-before ordering for the shared integer. Join only after the
-calling thread's stores. Avoid arithmetic updates that could trigger UBSan instead of the intended
-race, synchronization inside the fault region, sleeps, runtime retries or accepted missing reports.
-The supervisor still requires benign execution and an actual fatal data-race diagnostic.
+The two-write latch control could complete without a TSan report on hosted x86-64. Single-word
+relaxed-handshake variants also missed reports in repeated macOS runs and were discarded. The
+adopted control retains a separate heap array of 64 volatile integers and performs 32,768 rounds
+of stores per writer. One worker and the calling thread use relaxed start/completion flags outside
+the access region; construction completes before start, and the worker remains live until the
+calling thread finishes. No synchronization or arithmetic update is inserted into the racy region.
+Volatile keeps accesses observable but does not make them atomic. Each process must still produce
+a fatal data-race diagnostic within the unchanged supervisor deadline; there are no retries or
+accepted missing reports.
 
 [C++ atomic ordering](https://eel.is/c++draft/atomics.order) specifies relaxed ordering; the
 [Clang TSan example](https://clang.llvm.org/docs/ThreadSanitizer.html) likewise uses observable
-unsynchronized accesses. Repeated native process controls and an optimized build challenge
-compiler elimination and detection independently; an uninstrumented binary must still fail.
+unsynchronized accesses. Forty native macOS ARM64 controls and eighty optimized Linux ARM64
+controls detect the array fault. Strict debug/release/ASan/UBSan/TSan builds and actual detection
+checks pass. These finite controls challenge compiler elimination and detection; they do not
+establish exhaustive detector completeness. An uninstrumented binary must still fail.

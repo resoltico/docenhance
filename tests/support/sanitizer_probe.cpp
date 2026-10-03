@@ -41,24 +41,31 @@ int arithmetic(const char* const value_text) {
     return 0;
 }
 int race() {
-    constexpr std::size_t write_count = 16384;
-    // Volatile preserves the deliberate accesses; it does not synchronize them.
-    volatile int shared = 0;
-    std::atomic<bool> ready{false};
+    constexpr std::size_t rounds = 32768;
+    constexpr std::size_t extent = 64;
+    const auto shared = std::make_unique<std::array<volatile int, extent>>();
+    std::atomic<bool> start{false};
+    std::atomic<bool> done{false};
     auto writer = std::thread{[&] {
-        ready.store(true, std::memory_order_relaxed);
-        for (std::size_t index = 0; index < write_count; ++index) {
-            shared = 1;
+        while (!start.load(std::memory_order_relaxed)) {
+        }
+        for (std::size_t round = 0; round < rounds; ++round) {
+            for (auto& value : *shared) {
+                value = 1;
+            }
+        }
+        while (!done.load(std::memory_order_relaxed)) {
         }
     }};
-    // A relaxed handshake establishes readiness, never ordering for shared.
-    while (!ready.load(std::memory_order_relaxed)) {
+    start.store(true, std::memory_order_relaxed);
+    for (std::size_t round = 0; round < rounds; ++round) {
+        for (auto& value : *shared) {
+            value = 2;
+        }
     }
-    for (std::size_t index = 0; index < write_count; ++index) {
-        shared = 2;
-    }
+    done.store(true, std::memory_order_relaxed);
     writer.join();
-    observed(shared);
+    observed(shared->front());
     return 0;
 }
 
