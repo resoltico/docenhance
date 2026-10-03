@@ -15,11 +15,12 @@ from typing import Any
 from architecture import load_manifest
 from audit_build import FALSE, read_cache
 from fuzz_manifest import targets
-from parallel import MAX_JOBS, available_jobs
 from sanitizer_evidence import check_compilation
 from test_evidence import EvidenceError, complete_junit, discovery
 
 ROOT = Path(__file__).resolve().parents[1]
+# Test cases contain their own CPU-heavy references, compilers and processing workers.
+MAX_TEST_PROCESSES = 2
 
 
 def layer_records_errors(layers: dict[str, Any], records: dict[str, Any]) -> list[str]:
@@ -137,10 +138,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--ctest", default="ctest")
-    parser.add_argument("--jobs", type=int, default=available_jobs())
+    parser.add_argument("--jobs", type=int, default=MAX_TEST_PROCESSES)
     args = parser.parse_args()
-    if not 1 <= args.jobs <= MAX_JOBS:
-        parser.error("jobs must fit the project process bound")
+    if not 1 <= args.jobs <= MAX_TEST_PROCESSES:
+        parser.error(f"native test jobs must be in [1,{MAX_TEST_PROCESSES}]")
     return run(args)
 
 

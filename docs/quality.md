@@ -35,7 +35,9 @@ refuse every non-success result. Comments, echoed commands, conditional/optional
 matrix members and duplicate mapping keys are refused. The reviewed workflow inventory is closed;
 new execution contracts must extend the guard and its rejection controls. This establishes wiring,
 not arbitrary script correctness or completed CI. Hosted execution and native evidence remain
-necessary, including Windows' distinct compiler-shell helper.
+necessary, including Windows' distinct compiler-shell helper. Native cases run with at most two
+concurrent processes, separately from build/AST worker counts. Every case, assertion, per-contract
+timeout and complete-result reconciliation remains required.
 
 ## Local Linux verification with Docker
 

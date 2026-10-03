@@ -11,25 +11,22 @@ reads, and where the third-party headers of this build live.
 from __future__ import annotations
 
 import json
+import re
 import shlex
 import subprocess
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from architecture import ArchitectureError, Manifest
 from deps import ROOT
 
-if TYPE_CHECKING:
-    from pathlib import Path
-
 
 def layer_of(manifest: Manifest, path: str) -> str | None:
     """The layer a first-party path belongs to, or None if it is not first-party."""
-    # Only inside this checkout: a directory named src anywhere else is somebody else's code.
-    if not path.startswith(f"{ROOT}/"):
-        return None
-    for marker in (f"{ROOT}/include/docenhance/", f"{ROOT}/src/"):
-        if path.startswith(marker):
-            candidate = path[len(marker) :].split("/", 1)[0]
+    resolved = Path(path).resolve()
+    for base in (ROOT.resolve() / "include/docenhance", ROOT.resolve() / "src"):
+        if resolved.is_relative_to(base):
+            parts = resolved.relative_to(base).parts
+            candidate = parts[0] if parts else ""
             return candidate if candidate in manifest.layers else None
     return None
 
@@ -58,13 +55,15 @@ def compiler_arguments(entry: dict[str, str]) -> list[str]:
     return arguments
 
 
-def run_compiler(arguments: list[str], directory: str, what: str) -> str:
-    """Run a compiler invocation that must succeed, and return its output."""
+def run_compiler(
+    arguments: list[str], directory: str, what: str
+) -> subprocess.CompletedProcess[str]:
+    """Run a compiler invocation that must succeed, and return its captured streams."""
     result = subprocess.run(arguments, cwd=directory, capture_output=True, text=True, check=False)
     if result.returncode != 0:
-        msg = f"{what}: {(result.stderr or result.stdout).strip()[:400]}"
+        msg = f"{what}: {(result.stderr or result.stdout).strip()[-400:]}"
         raise ArchitectureError(msg)
-    return result.stdout
+    return result
 
 
 def package_roots(entry: dict[str, str], build: Path) -> list[str]:
@@ -72,21 +71,27 @@ def package_roots(entry: dict[str, str], build: Path) -> list[str]:
     # The superbuild installs every dependency into a private prefix beside the build tree, so
     # those are the directories a third-party header can come from. A toolchain's own include
     # directories are somewhere else entirely and are not searched for package membership.
-    bases = tuple(f"{base}/" for base in (ROOT, *build.parents[:2]))
+    bases = (ROOT.resolve(), *build.resolve().parents[:2])
     arguments = compiler_arguments(entry)
-    return [
-        arguments[index + 1].rstrip("/")
+    candidates = [
+        (Path(entry["directory"]) / arguments[index + 1]).resolve()
         for index, argument in enumerate(arguments[:-1])
-        if argument == "-isystem" and arguments[index + 1].startswith(bases)
+        if argument == "-isystem"
     ]
+    return [str(path) for path in candidates if any(path.is_relative_to(base) for base in bases)]
 
 
 def included_headers(entry: dict[str, str]) -> list[str]:
     """Every header the compiler reads for this translation unit, transitively."""
     output = run_compiler(
-        [*compiler_arguments(entry), entry["file"], "-M", "-MG"],
+        [*compiler_arguments(entry), entry["file"], "-H", "-fsyntax-only"],
         entry["directory"],
-        f"Cannot read the dependencies of {entry['file']}",
+        f"Cannot read the includes of {entry['file']}",
     )
-    _, _, dependencies = output.replace("\\\n", " ").partition(":")
-    return dependencies.split()
+    # Unlike Make dependency output, the compiler's trace retains spaces and dollar signs.
+    names = re.findall(r"^\.+ (.+)$", output.stderr, flags=re.MULTILINE)
+    paths = [(Path(entry["directory"]) / name).resolve() for name in names]
+    if any(not path.is_file() for path in paths):
+        msg = f"Compiler include trace contains an unidentified file: {entry['file']}"
+        raise ArchitectureError(msg)
+    return [str(path) for path in paths]

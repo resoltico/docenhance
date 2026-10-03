@@ -160,10 +160,10 @@ add_custom_target(de_verify_sources ALL
 list(GET de_names 0 de_first)
 add_dependencies(de_dep_${de_first} de_verify_sources)
 if(DE_BUILD_TESTS)
-  # The suite's tests are independent processes with their own temporary directories, so the same
-  # bound that limits every other external process also sets how many run at once.
+  # Native cases contain nested processing/reference work; their supervisor owns its separate
+  # process bound instead of inheriting compiler-worker parallelism.
   add_test(NAME native-suite COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_native_suite.py"
-    --build "${de_inner}" --ctest "${CMAKE_CTEST_COMMAND}" --jobs "${DE_BUILD_JOBS}")
+    --build "${de_inner}" --ctest "${CMAKE_CTEST_COMMAND}")
   # The aggregate also compiles each public header and checks every native AST.
   # Keep all per-contract limits and checks; allow the expanded graph to finish on CI runners.
   set_tests_properties(native-suite PROPERTIES TIMEOUT 600)

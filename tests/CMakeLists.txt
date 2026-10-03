@@ -40,7 +40,7 @@ add_test(NAME bundle-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_S
 add_test(NAME jpeg-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME jpeg-pipeline-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg_pipeline.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME generated-contract COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/generate_spec.py" --check)
-# The compiler-driven architecture rules need GNU-style options (-M, -fsyntax-only) and a pinned
+# The compiler-driven architecture rules need GNU-style options (-H, -fsyntax-only) and a pinned
 # clang-query, which an MSVC compilation database cannot provide; there only the source rules run.
 if(MSVC)
   add_test(NAME architecture COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_architecture.py")

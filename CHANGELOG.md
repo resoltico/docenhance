@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (verification tooling):** `tools/run_native_suite.py --jobs` accepts only 1 or 2 concurrent test processes; larger values are refused. `DE_BUILD_JOBS` controls build/AST workers separately. Native cases retain all fixtures, assertions and timeouts; recreate build trees/private prefixes for the changed recipe.
+
 - **Breaking (build):** unset ambient compiler search/flag overrides, including `CPATH`, `LIBRARY_PATH`, `CL` and `LINK`, before configuring or building. Keep CMake outside source/build trees; the documented setup uses an external tool environment. Recreate existing build trees/private prefixes for the changed build recipe.
 - Native validation packages place their README and complete reviewed Markdown documentation under `share/docenhance/`, beside the schemas and original upstream notices. Use that README location; build instructions require the separate source distribution.
 
@@ -30,7 +32,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
-- CI exercises the declared Python 3.12 minimum, with setup and static-analysis declarations checked against `deps/tools.json`. Standard and strict tooling discovery agree, required architecture documents are checked, and fuzz setup acquires the complete reviewed source lock. CI and local hooks share the aggregate source gate; parsed workflow checks reject decorative or optional commands, lost matrix coverage and untruthful aggregate success. Formatting refuses empty discovery, and real Git controls challenge pinned AFL source-tag drift.
+- CI exercises the declared Python 3.12 minimum, with setup and static-analysis declarations checked against `deps/tools.json`. Standard and strict tooling discovery agree, required architecture documents are checked, and fuzz setup acquires the complete reviewed source lock. CI and local hooks share the aggregate source gate; parsed workflow checks reject decorative or optional commands, lost matrix coverage and untruthful aggregate success. Formatting refuses empty discovery, and real Git controls challenge pinned AFL source-tag drift. Compiler-backed architecture checks bind trusted paths by resolved identity and read actual header traces, so aliases, spaces and dollar signs cannot hide forbidden layer/package reach.
 
 - Native and isolated-fuzz verification checks every application compilation command for requested fatal sanitizer instrumentation and rejects source opt-outs/recovery. Native sanitizer workflows require real benign/fault detection controls; failures report bounded child diagnostics and retain full logs in the tested build tree. Color fuzzing uses independent structured sample references and treats unexpected conversion errors as findings; native link refusal/cleanup tests fail on missing fixtures instead of silently returning. Windows contributors need symbolic-link creation capability for the complete native suite.
 
