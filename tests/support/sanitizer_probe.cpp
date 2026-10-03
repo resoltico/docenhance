@@ -10,7 +10,6 @@
 #include <latch>
 #include <memory>
 #include <span>
-#include <stdexcept>
 #include <string_view>
 #include <system_error>
 #include <thread>
@@ -28,9 +27,12 @@ int memory(const char* const index_text) {
 int arithmetic(const char* const value_text) {
     const std::string_view text{value_text};
     int value = 0;
-    const auto parsed = std::from_chars(text.begin(), text.end(), value);
-    if (parsed.ec != std::errc{} || parsed.ptr != text.end()) {
-        throw std::runtime_error("Invalid probe integer");
+    // from_chars takes a raw bounded range; checked MSVC string-view iterators are not pointers.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    const auto* const end = value_text + text.size();
+    const auto parsed = std::from_chars(value_text, end, value);
+    if (parsed.ec != std::errc{} || parsed.ptr != end) {
+        return 2;
     }
     std::cout << value + 1 << '\n';
     return 0;

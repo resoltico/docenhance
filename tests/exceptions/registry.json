@@ -485,6 +485,9 @@
     },
     "tests/support/sanitizer_probe.cpp:clang-tidy/cppcoreguidelines-pro-bounds-pointer-arithmetic@e18da5af": {
       "explanation": "Deliberate unchecked heap read in the isolated ASan fault probe. Library bounds assertions would mask the intended sanitizer diagnostic; the binary is never linked into product execution, and the supervising test requires both benign success and an ASan heap-buffer-overflow report."
+    },
+    "tests/support/sanitizer_probe.cpp:clang-tidy/cppcoreguidelines-pro-bounds-pointer-arithmetic@ab57c09f": {
+      "explanation": "std::from_chars requires raw begin/end pointers; MSVC string_view iterators are checked wrapper types. Both pointers refer to the same live argv string, with the end derived from its measured string_view size; parsing must consume the complete bounded range. Confined to test-probe argument admission."
     }
   }
 }
