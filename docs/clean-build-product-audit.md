@@ -71,3 +71,11 @@ and [Clang's driver contract](https://clang.llvm.org/docs/UsersManual.html) also
 editing channels invisible to compilation-database arguments. Refuse LINK/_LINK_ and
 CCC_OVERRIDE_OPTIONS alongside CL/_CL_ and compiler search overrides. Empty flag values do not
 request changes; ordinary PATH and Windows SDK resolution remain explicit native trust boundaries.
+
+A hosted TSan detection failure exposed a diagnostic gap: the runner preserved child logs in the
+build tree but printed only a summary, and the hosted output could not distinguish startup failure
+from absent race detection. Report both process exit codes, bounded stderr excerpts and the evidence
+directory without changing detection criteria. A controlled startup failure must remain a failure;
+its complete log is retained while CTest output remains bounded. Real instrumented/uninstrumented
+controls protect success/refusal independently. Linux ARM64 process controls do not establish the
+cause of an unreproduced hosted x86-64 failure; keep that distinction explicit.
