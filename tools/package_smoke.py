@@ -21,6 +21,7 @@ from typing import Any
 from jsonschema import Draft202012Validator
 
 from deps import ROOT, safe_extract
+from documentation import local_link_errors
 from method_metadata import support_matrix
 from package_inspection import binary_identity, contents, differences, expected_files, imports
 from project_version import project_version
@@ -124,6 +125,7 @@ def smoke(root: Path, build: Path) -> list[str]:
             for name, data in expected_files(build, exe.name).items()
         },
     )
+    failures += local_link_errors(package / "share/docenhance")
     failures += macos_minimum_errors(exe)
     if failures:
         return failures

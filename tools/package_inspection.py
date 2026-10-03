@@ -53,8 +53,24 @@ def expected_files(build: Path, executable: str) -> dict[str, bytes]:
         )
         expected = {f"share/docenhance/{name}": data for name, data in contents(directory).items()}
     expected[f"bin/{executable}"] = (build / "bin" / executable).read_bytes()
-    for name in ("LICENSE", "README.md"):
-        expected[name] = (ROOT / name).read_bytes()
+    expected["LICENSE"] = (ROOT / "LICENSE").read_bytes()
+    for name in (
+        "README.md",
+        "LICENSE",
+        "AGENTS.md",
+        "CONTRIBUTING.md",
+        "CHANGELOG.md",
+        "fuzz/README.md",
+        ".github/SECURITY.md",
+        ".github/CODE_OF_CONDUCT.md",
+    ):
+        expected[f"share/docenhance/{name}"] = (ROOT / name).read_bytes()
+    expected.update(
+        {
+            f"share/docenhance/docs/{p.relative_to(ROOT / 'docs').as_posix()}": p.read_bytes()
+            for p in (ROOT / "docs").rglob("*.md")
+        }
+    )
     for name in ("cli-contract.json", "method-contract.json"):
         expected[f"share/docenhance/spec/{name}"] = (ROOT / "spec" / name).read_bytes()
     expected.update(

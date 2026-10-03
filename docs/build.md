@@ -10,18 +10,24 @@ admission uses an explicit classic locale and does not require floating `from_ch
 An optional developer installation route uses an isolated Python environment:
 
 ```sh
-python3 -m venv .venv
-. .venv/bin/activate
+python3 -m venv ../docenhance-tools
+. ../docenhance-tools/bin/activate
 python tools/install_build_tools.py
 ```
 
 Windows PowerShell equivalents:
 
 ```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+py -3 -m venv ..\docenhance-tools
+..\docenhance-tools\Scripts\Activate.ps1
 python tools/install_build_tools.py
 ```
+
+Keep this environment outside the source and build trees. Installing CMake under either tree
+makes its own modules subject to the project's strict uninitialized-variable diagnostics;
+configuration refuses that layout with an actionable error. Lint-only environments may remain
+inside the checkout. Activate the build environment before the first configure so CMake selects
+its pinned Python validator; a failed configure may retain a different Python path in its cache.
 
 The explicit installer reads the version pins rather than carrying a second list. It installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
 
@@ -132,11 +138,21 @@ Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --t
 ## Native packaging
 
 ```sh
-cmake --workflow --preset release
+# Select the platform release compiler, separately from the analysis compiler.
+# Linux:
+CC=gcc CXX=g++ cmake --workflow --preset release
+# macOS:
+CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake --workflow --preset release
 python tools/package_smoke.py dist/docenhance-<project-version>-Linux-x86_64.tar.gz --build out/release/app
 ```
 
-Use the actual platform-specific filename written by CPack. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates only the application and its metadata; upstream command-line tools, tests, compilers and Python are not included. A separate relocated-package smoke test is mandatory in CI.
+On macOS the platform compiler is `/usr/bin/clang` and `/usr/bin/clang++`; on Linux use
+`CC=gcc CXX=g++`. On Windows run the release workflow in the Visual Studio developer shell.
+Do not retain exported analysis compiler choices when configuring a fresh release tree.
+Use the actual platform-specific filename written by CPack. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates the application, its metadata and the reviewed Markdown documentation under
+`share/docenhance/`, including its README and linked contracts. It does not include build sources;
+source-path examples in contributor documentation require the separate source distribution.
+Packaging creates no other application tools; upstream command-line tools, tests, compilers and Python are not included. A separate relocated-package smoke test is mandatory in CI.
 
 The version comes only from the top-level `project(... VERSION ...)` command. Substitute the value
 shown by `docenhance version` for `<project-version>` above; do not maintain it separately in this
@@ -183,8 +199,12 @@ those inputs requires a fresh tree. Old unbound caches are refused without migra
 worker counts and fuzz duration may change without changing native compilation identity.
 
 `DE_BUILD_TESTS` and isolated fuzzing own test registration. `BUILD_TESTING` is not an application
-option. Required warnings and clang-tidy cannot be disabled. Ambient compile/link flags, toolchain
-files, cross-compilation, compiler launchers and nondefault CMake flags are refused rather than
+option. Required warnings and clang-tidy cannot be disabled. Ambient compile/link flags and compiler search overrides (`CPATH`, language include paths,
+`LIBRARY_PATH`, `COMPILER_PATH`, `GCC_EXEC_PREFIX`, `CL`, `_CL_`, `LINK`, `_LINK_`, `CCC_OVERRIDE_OPTIONS`) are
+refused at configure and every application/outer build. Compiler selection (`CC`/`CXX`) and the
+Windows developer shell's SDK include/library paths remain supported. This is environment
+confinement, not protection from a compromised compiler, SDK, executable search path or build tree.
+Toolchain files, cross-compilation, compiler launchers and nondefault CMake flags are refused rather than
 ignored between the parent and child builds. macOS uses the single native architecture and the
 exact reviewed deployment target; the selected SDK is forwarded to every child. The release
 compiler is GNU on Linux, AppleClang on macOS and MSVC on Windows. Analysis uses LLVM's supported

@@ -32,7 +32,8 @@ OpenCV 5 changed its dependency graph: `photo` requires `geometry`, which requir
 
 Prerequisites: a current C++23 compiler and standard library, Git, Python 3.12 or later **for development tooling only**, CMake 4.4 or later, and Ninja 1.13 or later. `dev`, `sanitize` and `tsan` require the supported LLVM clang major declared in `deps/tools.json` rather than the host `c++`; install it with `python tools/install_llvm.py --compiler` and name it in `CC`/`CXX`. `release` builds with the platform's own toolchain. Native packages do not require Python. NASM is optional for libjpeg-turbo's x86 SIMD; the upstream non-SIMD fallback is permitted.
 
-With the prerequisites available, run from the repository root:
+Install and activate the external tool environment in the [build guide](docs/build.md), then run
+from the source root (a Git checkout or an extracted source archive):
 
 ```sh
 # Explicit, separately authorized online acquisition; checks immutable release pins.
@@ -44,8 +45,9 @@ export CC=clang-23 CXX=clang++-23
 # Offline configure → isolated native dependency build → application → tests.
 cmake --workflow --preset dev
 
-# Build, test and package for local validation; this does not publish a binary.
-cmake --workflow --preset release
+# Select the platform compiler for a fresh release tree (not the exported analysis compiler).
+# macOS: CC=/usr/bin/clang CXX=/usr/bin/clang++
+CC=gcc CXX=g++ cmake --workflow --preset release
 ```
 
 The executable is written to `out/dev/app/bin/docenhance` (`docenhance.exe` on Windows). Use a Visual Studio C++ developer shell on Windows. The complete [build guide](docs/build.md) covers tool installation, compiler selection, sanitizers, package smoke tests and failure recovery.
@@ -79,7 +81,7 @@ out/dev/app/bin/docenhance methods --json
 out/dev/app/bin/docenhance process --help --json
 ```
 
-`methods` reports I01 illumination, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
+`methods` reports I01 illumination, D01 denoising, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout

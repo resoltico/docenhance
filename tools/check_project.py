@@ -14,6 +14,7 @@ from typing import Any
 from check_all import CHECKS
 from check_gates import code_files, iter_files
 from deps import ROOT, load_lock
+from documentation import local_link_errors
 from fuzz_manifest import inventory_errors
 from project_version import VersionError, project_version
 
@@ -115,14 +116,7 @@ def metadata_errors() -> list[str]:
 
 def link_errors() -> list[str]:
     """Concrete repository-relative Markdown links, excluding URLs and heading anchors."""
-    errors = []
-    for path in [*ROOT.glob("*.md"), *(ROOT / "docs").rglob("*.md")]:
-        for link in re.findall(r"\]\(([^)\s]+)\)", path.read_text(encoding="utf-8")):
-            target = link.split("#", 1)[0]
-            external = "://" in link or link.startswith(("#", "mailto:"))
-            if not external and target and not (path.parent / target).exists():
-                errors.append(f"Broken local link: {path.relative_to(ROOT)} -> {link}")
-    return errors
+    return local_link_errors(ROOT)
 
 
 def toolchain_errors() -> list[str]:

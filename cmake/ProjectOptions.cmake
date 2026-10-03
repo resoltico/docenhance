@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MIT
 include_guard(GLOBAL)
+add_custom_target(de_build_environment
+  COMMAND "${CMAKE_COMMAND}" -P "${CMAKE_CURRENT_LIST_DIR}/BuildEnvironment.cmake" VERBATIM)
 add_library(de_project_options INTERFACE)
 add_library(DocEnhance::options ALIAS de_project_options)
 target_compile_features(de_project_options INTERFACE cxx_std_${DE_CXX_STANDARD})
@@ -103,6 +105,7 @@ if(DE_ENABLE_CLANG_TIDY)
   endif()
 endif()
 function(de_apply_options target)
+  add_dependencies(${target} de_build_environment)
   target_link_libraries(${target} PRIVATE DocEnhance::options)
   if(DE_ENABLE_IPO)
     set_property(TARGET ${target} PROPERTY INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
