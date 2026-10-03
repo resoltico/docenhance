@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: MIT
 // Deliberate faults in isolated test processes; never linked into product execution.
 #include <array>
+#include <atomic>
 #include <charconv>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
 #include <exception>
-#include <latch>
 #include <memory>
 #include <span>
 #include <string_view>
@@ -41,21 +41,27 @@ int arithmetic(const char* const value_text) {
     return 0;
 }
 int race() {
-    int shared = 0;
-    std::latch ready{2};
-    auto first = std::thread{[&] {
-        ready.arrive_and_wait();
-        shared = 1;
+    constexpr std::size_t write_count = 16384;
+    // Volatile preserves the deliberate accesses; it does not synchronize them.
+    volatile int shared = 0;
+    std::atomic<bool> ready{false};
+    auto writer = std::thread{[&] {
+        ready.store(true, std::memory_order_relaxed);
+        for (std::size_t index = 0; index < write_count; ++index) {
+            shared = 1;
+        }
     }};
-    auto second = std::thread{[&] {
-        ready.arrive_and_wait();
+    // A relaxed handshake establishes readiness, never ordering for shared.
+    while (!ready.load(std::memory_order_relaxed)) {
+    }
+    for (std::size_t index = 0; index < write_count; ++index) {
         shared = 2;
-    }};
-    first.join();
-    second.join();
+    }
+    writer.join();
     observed(shared);
     return 0;
 }
+
 int probe(std::span<char* const> args) {
     if (args.size() != 3) {
         return 2;

@@ -77,5 +77,21 @@ build tree but printed only a summary, and the hosted output could not distingui
 from absent race detection. Report both process exit codes, bounded stderr excerpts and the evidence
 directory without changing detection criteria. A controlled startup failure must remain a failure;
 its complete log is retained while CTest output remains bounded. Real instrumented/uninstrumented
-controls protect success/refusal independently. Linux ARM64 process controls do not establish the
-cause of an unreproduced hosted x86-64 failure; keep that distinction explicit.
+controls protect success/refusal independently. Linux ARM64 process controls do not establish hosted x86-64 detection; keep that distinction
+explicit. Subsequent hosted diagnostics showed benign and fault exits both zero with no race
+message, establishing missed fault detection rather than a runtime startup failure.
+
+## Race-control revision and separate challenge
+
+The two-write latch control could complete without a TSan report on hosted x86-64. Replace it
+with one worker and the calling thread, a relaxed readiness flag and 16,384 deliberate volatile
+stores per writer. Volatile keeps the accesses observable and does not make them atomic; relaxed
+readiness establishes no happens-before ordering for the shared integer. Join only after the
+calling thread's stores. Avoid arithmetic updates that could trigger UBSan instead of the intended
+race, synchronization inside the fault region, sleeps, runtime retries or accepted missing reports.
+The supervisor still requires benign execution and an actual fatal data-race diagnostic.
+
+[C++ atomic ordering](https://eel.is/c++draft/atomics.order) specifies relaxed ordering; the
+[Clang TSan example](https://clang.llvm.org/docs/ThreadSanitizer.html) likewise uses observable
+unsynchronized accesses. Repeated native process controls and an optimized build challenge
+compiler elimination and detection independently; an uninstrumented binary must still fail.
