@@ -24,7 +24,10 @@ class GitHubTransportTests(unittest.TestCase):
         for code in ("raise SystemExit(3)", "import os; os.write(1, bytes([255]))"):
             with self.subTest(code=code), self.assertRaises(ReleaseError):
                 run([sys.executable, "-c", code])
-        self.assertEqual(run([sys.executable, "-c", "print('observed')"]), "observed\n")
+        for payload in (b"observed\n", b"observed\r\n"):
+            with self.subTest(payload=payload):
+                code = f"import os; os.write(1, {payload!r})"
+                self.assertEqual(run([sys.executable, "-c", code]), payload.decode("utf-8"))
 
     def test_timeout_is_one_refusal_without_retry(self) -> None:
         """A reported transport timeout cannot silently repeat a possible remote effect."""
