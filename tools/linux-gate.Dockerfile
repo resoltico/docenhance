@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 ARG BASE_IMAGE
 FROM ${BASE_IMAGE}
 ENV DEBIAN_FRONTEND=noninteractive

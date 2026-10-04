@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Configuration-level suppression gates.
 
 Linters can be silenced from configuration as easily as from source. These checks keep every

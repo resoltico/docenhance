@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Quality gates: anti-god files, the suppression registry, and lint coverage of every file.
 
 Nothing is grandfathered. Size limits have no waiver mechanism at all. Every in-source

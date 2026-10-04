@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 include(ExternalProject)
 # Explicit source order; serial projects avoid N libraries each starting N workers.
 set(de_names ${DE_SELECTED_DEPENDENCIES})

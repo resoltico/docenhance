@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Offline structural and contract checks. Does not claim a native build succeeded."""
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -23,7 +24,7 @@ CXX_STANDARD = 23
 SPDX_WINDOW = 300
 # Machine-readable ownership on every first-party file (REUSE/SPDX).
 COPYRIGHT = "SPDX-FileCopyrightText: 2026 Ervins Strauhmanis"
-LICENSE_TAG = "SPDX-License-Identifier: MIT"
+LICENSE_TAG = "SPDX-License-Identifier: MPL-2.0"
 REQUIRED_TIDY_SETS = ("bugprone-*", "clang-analyzer-*", "cppcoreguidelines-*", "misc-*")
 PINNED_LINTERS = ("clang_tidy", "clang_format", "ruff", "mypy")
 SANITIZED_TEST_PRESETS = ("sanitize", "tsan", "fuzz", "fuzz-afl")
@@ -88,6 +89,15 @@ def metadata_errors() -> list[str]:
             if tag not in head
         )
     return errors
+
+
+def license_errors() -> list[str]:
+    """Retain Mozilla's unmodified MPL-2.0 text, independently of generated notices."""
+    # Official plaintext: https://www.mozilla.org/media/MPL/2.0/index.f75d2927d3c1.txt
+    expected = "3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04"
+    if hashlib.sha256((ROOT / "LICENSE").read_bytes()).hexdigest() != expected:
+        return ["LICENSE must contain the unmodified Mozilla MPL-2.0 text"]
+    return []
 
 
 def link_errors() -> list[str]:
@@ -156,6 +166,7 @@ def check() -> list[str]:
         *json_errors(),
         *lock_errors(),
         *metadata_errors(),
+        *license_errors(),
         *link_errors(),
         *toolchain_errors(),
         *integrity_errors(ROOT),

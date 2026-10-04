@@ -37,11 +37,13 @@ dependency-lock changes still require the review described in [CONTRIBUTING](../
 
 Publishing source is separate from shipping a binary. Before creating a reviewed, annotated `v*`
 tag, move the complete release prose from `Unreleased` under the matching dated changelog heading.
-The source workflow validates the tag/version match, creates the release from the tagged archive
-and checksum, and rejects any existing release whose body or assets differ; it never edits a release
-or replaces an asset. Do not attach a binary, claim that native CI passed before it has, or mark the
-release as a usable image enhancer. Release signing, binary distribution, credentials and approvals
-belong to a later distribution milestone.
+The source workflow requires exact-commit CI eligibility as described in
+[build verification](build.md), validates the tag/version match, creates the release from the
+tagged archive and checksum, and rejects any existing release whose body or assets differ; it never edits a release
+or replaces an asset. Do not attach a binary or claim that native CI passed before it has. Source
+releases provide the implemented processing described in [current capabilities](status.md); they do not certify signed
+binary distribution or document authenticity. Binary publication requires its own composition,
+signing and distribution review, including the [MPL source obligations](licensing.md).
 
 Verify the downloaded archive against both its checksum and the GitHub provenance before trusting
 or attaching it:

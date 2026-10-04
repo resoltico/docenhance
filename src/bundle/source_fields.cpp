@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"

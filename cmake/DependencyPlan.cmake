@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # The actual serial dependency closure, shared by configuration, verification and importing.
 include_guard(GLOBAL)
 set(DE_SELECTED_DEPENDENCIES zlib jpeg png)

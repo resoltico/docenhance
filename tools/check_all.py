@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Run every local check: the authoritative list used by the Git hooks.
 
 This is the one place the local check set is defined. `.pre-commit-config.yaml` invokes this

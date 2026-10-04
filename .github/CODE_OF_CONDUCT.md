@@ -16,6 +16,6 @@ Issues and pull requests are public. Never attach real documents containing pers
 
 ## Enforcement
 
-The maintainer, Ervins Strauhmanis, is responsible for this standard and may edit, hide or remove contributions that violate it, and may block accounts that continue after a warning. Concerns can be raised privately through the repository's private reporting channels; reports are handled as confidentially as the platform allows.
+The maintainer, Ervins Strauhmanis, is responsible for this standard and may edit, hide or remove contributions that violate it, and may block accounts that continue after a warning. No separate private conduct-reporting channel is configured. Repository discussions are public; do not post sensitive personal information. The private vulnerability channel is reserved for security reports.
 
 This code of conduct applies in the repository and in any project space where someone represents the project.

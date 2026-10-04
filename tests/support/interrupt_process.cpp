@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Process test: same production interrupt bridge/CLI/host, but readiness precedes dispatch.
 // No testing option or progress output is added to the shipped executable.
 #include "docenhance/cli/run.hpp"

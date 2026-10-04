@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Ruff (lint + format) for the development-only Python tooling. Strict profile: every rule is
 # enabled and each ignored code carries its reason on the same line; tools/check_gates.py rejects
 # ignores without one. Version pinned in deps/tools.json.

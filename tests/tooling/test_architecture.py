@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Tests for the layer manifest and the rules that read it.
 
 The rules that need a configured build are exercised by the `architecture` test inside the build.

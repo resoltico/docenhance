@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Explicit online install of the pinned LLVM tools for CI runners and fresh machines.
 
 Installs clang-tidy and clang-query; --compiler also installs the selected-major clang and

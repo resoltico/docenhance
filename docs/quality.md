@@ -18,7 +18,7 @@ cmake --workflow --preset tsan               # the suite under ThreadSanitizer
 cmake --workflow --preset fuzz               # strict complete fuzz campaign, including PNG
 ```
 
-These presets declare `DE_TOOLCHAIN=pinned`, so configure fails rather than falling back to the
+These presets declare `DE_TOOLCHAIN=analysis`, so configure fails rather than falling back to the
 host `c++`. That matters most on macOS, where `c++` is Apple clang and implements fewer `-Wextra`
 diagnostics than the compilers the required jobs use. Only `release` builds with the platform's
 own toolchain; [build and developer workflows](build.md#the-compiler-contract-every-preset-states)

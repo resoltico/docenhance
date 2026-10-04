@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Independent first-party reference test runner; not an alternative application build.
 #include "architecture_cases.hpp"
 #include "pipeline_cases.hpp"

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Compile and run the dependency-free reference suites with any compiler.
 
 Which sources those are is not a list kept here: it is every layer that spec/architecture.json

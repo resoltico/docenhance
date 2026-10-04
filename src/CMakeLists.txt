@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Every target here declares the layer it belongs to. cmake/ArchitectureChecks.cmake checks each
 # link against spec/architecture.json, so the allowed edges are stated once, in the manifest.
 set(DE_INCLUDE "${PROJECT_SOURCE_DIR}/include/docenhance")

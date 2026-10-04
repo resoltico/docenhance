@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """D01 executable composition, protection, fidelity and complete current record refusal."""
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Exclusive preparation of owned cache state; readers never adopt an incomplete writer."""
 
 from __future__ import annotations

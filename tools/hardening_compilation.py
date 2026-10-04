@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Check actual C/C++ compiler commands against the owning reviewed hardening policy."""
 
 from __future__ import annotations

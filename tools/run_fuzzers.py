@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Run one bounded harness and retain corpus provenance, statistics, logs and findings.
 
 Every invocation creates a new owned directory. No old evidence is removed and no inputs are

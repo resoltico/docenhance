@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Verify sanitizer and coverage in the actual imported JPEG/PNG/zlib/LCMS archives."""
 
 from __future__ import annotations

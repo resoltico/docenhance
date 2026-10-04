@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 cmake_minimum_required(VERSION 4.4)
 project(DocEnhanceZlib LANGUAGES C)
 if(NOT DOCENHANCE_ZLIB_STREAM_ONLY OR ZLIB_BUILD_SHARED OR ZLIB_BUILD_TESTING)

@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (licensing):** first-party work in v0.6.0 uses MPL-2.0. Earlier MIT releases and public commits retain their grants; upstream licenses remain unchanged. Distributors must preserve notices and provide covered source when distributing binaries; see [licensing](docs/licensing.md).
+
 - **Breaking (native build):** compiler hardening is mandatory for project code and compiled dependencies; recreate build trees and private prefixes. The private zlib build excludes unused gzip-file APIs and is not a general-purpose zlib SDK. Package verification requires native binary inspection tools and checks protection markers separately from actual compiler-command propagation. PNG bootstrap, refusal and cancellation use caller-owned jump storage and direct error-adapter jumps so native control-flow guards can remain enabled without crossing C++ resource owners.
 
 - Source publication requires the latest direct full `Quality gates` run and complete attempt for the exact tagged commit. Wait for successful main-push or manual CI before tagging; PR merge-checkout results, source checks and attestations are insufficient. Pending, failed, skipped, missing or changed evidence refuses publication; later refusal can leave an unpublished draft for reconciliation.

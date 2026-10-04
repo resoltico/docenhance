@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Generated from spec/method-contract.json by tools/generate_spec.py.
 #pragma once
 #include "docenhance/methods/catalog.hpp"

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Fuzz targets (docs/quality.md). The harnesses are engine-agnostic LLVMFuzzerTestOneInput
 # entry points, built here for libFuzzer or AFL++; tests/CMakeLists.txt also replays their corpora
 # in every normal build. Fuzz builds are strict: ASan and UBSan with every report fatal.

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Dependency lock validation and cache verification. Never opens a network connection.
 
 Git entries pin the *tag object*, not merely a mutable tag name. Archive entries

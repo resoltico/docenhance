@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Every suppression syntax is found, attributed to its rules, or rejected outright."""
 
 from __future__ import annotations

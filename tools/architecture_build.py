@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """The architecture rules that are checked against a configured build.
 
 A checker that greps source text is easy to fool: a comment, a string, a macro, a type alias or a

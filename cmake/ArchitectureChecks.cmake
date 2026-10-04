@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Link-edge enforcement, driven by spec/architecture.json rather than by lists repeated here.
 # Every first-party target registers its layer, its files and its links; a link outside the layer's
 # declared dependencies or declared packages fails the configure step. The same registration is

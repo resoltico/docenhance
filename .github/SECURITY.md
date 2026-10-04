@@ -9,7 +9,7 @@ PNG/JPEG processing, bundle verification and explicit unsupported domains.
 
 ## Reporting a vulnerability
 
-Report privately through GitHub's private vulnerability reporting on this repository, not in a public issue or pull request. The repository owner must enable that feature before reports can arrive; no email address is published, and no unverified address should be trusted as a contact for this project.
+Report privately through GitHub's private vulnerability reporting on this repository, not in a public issue or pull request. Private reporting is enabled at [Report a vulnerability](https://github.com/resoltico/docenhance/security/advisories/new); no email address is published, and no unverified address should be trusted as a contact for this project.
 
 Please include the platform, compiler and build preset, the exact command, and a reproducing input file where one exists. A crashing input is the most useful thing you can send: fixes land together with the reproducer in `fuzz/regressions/`, so every build re-checks the defect afterwards.
 

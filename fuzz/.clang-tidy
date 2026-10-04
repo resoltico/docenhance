@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Fuzz-harness relaxations; every disabled check is named with its reason:
 #   cppcoreguidelines-avoid-magic-numbers, readability-magic-numbers
 #       Harness properties compare against literal bounds and tolerances from the specification

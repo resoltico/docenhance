@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 include_guard(GLOBAL)
 function(de_require_owned_dependency_path path role)
   file(REAL_PATH "${DE_DEPENDENCY_PREFIX}" prefix)

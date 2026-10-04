@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 #include "bundle_stage.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/bundle.hpp"

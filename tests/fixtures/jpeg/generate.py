@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Independent, small JPEG writer: explicit DCT coefficients and canonical Huffman codes.
 
 No native encoder is used. Fixtures test decoded coefficients, not a lossy round trip.

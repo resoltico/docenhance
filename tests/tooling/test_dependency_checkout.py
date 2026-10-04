@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Pinned Git source bytes do not inherit platform-native text checkout policies."""
 
 from __future__ import annotations

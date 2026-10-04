@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Compile a checked allocation-order correction without modifying the locked source cache.
 if(NOT DOCENHANCE_OPENCV_OWNED_MAT_STORAGE)
   message(FATAL_ERROR "D01 requires the reviewed Mat allocation ownership correction")

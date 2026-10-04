@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Fuzzing of the complete command line: argument parsing (CLI11), validation and dispatch.
 // Properties: only contract exit codes; exactly one well-formed JSON object in JSON mode, with
 // nothing on stderr; errors on stderr in text mode; JSON errors whenever an exact --json option

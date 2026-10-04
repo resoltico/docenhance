@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 include_guard(GLOBAL)
 option(DE_SUPERBUILD "Build isolated, locked dependencies and then the application" ON)
 option(DE_BUILD_TESTS "Build application and native dependency tests" ON)

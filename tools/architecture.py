@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """The layer manifest, and the rules that can be checked without a build.
 
 `spec/architecture.json` is the single statement of the layer graph: which layers exist, which

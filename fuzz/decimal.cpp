@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Fuzzing of contract::parse_finite. Acceptance must match an independent grammar (a regular
 // expression, not the parser's scanner); accepted values must be finite, in range and exactly the
 // correctly rounded conversion; invalid bounds are invariant errors, never argument errors.

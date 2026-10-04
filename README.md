@@ -2,7 +2,7 @@
 
 **Local document-image restoration. CPU only. No neural networks.**
 
-A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MIT-licensed.
+A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MPL-2.0-licensed.
 
 > **Capability boundary: PNG/JPEG input to continuous-tone PNG representation, opt-in I01 illumination and D01 denoising, and two binarizers.**
 > `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
@@ -123,7 +123,7 @@ See [CONTRIBUTING](CONTRIBUTING.md), [AGENTS](AGENTS.md), the [security policy](
 
 ## License
 
-DocEnhance is copyright 2026 Ervins Strauhmanis and MIT-licensed; bundled dependencies retain their own licenses. See [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md). The repository contains no vendored dependency sources or compiled libraries. Native-package generation copies original upstream license texts and emits a declared-source SPDX inventory; final binary-composition and distribution review remains a release requirement.
+DocEnhance is copyright 2026 Ervins Strauhmanis and MPL-2.0-licensed; bundled dependencies retain their own licenses. Starting with the upcoming v0.6.0, current first-party work uses MPL-2.0; previous MIT grants remain valid. See [licensing and distribution](docs/licensing.md), [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md). The repository contains no vendored dependency sources or compiled libraries. Native-package generation copies original upstream license texts and emits a declared-source SPDX inventory; final binary-composition and distribution review remains a release requirement.
 
 Explicit luminance denoising composes after illumination and before final quantization:
 
