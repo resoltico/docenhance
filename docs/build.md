@@ -258,3 +258,19 @@ Python CI jobs execute the minimum declared in `deps/tools.json`; source checks 
 setup declarations and the Ruff/mypy targets with that authority. Local environments may use
 newer supported Python versions. A cached obsolete `BUILD_TESTING` value is refused; select a
 fresh native tree and private prefix rather than migrating its configuration.
+
+## Source publication eligibility
+
+Before pushing a public release tag, wait for complete successful `Quality gates` execution on
+its exact committed source through a direct main push or manual workflow run. A passing PR run
+can test a merge checkout and does not establish release eligibility for its branch head. The
+publisher checks the latest direct run and its exact attempt, including every required native,
+sanitizer and fuzz job plus the aggregate; missing, pending, failed, skipped, duplicated or changed
+evidence refuses publication. CI checkouts explicitly select their immutable event SHA.
+
+Publication rechecks CI and remote tag identity before writes and final read-back. Early refusal
+creates no release; refusal after asset uploads leaves an unpublished draft to reconcile with the
+same immutable artifacts. A transport timeout is not proof that a remote write had no effect.
+The publishing job has contents-write and Actions-read permissions; source quality alone and a
+provenance attestation cannot substitute for full execution evidence. Repository Actions require
+full commit-SHA pinning, separately from the checked workflow source.

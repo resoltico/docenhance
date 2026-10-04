@@ -13,6 +13,7 @@ import subprocess
 from typing import TYPE_CHECKING, cast
 
 from changelog import ReleaseError, require
+from release_eligibility import require_quality
 from release_publication import record
 
 if TYPE_CHECKING:
@@ -123,6 +124,11 @@ class GitHubAPI:
             target = record(annotated.get("object"))
         message = "Annotated tag nesting exceeds the supported depth"
         raise ReleaseError(message)
+
+    def verify_quality(self, commit: str) -> None:
+        """Require the exact commit's complete direct CI before any release effect."""
+        require("Invalid release commit", condition=COMMIT.fullmatch(commit) is not None)
+        require_quality(self.request, self.base, commit)
 
     def releases(self) -> list[Record]:
         """Return all repository releases."""

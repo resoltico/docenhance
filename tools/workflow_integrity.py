@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
+from ci_contract import JOB_TITLES, NATIVE_RUNNERS, SANITIZERS, require_workflow_coverage
 from workflow_config import python_errors, workflow
 
 if TYPE_CHECKING:
@@ -23,13 +24,6 @@ NATIVE_SMOKE = (
     'test "${#packages[@]}" = 1\n'
     'python tools/package_smoke.py "${packages[0]}" --build out/release/app'
 )
-NATIVE_RUNNERS = {
-    "linux-x86_64": "ubuntu-24.04",
-    "linux-arm64": "ubuntu-24.04-arm",
-    "macos-arm64": "macos-26",
-    "macos-x86_64": "macos-26-intel",
-    "windows-x86_64": "windows-2025-vs2026",
-}
 
 
 def required_step(
@@ -91,7 +85,7 @@ def require_strategy(job: dict[str, Any], matrix: dict[str, Any]) -> None:
 def sanitizer_job(document: dict[str, Any], major: str) -> None:
     """Both whole-suite sanitizer modes use actual pinned build-step environment."""
     job = required_job(document, "sanitize")
-    require_strategy(job, {"preset": ["sanitize", "tsan"]})
+    require_strategy(job, {"preset": list(SANITIZERS)})
     required_step(job, "python tools/install_build_tools.py")
     required_step(job, "python tools/install_llvm.py --fuzzing")
     required_step(job, "cmake -P cmake/AcquireDependencies.cmake")
@@ -137,7 +131,7 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
 
 def aggregate_job(document: dict[str, Any]) -> None:
     """The always-running aggregate refuses every non-success result from every required job."""
-    names = {"structural", "native", "fuzz", "sanitize"}
+    names = set(JOB_TITLES) - {"gate"}
     gate = document["jobs"]["gate"]
     if set(document["jobs"]) != names | {"gate"} or set(gate.get("needs", [])) != names:
         msg = "Aggregate must depend on every required quality job"
@@ -169,6 +163,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     }:
         msg = "Required quality workflow must run on every PR and main push"
         raise ValueError(msg)
+    require_workflow_coverage(document)
     structural = required_job(document, "structural")
     for command in (
         SOURCE_GATE,
@@ -274,9 +269,13 @@ def integrity_errors(root: Path) -> list[str]:
                 )
                 required_step(source, "python tools/install_llvm.py --compiler")
                 required_step(source, "python tools/package_source.py")
-                required_step(
-                    document["jobs"]["publish"], "python tools/publish_source_release.py --check"
+                publish = document["jobs"]["publish"]
+                errors.extend(
+                    ["Publication requires contents-write and Actions-read only"]
+                    if publish.get("permissions") != {"contents": "write", "actions": "read"}
+                    else []
                 )
+                required_step(publish, "python tools/publish_source_release.py --check")
         except (yaml.YAMLError, ValueError, TypeError, KeyError, AttributeError) as error:
             errors.append(f"{path.name}: {error}")
     if not errors:

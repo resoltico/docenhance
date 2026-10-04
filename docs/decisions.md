@@ -327,3 +327,11 @@ I/O establishes publication origin by native directory ownership; the host valid
 one callback before and after commit. Retire partial-record reopening and its observation enum.
 Keep trusted-ancestor and equally privileged mutation limits explicit: pathname rename/unlink cannot
 atomically compare an expected object identifier. See [filesystem identity](filesystem-identity-audit.md).
+
+## Release admission requires direct execution evidence
+
+One reviewed CI coverage authority drives workflow checks and remote release admission. PR head
+metadata can identify a branch while its checkout tests a merge; release eligibility therefore
+uses direct exact-commit runs and their complete current attempt. Recheck before release effects
+and read-back, preserve unpublished drafts on later refusal, and never overwrite mismatched remote
+assets or mistake transport failure for proof of no effect. See [publication eligibility](build.md#source-publication-eligibility).
