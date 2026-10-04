@@ -52,21 +52,6 @@ class BinaryHardeningTests(unittest.TestCase):
                 ("DYN", "RW", "GNU_RELRO", "BIND_NOW", "PIE"),
             ),
             "Darwin": ("ARM64 EXECUTE PIE", "___stack_chk_fail", ("EXECUTE", "PIE")),
-            "Windows": (
-                (
-                    "Dynamic base\nHigh Entropy Virtual Addresses\nNX compatible\nGuard\n"
-                    "CF Instrumented\nFID table present\n0000140123456780 Security Cookie"
-                ),
-                "",
-                (
-                    "Dynamic base",
-                    "High Entropy Virtual Addresses",
-                    "NX compatible",
-                    "CF Instrumented",
-                    "FID table present",
-                    "0000140123456780",
-                ),
-            ),
         }
         for system, (headers, symbols, required) in fixtures.items():
             self.assertEqual(markers(system, headers, symbols), [])
@@ -83,6 +68,25 @@ class BinaryHardeningTests(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             markers("unknown", "", "")
+
+    def test_windows_numeric_flags_and_tables(self) -> None:
+        """Real PE fields establish protection regardless of dumpbin descriptive capitalization."""
+        headers = (
+            "4160 DLL characteristics\n17500 Guard Flags\n"
+            "1400021D8 Guard CF function table\nB Guard CF function count\n"
+            "140003000 Security Cookie\nCF instrumented\nFID table present\n"
+        )
+        self.assertEqual(markers("Windows", headers, ""), [])
+        self.assertEqual(markers("Windows", headers.swapcase(), ""), [])
+        self.assertEqual(markers("Windows", headers + "17500 Guard Flags\n", ""), [])
+        for bit in (0x20, 0x40, 0x100, 0x4000):
+            self.assertTrue(markers("Windows", headers.replace("4160", f"{0x4160 & ~bit:X}"), ""))
+        for bit in (0x100, 0x400):
+            self.assertTrue(markers("Windows", headers.replace("17500", f"{0x17500 & ~bit:X}"), ""))
+        for value in ("1400021D8", "B Guard CF function count", "140003000"):
+            self.assertTrue(markers("Windows", headers.replace(value, "0"), ""))
+        self.assertTrue(markers("Windows", headers + "0 Guard Flags\n", ""))
+        self.assertTrue(markers("Windows", "Guard\nCF Instrumented\nFID table present", ""))
 
     def test_real_native_flags_and_binary(self) -> None:
         """The production CMake interface compiles and links an actual protected executable."""
@@ -136,7 +140,7 @@ de_apply_options(probe)
             executable = build / ("probe.exe" if platform.system() == "Windows" else "probe")
             observed = errors(executable)
             diagnostics = (
-                inspect("dumpbin", ["/HEADERS", "/LOADCONFIG"], executable)[-8000:]
+                inspect("dumpbin", ["/HEADERS", "/LOADCONFIG"], executable)
                 if observed and platform.system() == "Windows"
                 else str(observed)
             )

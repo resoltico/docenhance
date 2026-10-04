@@ -14,6 +14,26 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
+DLL_HIGH_ENTROPY = 0x0020
+DLL_DYNAMIC_BASE = 0x0040
+DLL_NX_COMPAT = 0x0100
+DLL_GUARD_CF = 0x4000
+GUARD_CF_INSTRUMENTED = 0x0100
+GUARD_CF_TABLE_PRESENT = 0x0400
+
+
+def hex_field(headers: str, label: str) -> int:
+    """Read actual PE field values; repeated identical tool sections are harmless."""
+    values = {
+        int(value, 16)
+        for value in re.findall(
+            rf"^\s*([0-9a-f]+)\s+{re.escape(label)}\s*$",
+            headers,
+            flags=re.IGNORECASE | re.MULTILINE,
+        )
+    }
+    return values.pop() if len(values) == 1 else 0
+
 
 def inspect(tool: str, arguments: list[str], executable: Path) -> str:
     """Missing inspection tools or failed inspection cannot establish protection."""
@@ -27,7 +47,7 @@ def inspect(tool: str, arguments: list[str], executable: Path) -> str:
         text=True,
         check=True,
         timeout=30,
-        env={**os.environ, "LC_ALL": "C"},
+        env={**os.environ, "LC_ALL": "C", "VSLANG": "1033"},
     )
     return result.stdout
 
@@ -50,17 +70,18 @@ def markers(system: str, headers: str, symbols: str) -> list[str]:
             "stack canary": "___stack_chk_fail" in symbols,
         }
     elif system == "Windows":
+        characteristics = hex_field(headers, "DLL characteristics")
+        guard = hex_field(headers, "Guard Flags")
+        guard_required = GUARD_CF_INSTRUMENTED | GUARD_CF_TABLE_PRESENT
         requirements = {
-            "ASLR": "Dynamic base" in headers,
-            "high entropy ASLR": "High Entropy Virtual Addresses" in headers,
-            "nonexecuting data": "NX compatible" in headers,
-            "control-flow guard": "Guard" in headers
-            and "CF Instrumented" in headers
-            and "FID table present" in headers,
-            "stack cookie": re.search(
-                r"\b[0-9A-Fa-f]*[1-9A-Fa-f][0-9A-Fa-f]* Security Cookie\b", headers
-            )
-            is not None,
+            "ASLR": bool(characteristics & DLL_DYNAMIC_BASE),
+            "high entropy ASLR": bool(characteristics & DLL_HIGH_ENTROPY),
+            "nonexecuting data": bool(characteristics & DLL_NX_COMPAT),
+            "control-flow guard": bool(characteristics & DLL_GUARD_CF)
+            and guard & guard_required == guard_required
+            and hex_field(headers, "Guard CF function table") != 0
+            and hex_field(headers, "Guard CF function count") != 0,
+            "stack cookie": hex_field(headers, "Security Cookie") != 0,
         }
     else:
         message = f"Executable hardening inspection is undefined for {system}"
