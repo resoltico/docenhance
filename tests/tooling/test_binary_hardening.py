@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 from tools_path import ROOT
 
-from binary_hardening import errors, markers
+from binary_hardening import errors, inspect, markers
 from hardening_compilation import command_errors
 from hardening_compilation import errors as compilation_errors
 
@@ -91,8 +91,11 @@ class BinaryHardeningTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="hardening-control-") as temporary:
             source = Path(temporary)
             (source / "main.cpp").write_text(
+                "int destination(int value);\n"
+                "int destination(int value) { return value; }\n"
                 "int main(int argc, char** argv) { volatile char buffer[32] = {0};\n"
-                "buffer[argc % 32] = argv[0][0]; return buffer[0]; }\n"
+                "buffer[argc % 32] = argv[0][0];\n"
+                "int (*volatile invoke)(int) = &destination; return invoke(buffer[0]); }\n"
             )
             (source / "CMakeLists.txt").write_text(f"""cmake_minimum_required(VERSION 4.4)
 project(Hardening CXX)
@@ -131,7 +134,13 @@ de_apply_options(probe)
             for flag in required:
                 self.assertIn(flag, commands[0]["command"])
             executable = build / ("probe.exe" if platform.system() == "Windows" else "probe")
-            self.assertEqual(errors(executable), [])
+            observed = errors(executable)
+            diagnostics = (
+                inspect("dumpbin", ["/HEADERS", "/LOADCONFIG"], executable)[-8000:]
+                if observed and platform.system() == "Windows"
+                else str(observed)
+            )
+            self.assertEqual(observed, [], diagnostics)
             policy = build / "hardening-policy.json"
             self.assertEqual(compilation_errors(build, policy), [])
             commands[0]["command"] = commands[0]["command"].replace(required[0], "")
