@@ -41,7 +41,7 @@ timeout and complete-result reconciliation remains required.
 
 ## Local Linux verification with Docker
 
-On macOS and Windows, `python tools/check_all.py` and the local Git hook now require the Linux
+On macOS and Windows, `python tools/check_all.py` and the local Git hook require the Linux
 Docker gate. Run it separately with `python tools/check_linux.py`. Missing Docker, an unavailable
 daemon, image preparation failure or any failed native check fails the gate; none is a skipped pass.
 Linux hosts keep the source check list without recursively starting another container.

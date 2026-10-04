@@ -156,7 +156,7 @@ The full contract and separate design QA are in [cancellation](cancellation.md).
 
 ## Output representation is not an enhancement method
 
-Admission now distinguishes a continuous-tone representation operation from binary segmentation.
+Admission distinguishes a continuous-tone representation operation from binary segmentation.
 The new `color` adapter owns context-local Little CMS resources; `image` owns native-library-free
 raster/option/report types; `io` owns PNG framing, metadata and sample decoding. The host composes
 those effects. No filter is advertised for a color/profile conversion. B02/B03 remain stored-sample
@@ -185,7 +185,7 @@ admissible gain could correct is not illumination evidence, so no new tuning par
 Defaults are chosen from measured fixtures, favoring complete correction bounded by the gain cap.
 
 Automatic predicates can skip an unsuitable image but cannot turn solver/resource failures into
-successful skips. Keep illumination off by default; the old blueprint's balanced preset is not
+successful skips. Keep illumination off by default; the planned balanced preset is not
 implemented. Preserve B02/B03 stored-sample definitions and reject illumination on that branch.
 See [illumination](illumination.md) for parameters, coverage, actual residual, bounds and tests.
 
