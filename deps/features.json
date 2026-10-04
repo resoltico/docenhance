@@ -6,7 +6,9 @@
       "ZLIB_BUILD_TESTING": false,
       "ZLIB_BUILD_SHARED": false,
       "ZLIB_BUILD_STATIC": true,
-      "ZLIB_INSTALL": true
+      "ZLIB_INSTALL": true,
+      "DOCENHANCE_ZLIB_STREAM_ONLY": true,
+      "DOCENHANCE_ZLIB_CMAKE_SHA256": "4c3a70936312909462e360ca60b509a71cbad1f651434d100a84e19b4743ccb8"
     },
     "jpeg": {
       "ENABLE_SHARED": false,

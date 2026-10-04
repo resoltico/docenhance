@@ -4,18 +4,36 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
+#include "png_context.hpp"
 #include "png_fixture.hpp"
 
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <csetjmp>
 #include <cstddef>
 #include <cstdint>
+#include <iterator>
 #include <span>
 #include <vector>
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t codec_budget = std::size_t{8} * 1024 * 1024;
+bool native_png_refusal(const io::PngContext& context) {
+    // Every resource owner is in the test's caller, outside this jump frame.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4611)
+#endif
+    // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
+    if (setjmp(std::begin(context.memory.jump)) != 0) {
+        return true;
+    }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+    png_error(context.png, "controlled native PNG refusal");
+}
 GrayFixture sample_fixture(unsigned depth, bool interlaced, std::uint32_t width) {
     GrayFixture fixture{
         .width = width,
@@ -60,6 +78,21 @@ void check_filters(GrayFixture fixture) {
     }
 }
 } // namespace
+TEST_CASE("A protected PNG error returns to its native frame and refunds codec ownership",
+          "[png][ownership]") {
+    core::Budget budget{codec_budget};
+    {
+        io::PngContext context{budget, false};
+        REQUIRE(context.png != nullptr);
+        REQUIRE(context.info != nullptr);
+        REQUIRE(budget.used() > 0);
+        REQUIRE(native_png_refusal(context));
+        const auto error = context.error(core::ErrorCode::input);
+        CHECK(error.code == core::ErrorCode::input);
+        CHECK(error.message == "controlled native PNG refusal");
+    }
+    CHECK(budget.used() == 0);
+}
 TEST_CASE("Independent PNG fixtures preserve every grayscale sample and Adam7 pass", "[png]") {
     for (const unsigned depth : {1U, 2U, 4U, 8U}) {
         for (const bool interlaced : {false, true}) {

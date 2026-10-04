@@ -12,6 +12,7 @@ foreach(name IN LISTS de_names)
   list(APPEND de_verify_commands COMMAND ${de_verify})
 endforeach()
 include(DependencyFeatures)
+include(NativeHardening)
 set(de_previous "")
 set(de_common
   "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
@@ -41,7 +42,9 @@ foreach(name IN LISTS de_names)
   set(de_binary "${PROJECT_BINARY_DIR}/deps/${name}")
   set(de_options)
   de_dependency_features("${name}" "${de_binary}" de_options)
-  if(name STREQUAL "picosha2" OR name STREQUAL "json")
+  de_dependency_flags("${name}" de_flags)
+  list(APPEND de_options ${de_flags})
+  if(name MATCHES "^(picosha2|json|zlib)$")
     set(de_source "${PROJECT_SOURCE_DIR}/cmake/dependencies/${name}")
     list(APPEND de_options "-DDE_UPSTREAM_SOURCE:PATH=${DE_SOURCE_CACHE}/sources/${name}")
   endif()
@@ -70,21 +73,8 @@ foreach(name IN LISTS de_names)
     # runtime in this source-only build, so explicitly use OpenCV's serial Windows path.
     list(APPEND de_options "-DOPENCV_DISABLE_THREAD_SUPPORT:BOOL=ON")
   endif()
-  if(WIN32 AND name STREQUAL "leptonica")
-    # Leptonica's setPixMemoryManager() is compiled out under MSVC unless all allocation calls
-    # are intercepted. The native probe provides the reviewed allocator symbols explicitly.
-    list(APPEND de_options "-DCMAKE_C_FLAGS:STRING=/DLEPTONICA_INTERCEPT_ALLOC")
-  endif()
   if(name STREQUAL "tiff")
     list(APPEND de_options "-DJPEG_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
-  endif()
-  if(DE_FUZZ_ONLY AND (name STREQUAL "png" OR name STREQUAL "zlib" OR name STREQUAL "lcms" OR name STREQUAL "jpeg" OR name STREQUAL "opencv"))
-    # Instrument the actual pinned C decoder/decompressor, not just the C++ adapter.
-    list(APPEND de_options
-      "-DCMAKE_C_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer")
-    if(name STREQUAL "opencv")
-      list(APPEND de_options "-DCMAKE_CXX_FLAGS:STRING=-fsanitize=address,undefined,fuzzer-no-link -fno-sanitize-recover=all -fno-omit-frame-pointer")
-    endif()
   endif()
   # Recipient contracts differ: C libraries do not consume a C++ compiler, and header-only
   # adapters do not consume compiler/CRT/PIC controls. Do not send ignored configuration.

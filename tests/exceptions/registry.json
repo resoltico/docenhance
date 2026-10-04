@@ -141,20 +141,8 @@
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@cd3cd5d9": {
       "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
     },
-    "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
-    },
-    "src/io/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
-    },
     "src/io/png_decode.cpp:msvc/4611@eab8232f": {
       "explanation": "MSVC warns for each libpng setjmp frame despite both decoder frames containing no automatic C++ object with a destructor. The warning state is restored immediately after each expression; malformed-input and allocation-failure tests exercise both jump paths."
-    },
-    "src/io/png_encode.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
-    },
-    "src/io/png_encode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
     },
     "src/io/png_encode.cpp:msvc/4611@eab8232f": {
       "explanation": "MSVC warns for every setjmp in a C++ function even when no automatic object with a destructor can be crossed. This one-statement suppression is paired with the checked libpng jump-frame design and the existing cert-err52-cpp exception registration."
@@ -171,28 +159,10 @@
     "src/io/png_protection.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@77d893c2": {
       "explanation": "A single unsigned-byte view borrows the bounded immutable encoded snapshot owned by this call. It permits the same production byte decoder to validate the original mask depth before expansion; there is no lifetime escape or native object reinterpretation. Mask and sanitizer tests cover allocation/refund and malformed inputs."
     },
-    "src/io/png_raster.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
-    },
-    "src/io/png_raster.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
-    },
     "src/io/png_raster.cpp:msvc/4611@eab8232f": {
       "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
     },
-    "src/io/png_verify_rows.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
-    },
-    "src/io/png_verify_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
-    },
     "src/io/png_verify_rows.cpp:msvc/4611@eab8232f": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
-    },
-    "src/io/png_write_rows.cpp:clang-tidy/cert-err52-cpp@9145cfbe": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
-    },
-    "src/io/png_write_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@9145cfbe": {
       "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
     },
     "src/io/png_write_rows.cpp:msvc/4611@eab8232f": {
@@ -497,6 +467,69 @@
     },
     "tests/tooling/test_linux_gate.py:ruff/F401@45adf22b": {
       "explanation": "The tools_path import is executed for its shared sys.path bootstrap before direct tool-module imports; standard unittest discovery must work without the strict runner providing tools/."
+    },
+    "tools/advisory_review.py:advisory/CVE-2026-76844@7385ab2c": {
+      "explanation": "The exact reviewed zlib source retains the reported gzip-file bug, but the mandatory private stream-only recipe excludes gzclose.c, gzlib.c, gzread.c and gzwrite.c from the archive. Native build audits inspect actual compilation to reject reintroduction. This match remains printed; changed source, feature policy or advisory bytes invalidate the review. It is not a declaration that the source is fixed or vulnerability-free."
+    },
+    "tools/advisory_review.py:advisory/OSV-2023-444@ed50fb77": {
+      "explanation": "The exact reviewed OpenCV source match concerns JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory bytes invalidate the review. This is not a blanket OpenCV vulnerability exception."
+    },
+    "tests/unit/png_decode.cpp:msvc/4611@eab8232f": {
+      "explanation": "This native test jump frame contains only a borrowed PngContext reference; all buffers and other C++ resource owners are in its caller. The test forces a real libpng error and checks the diagnostic and complete ownership refund."
+    },
+    "src/io/png_context.cpp:msvc/4611@eab8232f": {
+      "explanation": "Native bootstrap and codec jumps return only through trivial frames. All buffers and C++ resource owners remain in the enclosing caller; deterministic refusal, cancellation and allocation tests check complete refund. No compiler protection is disabled."
+    },
+    "src/io/png_encode.cpp:clang-tidy/cert-err52-cpp@101232a0": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
+    },
+    "src/io/png_encode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path."
+    },
+    "src/io/png_write_rows.cpp:clang-tidy/cert-err52-cpp@101232a0": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_write_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_raster.cpp:clang-tidy/cert-err52-cpp@101232a0": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_raster.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_decode.cpp:clang-tidy/cert-err52-cpp@101232a0": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
+    },
+    "src/io/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
+      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths."
+    },
+    "src/io/png_context.cpp:clang-tidy/cert-err52-cpp@f422c1f9": {
+      "explanation": "The libpng error callback directly calls the CRT jump routine and returns to a native wrapper containing only trivial automatic state. Buffers, token, diagnostics and other C++ resource owners remain in the enclosing caller; protected-platform refusal and full refund tests exercise this boundary."
+    },
+    "src/io/png_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@f422c1f9": {
+      "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests."
+    },
+    "src/io/png_context.cpp:clang-tidy/cert-err52-cpp@101232a0": {
+      "explanation": "The libpng error callback directly calls the CRT jump routine and returns to a native wrapper containing only trivial automatic state. Buffers, token, diagnostics and other C++ resource owners remain in the enclosing caller; protected-platform refusal and full refund tests exercise this boundary."
+    },
+    "src/io/png_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
+      "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests."
+    },
+    "src/io/png_verify_rows.cpp:clang-tidy/cert-err52-cpp@101232a0": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "src/io/png_verify_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately."
+    },
+    "tests/unit/png_decode.cpp:clang-tidy/cert-err52-cpp@101232a0": {
+      "explanation": "The libpng error callback directly calls the CRT jump routine and returns to a native wrapper containing only trivial automatic state. Buffers, token, diagnostics and other C++ resource owners remain in the enclosing caller; protected-platform refusal and full refund tests exercise this boundary."
+    },
+    "tests/unit/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
+      "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests."
+    },
+    "src/io/png_context.hpp:msvc/4324@ca223421": {
+      "explanation": "The platform CRT jmp_buf has a required alignment that adds natural padding to the private PngMemory aggregate. Packing or weakening its alignment would violate the native jump-buffer ABI. This declaration-scoped MSVC warning suppression preserves correctly aligned caller-owned jump storage; native error, bootstrap allocation-refusal, cancellation and full-refund cases exercise the storage. It does not waive any size limit or disable a runtime guard."
     }
   }
 }

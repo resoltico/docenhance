@@ -17,6 +17,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <iterator>
 #include <png.h>
 #include <pngconf.h>
 #include <span>
@@ -74,7 +75,7 @@ bool raster_header(PngContext& context, PixelStream& input) {
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(png_jmpbuf(context.png)) != 0) {
+    if (setjmp(std::begin(context.memory.jump)) != 0) {
         return false;
     }
 #ifdef _MSC_VER
@@ -100,7 +101,7 @@ bool raster_pixels(PngContext const& context, image::PlaneView<std::uint8_t> row
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(png_jmpbuf(context.png)) != 0) {
+    if (setjmp(std::begin(context.memory.jump)) != 0) {
         return false;
     }
 #ifdef _MSC_VER

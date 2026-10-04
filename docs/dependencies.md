@@ -25,6 +25,11 @@ without links or duplicate names.
 The cache is local working state, not source control and not a second authority. See the [build
 guide](build.md#acquisition-is-a-separate-phase) for concurrency and recovery rules.
 
+The private zlib build retains its in-memory compression/decompression core and excludes the
+unused gzip-file translation units. Its upstream recipe identity is reviewed before adaptation;
+the native audit checks actual compiler work to reject reintroduction. Upstream source bytes and
+licenses remain intact. This private prefix is not a general-purpose zlib SDK.
+
 The JSON build uses a checked private copy of the locked single header. Its recursive destruction
 avoids an allocating traversal stack inside noexcept cleanup; production DOM inputs are admitted
 at depth <=16, while record/response builders have fixed typed shapes. The source cache and upstream
@@ -59,6 +64,22 @@ Review the official upstream release and license changes first. Change the lock 
 together when necessary, acquire into a fresh named cache entry, build in a fresh private prefix,
 and run the native probe, feature audit, numerical/CLI tests, fuzzing where applicable, and the
 relocated-package smoke test. Never accept an update merely because its version is higher.
+
+## Advisory observations
+
+Run `python tools/check_advisories.py` after acquisition. The independent nightly job runs the
+same command. It verifies cached sources, queries [OSV](https://google.github.io/osv.dev/post-v1-query/)
+using peeled Git commits, follows bounded pagination and refuses failed or malformed observations.
+The TIFF archive uses an OSS-Fuzz package-version query, whose coverage is narrower than an exact
+commit query. An empty database result is not proof that a source is vulnerability-free.
+
+Every match is reported. New matches and changes to reviewed source, feature policy or advisory
+bytes require review. The two current reviewed exclusions concern zlib gzip-file writing and
+OpenCV JPEG-2000 decoding: the former is removed from the private build, while the latter is outside
+the mandatory module/provider closure. These reviews are code-bound in the exception registry and
+rely on independent native build audits; hashes establish freshness, not review quality. They do
+not claim that the original upstream source is fixed. Review upstream/CNA evidence and actual
+reachability before changing sources or recording another exclusion.
 
 Acquisition claims one writer per cache. Git commands ignore inherited Git environment/global
 configuration and grant only the exact owned working directory as safe. Release objects and

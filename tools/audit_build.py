@@ -10,6 +10,8 @@ import hashlib
 import json
 from pathlib import Path
 
+from hardening_compilation import errors as hardening_errors
+
 ROOT = Path(__file__).resolve().parents[1]
 FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
 # Independent reference for the reviewed corrected 3.12.0 single header. This proves identity;
@@ -42,6 +44,26 @@ def json_header_failures(binary: Path) -> list[str]:
     return []
 
 
+def zlib_stream_failures(binary: Path) -> list[str]:
+    """The private compressor/decompressor never compiles the unused gzip-file adapter."""
+    commands = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
+    excluded = {"gzclose.c", "gzlib.c", "gzread.c", "gzwrite.c"}
+    return (
+        ["zlib: excluded gzip-file code is compiled"]
+        if any(Path(entry["file"]).name in excluded for entry in commands)
+        else []
+    )
+
+
+def source_recipe_failures(name: str, binary: Path) -> list[str]:
+    """Inspect the two private upstream adaptations independently of feature cache values."""
+    if name == "json":
+        return json_header_failures(binary)
+    if name == "zlib":
+        return zlib_stream_failures(binary)
+    return []
+
+
 def feature_failures(
     name: str, settings: dict[str, bool | str], cache: dict[str, str], binary: Path
 ) -> list[str]:
@@ -65,8 +87,7 @@ def feature_failures(
         expected_modules = {"opencv_" + part for part in str(settings["BUILD_LIST"]).split(",")}
         if modules != expected_modules:
             failures.append(f"OpenCV module closure differs: {sorted(modules)}")
-    if name == "json":
-        failures.extend(json_header_failures(binary))
+    failures.extend(source_recipe_failures(name, binary))
     if cache.get("BUILD_SHARED_LIBS", "").upper() not in FALSE:
         failures.append(f"{name}: unexpected shared-library build")
     return failures
@@ -94,6 +115,8 @@ def audit(build: Path) -> list[str]:
             failures.append(f"Missing configured dependency cache: {name}")
             continue
         cache = read_cache(path)
+        if name not in {"cli11", "json", "picosha2"}:
+            failures.extend(hardening_errors(binary, build / "hardening-policy.json"))
         failures.extend(feature_failures(name, features[name], cache, binary))
         for key in (
             "ZLIB_LIBRARY",

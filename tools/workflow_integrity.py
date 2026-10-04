@@ -257,6 +257,9 @@ def integrity_errors(root: Path) -> list[str]:
             if path.name == "ci.yml":
                 quality_workflow(document, major)
             elif path.name == "nightly.yml":
+                advisories = required_job(document, "advisories")
+                required_step(advisories, "python tools/deps.py fetch")
+                required_step(advisories, "python tools/check_advisories.py")
                 sanitizer_job(document, major)
                 fuzz_job(document, major, nightly=True)
             elif path.name == "source.yml":

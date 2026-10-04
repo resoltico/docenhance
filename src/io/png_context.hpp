@@ -8,6 +8,7 @@
 #include "entry_identity.hpp"
 
 #include <array>
+#include <csetjmp>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -35,16 +36,26 @@ using FileHandle = std::unique_ptr<std::FILE, FileCloser>;
 [[nodiscard]] FileHandle open_for_reading(const std::filesystem::path& path);
 // Creates a file, never replacing one: the transaction owns an empty staging directory.
 [[nodiscard]] FileHandle open_for_writing(const std::filesystem::path& path);
+// The opaque CRT jump buffer requires aligned storage; natural padding is intentional.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4324)
+#endif
 struct PngMemory {
     PngMemory(core::Budget& owner, core::Cancellation control)
         : budget(owner), cancellation(std::move(control)) {}
     std::reference_wrapper<core::Budget> budget;
     std::array<core::Buffer, codec_allocation_slots> blocks{};
     std::array<char, codec_diagnostic_bytes> message{};
+    // Native execution state may change through a const borrowed context handle.
+    mutable std::jmp_buf jump{};
     bool exhausted = false;
     core::Cancellation cancellation;
     bool cancelled = false;
 };
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 // Reader state and its remaining-byte bound also live outside every libpng jump frame.
 struct PngInput {
     void* state = nullptr;

@@ -335,3 +335,16 @@ metadata can identify a branch while its checkout tests a merge; release eligibi
 uses direct exact-commit runs and their complete current attempt. Recheck before release effects
 and read-back, preserve unpublished drafts on later refusal, and never overwrite mismatched remote
 assets or mistake transport failure for proof of no effect. See [publication eligibility](build.md#source-publication-eligibility).
+
+## Protection and advisory review observe different boundaries
+
+Apply one mandatory native compiler policy to project code and compiled dependency code. Inspect
+actual compiler commands independently from final executable protection markers: one linked object
+can supply a canary symbol without protecting another object's functions. Preserve upstream
+configuration and attribution while removing unused gzip-file sources from the private zlib build.
+
+Monitor verified source identities against OSV separately from offline acquisition/build admission.
+Report source matches even when mandatory feature closure excludes their affected code. Bind narrow
+review dispositions to source, feature policy and advisory bytes, and refuse changed evidence.
+Database coverage and recipe exclusions remain explicit; neither pinning nor an empty result proves
+absence of vulnerabilities. See [dependency review](dependencies.md#advisory-observations).

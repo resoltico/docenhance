@@ -78,9 +78,10 @@ if(APPLE)
 endif()
 set(de_recipe_files deps/tools.json deps/lock.json deps/features.json
   cmake/BuildPolicy.cmake cmake/BuildEnvironment.cmake cmake/BuildIdentity.cmake cmake/CompilerPolicy.cmake
-  cmake/Options.cmake cmake/Superbuild.cmake cmake/DependencyPlan.cmake
+  cmake/Options.cmake cmake/Superbuild.cmake cmake/DependencyPlan.cmake cmake/NativeHardening.cmake
   cmake/DependencyPaths.cmake cmake/DependencyFeatures.cmake cmake/Dependencies.cmake cmake/ProjectOptions.cmake
-  cmake/dependencies/picosha2/CMakeLists.txt cmake/dependencies/json/CMakeLists.txt)
+  cmake/dependencies/picosha2/CMakeLists.txt cmake/dependencies/json/CMakeLists.txt
+  cmake/dependencies/zlib/CMakeLists.txt)
 file(GLOB de_hooks RELATIVE "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/cmake/opencv-hooks/*.cmake")
 list(APPEND de_recipe_files ${de_hooks})
 foreach(name IN LISTS de_recipe_files)

@@ -87,6 +87,7 @@ CXX_MARKERS = (
     ),
 )
 PYTHON_MARKERS = (
+    _marker(r"#\s*advisory-review\s*:\s*(?P<rules>[A-Za-z0-9._-]+)", "advisory"),
     _marker(r"#\s*(?:ruff|flake8)\s*:\s*noqa", "ruff", "file-wide lint suppression"),
     _marker(r"#\s*ruff\s*:\s*disable\b", "ruff", "range-wide lint suppression"),
     _marker(r"#\s*noqa\b(?:\s*:\s*(?P<rules>[A-Z]+\d+(?:\s*,\s*[A-Z]+\d+)*))?", "ruff"),
