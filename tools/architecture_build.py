@@ -8,7 +8,7 @@ through the compilation database it writes:
 
 The build is read through tools/compile_db.py.
 
-* **Reach rules** run on the transitive include graph the compiler reports (`-M`), so a layer or a
+* **Reach rules** run on the transitive include graph the compiler reports (`-H`), so a layer or a
   third-party package reached through three other headers counts exactly as much as a direct one.
 * **API rules** run on the real abstract syntax tree through `clang-query`, so a banned call, a
   `throw` or a `catch` is found through any alias, macro or namespace qualification.

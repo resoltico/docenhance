@@ -26,20 +26,8 @@ jobs:
           python tools/install_build_tools.py --lint
       - name: Install pinned compiler and AST checker
         run: python tools/install_llvm.py --compiler
-      - name: Source integrity and structural checks
-        run: python tools/check_project.py
-      - name: Quality-policy checks
-        run: python tools/check_gates.py
-      - name: Formatting checks
-        run: |
-          python tools/check_format.py
-          python -m ruff format --check
-      - name: Lint and type checks
-        run: |
-          python -m ruff check --output-format github
-          python -m mypy
-      - name: Tooling tests
-        run: python tools/run_tooling_tests.py
+      - name: Required source gates
+        run: python tools/check_all.py
       - name: Package deterministic source archive
         run: python tools/package_source.py
       - name: Attest source-archive provenance

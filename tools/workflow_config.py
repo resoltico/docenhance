@@ -7,7 +7,7 @@ from __future__ import annotations
 import configparser
 import json
 import tomllib
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 import yaml
 
@@ -15,9 +15,27 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+class WorkflowLoader(yaml.BaseLoader):
+    """String scalars with unique, explicit mapping keys; no hidden merge authority."""
+
+    @override
+    def construct_mapping(self, node: yaml.nodes.MappingNode, deep: bool = False) -> dict[Any, Any]:
+        """Reject duplicate or merged mappings before the parser can overwrite facts."""
+        keys: set[str] = set()
+        for key, _ in node.value:
+            if not isinstance(key, yaml.nodes.ScalarNode) or key.value == "<<":
+                msg = "Workflow mapping keys must be explicit scalars"
+                raise ValueError(msg)
+            if key.value in keys:
+                msg = f"Duplicate workflow mapping key: {key.value}"
+                raise ValueError(msg)
+            keys.add(key.value)
+        return super().construct_mapping(node, deep=deep)
+
+
 def workflow(path: Path) -> dict[str, Any]:
     """Parse mappings/sequences with string scalars, including GitHub's `on` key."""
-    loader = yaml.BaseLoader(path.read_text(encoding="utf-8"))
+    loader = WorkflowLoader(path.read_text(encoding="utf-8"))
     try:
         data = loader.get_single_data()
     finally:

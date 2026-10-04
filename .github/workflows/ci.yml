@@ -24,14 +24,7 @@ jobs:
       - run: python tools/install_build_tools.py
       - run: python tools/install_build_tools.py --lint
       - run: python tools/install_llvm.py --compiler
-      - run: python tools/check_project.py
-      - run: python tools/check_gates.py
-      - run: python tools/check_architecture.py
-      - run: python -m ruff format --check
-      - run: python -m ruff check --output-format github
-      - run: python -m mypy
-      - run: python tools/check_format.py
-      - run: python tools/run_tooling_tests.py
+      - run: python tools/check_all.py
       - run: python tools/check_reference_suite.py --compiler g++
       - run: python tools/check_reference_suite.py --compiler clang++-23 --sanitize
   native:
@@ -209,6 +202,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Require every build and test job
+        shell: bash
         env:
           STRUCTURAL_RESULT: ${{ needs.structural.result }}
           NATIVE_RESULT: ${{ needs.native.result }}
