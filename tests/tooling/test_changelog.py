@@ -74,6 +74,27 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(release_publication.publish_release(api, desired), 1)
             self.assertEqual(api.writes, ["create", "upload", "upload", "publish"])
 
+    def test_quality_refusal_preserves_prewrite_and_partial_draft_distinctions(self) -> None:
+        """Admission failure writes nothing; later refusal leaves a complete unpublished draft."""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "source.tar.gz"
+            path.write_bytes(b"source bytes")
+            desired = release_publication.Release(
+                "v0.2.0",
+                "a" * 40,
+                "- Canonical outcome.\n",
+                (release_publication.Artifact.inspect(path),),
+            )
+            for cutoff, writes in ((1, []), (3, ["create", "upload"])):
+                with self.subTest(cutoff=cutoff):
+                    api = _FakeGitHub(desired)
+                    api.refuse_on_quality_check = cutoff
+                    with self.assertRaisesRegex(changelog.ReleaseError, "Full CI"):
+                        release_publication.publish_release(api, desired)
+                    self.assertEqual(api.writes, writes)
+                    if api.entries:
+                        self.assertTrue(api.entries[0]["draft"] is True)
+
 
 class _FakeGitHub:
     """In-memory GitHub release state used to test no-overwrite reconciliation."""
@@ -84,10 +105,22 @@ class _FakeGitHub:
         self.entries: list[dict[str, object]] = []
         self.files: list[dict[str, object]] = []
         self.writes: list[str] = []
+        self.quality_checks = 0
+        self.refuse_on_quality_check = 0
 
     def tag_commit(self, _tag: str) -> str:
         """Return the only expected tag target."""
         return self.desired.commit
+
+    def verify_quality(self, commit: str) -> None:
+        """Refuse selected admission points while recording the exact requested commit."""
+        if commit != self.desired.commit:
+            message = "CI commit mismatch"
+            raise changelog.ReleaseError(message)
+        self.quality_checks += 1
+        if self.quality_checks == self.refuse_on_quality_check:
+            message = "Full CI is not successful"
+            raise changelog.ReleaseError(message)
 
     def releases(self) -> list[dict[str, object]]:
         """Return every remote release."""

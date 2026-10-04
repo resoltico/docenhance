@@ -139,6 +139,15 @@ class WorkflowIntegrityTests(unittest.TestCase):
             "Privileged pull-request",
         )
 
+    def test_release_identity_and_permissions(self) -> None:
+        """Mutable checkouts or missing CI read authority cannot support release eligibility."""
+        self.assert_mutation_refused(
+            ".github/workflows/ci.yml", "ref: ${{ github.sha }}", "ref: main", "immutable event SHA"
+        )
+        self.assert_mutation_refused(
+            ".github/workflows/source.yml", "actions: read", "actions: write", "Actions-read only"
+        )
+
     def test_source_and_hook_cannot_lose_their_checks(self) -> None:
         """The source preflight and normal local commit always execute the aggregate."""
         self.assert_mutation_refused(

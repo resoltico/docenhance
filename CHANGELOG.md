@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- Source publication requires the latest direct full `Quality gates` run and complete attempt for the exact tagged commit. Wait for successful main-push or manual CI before tagging; PR merge-checkout results, source checks and attestations are insufficient. Pending, failed, skipped, missing or changed evidence refuses publication; later refusal can leave an unpublished draft for reconciliation.
+
 - **Breaking (verification tooling):** `tools/run_native_suite.py --jobs` accepts only 1 or 2 concurrent test processes; larger values are refused. `DE_BUILD_JOBS` controls build/AST workers separately. Native cases retain all fixtures, assertions and timeouts; recreate build trees/private prefixes for the changed recipe.
 
 - **Breaking (build):** unset ambient compiler search/flag overrides, including `CPATH`, `LIBRARY_PATH`, `CL` and `LINK`, before configuring or building. Keep CMake outside source/build trees; the documented setup uses an external tool environment. Recreate existing build trees/private prefixes for the changed build recipe.

@@ -78,6 +78,9 @@ class GitHub(Protocol):
     def tag_commit(self, tag: str) -> str:
         """Return the remote tag target commit."""
 
+    def verify_quality(self, commit: str) -> None:
+        """Require complete successful direct CI for this exact source commit."""
+
     def releases(self) -> list[Record]:
         """Return all existing releases."""
 
@@ -98,6 +101,7 @@ class GitHub(Protocol):
 
 
 def _assert_tag(api: GitHub, desired: Release) -> None:
+    api.verify_quality(desired.commit)
     require(
         "Remote tag target mismatch",
         condition=api.tag_commit(desired.tag) == desired.commit,
