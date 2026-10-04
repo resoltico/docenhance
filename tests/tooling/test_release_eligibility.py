@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Release CI admission rejects indirect checkout, incomplete execution and changed attempts."""
 
 from __future__ import annotations

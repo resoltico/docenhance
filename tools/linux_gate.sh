@@ -1,6 +1,6 @@
 #!/bin/sh
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # This entry point is development-only and runs inside the isolated Linux gate container.
 set -eu
 cd /source

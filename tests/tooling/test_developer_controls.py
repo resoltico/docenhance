@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Real formatter and Git boundaries must refuse missing work and moving source tags."""
 
 from __future__ import annotations

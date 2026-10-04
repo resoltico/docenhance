@@ -32,7 +32,7 @@ after execution. Explicitly flush the selected stream and handle its failure wit
 
 Use locked sources and explicit feature configuration. Do not follow moving references or silently
 substitute system packages. Do not add neural/OCR/GPU/GUI/network/runtime Python components. Do not
-stamp MIT on upstream code or copy restricted research implementations.
+stamp the project license on upstream code or copy restricted research implementations.
 
 Edit `spec/cli-contract.json`, `spec/method-contract.json` and the response schema template
 `spec/command-response.schema.json`; regenerate with

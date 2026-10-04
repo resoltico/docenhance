@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 if(NOT CPACK_TEMPORARY_DIRECTORY OR NOT IS_DIRECTORY "${CPACK_TEMPORARY_DIRECTORY}")
   message(FATAL_ERROR "Native packaging requires the owned installed CPack stage")
 endif()

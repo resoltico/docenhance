@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Explicit, verified dependency acquisition into the source cache. The only networked step."""
 
 from __future__ import annotations

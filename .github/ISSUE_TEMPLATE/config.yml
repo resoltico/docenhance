@@ -1,3 +1,2 @@
-# GitHub shows a "Report a vulnerability" entry here once private reporting is enabled
-# in the repository's security settings; see SECURITY.md.
+# Private vulnerability reporting is enabled; see SECURITY.md for the reporting link.
 blank_issues_enabled: true

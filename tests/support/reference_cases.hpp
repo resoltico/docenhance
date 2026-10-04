@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/parse.hpp"

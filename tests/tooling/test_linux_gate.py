@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """The local Linux gate must not skip failures, drift pins or reuse host native outputs."""
 
 from __future__ import annotations

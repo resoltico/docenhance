@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Negative controls for actual source-level sanitizer instrumentation claims."""
 
 from __future__ import annotations

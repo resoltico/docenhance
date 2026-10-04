@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Actual subprocess failures and malformed GitHub response envelopes remain refusals."""
 
 from __future__ import annotations

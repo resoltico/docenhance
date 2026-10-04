@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 include_guard(GLOBAL)
 if(NOT IS_DIRECTORY "${DE_DEPENDENCY_PREFIX}")
   message(FATAL_ERROR "Build via the superbuild; no system dependency fallback is supported")

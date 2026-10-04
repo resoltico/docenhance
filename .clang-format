@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 BasedOnStyle: LLVM
 Language: Cpp
 Standard: c++23

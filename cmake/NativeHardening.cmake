@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Mandatory native protections, shared by project targets and compiled dependencies.
 include_guard(GLOBAL)
 if(MSVC)

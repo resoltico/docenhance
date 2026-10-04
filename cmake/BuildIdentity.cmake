@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # A configuration binding, not a compiler/source security endorsement or an RSS guarantee.
 include_guard(GLOBAL)
 if(DE_SUPERBUILD)

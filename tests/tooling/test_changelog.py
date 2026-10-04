@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Tests for the changelog-bound source release contract."""
 
 from __future__ import annotations
 
+import re
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,7 +12,6 @@ from pathlib import Path
 from tools_path import ROOT
 
 import changelog
-import project_version
 import publish_source_release
 import release_publication
 
@@ -19,10 +19,14 @@ import release_publication
 class ChangelogTests(unittest.TestCase):
     """Release prose has one validated Markdown source."""
 
-    def test_current_release_extracts_exact_markdown(self) -> None:
-        """The current stable section is returned verbatim without its heading."""
+    def test_latest_dated_release_extracts_exact_markdown(self) -> None:
+        """The latest dated section is independent of an upcoming build version."""
         text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-        version = project_version.project_version(ROOT)
+        heading = re.search(r"^## \[([^]]+)\] - ", text, re.MULTILINE)
+        self.assertIsNotNone(heading)
+        if heading is None:
+            self.fail("No dated release section exists")
+        version = heading[1]
         lines = text.splitlines()
         start = next(
             index for index, line in enumerate(lines) if line.startswith(f"## [{version}] - ")

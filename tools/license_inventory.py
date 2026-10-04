@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Produce source-license inventory and declared-dependency SPDX metadata after verification.
 
 This is a source-package inventory, NOT a binary composition scanner or legal clearance.
-No dependency license is changed to MIT. Full binary release review remains required.
+Dependency licenses remain unchanged. Full binary release review remains required.
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ NOTICE_PREAMBLE = [
     "# Third-party source-license inventory",
     "",
     (
-        "DocEnhance is copyright 2026 Ervins Strauhmanis and MIT-licensed; bundled dependencies "
-        "retain their own licenses."
+        "DocEnhance is copyright 2026 Ervins Strauhmanis and MPL-2.0-licensed; "
+        "bundled dependencies retain their own licenses."
     ),
     "",
     (

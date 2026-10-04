@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Native process scheduling has a distinct bound from compiler-worker capacity."""
 
 from __future__ import annotations
@@ -85,3 +85,53 @@ add_test(NAME ordinary COMMAND "${CMAKE_COMMAND}" -E true)
             self.assertEqual(
                 {test["name"] for test in json.loads(listing)["tests"]}, {"weighted", "ordinary"}
             )
+
+    def test_ctest_refuses_blocked_child_with_its_case_deadline(self) -> None:
+        """An entered, blocked child times out instead of becoming passing evidence."""
+        cmake = shutil.which("cmake")
+        ctest = shutil.which("ctest")
+        self.assertIsNotNone(cmake)
+        self.assertIsNotNone(ctest)
+        with tempfile.TemporaryDirectory(prefix="native-timeout-control-") as directory:
+            root = Path(directory)
+            marker = root / "entered"
+            child = root / "blocked.py"
+            child.write_text(
+                "import pathlib, sys, threading\n"
+                "pathlib.Path(sys.argv[1]).write_text('entered')\n"
+                "threading.Event().wait()\n"
+            )
+            (root / "CMakeLists.txt").write_text(
+                "cmake_minimum_required(VERSION 4.4)\n"
+                "project(TimeoutControl NONE)\nenable_testing()\n"
+                f'add_test(NAME blocked COMMAND "{Path(sys.executable).as_posix()}" '
+                f'"{child.as_posix()}" "{marker.as_posix()}")\n'
+                "set_tests_properties(blocked PROPERTIES TIMEOUT 5)\n"
+            )
+            build = root / "build"
+            subprocess.run(
+                [str(cmake), "-S", str(root), "-B", str(build), "-G", "Ninja"],
+                check=True,
+                capture_output=True,
+                timeout=30,
+            )
+            result = subprocess.run(
+                [
+                    str(ctest),
+                    "--test-dir",
+                    str(build),
+                    "--output-on-failure",
+                    "--output-junit",
+                    str(root / "result.xml"),
+                    "--no-tests=error",
+                ],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=30,
+            )
+            self.assertEqual(marker.read_text(), "entered")
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("Timeout", result.stdout)
+            with self.assertRaisesRegex(ValueError, "did not pass"):
+                complete_junit(root / "result.xml", {"blocked"})

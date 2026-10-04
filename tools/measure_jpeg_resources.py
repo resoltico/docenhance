@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Measure real JPEG decoder allocations and fresh-process peak RSS separately."""
 
 from __future__ import annotations

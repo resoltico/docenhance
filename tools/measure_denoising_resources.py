@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Fresh-process synthetic D01/I01->D01 runtime, charged preparation and RSS observations."""
 
 from __future__ import annotations

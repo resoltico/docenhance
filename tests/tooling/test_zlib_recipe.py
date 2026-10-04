@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Private stream-only configuration refusal and compiled gzip reintroduction controls."""
 
 from __future__ import annotations

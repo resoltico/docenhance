@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Independent PNG framing, sample, filter and orientation fixtures; no imaging library."""
 
 from __future__ import annotations

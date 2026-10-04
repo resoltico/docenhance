@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Challenge the real process with response pipes whose readers are already gone."""
 
 from __future__ import annotations

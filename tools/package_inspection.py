@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Compare delivered bytes with their verified build, sources and native OS import boundary."""
 
 from __future__ import annotations

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Repository hygiene gates: what belongs in the tree, and in what shape.
 
 Editor and operating-system droppings, half-applied patches and stale generated files accumulate

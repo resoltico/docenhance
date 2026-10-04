@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 #include "context.hpp"
 #include "docenhance/color/profile.hpp"
 #include "docenhance/core/cancellation.hpp"

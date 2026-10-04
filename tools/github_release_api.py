@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Use GitHub CLI as the bounded authenticated source-release transport."""
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Test-only relaxations; every disabled check is named with its reason:
 #   cert-err58-cpp, cppcoreguidelines-avoid-non-const-global-variables
 #       Catch2 registers test cases through static constructors; that is not first-party state.

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 include_guard(GLOBAL)
 file(READ "${PROJECT_SOURCE_DIR}/fuzz/targets.json" de_fuzz_manifest)
 # Both callers retain their own build behavior; only declarations come from this shared list.

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Reading a configured build: its compilation database, and what the compiler does with it.
 
 The architecture rules in tools/architecture_build.py are only as honest as their source of truth,

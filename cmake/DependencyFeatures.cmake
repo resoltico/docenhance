@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Resolve platform-applicable reviewed feature values into actual dependency arguments.
 include_guard(GLOBAL)
 file(READ "${PROJECT_SOURCE_DIR}/deps/features.json" de_features)

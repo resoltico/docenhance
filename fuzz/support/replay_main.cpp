@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Replays fuzz inputs through one harness without a fuzzing engine, so every build and compiler
 // re-checks the seed corpus and every recorded regression. Arguments are files or directories
 // (searched recursively, in sorted order). Replaying zero inputs is an error, not a pass.

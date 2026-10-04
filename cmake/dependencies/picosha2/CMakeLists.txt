@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 cmake_minimum_required(VERSION 4.4)
 project(DocEnhancePicoSHA2 LANGUAGES NONE)
 if(NOT EXISTS "${DE_UPSTREAM_SOURCE}/picosha2.h")

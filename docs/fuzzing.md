@@ -121,8 +121,8 @@ only named input/resource refusals belong to malformed input. Continuous fuzzing
 bounded valid RGBA8/16 rasters and compares every oriented gray/RGB8/16 sample with an independent
 scalar transfer/compositing/quantization reference. This path needs no valid PNG CRC, exercises
 black/white matte and all orientations, and must succeed within its finite budget. Raw PNG and
-ICC parsing remain separate mutation paths. `fuzz-codecs.json` identifies all three actual
-instrumented native archives; the campaign rejects a missing ASan, UBSan or coverage signature.
+ICC parsing remain separate mutation paths. `fuzz-codecs.json` identifies the selected actual
+instrumented native archive closure; the campaign rejects a missing ASan, UBSan or coverage signature.
 
 The `jpeg_decode` target exercises raw framing, metadata and the production decoder, with real
 charged allocations and refund/source-descriptor oracles. Complete independently constructed

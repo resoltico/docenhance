@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # The compiler contract every shared preset states (docs/build.md). A host `c++` is a moving
 # reference: Apple clang implements fewer -Wextra diagnostics than the pinned LLVM clang and GCC,
 # so a local run of an analysis preset could pass on code that the required CI jobs reject.

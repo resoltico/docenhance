@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 # Bootstrap policy before project() enables languages and probes the selected SDK.
 include_guard(GLOBAL)
 file(READ "${CMAKE_CURRENT_LIST_DIR}/../deps/tools.json" de_tools_json)

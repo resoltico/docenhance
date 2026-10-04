@@ -5,6 +5,7 @@ following sources when changing behavior.
 
 | Concern | Authority | Supporting documentation |
 | --- | --- | --- |
+| First-party license | `LICENSE` and SPDX source notices | [licensing](licensing.md) |
 | Version | `CMakeLists.txt` | [build](build.md) |
 | Dependency identities | `deps/lock.json` | [dependency policy](dependencies.md) |
 | Dependency features and tool pins | `deps/features.json`, `deps/tools.json` | [dependency policy](dependencies.md) |
@@ -24,8 +25,21 @@ code. Use [build](build.md) and [quality](quality.md) to reproduce validation. T
 
 [CLI contract](cli-contract.md) and [methods](methods.md) are generated from the reviewed `spec/`
 sources by `tools/generate_spec.py`; never edit them by hand. The structural check rejects stale
-generated output. Other documents describe current policy and evidence and must be updated in the
-same change as the behavior they describe.
+generated output. Current guides describe supported policy and must be updated with the behavior they describe.
+Documents named `*-audit.md` and `*-design-qa.md` retain historical design challenges and evidence;
+their snapshots, measurements and superseded approaches do not override current contracts or
+commit-specific verification. Keep useful rationale rather than treating a past passing run as
+current platform evidence. [Dependency policy](dependencies.md) owns acquisition and verified-cache
+requirements; caches are permitted under that policy.
+
+## Design and measurement evidence
+
+For historical counterexamples and design challenges, see the [build integrity audit](build-integrity-audit.md),
+[clean-source/product audit](clean-build-product-audit.md) and
+[verification detection audit](verification-detection-audit.md). The
+[JPEG resource observations](jpeg-resource-observations.md) record measurements with their source,
+platform and input assumptions; use [JPEG processing](jpeg-processing.md) for enforced bounds.
+These records explain decisions and do not replace the current authorities above.
 
 [Typed binarization](binarization.md) specifies B02/B03 parameters, mathematics, memory, execution
 contracts and the separate design QA.

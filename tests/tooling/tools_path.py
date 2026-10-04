@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Put tools/ on sys.path so the tests import tool modules by name, exactly as the tools do."""
 
 from __future__ import annotations

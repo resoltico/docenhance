@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Check (or with --fix, apply) clang-format on every first-party C/C++ file.
 
 Formatting output differs between clang-format releases, so the major version must match the

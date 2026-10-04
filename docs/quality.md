@@ -18,7 +18,7 @@ cmake --workflow --preset tsan               # the suite under ThreadSanitizer
 cmake --workflow --preset fuzz               # strict complete fuzz campaign, including PNG
 ```
 
-These presets declare `DE_TOOLCHAIN=pinned`, so configure fails rather than falling back to the
+These presets declare `DE_TOOLCHAIN=analysis`, so configure fails rather than falling back to the
 host `c++`. That matters most on macOS, where `c++` is Apple clang and implements fewer `-Wextra`
 diagnostics than the compilers the required jobs use. Only `release` builds with the platform's
 own toolchain; [build and developer workflows](build.md#the-compiler-contract-every-preset-states)
@@ -37,11 +37,13 @@ new execution contracts must extend the guard and its rejection controls. This e
 not arbitrary script correctness or completed CI. Hosted execution and native evidence remain
 necessary, including Windows' distinct compiler-shell helper. Native cases run with at most two
 concurrent processes, separately from build/AST worker counts. Every case, assertion, per-contract
-timeout and complete-result reconciliation remains required.
+timeout and complete-result reconciliation remains required. The outer native-suite watchdog
+allows 30 minutes for the whole graph, including the separately weighted compiler/AST check;
+it is not a processing-latency guarantee.
 
 ## Local Linux verification with Docker
 
-On macOS and Windows, `python tools/check_all.py` and the local Git hook now require the Linux
+On macOS and Windows, `python tools/check_all.py` and the local Git hook require the Linux
 Docker gate. Run it separately with `python tools/check_linux.py`. Missing Docker, an unavailable
 daemon, image preparation failure or any failed native check fails the gate; none is a skipped pass.
 Linux hosts keep the source check list without recursively starting another container.

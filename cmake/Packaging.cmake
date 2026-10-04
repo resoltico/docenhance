@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 include(GNUInstallDirs)
 set(de_package_meta "${PROJECT_BINARY_DIR}/package-metadata")
 add_custom_target(de_license_inventory ALL

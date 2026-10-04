@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Property fuzzing of the run-record reader, which is the one place this program parses something
 // somebody else wrote. Two questions: does an arbitrary document ever get past the bounds it
 // claims to enforce, and does a record this program wrote survive being read back?

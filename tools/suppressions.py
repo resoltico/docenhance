@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Find every in-source lint, type-check, format and compiler-warning suppression.
 
 A suppression is allowed only when it names the rules it silences and each rule is registered,

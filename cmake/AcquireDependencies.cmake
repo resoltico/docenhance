@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 cmake_minimum_required(VERSION 4.4)
 get_filename_component(DE_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 file(READ "${DE_ROOT}/deps/tools.json" de_tools_json)

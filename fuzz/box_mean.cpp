@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Property fuzzing of the box-mean kernel against two independent references: the definition
 // itself — every window summed directly, one output sample at a time — and the same kernel run on
 // one worker. A crash-only harness would miss both of the things that can actually go wrong here,

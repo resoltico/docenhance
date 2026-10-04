@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 cmake_minimum_required(VERSION 4.4)
 project(DocEnhanceJson LANGUAGES NONE)
 if(NOT DOCENHANCE_JSON_BOUNDED_DESTRUCTION OR JSON_MultipleHeaders OR JSON_BuildTests)

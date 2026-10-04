@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Property fuzzing of the numeric reference primitives against exact, independent references:
 // wide multiplication for raster budgets, a slow reflection loop, sorting for percentiles, and
 // the documented sRGB/luminance tolerances.

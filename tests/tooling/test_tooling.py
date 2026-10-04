@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Tests for dependency pinning, verification, extraction and the generated contract."""
 
 from __future__ import annotations
@@ -135,7 +135,7 @@ class ArchiveTests(unittest.TestCase):
     def test_mode_follows_shebang(self) -> None:
         """Files with a shebang are executable; library modules and data are not."""
         self.assertEqual(package_source.file_mode(b"#!/usr/bin/env python3\n"), EXECUTABLE_MODE)
-        self.assertEqual(package_source.file_mode(b"# SPDX-License-Identifier: MIT\n"), 0o644)
+        self.assertEqual(package_source.file_mode(b"# SPDX-License-Identifier: MPL-2.0\n"), 0o644)
 
     def test_repository_modes_match_the_archive(self) -> None:
         """Git's recorded modes agree with the deterministic archive's modes."""

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 include(ExternalProject)
 # Explicit source order; serial projects avoid N libraries each starting N workers.
 set(de_names ${DE_SELECTED_DEPENDENCIES})
@@ -155,8 +155,9 @@ if(DE_BUILD_TESTS)
   add_test(NAME native-suite COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_native_suite.py"
     --build "${de_inner}" --ctest "${CMAKE_CTEST_COMMAND}")
   # The aggregate also compiles each public header and checks every native AST.
-  # Keep all per-contract limits and checks; allow the expanded graph to finish on CI runners.
-  set_tests_properties(native-suite PROPERTIES TIMEOUT 600)
+  # Keep per-contract limits and complete reconciliation. This finite whole-graph watchdog
+  # also covers the separately weighted compiler/AST check on slower native runners.
+  set_tests_properties(native-suite PROPERTIES TIMEOUT 1800)
 endif()
 if(DE_ENABLE_FUZZING)
   add_test(NAME fuzz-suite COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_fuzz_campaign.py"

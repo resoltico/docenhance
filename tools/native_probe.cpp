@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 // Build/test-only. Two jobs, neither of which decodes an untrusted file:
 //
 // 1. Link-time contracts: every pinned dependency builds, links and computes what it should.

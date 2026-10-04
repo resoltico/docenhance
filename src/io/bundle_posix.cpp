@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MPL-2.0
 #ifndef _WIN32
 #include "bundle_native.hpp"
 #include "docenhance/core/result.hpp"

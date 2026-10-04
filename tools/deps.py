@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Explicit dependency acquisition. Normal configure/build runs verify, never fetch.
 
 Git entries pin the *tag object*, not merely a mutable tag name. Archive entries

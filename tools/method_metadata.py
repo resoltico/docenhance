@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Generate reviewed identities, checked against executable variant registration at compile time."""
 
 from __future__ import annotations
@@ -122,7 +122,7 @@ def render_catalog(active: list[dict[str, Any]]) -> str:
     """Emit descriptors only, not an algorithm implementation or a runtime registration bypass."""
     text = (
         "// SPDX-FileCopyrightText: 2026 Ervins Strauhmanis\n"
-        "// SPDX-License-Identifier: MIT\n"
+        "// SPDX-License-Identifier: MPL-2.0\n"
         "// Generated from spec/method-contract.json by tools/generate_spec.py.\n"
         "#pragma once\n"
         '#include "docenhance/methods/catalog.hpp"\n\n'

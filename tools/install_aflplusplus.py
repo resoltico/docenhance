@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MPL-2.0
 """Explicit online build of the pinned AFL++ release for scheduled fuzzing campaigns.
 
 The release tag and the exact commit it must resolve to come from deps/tools.json; a tag that
