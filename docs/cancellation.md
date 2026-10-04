@@ -84,6 +84,11 @@ at its checkpoint. Later error handling does not reread a pending request and re
 I/O or allocation failure. Charged codec/image/workspace allocations are refunded by normal ownership
 unwinding. Small metadata and cancellation error strings are not promised to be allocation-free.
 
+The custom PNG error adapter invokes the CRT jump routine directly, using caller-owned jump
+storage and avoiding indirect dispatch of the CRT entry under Windows control-flow protection.
+A trivial bootstrap frame is active before native context creation. Native callbacks never
+reconfigure jump storage; all C++ resource owners remain in the caller. No guard is disabled.
+
 A cancelled numerical operation may have modified part of its destination; that internal plane is
 not a valid result and must never be published. The source is unchanged. Workspace acquisition
 failure and cancellation before initialization preserve the existing pre-write guarantees.

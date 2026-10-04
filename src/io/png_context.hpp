@@ -8,6 +8,7 @@
 #include "entry_identity.hpp"
 
 #include <array>
+#include <csetjmp>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -41,6 +42,8 @@ struct PngMemory {
     std::reference_wrapper<core::Budget> budget;
     std::array<core::Buffer, codec_allocation_slots> blocks{};
     std::array<char, codec_diagnostic_bytes> message{};
+    // Native execution state may change through a const borrowed context handle.
+    mutable std::jmp_buf jump{};
     bool exhausted = false;
     core::Cancellation cancellation;
     bool cancelled = false;

@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <iterator>
 #include <png.h>
 #include <span>
 #include <utility>
@@ -30,7 +31,7 @@ constexpr int nibble_depth = 4;
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(png_jmpbuf(context.png)) != 0) {
+    if (setjmp(std::begin(context.memory.jump)) != 0) {
         return false;
     }
 #ifdef _MSC_VER
@@ -50,7 +51,7 @@ constexpr int nibble_depth = 4;
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(png_jmpbuf(context.png)) != 0) {
+    if (setjmp(std::begin(context.memory.jump)) != 0) {
         return false;
     }
 #ifdef _MSC_VER

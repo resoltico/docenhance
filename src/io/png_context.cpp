@@ -10,9 +10,11 @@
 
 #include <algorithm>
 #include <concepts>
+#include <csetjmp>
 #include <cstddef>
 #include <cstdio>
 #include <filesystem>
+#include <iterator>
 #include <png.h>
 #include <pngconf.h>
 #include <ranges>
@@ -83,11 +85,37 @@ void fail_png(png_structp png, png_const_charp message) noexcept {
     const auto count = std::min(text.size(), memory.message.size() - 1);
     std::ranges::copy(std::views::take(text, static_cast<std::ptrdiff_t>(count)),
                       memory.message.begin());
-    png_longjmp(png, 1);
+    // Invoke the CRT directly; jump storage and every C++ owner belong to the caller.
+    // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
+    std::longjmp(std::begin(memory.jump), 1);
 }
 void warn_png(png_structp png, png_const_charp message) noexcept {
     // Corrupt/truncated metadata is not silently accepted as a successfully decoded document.
     fail_png(png, message);
+}
+void initialize_png(PngContext& context) {
+    // The constructor owns all resources outside this trivial native bootstrap frame.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4611)
+#endif
+    // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
+    if (setjmp(std::begin(context.memory.jump)) != 0) {
+        context.memory.exhausted = true;
+        return;
+    }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+    auto* const memory = &context.memory;
+    context.png = context.writing
+                      ? png_create_write_struct_2(PNG_LIBPNG_VER_STRING, memory, fail_png, warn_png,
+                                                  memory, allocate_png, free_png)
+                      : png_create_read_struct_2(PNG_LIBPNG_VER_STRING, memory, fail_png, warn_png,
+                                                 memory, allocate_png, free_png);
+    if (context.png != nullptr) {
+        context.info = png_create_info_struct(context.png);
+    }
 }
 // A template so that only the branch for this platform's path type is ever instantiated: in a
 // plain function the other branch would still have to type-check, and returning a wide string as
@@ -107,13 +135,7 @@ template <typename Path> std::string spelled_in_utf8(const Path& value) {
 
 PngContext::PngContext(core::Budget& budget, bool write, const core::Cancellation& cancellation)
     : memory(budget, cancellation), writing(write) {
-    png = writing ? png_create_write_struct_2(PNG_LIBPNG_VER_STRING, &memory, fail_png, warn_png,
-                                              &memory, allocate_png, free_png)
-                  : png_create_read_struct_2(PNG_LIBPNG_VER_STRING, &memory, fail_png, warn_png,
-                                             &memory, allocate_png, free_png);
-    if (png != nullptr) {
-        info = png_create_info_struct(png);
-    }
+    initialize_png(*this);
 }
 PngContext::~PngContext() {
     if (png != nullptr) {

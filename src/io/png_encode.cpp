@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <expected>
+#include <iterator>
 #include <png.h>
 #include <pngconf.h>
 #include <span>
@@ -48,7 +49,7 @@ void flush_bytes(png_structp png) noexcept {
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(png_jmpbuf(context.png)) != 0) {
+    if (setjmp(std::begin(context.memory.jump)) != 0) {
         return false;
     }
 #ifdef _MSC_VER
