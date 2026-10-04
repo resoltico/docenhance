@@ -20,8 +20,10 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from binary_hardening import errors as hardening_errors
 from deps import ROOT, safe_extract
 from documentation import local_link_errors
+from hardening_compilation import errors as compilation_errors
 from method_metadata import support_matrix
 from package_inspection import binary_identity, contents, differences, expected_files, imports
 from project_version import project_version
@@ -127,6 +129,8 @@ def smoke(root: Path, build: Path) -> list[str]:
     )
     failures += local_link_errors(package / "share/docenhance")
     failures += macos_minimum_errors(exe)
+    failures += hardening_errors(exe)
+    failures += compilation_errors(build, build / "hardening-policy.json")
     if failures:
         return failures
     native_imports = imports(exe)

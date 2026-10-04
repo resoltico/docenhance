@@ -497,6 +497,12 @@
     },
     "tests/tooling/test_linux_gate.py:ruff/F401@45adf22b": {
       "explanation": "The tools_path import is executed for its shared sys.path bootstrap before direct tool-module imports; standard unittest discovery must work without the strict runner providing tools/."
+    },
+    "tools/advisory_review.py:advisory/CVE-2026-76844@7385ab2c": {
+      "explanation": "The exact reviewed zlib source retains the reported gzip-file bug, but the mandatory private stream-only recipe excludes gzclose.c, gzlib.c, gzread.c and gzwrite.c from the archive. Native build audits inspect actual compilation to reject reintroduction. This match remains printed; changed source, feature policy or advisory bytes invalidate the review. It is not a declaration that the source is fixed or vulnerability-free."
+    },
+    "tools/advisory_review.py:advisory/OSV-2023-444@ed50fb77": {
+      "explanation": "The exact reviewed OpenCV source match concerns JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory bytes invalidate the review. This is not a blanket OpenCV vulnerability exception."
     }
   }
 }

@@ -109,6 +109,13 @@ contract.
 
 ## Selecting compilers and personal settings
 
+Native hardening is mandatory and owned by `cmake/NativeHardening.cmake`, shared by project code
+and compiled dependencies. Changing this recipe requires fresh build directories and private
+prefixes. Compiler-command audits check propagation; relocated package inspection separately checks
+native protection markers with `readelf` on Linux, `otool`/`nm` on macOS and `dumpbin` on Windows.
+Missing inspection tools fail verification. These observations do not prove protection of every
+function, an exploit-free program or execution on every supported OS version.
+
 Do not modify shared presets to accommodate one machine. Create ignored `CMakeUserPresets.json`:
 
 ```json

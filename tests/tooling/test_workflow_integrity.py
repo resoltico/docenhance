@@ -51,6 +51,16 @@ class WorkflowIntegrityTests(unittest.TestCase):
         """Current source, platform, compiler, engine and aggregate routes agree."""
         self.assertEqual(integrity_errors(self.root), [])
 
+    def test_advisory_observation_cannot_be_disabled(self) -> None:
+        """Scheduled monitoring must acquire identities and perform a mandatory query."""
+        for old, new in (
+            ("  advisories:\n", "  advisories:\n    if: false\n"),
+            ("      - run: python tools/check_advisories.py", "      - run: echo observed"),
+            ("      - run: python tools/deps.py fetch", "      - run: echo acquired"),
+        ):
+            with self.subTest(new=new):
+                self.assert_mutation_refused(".github/workflows/nightly.yml", old, new, "Required")
+
     def test_comments_echo_condition_and_optional_steps(self) -> None:
         """No mention of the aggregate can substitute for its unconditional execution."""
         old = "      - run: python tools/check_all.py"
