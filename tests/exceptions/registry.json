@@ -527,6 +527,9 @@
     },
     "tests/unit/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@101232a0": {
       "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests."
+    },
+    "src/io/png_context.hpp:msvc/4324@ca223421": {
+      "explanation": "The platform CRT jmp_buf has a required alignment that adds natural padding to the private PngMemory aggregate. Packing or weakening its alignment would violate the native jump-buffer ABI. This declaration-scoped MSVC warning suppression preserves correctly aligned caller-owned jump storage; native error, bootstrap allocation-refusal, cancellation and full-refund cases exercise the storage. It does not waive any size limit or disable a runtime guard."
     }
   }
 }
