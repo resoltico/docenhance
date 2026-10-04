@@ -49,3 +49,22 @@ class ProjectLicenseTests(unittest.TestCase):
                     "Missing SPDX-License-Identifier header: source.cpp",
                     check_project.metadata_errors(),
                 )
+
+    def test_copyright_names_actual_holder_and_requires_notice(self) -> None:
+        """Contributors keep their own copyright; absent or empty declarations are refused."""
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "source.cpp"
+            for notice, accepted in (
+                ("// SPDX-FileCopyrightText: 2026 Example Contributor", True),
+                ("# SPDX-FileCopyrightText: 2027 Another Contributor", True),
+                ("// SPDX-FileCopyrightText: ", False),
+                ("// SPDX-FileCopyrightText:   ", False),
+                ("", False),
+            ):
+                with self.subTest(notice=notice):
+                    path.write_text(notice + "\n// SPDX-License-Identifier: MPL-2.0\n")
+                    with patch.object(
+                        check_project, "code_files", return_value=[(path, path.name, "cxx")]
+                    ):
+                        errors = check_project.metadata_errors()
+                    self.assertEqual(errors == [], accepted, errors)

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 from typing import Any
@@ -23,7 +24,7 @@ MIN_CLANG_TOOLS_MAJOR = 23
 CXX_STANDARD = 23
 SPDX_WINDOW = 300
 # Machine-readable ownership on every first-party file (REUSE/SPDX).
-COPYRIGHT = "SPDX-FileCopyrightText: 2026 Ervins Strauhmanis"
+COPYRIGHT_NOTICE = re.compile(r"^(?://|#) SPDX-FileCopyrightText: \S[^\r\n]*$", re.MULTILINE)
 LICENSE_TAG = "SPDX-License-Identifier: MPL-2.0"
 REQUIRED_TIDY_SETS = ("bugprone-*", "clang-analyzer-*", "cppcoreguidelines-*", "misc-*")
 PINNED_LINTERS = ("clang_tidy", "clang_format", "ruff", "mypy")
@@ -83,11 +84,10 @@ def metadata_errors() -> list[str]:
             errors.append(f"{filename}: preset minimum differs from deps/tools.json")
     for path, rel, _ in code_files(ROOT):
         head = path.read_text(encoding="utf-8")[:SPDX_WINDOW]
-        errors.extend(
-            f"Missing {tag.split(':')[0]} header: {rel}"
-            for tag in (LICENSE_TAG, COPYRIGHT)
-            if tag not in head
-        )
+        if LICENSE_TAG not in head:
+            errors.append(f"Missing SPDX-License-Identifier header: {rel}")
+        if COPYRIGHT_NOTICE.search(head) is None:
+            errors.append(f"Missing nonempty SPDX-FileCopyrightText header: {rel}")
     return errors
 
 
