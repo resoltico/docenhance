@@ -14,7 +14,7 @@ import hashlib
 import json
 import shutil
 import tempfile
-import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,13 +22,17 @@ from audit_build import read_cache
 from deps import ROOT, Dependency, load_lock, verify
 from project_version import project_version
 
+INVENTORY_SCHEMA = 2
+INSTANT_LENGTH = 20
+
 LICENSE_PREFIXES = ("LICENSE", "LICENCE", "COPYING", "COPYRIGHT", "NOTICE")
 NOTICE_PREAMBLE = [
     "# Third-party source-license inventory",
     "",
     (
-        "DocEnhance is copyright 2026 Ervins Strauhmanis and MPL-2.0-licensed; "
-        "bundled dependencies retain their own licenses."
+        "Project-owned DocEnhance code is MPL-2.0-licensed; "
+        "source notices identify its holders. "
+        "Bundled dependencies retain their own licenses."
     ),
     "",
     (
@@ -43,6 +47,22 @@ NOTICE_PREAMBLE = [
 
 class InventoryError(ValueError):
     """A license path or output location is unsafe."""
+
+
+def inventory_instant(value: object) -> str:
+    """Require the frozen SPDX inventory-generation instant in canonical UTC seconds."""
+    if not isinstance(value, str) or len(value) != INSTANT_LENGTH:
+        msg = "Invalid inventory creation instant"
+        raise InventoryError(msg)
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
+    except ValueError as error:
+        msg = "Invalid inventory creation instant"
+        raise InventoryError(msg) from error
+    if parsed.strftime("%Y-%m-%dT%H:%M:%SZ") != value:
+        msg = "Invalid inventory creation instant"
+        raise InventoryError(msg)
+    return value
 
 
 def copy_licenses(dep: Dependency, receipt: dict[str, Any], source: Path, out: Path) -> None:
@@ -109,19 +129,18 @@ def spdx_package(dep: Dependency, receipt: dict[str, Any]) -> dict[str, Any]:
     return package
 
 
-def spdx_document(version: str, lock_hash: str, packages: list[dict[str, Any]]) -> dict[str, Any]:
+def spdx_document(version: str, packages: list[dict[str, Any]], created: str) -> dict[str, Any]:
     """Return the SPDX 2.3 document describing every package."""
-    namespace = str(uuid.uuid5(uuid.NAMESPACE_URL, lock_hash))
-    return {
+    created = inventory_instant(created)
+    document = {
         "spdxVersion": "SPDX-2.3",
         "dataLicense": "CC0-1.0",
         "SPDXID": "SPDXRef-DOCUMENT",
         "name": f"DocEnhance {version} declared source dependency inventory",
-        "documentNamespace": f"https://spdx.org/spdxdocs/docenhance-{namespace}",
         "creationInfo": {
-            "creators": ["Tool: DocEnhance-source-inventory", "Person: Ervins Strauhmanis"],
-            "created": "2026-09-17T00:00:00Z",
-            "comment": "Fixed specification-date metadata; not a claimed binary build timestamp.",
+            "creators": [f"Tool: DocEnhance-source-inventory-{version}"],
+            "created": created,
+            "comment": "Inventory generation time, not binary build time or legal clearance.",
         },
         "packages": packages,
         "relationships": [
@@ -134,14 +153,21 @@ def spdx_document(version: str, lock_hash: str, packages: list[dict[str, Any]]) 
         ],
     }
 
+    # Every distinct document needs a distinct namespace; identical frozen inputs remain stable.
+    identity = json.dumps(document, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+    document["documentNamespace"] = f"https://spdx.org/spdxdocs/docenhance-{digest}"
+    return document
+
 
 def write_json(path: Path, value: dict[str, Any]) -> None:
     """Write indented JSON with a trailing newline."""
     path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
 
 
-def generate(cache: Path, out: Path, target_platform: str, compiler: str) -> None:
+def generate(cache: Path, out: Path, target_platform: str, compiler: str, created: str) -> None:
     """Write the exact verified source inventory into a caller-owned empty directory."""
+    created = inventory_instant(created)
     lock = load_lock(ROOT / "deps/lock.json")
     lock_hash = hashlib.sha256((ROOT / "deps/lock.json").read_bytes()).hexdigest()
     version = project_version()
@@ -153,9 +179,10 @@ def generate(cache: Path, out: Path, target_platform: str, compiler: str) -> Non
         notices += notice_lines(dep)
         packages.append(spdx_package(dep, receipt))
     (out / "THIRD_PARTY_NOTICES.md").write_text("\n".join(notices) + "\n", encoding="utf-8")
-    write_json(out / "sbom.spdx.json", spdx_document(version, lock_hash, packages))
+    write_json(out / "sbom.spdx.json", spdx_document(version, packages, created))
     info = {
-        "schema_version": 1,
+        "schema_version": INVENTORY_SCHEMA,
+        "inventory_created": created,
         "version": version,
         "platform": target_platform,
         "compiler": compiler,
@@ -185,7 +212,8 @@ def main() -> int:
         raise InventoryError(msg)
     with tempfile.TemporaryDirectory(prefix="inventory-", dir=args.out.parent) as temporary:
         prepared = Path(temporary) / "package-metadata"
-        generate(args.cache, prepared, args.platform, args.compiler)
+        created = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        generate(args.cache, prepared, args.platform, args.compiler, created)
         if args.out.exists():
             shutil.rmtree(args.out)
         prepared.rename(args.out)

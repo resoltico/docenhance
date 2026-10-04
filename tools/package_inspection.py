@@ -16,7 +16,7 @@ import tempfile
 from pathlib import Path
 
 from audit_build import read_cache
-from license_inventory import generate
+from license_inventory import INVENTORY_SCHEMA, generate
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -45,11 +45,18 @@ def differences(actual: dict[str, bytes], expected: dict[str, bytes]) -> list[st
 def expected_files(build: Path, executable: str) -> dict[str, bytes]:
     """Regenerate licenses/SBOM from verified locked sources and use the tested native binary."""
     metadata = json.loads((build / "package-metadata/build-info.json").read_bytes())
+    if metadata.get("schema_version") != INVENTORY_SCHEMA:
+        msg = "Regenerate the current source-license inventory before package inspection"
+        raise ValueError(msg)
     cache = read_cache(build / "CMakeCache.txt")
     with tempfile.TemporaryDirectory(prefix="docenhance-inventory-") as temporary:
         directory = Path(temporary)
         generate(
-            Path(cache["DE_SOURCE_CACHE"]), directory, metadata["platform"], metadata["compiler"]
+            Path(cache["DE_SOURCE_CACHE"]),
+            directory,
+            metadata["platform"],
+            metadata["compiler"],
+            metadata["inventory_created"],
         )
         expected = {f"share/docenhance/{name}": data for name, data in contents(directory).items()}
     expected[f"bin/{executable}"] = (build / "bin" / executable).read_bytes()

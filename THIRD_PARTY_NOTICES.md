@@ -1,6 +1,6 @@
 # Third-party dependencies
 
-DocEnhance is copyright 2026 Ervins Strauhmanis and MPL-2.0-licensed; bundled dependencies retain their own licenses.
+Project-owned DocEnhance code is MPL-2.0-licensed; source notices identify its copyright holders; bundled dependencies retain their own licenses.
 
 This **source archive** does not bundle third-party source files, font files, model files or compiled dependencies. `deps/lock.json` records intended upstream dependencies and their declared license information; [dependency provenance](docs/dependencies.md) records the source of each pin.
 
