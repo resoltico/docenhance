@@ -123,7 +123,10 @@ See [CONTRIBUTING](CONTRIBUTING.md), [AGENTS](AGENTS.md), the [security policy](
 
 ## License
 
-DocEnhance is copyright 2026 Ervins Strauhmanis and MPL-2.0-licensed; bundled dependencies retain their own licenses. Starting with the upcoming v0.6.0, current first-party work uses MPL-2.0; previous MIT grants remain valid. See [licensing and distribution](docs/licensing.md), [LICENSE](LICENSE) and [third-party notices](THIRD_PARTY_NOTICES.md). The repository contains no vendored dependency sources or compiled libraries. Native-package generation copies original upstream license texts and emits a declared-source SPDX inventory; final binary-composition and distribution review remains a release requirement.
+Project-owned code is licensed under [MPL-2.0](LICENSE). Copyright notices identify the
+holders of individual files; dependencies retain their own licenses. See
+[licensing and distribution](docs/licensing.md) and [third-party notices](THIRD_PARTY_NOTICES.md)
+for scope, attribution and distributor obligations.
 
 Explicit luminance denoising composes after illumination and before final quantization:
 

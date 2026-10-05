@@ -4,6 +4,10 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Fixed
+
+- Generated source-license inventories identify their tool creator and actual generation time, and give distinct document contents distinct SPDX namespaces. Regenerate native package metadata before inspection; obsolete build-info metadata is rejected. SPDX metadata remains CC0-1.0, independently of the software licenses.
+
 ## [0.6.0] - 2026-10-04
 
 ### Changed

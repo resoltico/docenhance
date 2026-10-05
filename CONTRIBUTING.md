@@ -6,7 +6,7 @@ DocEnhance is a native C++ project. Start with the [documentation map](docs/READ
 
 ## Development agreement
 
-DocEnhance is copyright 2026 Ervins Strauhmanis. Contributions are accepted under the project's MPL-2.0 license, and contributors keep the copyright in their own work. Retain existing copyright notices; name the actual holder in each new file’s nonempty
+Copyright holders are identified in the source notices. Contributions are accepted under the project's MPL-2.0 license, and contributors keep the copyright in their own work. Retain existing copyright notices; name the actual holder in each new file’s nonempty
 `SPDX-FileCopyrightText` header, alongside `SPDX-License-Identifier: MPL-2.0`. Retain all
 third-party notices. Do not copy an algorithm implementation merely because a research paper is accessible; verify the implementation's license independently. No noncommercial-only, GPL/AGPL or neural runtime component may enter this selected dependency graph without an explicitly approved design change.
 

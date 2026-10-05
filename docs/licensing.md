@@ -1,14 +1,14 @@
 # Licensing and distribution
 
-Current first-party DocEnhance work is licensed under **MPL-2.0**, beginning with the upcoming
+Current first-party DocEnhance work is licensed under **MPL-2.0**, since
 v0.6.0. [LICENSE](../LICENSE) contains Mozilla's unmodified license text. Source files carry the
 `SPDX-License-Identifier: MPL-2.0` notice; this policy also covers project-owned documentation,
 contracts and synthetic fixtures unless an applicable notice states otherwise. Contributions are
 accepted under MPL-2.0; contributors retain their copyright.
 
-Earlier MIT releases and public Git commits retain the MIT permissions already granted. Changing
-this checkout does not revoke those grants, rewrite history, or publish v0.6.0. Use the license
-and notices accompanying the particular source snapshot you received.
+Earlier MIT releases and public Git commits retain the MIT permissions already granted. Use the license
+and notices accompanying the particular source snapshot you received. The
+[changelog](../CHANGELOG.md) records the release transition.
 
 ## Upstream material
 
@@ -17,6 +17,9 @@ identify the selected sources; [third-party notices](../THIRD_PARTY_NOTICES.md) 
 terms from the project license. Upstream source notices, quoted notices and upstream-generated
 profile metadata are not relabeled MPL. Private dependency adaptations retain the upstream notices;
 the project-owned additions and their preferred source form remain available in the build recipes.
+Generated SPDX metadata uses CC0-1.0 as required by SPDX; that declaration does not relicense
+software or the copied upstream notices. The inventory records its actual creation time and
+tool creator, not the binary build time or a claim that the maintainer personally prepared it.
 Neither this document nor the declared-source SPDX inventory establishes legal or patent clearance.
 
 ## Distributor obligations
