@@ -6,7 +6,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_context.hpp"

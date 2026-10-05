@@ -67,7 +67,10 @@ class CompilerPathTests(unittest.TestCase):
                 self.assertIsNone(
                     compile_db.layer_of(manifest, str(root.parent / "foreign/src/core/control.cpp"))
                 )
-                self.assertIn(str(header.resolve()), compile_db.included_headers(entry))
+                self.assertIn(
+                    str(header.resolve()),
+                    [resolved for _, resolved in compile_db.included_headers(entry)],
+                )
                 failures, reached = architecture_build.reach_violations(manifest, entry, root)
                 self.assertIn("app", reached)
                 self.assertTrue(any("core reaches app" in error for error in failures))

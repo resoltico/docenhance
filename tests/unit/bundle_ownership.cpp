@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "bundle_stage.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/publication.hpp"
 #include "file_contents.hpp"
-#include "publication.hpp"
+#include "native_publication.hpp"
 #include "temporary_directory.hpp"
 
 #include <catch2/catch_test_macros.hpp>

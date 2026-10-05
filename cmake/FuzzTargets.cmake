@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
 include_guard(GLOBAL)
+include(ArchitectureClients)
 file(READ "${PROJECT_SOURCE_DIR}/fuzz/targets.json" de_fuzz_manifest)
 # Both callers retain their own build behavior; only declarations come from this shared list.
 function(de_register_fuzz_targets mode)
@@ -22,6 +23,11 @@ function(de_register_fuzz_targets mode)
       de_fuzz_replay(${name} SOURCE "${PROJECT_SOURCE_DIR}/fuzz/${source}" LINKS ${links})
     else()
       message(FATAL_ERROR "Unknown fuzz registration mode: ${mode}")
+    endif()
+    if(mode STREQUAL "ENGINE")
+      de_register_architecture_client(de_fuzz_${name} "${PROJECT_SOURCE_DIR}/fuzz/${source}")
+    else()
+      de_register_architecture_client(de_fuzz_replay_${name} "${PROJECT_SOURCE_DIR}/fuzz/${source}")
     endif()
   endforeach()
 endfunction()

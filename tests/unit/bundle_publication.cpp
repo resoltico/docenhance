@@ -7,13 +7,14 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/digest.hpp"
+#include "docenhance/io/publication.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "file_contents.hpp"
+#include "native_publication.hpp"
 #include "png_fixture.hpp"
-#include "publication.hpp"
 #include "temporary_directory.hpp"
 
 #include <array>

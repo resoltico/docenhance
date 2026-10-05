@@ -348,3 +348,14 @@ Report source matches even when mandatory feature closure excludes their affecte
 review dispositions to source, feature policy and advisory bytes, and refuse changed evidence.
 Database coverage and recipe exclusions remain explicit; neither pinning nor an empty result proves
 absence of vulnerabilities. See [dependency review](dependencies.md#advisory-observations).
+
+## Enforce owned interfaces rather than broad header aggregation
+
+Filesystem stream/path ownership must not depend on a PNG context. Separate in-memory identity,
+reserved-slot identity, publication, immutable bundle snapshots and byte-based PNG observations.
+Keep encoding inside its publication transaction and retain typed admission, numerical, native and
+record authorities; a generic method framework does not remove their distinct safety obligations.
+One architecture restriction baseline has reviewed owner exceptions. Thread ownership requires the
+scheduler permission even through transitive headers; private production headers stay within their
+owner. Registered clients inherit only a named public closure. Observe final CMake links, not only
+registration arguments. See [the design and separate challenge](architecture-boundaries-audit.md).

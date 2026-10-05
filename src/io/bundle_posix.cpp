@@ -3,9 +3,9 @@
 #ifndef _WIN32
 #include "bundle_native.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
 #include "entry_identity.hpp"
-#include "png_context.hpp"
+#include "file_access.hpp"
 
 #include <cerrno>
 #include <dirent.h>

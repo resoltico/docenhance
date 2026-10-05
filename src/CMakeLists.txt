@@ -43,7 +43,7 @@ de_library(de_methods LAYER methods
           methods/surface_samples.cpp methods/surface_fit.cpp methods/surface_apply.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
-          "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/method_catalog.hpp"
+          "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
           "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
@@ -66,15 +66,16 @@ de_library(de_cli LAYER cli
   LINKS de_app de_contract de_core de_report CLI11::CLI11)
 
 de_library(de_io LAYER io
-  SOURCES io/file_stream.cpp io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_write_image.cpp io/bundle_publish.cpp io/bundle_stage.cpp io/bundle_stage.hpp io/bundle_inspect.cpp io/bundle_png.cpp io/entry_identity.hpp io/entry_identity.cpp io/bundle_native.hpp io/bundle_posix.cpp io/bundle_windows.cpp io/windows_sdk.hpp
-          io/publication.cpp io/png_context.hpp io/png_reader.hpp io/publication.hpp
+  SOURCES io/file_stream.cpp io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_write_image.cpp io/bundle_publish.cpp io/bundle_stage.cpp io/bundle_stage.hpp io/bundle_inspect.cpp io/png_artifact.cpp io/entry_identity.hpp io/entry_identity.cpp io/bundle_native.hpp io/bundle_posix.cpp io/bundle_windows.cpp io/windows_sdk.hpp
+          io/publication.cpp io/png_context.hpp io/png_reader.hpp io/native_publication.hpp
           io/png_metadata.cpp io/png_metadata.hpp io/png_chunks.cpp io/png_chunks.hpp io/png_profile.cpp io/exif.cpp io/exif.hpp
           io/jpeg_context.hpp io/jpeg_context.cpp io/jpeg_memory.cpp io/jpeg_scan.hpp io/jpeg_markers.hpp io/jpeg_scan.cpp io/jpeg_metadata.cpp io/jpeg_decode.cpp io/source.cpp
           io/png_raster.cpp io/source_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
           io/png_inventory.cpp io/png_verify_rows.cpp io/png_verified_rows.cpp
-          io/png_protection.cpp io/source_snapshot.hpp io/digest.cpp
+          io/png_protection.cpp io/source_snapshot.hpp io/digest.cpp io/slot_identity.cpp io/file_access.hpp
   HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp" "${DE_INCLUDE}/io/source.hpp" "${DE_INCLUDE}/io/jpeg.hpp"
-          "${DE_INCLUDE}/io/protection_png.hpp" "${DE_INCLUDE}/io/digest.hpp" "${DE_INCLUDE}/io/bundle.hpp"
+          "${DE_INCLUDE}/io/protection_png.hpp" "${DE_INCLUDE}/io/digest.hpp" "${DE_INCLUDE}/io/publication.hpp" "${DE_INCLUDE}/io/bundle_snapshot.hpp"
+          "${DE_INCLUDE}/io/png_artifact.hpp" "${DE_INCLUDE}/io/artifact_limits.hpp" "${DE_INCLUDE}/io/paths.hpp"
   LINKS de_core de_image DE::png DE::jpeg DE::zlib DE::picosha2)
 de_library(de_color LAYER color
   SOURCES color/context.cpp color/context.hpp color/profiles.cpp color/interpretation.cpp
@@ -92,7 +93,7 @@ if(DE_FUZZ_ONLY)
   return()
 endif()
 de_library(de_host LAYER host
-  SOURCES host/bundle.cpp host/bundle.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
+  SOURCES host/run_publication.cpp host/run_publication.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
           host/linear_rows.cpp host/linear_rows.hpp host/denoising.cpp host/denoising.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
   LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color de_denoise)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)

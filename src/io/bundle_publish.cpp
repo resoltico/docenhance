@@ -3,10 +3,11 @@
 #include "bundle_stage.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
+#include "docenhance/io/publication.hpp"
 #include "entry_identity.hpp"
-#include "png_context.hpp"
-#include "publication.hpp"
+#include "file_access.hpp"
+#include "native_publication.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -211,10 +212,6 @@ core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
         return core::failure(core::ErrorCode::output, "A bundle file could not be completed");
     }
     return written;
-}
-std::string file_name(const std::string& path) {
-    const auto name = utf8_spelling(utf8_path(path).filename());
-    return name.empty() ? path : name;
 }
 core::Result<std::string> publish_bundle(const std::string& output_directory,
                                          std::span<const BundleFile> files,

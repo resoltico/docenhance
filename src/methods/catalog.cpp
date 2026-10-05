@@ -5,7 +5,7 @@
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <algorithm>
 #include <array>

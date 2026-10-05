@@ -4,7 +4,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/methods/catalog.hpp"
-#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <array>
 #include <cstddef>

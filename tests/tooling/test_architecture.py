@@ -20,6 +20,7 @@ from unittest.mock import patch
 import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone unittest discovery.
 
 import architecture
+import architecture_api
 import architecture_build
 import run_native_suite
 
@@ -30,7 +31,19 @@ def manifest_of(
     layers: dict[str, Any], packages: dict[str, dict[str, list[str]]] | None = None
 ) -> architecture.Manifest:
     """A manifest built from literal layers, for rules that must reject something."""
-    return architecture.Manifest({"layers": layers, "packages": packages or {}})
+    return architecture.Manifest(
+        {
+            "layers": layers,
+            "packages": packages or {},
+            "restrictions": {
+                "headers": [],
+                "calls": [],
+                "thread_types": [],
+                "thread_calls": [],
+            },
+            "clients": {},
+        }
+    )
 
 
 def layer(**overrides: object) -> dict[str, Any]:
@@ -40,8 +53,6 @@ def layer(**overrides: object) -> dict[str, Any]:
         "summary": "probe",
         "uses": [],
         "external": [],
-        "forbidden_headers": [],
-        "forbidden_calls": [],
     } | overrides
 
 
@@ -99,7 +110,8 @@ class ManifestBoundaryTests(unittest.TestCase):
             manifest_of({"a": layer(), "b": layer()})
         with self.assertRaisesRegex(architecture.ArchitectureError, "Duplicate"):
             manifest_of(
-                {"a": layer()}, {"foreign": {"targets": ["de_probe"], "headers": ["foreign/"]}}
+                {"a": layer()},
+                {"foreign": {"targets": ["de_probe"], "headers": ["foreign/"]}},
             )
 
     def test_invalid_field_types_and_duplicate_edges_are_rejected(self) -> None:
@@ -112,7 +124,10 @@ class ManifestBoundaryTests(unittest.TestCase):
             layer(target=""),
             layer(external={}),
         ):
-            with self.subTest(value=value), self.assertRaises(architecture.ArchitectureError):
+            with (
+                self.subTest(value=value),
+                self.assertRaises(architecture.ArchitectureError),
+            ):
                 manifest_of({"a": value})
         with self.assertRaises(architecture.ArchitectureError):
             architecture.Manifest({"layers": [], "packages": {}})
@@ -133,7 +148,7 @@ class ManifestBoundaryTests(unittest.TestCase):
 
     def test_allocator_calls_are_detected_by_the_real_ast(self) -> None:
         """Explicit allocator calls and allocation expressions are separate bypass attempts."""
-        clang_query = architecture_build.find_clang_query()
+        clang_query = architecture_api.find_clang_query()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / "src/image/probe.cpp"
@@ -154,8 +169,10 @@ class ManifestBoundaryTests(unittest.TestCase):
                 "command": f'{compiler} -std=c++23 -c "{source_name}"',
             }
             (root / "compile_commands.json").write_text(json.dumps([entry]), encoding="utf-8")
-            rules = architecture_build.matchers(architecture.load_manifest(), {"image"})
-            errors = architecture_build.api_violations(clang_query, root, entry, rules)
+            rules = architecture_api.matchers(
+                architecture.load_manifest(), {"image": {entry["file"]}}
+            )
+            errors = architecture_api.api_violations(clang_query, root, entry, rules)
             allocation = next(error for error in errors if "allocates directly" in error)
             self.assertIn("::operator new", allocation)
             self.assertIn("::operator delete", allocation)
@@ -209,10 +226,12 @@ class SourceRuleTests(unittest.TestCase):
         """A third-party header is allowed in an implementation file, never in an interface."""
         directive = "#include <nlohmann/json.hpp>\n"
         self.assertEqual(
-            architecture.file_errors(self.manifest, "report", directive, public=False), []
+            architecture.file_errors(self.manifest, "report", directive, public=False),
+            [],
         )
         self.assertEqual(
-            len(architecture.file_errors(self.manifest, "report", directive, public=True)), 1
+            len(architecture.file_errors(self.manifest, "report", directive, public=True)),
+            1,
         )
 
     def test_documentation_must_list_every_layer(self) -> None:

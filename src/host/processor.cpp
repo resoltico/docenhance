@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/host/processor.hpp"
 
-#include "bundle.hpp"
 #include "continuous.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/bundle/record.hpp"
@@ -13,11 +12,12 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/paths.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "run_publication.hpp"
 
 #include <cstddef>
 #include <cstdint>

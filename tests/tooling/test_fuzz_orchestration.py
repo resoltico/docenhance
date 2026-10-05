@@ -78,6 +78,7 @@ class CampaignOrchestrationTests(unittest.TestCase):
             with (
                 patch("run_fuzz_campaign.registration", return_value={"a", "b"}),
                 patch("run_fuzz_campaign.inspect_archives", return_value={}),
+                patch("run_fuzz_campaign.client_violations", return_value=[]),
             ):
                 self.assertEqual(run_fuzz_campaign.campaign(args), 0)
                 args.jobs = 1
@@ -88,6 +89,25 @@ class CampaignOrchestrationTests(unittest.TestCase):
             reports = list((root / "fuzz-work").glob("campaign-*/campaign.json"))
             self.assertEqual(len(reports), 3)
             self.assertEqual(sum(json.loads(p.read_text())["passed"] for p in reports), 1)
+
+    def test_client_refusal_prevents_child_campaign_launch(self) -> None:
+        """Architecture refusal is recorded before child discovery or execution."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            args = argparse.Namespace(build=root, ctest="unused", seconds=1, jobs=2)
+            with (
+                patch("run_fuzz_campaign.client_violations", return_value=["client reaches host"]),
+                patch("run_fuzz_campaign.registration") as registration,
+                patch("run_fuzz_campaign.bounded_process") as execute,
+            ):
+                self.assertEqual(run_fuzz_campaign.campaign(args), 1)
+                registration.assert_not_called()
+                execute.assert_not_called()
+            reports = list((root / "fuzz-work").glob("campaign-*/campaign.json"))
+            self.assertEqual(len(reports), 1)
+            report = json.loads(reports[0].read_text())
+            self.assertFalse(report["passed"])
+            self.assertEqual(report["error"], "client reaches host")
 
     def test_invalid_cli_duration_does_not_claim_a_workspace(self) -> None:
         """Duration zero fails before any engine or evidence directory can be created."""

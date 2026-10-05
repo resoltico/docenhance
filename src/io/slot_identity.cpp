@@ -1,0 +1,70 @@
+// SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+// SPDX-License-Identifier: MPL-2.0
+#include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/identity.hpp"
+#include "docenhance/core/result.hpp"
+#include "docenhance/io/publication.hpp"
+#include "entry_identity.hpp"
+#include "file_access.hpp"
+#include "native_publication.hpp"
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <new>
+#include <picosha2.h>
+#include <span>
+#include <string>
+#include <utility>
+
+namespace docenhance::io {
+core::Result<core::ContentIdentity> identify_slot(const BundleSlot& slot, std::uint64_t limit,
+                                                  const core::Cancellation& cancellation) {
+    if (!slot.owned_file()) {
+        return core::failure(core::ErrorCode::output_verify, "The bundle file identity changed");
+    }
+    const auto file = open_for_reading(slot.path);
+    if (file == nullptr) {
+        return core::failure(core::ErrorCode::output, "Cannot open a bundle file to identify it");
+    }
+    if (stream_identity(file.get()) != slot.created->identity()) {
+        return core::failure(core::ErrorCode::output_verify, "The identified file object changed");
+    }
+    constexpr std::size_t transfer = std::size_t{64} * 1024;
+    std::array<std::uint8_t, transfer> buffer{};
+    picosha2::hash256_one_by_one hasher;
+    std::uint64_t total = 0;
+    while (true) {
+        if (cancellation.requested(core::Checkpoint::verification)) {
+            return core::cancelled();
+        }
+        const auto read = std::fread(buffer.data(), 1, buffer.size(), file.get());
+        if (std::ferror(file.get()) != 0) {
+            return core::failure(core::ErrorCode::output, "A bundle file could not be read back");
+        }
+        if (read == 0) {
+            break;
+        }
+        total += read;
+        // Stopping here reads no further: the bound is on what this reads, not on what a
+        // measurement taken beforehand promised.
+        if (total > limit) {
+            return core::failure(core::ErrorCode::input, "A bundle file is larger than its bound");
+        }
+        const auto part = std::span{buffer}.first(read);
+        hasher.process(part.begin(), part.end());
+    }
+    hasher.finish();
+    try {
+        std::string hex;
+        picosha2::get_hash_hex_string(hasher, hex);
+        if (hex.size() != core::sha256_hex_length) {
+            return core::failure(core::ErrorCode::invariant, "A digest was not fully rendered");
+        }
+        return core::ContentIdentity{.sha256 = std::move(hex), .bytes = total};
+    } catch (const std::bad_alloc&) {
+        return core::failure(core::ErrorCode::resource, "Identifying content exhausted memory");
+    }
+}
+} // namespace docenhance::io

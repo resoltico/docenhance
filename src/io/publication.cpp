@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "publication.hpp"
+#include "native_publication.hpp"
 
 #include <filesystem>
 #include <system_error>

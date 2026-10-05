@@ -23,14 +23,12 @@ The rules that need no build live in tools/architecture.py. See docs/architectur
 from __future__ import annotations
 
 import json
-import os
-import re
-import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 
-from architecture import INCLUDE_DIRECTIVE, ArchitectureError, Manifest
+from architecture import ArchitectureError, Manifest
+from architecture_api import api_violations, find_clang_query, matchers
+from architecture_boundary import INCLUDE_DIRECTIVE, private_header_error
 from compile_db import (
     compilation_database,
     compiler_arguments,
@@ -42,127 +40,61 @@ from compile_db import (
 from deps import ROOT
 from parallel import ordered_map
 
-FIRST_PARTY = "/(src|include/docenhance)"
-SUMMARY = re.compile(r"^(\d+) match(?:es)?\.$", re.MULTILINE)
-ERROR_LINE = re.compile(r"^(?:.*: )?error: ", re.MULTILINE)
 
-
-def reach_violations(
-    manifest: Manifest, entry: dict[str, str], build: Path
-) -> tuple[list[str], set[str]]:
-    """Layer and package reach for one translation unit, and the layers it contains."""
+def header_violations(
+    manifest: Manifest,
+    entry: dict[str, str],
+    build: Path,
+    root: str,
+    *,
+    owner: str | None,
+) -> tuple[list[str], dict[str, set[str]]]:
+    """Production and registered clients share the real include and privacy boundary."""
     source, errors = entry["file"], []
-    layer = layer_of(manifest, source) or ""
-    allowed, packages = manifest.reach(layer) | {layer}, manifest.package_reach(layer)
-    roots, present = package_roots(entry, build), {layer}
-    for header in included_headers(entry):
+    allowed, packages = manifest.reach(root) | {root}, manifest.package_reach(root)
+    roots = package_roots(entry, build)
+    present: dict[str, set[str]] = {}
+    for spelled, header in included_headers(entry):
         reached = layer_of(manifest, header)
         if reached is not None:
-            present.add(reached)
+            present.setdefault(reached, set()).update((spelled, header))
+            private = private_header_error(owner, Path(header))
+            if private:
+                errors.append(f"{source}: {private}")
             if reached not in allowed:
-                errors.append(f"{source}: {layer} reaches {reached} through {header}")
+                errors.append(f"{source}: {owner or 'client'} reaches {reached} through {header}")
             continue
-        root = next((root for root in roots if header.startswith(f"{root}/")), None)
-        if root is None:
+        package_root = next(
+            (candidate for candidate in roots if header.startswith(f"{candidate}/")),
+            None,
+        )
+        if package_root is None:
             continue
-        relative = header[len(root) + 1 :]
+        relative = header[len(package_root) + 1 :]
         package = manifest.package_of_header(relative)
         if package is None:
             errors.append(f"{source}: {relative} belongs to no declared package")
         elif package not in packages:
-            errors.append(f"{source}: {layer} reaches the {package} package through {relative}")
+            errors.append(
+                f"{source}: {owner or 'client'} reaches the {package} package through {relative}"
+            )
     return errors, present
 
 
-def matchers(manifest: Manifest, present: set[str]) -> list[tuple[str, str]]:
-    """The abstract-syntax-tree rules to evaluate on a translation unit, as (rule, matcher)."""
-    rules = [
-        (
-            "throws instead of returning a Result",
-            f'cxxThrowExpr(isExpansionInFileMatching("{FIRST_PARTY}/"))',
-        )
-    ]
-    for name in sorted(present):
-        location = f"{FIRST_PARTY}/{name}/"
-        names = '", "'.join(manifest.layers[name]["forbidden_calls"])
-        rules.append(
-            (
-                f"{name} calls a forbidden function",
-                (
-                    f'callExpr(callee(functionDecl(hasAnyName("{names}"))), '
-                    f'isExpansionInFileMatching("{location}"))'
-                ),
-            )
-        )
-        rules.append(
-            (
-                f"{name} declares a namespace that is not docenhance::{name}",
-                (
-                    f'namespaceDecl(isExpansionInFileMatching("{location}"), '
-                    f'unless(isAnonymous()), unless(hasName("docenhance")), '
-                    f'unless(hasName("{name}")))'
-                ),
-            )
-        )
-        if not manifest.layers[name].get("may_allocate"):
-            rules.append(
-                (
-                    f"{name} allocates directly instead of taking memory from a budget",
-                    (
-                        "expr(anyOf(cxxNewExpr(), cxxDeleteExpr(), "
-                        'callExpr(callee(functionDecl(hasAnyName("operator new", "operator new[]", '
-                        '"operator delete", "operator delete[]"))))), '
-                        f'isExpansionInFileMatching("{location}"))'
-                    ),
-                )
-            )
-        if not manifest.layers[name].get("may_catch"):
-            rules.append(
-                (
-                    f"{name} catches an exception outside an authorized containment boundary",
-                    f'cxxCatchStmt(isExpansionInFileMatching("{location}"))',
-                )
-            )
-    return rules
-
-
-def api_violations(
-    clang_query: str, build: Path, entry: dict[str, str], rules: list[tuple[str, str]]
-) -> list[str]:
-    """Call, throw and catch rules for one translation unit, on its abstract syntax tree."""
-    commands = [argument for _, matcher in rules for argument in ("-c", f"match {matcher}")]
-    result = subprocess.run(
-        # clang-query parses GCC's compile commands too, and those carry GCC-only warning options.
-        # With -Werror an option clang does not know is an error, and a translation unit that fails
-        # to parse answers every rule with no matches, so this diagnostic is disabled for the parse
-        # exactly as cmake/ProjectOptions.cmake disables it for clang-tidy.
-        [
-            clang_query,
-            "-p",
-            str(build),
-            "--extra-arg=-Wno-unknown-warning-option",
-            entry["file"],
-            *commands,
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
+def reach_violations(
+    manifest: Manifest, entry: dict[str, str], build: Path
+) -> tuple[list[str], dict[str, set[str]]]:
+    """Layer and package reach for one translation unit, and the layers it contains."""
+    layer = layer_of(manifest, entry["file"]) or ""
+    errors, present = header_violations(
+        manifest,
+        entry,
+        build,
+        layer,
+        owner=layer,
     )
-    diagnostics = f"{result.stdout}\n{result.stderr}"
-    if result.returncode != 0 or ERROR_LINE.search(diagnostics):
-        # A rule cannot be trusted on a translation unit clang could not parse.
-        msg = f"clang-query failed on {entry['file']}: {diagnostics.strip()[:400]}"
-        raise ArchitectureError(msg)
-    counts = SUMMARY.findall(result.stdout)
-    if len(counts) != len(rules):
-        msg = f"clang-query answered {len(counts)} of {len(rules)} rules on {entry['file']}"
-        raise ArchitectureError(msg)
-    reports = [block.strip() for block in SUMMARY.split(result.stdout)[:-1:2]]
-    return [
-        f"{entry['file']}: {rule}\n{report}"
-        for (rule, _), count, report in zip(rules, counts, reports, strict=True)
-        if count != "0"
-    ]
+    present.setdefault(layer, set()).update((entry["file"], str(Path(entry["file"]).resolve())))
+    return errors, present
 
 
 def direct_use(manifest: Manifest, files: list[str], layer: str) -> tuple[set[str], set[str]]:
@@ -221,7 +153,8 @@ def self_containment_violations(
             relative = header.relative_to(ROOT / "include").as_posix()
             layer = layer_of(manifest, header.as_posix())
             entry = next(
-                (item for item in entries if layer_of(manifest, item["file"]) == layer), entries[0]
+                (item for item in entries if layer_of(manifest, item["file"]) == layer),
+                entries[0],
             )
             # One probe per header, so checks running side by side never share a file.
             probe = Path(directory) / f"header_probe_{index}.cpp"
@@ -240,47 +173,65 @@ def self_containment_violations(
     return [error for group in found for error in group]
 
 
-def find_clang_query() -> str:
-    """Locate a clang-query of the pinned major version, preferring the pinned LLVM directory."""
-    major = json.loads((ROOT / "deps/tools.json").read_text(encoding="utf-8"))["clang_tidy"][
-        "minimum"
-    ]
-    hint = os.environ.get("DE_CLANG_TIDY_DIR")
-    names = [f"clang-query-{major}", "clang-query"]
-    # Keep this lookup aligned with cmake/ProjectOptions.cmake.  Homebrew keeps
-    # versioned LLVM keg-only, so its clang-query is intentionally absent from
-    # PATH even after tools/install_llvm.py installs the pinned formula.
-    directories = [
-        hint,
-        f"/opt/homebrew/opt/llvm@{major}/bin",
-        f"/usr/local/opt/llvm@{major}/bin",
-        "/opt/homebrew/opt/llvm/bin",
-        "/usr/local/opt/llvm/bin",
-    ]
-    candidates = [f"{directory}/{name}" for directory in directories if directory for name in names]
-    candidates += names
-    for candidate in candidates:
-        found = shutil.which(candidate)
-        if found is None:
-            continue
-        version = subprocess.run(
-            [found, "--version"], capture_output=True, text=True, check=False
-        ).stdout
-        if re.search(rf"version {major}\.", version):
-            return found
-    msg = (
-        f"No clang-query {major}.x found; matchers depend on the release, so install the pinned"
-        " LLVM (tools/install_llvm.py)"
-    )
-    raise ArchitectureError(msg)
-
-
 def entry_violations(
     manifest: Manifest, entry: dict[str, str], build: Path, clang_query: str
 ) -> list[str]:
     """Reach and API rules for one translation unit."""
     reached, present = reach_violations(manifest, entry, build)
     return reached + api_violations(clang_query, build, entry, matchers(manifest, present))
+
+
+def client_link_errors(manifest: Manifest, root: str, record: dict[str, str]) -> list[str]:
+    """A client links only layer/package members of its reviewed public closure."""
+    errors = []
+    allowed, packages = manifest.reach(root) | {root}, manifest.package_reach(root)
+    for link in filter(None, record["links"].split(";")):
+        if link == "DocEnhance::options":
+            continue
+        layer, package = (
+            manifest.target_layer.get(link),
+            manifest.package_target.get(link),
+        )
+        if layer not in allowed and package not in packages:
+            errors.append(f"{record['target']}: client of {root} cannot link {link}")
+    return errors
+
+
+def client_violations(manifest: Manifest, build: Path) -> list[str]:
+    """Observe registered clients' actual compiler includes and generator-time direct links."""
+    entries = json.loads((build / "compile_commands.json").read_text(encoding="utf-8"))
+    errors, observed, targets = [], set(), set()
+    for path in sorted(build.glob("architecture-client-*.json")):
+        record = json.loads(path.read_text(encoding="utf-8"))
+        if (
+            not isinstance(record, dict)
+            or set(record) != {"target", "source", "links"}
+            or not all(isinstance(v, str) and v for v in record.values())
+        ):
+            msg = f"Invalid client registration: {path}"
+            raise ArchitectureError(msg)
+        source = record["source"]
+        if source not in manifest.clients or record["target"] in targets:
+            msg = f"Unknown or repeated architecture client: {path}"
+            raise ArchitectureError(msg)
+        targets.add(record["target"])
+        root = manifest.clients[source]
+        errors += client_link_errors(manifest, root, record)
+        if source in observed:
+            continue
+        observed.add(source)
+        matching = [
+            item for item in entries if Path(item["file"]).resolve() == (ROOT / source).resolve()
+        ]
+        if not matching:
+            msg = f"Client {source} has {len(matching)} compiler entries"
+            raise ArchitectureError(msg)
+        for entry in matching:
+            found, _ = header_violations(manifest, entry, build, root, owner=None)
+            errors += found
+    if observed != set(manifest.clients):
+        errors.append("Architecture client registrations differ from the reviewed manifest")
+    return errors
 
 
 def build_violations(manifest: Manifest, build: Path, jobs: int = 1) -> list[str]:
@@ -290,9 +241,11 @@ def build_violations(manifest: Manifest, build: Path, jobs: int = 1) -> list[str
         msg = f"The compilation database at {build} contains no first-party sources"
         raise ArchitectureError(msg)
     clang_query = find_clang_query()
-    errors = link_violations(manifest, build)
+    errors = link_violations(manifest, build) + client_violations(manifest, build)
     for found in ordered_map(
-        lambda entry: entry_violations(manifest, entry, build, clang_query), entries, jobs
+        lambda entry: entry_violations(manifest, entry, build, clang_query),
+        entries,
+        jobs,
     ):
         errors += found
     return errors + self_containment_violations(manifest, entries, jobs)

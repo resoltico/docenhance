@@ -5,8 +5,8 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/io/continuous_png.hpp"
+#include "native_publication.hpp"
 #include "png_rows.hpp"
-#include "publication.hpp"
 
 namespace docenhance::io {
 core::Result<void> write_verified_png_rows(const BundleSlot& slot, image::RowSource& rows,

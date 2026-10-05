@@ -6,7 +6,7 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
-#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <cstddef>
 #include <cstdint>

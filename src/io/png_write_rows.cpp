@@ -6,9 +6,9 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "native_publication.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
-#include "publication.hpp"
 
 #include <csetjmp>
 #include <cstdint>

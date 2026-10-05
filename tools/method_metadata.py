@@ -252,7 +252,7 @@ def metadata_outputs(
         },
     )
     return {
-        root / "include/docenhance/methods/method_catalog.hpp": render_catalog(active),
+        root / "include/docenhance/methods/reviewed_methods.hpp": render_catalog(active),
         root / "schemas/command-response.schema.json": json.dumps(schema, indent=2) + "\n",
         root / "schemas/run-record.schema.json": json.dumps(record, indent=2) + "\n",
     }

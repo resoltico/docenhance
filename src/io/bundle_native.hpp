@@ -3,7 +3,7 @@
 #pragma once
 #include "docenhance/core/result.hpp"
 #include "entry_identity.hpp"
-#include "png_context.hpp"
+#include "file_access.hpp"
 
 #include <filesystem>
 #include <string>

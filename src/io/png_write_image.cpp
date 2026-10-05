@@ -5,9 +5,9 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
+#include "native_publication.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
-#include "publication.hpp"
 
 #include <cstdint>
 

@@ -14,6 +14,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from architecture import ArchitectureError, load_manifest
+from architecture_build import client_violations
 from fuzz_execution import bounded_process, new_directory, write_json
 from fuzz_instrumentation import inspect_archives
 from fuzz_manifest import (
@@ -137,6 +139,9 @@ def campaign(args: argparse.Namespace) -> int:
     report: dict[str, Any] = {"passed": False, "seconds": args.seconds, "jobs": args.jobs}
     write_json(directory / "campaign.json", report)
     try:
+        violations = client_violations(load_manifest(), build)
+        if violations:
+            raise FuzzError("; ".join(violations))
         expected = registration(args.ctest, build, args.seconds)
         report["codec_archive_sha256"] = inspect_archives(build)
         command = [
@@ -164,7 +169,14 @@ def campaign(args: argparse.Namespace) -> int:
         report["passed"] = report["exit_code"] == 0 and complete_reports(
             directory, expected, build, args.seconds
         )
-    except (OSError, ValueError, KeyError, IndexError, subprocess.SubprocessError) as exc:
+    except (
+        ArchitectureError,
+        OSError,
+        ValueError,
+        KeyError,
+        IndexError,
+        subprocess.SubprocessError,
+    ) as exc:
         report["error"] = str(exc)
     finally:
         write_json(directory / "campaign.json", report)

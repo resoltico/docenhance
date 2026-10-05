@@ -4,9 +4,10 @@
 
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
+#include "docenhance/io/publication.hpp"
 #include "entry_identity.hpp"
-#include "png_context.hpp"
+#include "file_access.hpp"
 
 #include <algorithm>
 #include <cstddef>

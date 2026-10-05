@@ -7,7 +7,6 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
-#include "docenhance/io/bundle.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -15,6 +14,7 @@
 #include <string>
 
 namespace docenhance::io {
+struct BundleSlot;
 // A decoded image and the identity of the encoded bytes it came from. The identity is taken from
 // the immutable snapshot the decoder consumed, so it cannot describe a later state of that path.
 struct IdentifiedImage {

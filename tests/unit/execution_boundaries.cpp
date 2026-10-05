@@ -8,13 +8,13 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/publication.hpp"
 #include "entry_identity.hpp"
+#include "native_publication.hpp"
 #include "png_context.hpp"
 #include "png_reader.hpp"
 #include "png_rows.hpp"
 #include "processor.hpp"
-#include "publication.hpp"
 #include "temporary_directory.hpp"
 
 #include <array>

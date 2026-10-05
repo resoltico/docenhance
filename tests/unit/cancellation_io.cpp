@@ -9,9 +9,9 @@
 #include "docenhance/host/processor.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/png.hpp"
+#include "native_publication.hpp"
 #include "png_fixture.hpp"
 #include "png_transaction.hpp"
-#include "publication.hpp"
 #include "stub_verifier.hpp"
 #include "temporary_directory.hpp"
 

@@ -16,10 +16,10 @@
 #include "docenhance/methods/surface.hpp"
 #include "entry_identity.hpp"
 #include "linear_rows.hpp"
+#include "native_publication.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
 #include "png_transaction.hpp"
-#include "publication.hpp"
 #include "temporary_directory.hpp"
 
 #include <catch2/catch_test_macros.hpp>
