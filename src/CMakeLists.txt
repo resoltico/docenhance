@@ -20,12 +20,13 @@ endfunction()
 de_library(de_core LAYER core
   SOURCES core/memory.cpp core/identity.cpp
   HEADERS "${DE_INCLUDE}/core/identity.hpp" "${DE_INCLUDE}/core/memory.hpp" "${DE_INCLUDE}/core/result.hpp"
-          "${DE_INCLUDE}/core/cancellation.hpp")
+          "${DE_INCLUDE}/core/cancellation.hpp" "${DE_INCLUDE}/core/utf8.hpp"
+          "${DE_INCLUDE}/core/bundle_path.hpp" "${DE_INCLUDE}/core/limits.hpp")
 target_include_directories(de_core PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_contract LAYER contract
   SOURCES contract/parse.cpp
   HEADERS "${DE_INCLUDE}/contract/command.hpp" "${DE_INCLUDE}/contract/cli_contract.hpp"
-          "${DE_INCLUDE}/contract/parse.hpp" "${DE_INCLUDE}/contract/utf8.hpp"
+          "${DE_INCLUDE}/contract/parse.hpp"
   LINKS de_core)
 de_library(de_exec LAYER exec
   SOURCES exec/concurrency.cpp exec/scheduler.cpp

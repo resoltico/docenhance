@@ -33,6 +33,7 @@ class BundleDirectory {
         return handle_ != -1;
 #endif
     }
+    // Native one-component access, not admission of a portable artifact path.
     [[nodiscard]] static bool valid_name(const std::string& name) noexcept {
         const bool relative = !name.empty() && name != "." && name != ".." &&
                               !name.contains('\0') && !name.contains('/');

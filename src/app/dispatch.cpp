@@ -153,7 +153,10 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor, V
     if (invocation.help || bare_root) {
         // The root command is the only one that lists the other commands.
         return succeeded(invocation,
-                         Help{.list_commands = invocation.command == contract::Command::root});
+                         Help{
+                             .list_commands = invocation.command == contract::Command::root,
+                             .capabilities = capabilities(),
+                         });
     }
     if (invocation.command == contract::Command::process) {
         return process(invocation, processor, cancellation);
@@ -162,7 +165,9 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor, V
         return verify(invocation, verifier, cancellation);
     }
     if (invocation.command == contract::Command::version || invocation.root_version) {
-        auto outcome = succeeded(invocation, Version{.capabilities = capabilities()});
+        auto outcome = succeeded(invocation, Version{
+                                                 .capabilities = capabilities(),
+                                             });
         outcome.command = contract::Command::version;
         return outcome;
     }

@@ -163,6 +163,12 @@ def discovery_cases(exe: Path) -> None:
         "methods list matches implementation",
     )
     for command in HELP_COMMANDS:
+        text = call(exe, [*([command] if command else []), "--help"])
+        for method in version["methods"]:
+            expect(method["id"] in text, "help includes each implemented method")
+        expect("I02" not in text and "D02" not in text, "help excludes planned methods")
+        expect("png: preserve, gray, bw" in text, "help reports PNG modes")
+        expect("jpeg: preserve, gray\n" in text, "help reports scoped JPEG modes")
         response = call_json(exe, [*([command] if command else []), "--help", "--json"])
         expect(response["exit_code"] == 0, f"{command} help exit code")
         expect(isinstance(response["options"], list), f"{command} help options")

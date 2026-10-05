@@ -15,19 +15,36 @@
 namespace docenhance::host {
 core::Result<void> IlluminatedSource::read(image::RowRange range, std::span<double> rgb,
                                            image::RowUse use) {
+    const bool output = use == image::RowUse::output;
+    if (output && (range.row != next_output_.row || range.first != next_output_.first)) {
+        return core::failure(core::ErrorCode::invariant,
+                             "Output must traverse each linear sample once in row-major order");
+    }
     auto read = source_.get().read(range, rgb, use);
-    if (!read || model_ == nullptr) {
+    if (!read) {
         return read;
     }
-    auto ignored = report_.get();
-    auto& observations = use == image::RowUse::output ? report_.get() : ignored;
-    auto applied = model_->apply(range, rgb, protection_, observations, cancellation_);
-    if (applied && use == image::RowUse::output && range.row + 1 == extent().height &&
-        range.first + (rgb.size() / image::rgb_channels) == extent().width) {
-        report_.get().complete = true;
+    if (model_ != nullptr) {
+        auto ignored = report_.get();
+        auto& observations = output ? report_.get() : ignored;
+        auto applied = model_->apply(range, rgb, protection_, observations, cancellation_);
+        if (!applied) {
+            return applied;
+        }
     }
-    return applied;
+    if (output) {
+        next_output_.first += static_cast<std::uint32_t>(rgb.size() / image::rgb_channels);
+        if (next_output_.first == extent().width) {
+            next_output_.first = 0;
+            ++next_output_.row;
+        }
+        if (model_ != nullptr && next_output_.row == extent().height) {
+            report_.get().complete = true;
+        }
+    }
+    return {};
 }
+
 core::Result<void> ContinuousRows::row(std::uint32_t index, std::span<std::uint8_t> bytes,
                                        image::RowUse use) {
     const auto shape = descriptor_.shape;

@@ -3,11 +3,11 @@
 #include "png_metadata.hpp"
 
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/png.hpp"
 #include "exif.hpp"
 #include "png_chunks.hpp"
@@ -240,7 +240,7 @@ bool pixel_chunk(std::uint32_t type) noexcept {
 core::Result<PngScan> scan_png(std::span<const std::uint8_t> bytes, core::Budget& budget,
                                PngReadPolicy policy, const core::Cancellation& cancellation) {
     const auto maximum =
-        policy.content == PngContent::source ? png_max_encoded_bytes : bundle_max_file_bytes;
+        policy.content == PngContent::source ? png_max_encoded_bytes : core::bundle_max_file_bytes;
     if (!valid_png_policy(policy, maximum)) {
         return core::failure(core::ErrorCode::argument,
                              "PNG decoding policy exceeds the admitted domain");

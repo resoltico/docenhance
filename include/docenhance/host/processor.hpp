@@ -6,23 +6,21 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 
-#include <utility>
-
 namespace docenhance::host {
 // The run identity and the instant a record carries. Both are environment inputs, taken once
-// here so that nothing below the composition root reads a clock or an entropy source and a test
-// can pin them.
+// per admitted execution through a composition-root source; tests can pin that source.
 [[nodiscard]] bundle::RunContext observed_context();
 
 // Composition-root implementation; never linked by pure application tests or CLI fuzzers.
+// The source supplies one identity/instant per admitted execution, before any filesystem effects.
 class Processor final : public app::Processor {
   public:
-    explicit Processor(bundle::RunContext context = observed_context())
-        : context_(std::move(context)) {}
+    explicit Processor(bundle::RunContext (&context_source)() = observed_context)
+        : context_source_(&context_source) {}
     [[nodiscard]] app::ProcessResult process(const app::ProcessRequest& request,
                                              const core::Cancellation& cancellation) override;
 
   private:
-    bundle::RunContext context_;
+    bundle::RunContext (*context_source_)();
 };
 } // namespace docenhance::host

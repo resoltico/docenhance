@@ -5,9 +5,11 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/contract/utf8.hpp"
+#include "docenhance/core/bundle_path.hpp"
 #include "docenhance/core/identity.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
@@ -40,7 +42,7 @@ bool publication(std::string_view output, std::string_view run, const core::Cont
 #else
     const bool separator = suffix.front() == '/';
 #endif
-    return separator && suffix.substr(1) == "result.png" && contract::valid_path(output) &&
+    return separator && suffix.substr(1) == "result.png" && core::valid_path(output) &&
            core::valid_hexadecimal(run, core::run_identity_hex_length) && identity(record);
 }
 bool illumination_request(const methods::IlluminationReport& report,
@@ -121,8 +123,7 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
         return false;
     }
     // The machine contract caps this reported processing charge; this does not cap RSS.
-    constexpr std::uint64_t reported_charge_limit = std::uint64_t{1024} * 1024 * 1024;
-    if (r.preparation_charge_peak > reported_charge_limit ||
+    if (r.preparation_charge_peak > core::continuous_processing_budget ||
         (r.native_calls == 0 && (r.native_reserved_peak != 0 || r.preparation_charge_peak != 0)) ||
         (r.native_calls != 0 &&
          (r.native_reserved_peak == 0 || r.preparation_charge_peak < r.native_reserved_peak))) {
@@ -136,24 +137,6 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
                              r.native_h == methods::nlm_native_strength(*r.requested)
                        : r.status == methods::DenoiseStatus::disabled &&
                              r.reason == methods::DenoiseReason::none && r.native_h == 0;
-}
-bool relative_name(std::string_view name) {
-    if (!contract::valid_path(name) || name.front() == '/' || name.contains('\\') ||
-        name.contains(':')) {
-        return false;
-    }
-    while (!name.empty()) {
-        const auto slash = name.find('/');
-        const auto part = name.substr(0, slash);
-        if (part.empty() || part == "." || part == "..") {
-            return false;
-        }
-        if (slash == std::string_view::npos) {
-            return true;
-        }
-        name.remove_prefix(slash + 1);
-    }
-    return false;
 }
 } // namespace
 bool valid_published(const PublishedBinary& value, const ProcessRequest& request) {
@@ -205,7 +188,7 @@ bool valid_verified(const Verified& value, const VerifyRequest& request) {
     }
     for (std::size_t i = 0; i < value.confirmed.size(); ++i) {
         const auto& entry = value.confirmed.at(i);
-        if (!relative_name(entry.name) || !identity(entry.identity)) {
+        if (!core::valid_bundle_path(entry.name) || !identity(entry.identity)) {
             return false;
         }
         for (std::size_t prior = 0; prior < i; ++prior) {

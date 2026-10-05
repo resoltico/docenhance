@@ -30,6 +30,7 @@ class IlluminatedSource final : public image::LinearSource {
     image::PlaneView<const std::uint8_t> protection_;
     std::reference_wrapper<methods::IlluminationReport> report_;
     core::Cancellation cancellation_;
+    image::RowRange next_output_{};
 };
 class ContinuousRows final : public image::RowSource {
   public:

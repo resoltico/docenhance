@@ -25,9 +25,12 @@
 
 namespace docenhance::tests {
 namespace {
+bundle::RunContext pinned_context() {
+    return {.identity = std::string(32, 'a'), .recorded = "2026-01-01T00:00:00Z"};
+}
 // A published bundle to read back, produced by the real processing path.
-std::filesystem::path published_bundle(const TemporaryDirectory& temporary,
-                                       const std::string& name) {
+std::filesystem::path published_bundle(const TemporaryDirectory& temporary, const std::string& name,
+                                       host::Processor& processor) {
     const auto input = temporary.path / (name + "-page.png");
     const GrayFixture fixture{
         .width = 8,
@@ -52,8 +55,6 @@ std::filesystem::path published_bundle(const TemporaryDirectory& temporary,
     invocation.fixed_threshold = "0.5";
     auto request = app::prepare_process(invocation);
     REQUIRE(request);
-    host::Processor processor{
-        {.identity = std::string(32, 'a'), .recorded = "2026-01-01T00:00:00Z"}};
     const auto published = processor.process(*request, {});
     REQUIRE(published);
     return temporary.path / name;
@@ -78,8 +79,9 @@ core::Result<app::Verified> read_back(const std::filesystem::path& directory) {
 } // namespace
 
 TEST_CASE("A bundle agrees with the record it was published with", "[verify]") {
+    host::Processor processor{pinned_context};
     const TemporaryDirectory temporary{"docenhance-verify"};
-    const auto bundle = published_bundle(temporary, "run");
+    const auto bundle = published_bundle(temporary, "run", processor);
     const auto confirmed = read_back(bundle);
     REQUIRE(confirmed);
     CHECK(confirmed->run == std::string(32, 'a'));
@@ -94,10 +96,11 @@ TEST_CASE("A bundle agrees with the record it was published with", "[verify]") {
 }
 
 TEST_CASE("A bundle that disagrees with its record is refused", "[verify]") {
+    host::Processor processor{pinned_context};
     const TemporaryDirectory temporary{"docenhance-verify-refusal"};
 
     SECTION("an artifact that is not the one recorded") {
-        const auto bundle = published_bundle(temporary, "tampered");
+        const auto bundle = published_bundle(temporary, "tampered", processor);
         {
             std::ofstream appending{bundle / bundle::image_name, binary_with(std::ios::app)};
             appending.put('\0');
@@ -107,27 +110,27 @@ TEST_CASE("A bundle that disagrees with its record is refused", "[verify]") {
         CHECK(refused.error().code == core::ErrorCode::input);
     }
     SECTION("a declared artifact that is absent") {
-        const auto bundle = published_bundle(temporary, "missing");
+        const auto bundle = published_bundle(temporary, "missing", processor);
         std::filesystem::remove(bundle / bundle::image_name);
         CHECK(!read_back(bundle));
     }
     SECTION("a file the record does not declare") {
-        const auto bundle = published_bundle(temporary, "extra");
+        const auto bundle = published_bundle(temporary, "extra", processor);
         std::ofstream{bundle / "notes.txt", std::ios::binary}.put('x');
         CHECK(!read_back(bundle));
     }
     SECTION("a record that is not there at all") {
-        const auto bundle = published_bundle(temporary, "recordless");
+        const auto bundle = published_bundle(temporary, "recordless", processor);
         std::filesystem::remove(bundle / bundle::record_name);
         CHECK(!read_back(bundle));
     }
     SECTION("a record this build cannot read") {
-        const auto bundle = published_bundle(temporary, "malformed");
+        const auto bundle = published_bundle(temporary, "malformed", processor);
         std::ofstream{bundle / bundle::record_name, binary_with(std::ios::trunc)} << "{";
         CHECK(!read_back(bundle));
     }
     SECTION("a record past the bound it is read under") {
-        const auto bundle = published_bundle(temporary, "oversized");
+        const auto bundle = published_bundle(temporary, "oversized", processor);
         std::ofstream padding{bundle / bundle::record_name, binary_with(std::ios::trunc)};
         padding << std::string(bundle::record_max_bytes + 1, ' ');
         padding.close();
@@ -178,5 +181,60 @@ TEST_CASE(
     CHECK(!owner.file("owned.txt:alternate"));
     CHECK(!owner.file("sub\\owned.txt"));
 #endif
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+namespace {
+bundle::RunContext invalid_context() {
+    return {};
+}
+unsigned context_calls = 0;
+bundle::RunContext counted_context() {
+    ++context_calls;
+    return {
+        .identity = std::string(32, context_calls == 1 ? 'a' : 'b'),
+        .recorded = context_calls == 1 ? "2026-01-01T00:00:00Z" : "2026-01-01T00:00:01Z",
+    };
+}
+} // namespace
+TEST_CASE("A reusable native processor observes one context per execution", "[host][bundle]") {
+    context_calls = 0;
+    host::Processor processor{counted_context};
+    CHECK(context_calls == 0);
+    const TemporaryDirectory temporary{"docenhance-run-context"};
+    const auto first = published_bundle(temporary, "first", processor);
+    const auto second = published_bundle(temporary, "second", processor);
+    REQUIRE(context_calls == 2);
+    host::Verifier verifier;
+    contract::Invocation invocation;
+    invocation.command = contract::Command::verify;
+    invocation.subject = first.string();
+    const auto a = verifier.verify(app::prepare_verify(invocation).value(), {});
+    invocation.subject = second.string();
+    const auto b = verifier.verify(app::prepare_verify(invocation).value(), {});
+    REQUIRE(a);
+    REQUIRE(b);
+    CHECK(a->run == std::string(32, 'a'));
+    CHECK(b->run == std::string(32, 'b'));
+    CHECK(a->recorded == "2026-01-01T00:00:00Z");
+    CHECK(b->recorded == "2026-01-01T00:00:01Z");
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("An invalid run context is refused before filesystem processing", "[host][bundle]") {
+    contract::Invocation const invocation{
+        .command = contract::Command::process,
+        .subject = "nonexistent-input.png",
+        .output_directory = "nonexistent-parent/result",
+    };
+    auto request = app::prepare_process(invocation);
+    REQUIRE(request);
+    host::Processor processor{invalid_context};
+    const auto refused = processor.process(*request, {});
+    REQUIRE(!refused);
+    CHECK(refused.error().error.code == core::ErrorCode::invariant);
+    CHECK(refused.error().error.publication == core::Publication::not_started);
 }
 } // namespace docenhance::tests

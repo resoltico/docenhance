@@ -460,10 +460,10 @@
       "explanation": "The tools_path import is executed for its shared sys.path bootstrap before direct tool-module imports; standard unittest discovery must work without the strict runner providing tools/."
     },
     "tools/advisory_review.py:advisory/CVE-2026-76844@7385ab2c": {
-      "explanation": "The exact reviewed zlib source retains the reported gzip-file bug, but the mandatory private stream-only recipe excludes gzclose.c, gzlib.c, gzread.c and gzwrite.c from the archive. Native build audits inspect actual compilation to reject reintroduction. This match remains printed; changed source, feature policy or advisory bytes invalidate the review. It is not a declaration that the source is fixed or vulnerability-free."
+      "explanation": "The exact reviewed zlib source retains the reported gzip-file bug, but the mandatory private stream-only recipe excludes gzclose.c, gzlib.c, gzread.c and gzwrite.c from the archive. Native build audits inspect actual compilation to reject reintroduction. This match remains printed; changed source, feature policy or advisory evidence (all fields except a validated modified timestamp) invalidates the review. It is not a declaration that the source is fixed or vulnerability-free."
     },
     "tools/advisory_review.py:advisory/OSV-2023-444@ed50fb77": {
-      "explanation": "The exact reviewed OpenCV source match concerns JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory bytes invalidate the review. This is not a blanket OpenCV vulnerability exception."
+      "explanation": "The exact reviewed OpenCV source match concerns JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory evidence (all fields except a validated modified timestamp) invalidates the review. This is not a blanket OpenCV vulnerability exception."
     },
     "tests/unit/png_decode.cpp:msvc/4611@eab8232f": {
       "explanation": "This native test jump frame contains only a borrowed PngContext reference; all buffers and other C++ resource owners are in its caller. The test forces a real libpng error and checks the diagnostic and complete ownership refund."

@@ -97,7 +97,7 @@ class AdvisoryTests(unittest.TestCase):
                 source_query({"name": "another", "transport": "archive"}, Path("cache"))
 
     def test_reviews_require_current_source_policy_and_advisory(self) -> None:
-        """The two real reviewed records pass; changed identity/content/policy require review."""
+        """Timestamp-only changes pass; changed vulnerability evidence, source or policy refuses."""
         dependencies = json.loads((ROOT / "deps/lock.json").read_bytes())["dependencies"]
         features = (ROOT / "deps/features.json").read_bytes()
         for name, identifier in (("zlib", "CVE-2026-76844"), ("opencv", "OSV-2023-444")):
@@ -110,3 +110,32 @@ class AdvisoryTests(unittest.TestCase):
             self.assertFalse(reviewed(dependency, {**advisory, "modified": "changed"}, features))
             self.assertFalse(reviewed(dependency, advisory, features + b" "))
             self.assertFalse(reviewed(dependency, {**advisory, "id": "another"}, features))
+
+    def test_timestamp_only_changes_and_changed_evidence(self) -> None:
+        """A valid observation timestamp cannot conceal any other changed advisory field."""
+        dependencies = json.loads((ROOT / "deps/lock.json").read_bytes())["dependencies"]
+        features = (ROOT / "deps/features.json").read_bytes()
+        for name, identifier in (("zlib", "CVE-2026-76844"), ("opencv", "OSV-2023-444")):
+            dependency = next(d for d in dependencies if d["name"] == name)
+            advisory = json.loads(
+                (ROOT / "tests/fixtures/advisories" / (identifier + ".json")).read_bytes()
+            )
+            self.assertTrue(
+                reviewed(dependency, {**advisory, "modified": "2026-10-06T14:00:00Z"}, features)
+            )
+            for timestamp in (None, "", "changed", "2026-02-30T00:00:00Z", "2026-10-06"):
+                with self.subTest(name=name, timestamp=timestamp):
+                    self.assertFalse(
+                        reviewed(dependency, {**advisory, "modified": timestamp}, features)
+                    )
+            missing = dict(advisory)
+            del missing["modified"]
+            self.assertFalse(reviewed(dependency, missing, features))
+            for field in advisory.keys() - {"modified"}:
+                changed = {**advisory, field: "changed", "modified": "2026-10-06T14:00:00Z"}
+                self.assertFalse(reviewed(dependency, changed, features), field)
+            for field in ("withdrawn", "unrecognized_evidence"):
+                self.assertFalse(reviewed(dependency, {**advisory, field: True}, features), field)
+            changed_range = json.loads(json.dumps(advisory))
+            changed_range["affected"][0]["ranges"][0]["events"].append({"fixed": "a" * 40})
+            self.assertFalse(reviewed(dependency, changed_range, features))

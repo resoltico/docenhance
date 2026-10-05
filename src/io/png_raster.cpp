@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/png.hpp"
 #include "png_context.hpp"
@@ -196,7 +196,7 @@ core::Result<image::Raster> decode_result_png_raster(std::span<const std::uint8_
         bytes, budget,
         {
             .profile = image::ProfilePolicy::embedded,
-            .limits = {.encoded_bytes = bundle_max_file_bytes, .pixels = png_max_pixels},
+            .limits = {.encoded_bytes = core::bundle_max_file_bytes, .pixels = png_max_pixels},
             .content = PngContent::result,
         },
         cancellation);

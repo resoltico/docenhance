@@ -234,7 +234,7 @@ TEST_CASE("Readonly returns and exceptions cannot claim publication or fabricate
     };
     ReturningVerifier control{valid};
     CHECK(app::dispatch(request, processor, control).exit_code() == core::ExitCode::success);
-    for (unsigned change = 0; change < 5; ++change) {
+    for (unsigned change = 0; change < 8; ++change) {
         auto value = valid;
         if (change == 0) {
             value.directory = "different";
@@ -250,6 +250,15 @@ TEST_CASE("Readonly returns and exceptions cannot claim publication or fabricate
         }
         if (change == 4) {
             value.confirmed.front().name = "../outside";
+        }
+        if (change == 5) {
+            value.confirmed.front().name = std::string(129, 'a');
+        }
+        if (change == 6) {
+            value.confirmed.front().name = std::string{"a\0b", 3};
+        }
+        if (change == 7) {
+            value.confirmed.front().name = "\xff";
         }
         ReturningVerifier verifier{value};
         const auto outcome = app::dispatch(request, processor, verifier);

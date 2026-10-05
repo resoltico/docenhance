@@ -9,8 +9,8 @@
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
-#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/core/utf8.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "illumination.hpp"
 
@@ -60,8 +60,8 @@ std::string_view diagnostic(const core::Error& error) noexcept {
         return error.code == core::ErrorCode::resource ? "The system refused an allocation"
                                                        : "No diagnostic was reported";
     }
-    return contract::valid_utf8(error.message) ? std::string_view{error.message}
-                                               : "The diagnostic was not well-formed UTF-8";
+    return core::valid_utf8(error.message) ? std::string_view{error.message}
+                                           : "The diagnostic was not well-formed UTF-8";
 }
 Json capability_fields(const app::Capabilities& capabilities) {
     Json methods = Json::array();
@@ -99,12 +99,19 @@ Json option_fields(contract::Command command) {
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(contract::command_usage(outcome.command)) + "\n\n";
-    text += "Implemented: static PNG and bounded 8-bit JPEG input; color-managed continuous-tone "
-            "PNG output; explicit "
-            "B02/B03 binary output on stored 1/2/4/8-bit grayscale PNG samples.\n";
-    text += "JPEG supports preserve/gray output, never bw. Opt-in I01 illumination and "
-            "D01 16-bit NLM-L1 denoising support protected regions independently. TIFF input, "
-            "batching and presets are not implemented.\n\n";
+    text += "Implemented methods:";
+    for (const auto& method : help.capabilities.methods) {
+        text += " " + std::string(method.id) + " (" + std::string(method.selector) + ")";
+    }
+    text += "\nInput formats and output modes:\n";
+    for (const auto& support : help.capabilities.input_support) {
+        text += "  " + std::string(support.format) + ": preserve, gray";
+        if (support.binary) {
+            text += ", bw";
+        }
+        text += '\n';
+    }
+    text += '\n';
     if (help.list_commands) {
         text += "Commands: process, verify, methods, version\n\n";
     }
@@ -131,8 +138,7 @@ Output text_form(const app::Outcome& outcome) {
                 return {.out = help_text(outcome, payload), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Version>) {
                 return {
-                    .out = "DocEnhance " + std::string(outcome.build.version) +
-                           " (PNG/JPEG input and explicit grayscale-PNG binarization)\n",
+                    .out = "DocEnhance " + std::string(outcome.build.version) + "\n",
                     .err = {},
                 };
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {

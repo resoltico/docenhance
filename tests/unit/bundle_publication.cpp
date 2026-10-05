@@ -314,9 +314,6 @@ TEST_CASE("Manifest writer completion and staged reread failures prevent publica
         CHECK(empty_directory(temporary.path));
     }
 }
-} // namespace docenhance::tests
-
-namespace docenhance::tests {
 TEST_CASE("Publication refuses missing writers and oversized tables before staging", "[bundle]") {
     const TemporaryDirectory temporary{"docenhance-bundle-table"};
     const auto output = temporary.path / "result";
@@ -342,13 +339,14 @@ TEST_CASE("Publication refuses missing writers and oversized tables before stagi
 TEST_CASE("Staging bounds nested owned entries and cleans every acquired directory", "[bundle]") {
     const TemporaryDirectory temporary{"docenhance-bundle-depth"};
     std::string relative;
-    for (std::size_t i = 0; i < io::bundle_max_entries; ++i) {
+    for (std::size_t i = 0; i < io::bundle_max_entries - 1; ++i) {
         relative += "d/";
     }
-    relative += "image.png";
+    relative += 'i';
     std::string content = "never written";
     const io::BundleFile file{.relative = relative, .state = &content, .write = write_text};
-    const std::array files{file};
+    const io::BundleFile extra{.relative = "extra", .state = &content, .write = write_text};
+    const std::array files{file, extra};
     const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
     REQUIRE(!refused);
     REQUIRE(refused.error().code == core::ErrorCode::resource);
@@ -356,9 +354,6 @@ TEST_CASE("Staging bounds nested owned entries and cleans every acquired directo
     REQUIRE(std::filesystem::directory_iterator{temporary.path} ==
             std::filesystem::directory_iterator{});
 }
-} // namespace docenhance::tests
-
-namespace docenhance::tests {
 TEST_CASE("Native absolute publication names cannot escape staging", "[bundle]") {
     const TemporaryDirectory temporary{"docenhance-bundle-component"};
     const auto escaped = temporary.path / "escape";
@@ -372,5 +367,30 @@ TEST_CASE("Native absolute publication names cannot escape staging", "[bundle]")
     REQUIRE(!std::filesystem::exists(escaped));
     REQUIRE(std::filesystem::directory_iterator{temporary.path} ==
             std::filesystem::directory_iterator{});
+}
+TEST_CASE("Staging refuses nonportable artifact paths and leaves no owned effects", "[bundle]") {
+    const TemporaryDirectory temporary{"docenhance-artifact-path"};
+    std::string content = "never written";
+    for (const auto& path : {
+             std::string(129, 'a'),
+             std::string{"a\0b", 3},
+             std::string{"\xff"},
+             std::string{"a:b"},
+             std::string{"a\\b"},
+             std::string{"a//b"},
+         }) {
+        const io::BundleFile file{
+            .relative = path,
+            .state = &content,
+            .write = write_text,
+        };
+        const std::array files{file};
+        const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+        REQUIRE(!refused);
+        CHECK(refused.error().code == core::ErrorCode::argument);
+        CHECK(refused.error().publication == core::Publication::not_published);
+        CHECK(std::filesystem::directory_iterator{temporary.path} ==
+              std::filesystem::directory_iterator{});
+    }
 }
 } // namespace docenhance::tests
