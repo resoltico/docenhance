@@ -5,7 +5,8 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
+#include "docenhance/io/bundle_snapshot.hpp"
 #include "temporary_directory.hpp"
 
 #include <array>

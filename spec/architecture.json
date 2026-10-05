@@ -1,5 +1,52 @@
 {
-  "$comment": "The reviewed source of the layer graph, target identities and boundary permissions. CMake enforces declared links; tools/check_architecture.py checks includes, AST restrictions and the matching documentation table. may_allocate permits explicit allocation expressions and allocator calls only in the owning layer. This is not a ban on implicit standard-library metadata allocation or a process-RSS guarantee.",
+  "$comment": "The reviewed source of the layer graph, target identities and boundary permissions. CMake enforces declared links; tools/check_architecture.py checks includes, AST restrictions and the matching documentation table. may_allocate permits explicit allocation expressions and allocator calls only in the owning layer. This is not a ban on implicit standard-library metadata allocation or a process-RSS guarantee. A shared restriction baseline admits only explicit layer exceptions. Private production headers are owner-only; registered clients may reach their root closure but no private production header.",
+  "restrictions": {
+    "headers": [
+      "condition_variable",
+      "execution",
+      "filesystem",
+      "fstream",
+      "future",
+      "iostream",
+      "latch",
+      "semaphore",
+      "stop_token",
+      "thread"
+    ],
+    "calls": [
+      "aligned_alloc",
+      "calloc",
+      "exit",
+      "fopen",
+      "free",
+      "getenv",
+      "imread",
+      "imwrite",
+      "malloc",
+      "popen",
+      "posix_memalign",
+      "realloc",
+      "secure_getenv",
+      "strdup",
+      "system"
+    ],
+    "thread_types": [
+      "::std::thread",
+      "::std::jthread"
+    ],
+    "thread_calls": [
+      "::std::async",
+      "pthread_create",
+      "thrd_create",
+      "CreateThread",
+      "CreateRemoteThread",
+      "_beginthread",
+      "_beginthreadex"
+    ]
+  },
+  "clients": {
+    "fuzz/cli.cpp": "cli"
+  },
   "packages": {
     "CLI11": {
       "targets": [
@@ -109,33 +156,10 @@
       "summary": "Errors, owned allocation budgets and the Result vocabulary",
       "uses": [],
       "external": [],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "exit",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ],
-      "may_allocate": true
+      "may_allocate": true,
+      "allow_headers": [
+        "stop_token"
+      ]
     },
     "contract": {
       "target": "de_contract",
@@ -143,34 +167,7 @@
       "uses": [
         "core"
       ],
-      "external": [],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "exit",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ]
+      "external": []
     },
     "exec": {
       "target": "de_exec",
@@ -179,27 +176,17 @@
         "core"
       ],
       "external": [],
-      "forbidden_headers": [
-        "filesystem",
-        "fstream",
-        "iostream"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "exit",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ],
       "may_thread": true,
-      "may_catch": true
+      "may_catch": true,
+      "allow_headers": [
+        "condition_variable",
+        "execution",
+        "future",
+        "latch",
+        "semaphore",
+        "stop_token",
+        "thread"
+      ]
     },
     "image": {
       "target": "de_image",
@@ -207,34 +194,7 @@
       "uses": [
         "core"
       ],
-      "external": [],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "exit",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ]
+      "external": []
     },
     "methods": {
       "target": "de_methods",
@@ -244,35 +204,7 @@
         "exec",
         "image"
       ],
-      "external": [],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "imread",
-        "imwrite",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ]
+      "external": []
     },
     "io": {
       "target": "de_io",
@@ -287,30 +219,14 @@
         "zlib",
         "jpeg"
       ],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
+      "may_catch": true,
+      "allow_headers": [
+        "filesystem",
+        "fstream"
       ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ],
-      "may_catch": true
+      "allow_calls": [
+        "fopen"
+      ]
     },
     "bundle": {
       "target": "de_bundle",
@@ -322,32 +238,6 @@
       ],
       "external": [
         "nlohmann_json"
-      ],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
       ],
       "interface_packages": [
         "nlohmann_json"
@@ -364,32 +254,6 @@
         "methods"
       ],
       "external": [],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ],
       "may_catch": true
     },
     "report": {
@@ -405,32 +269,6 @@
       ],
       "external": [
         "nlohmann_json"
-      ],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
       ]
     },
     "cli": {
@@ -445,32 +283,10 @@
       "external": [
         "CLI11"
       ],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ],
-      "may_catch": true
+      "may_catch": true,
+      "allow_headers": [
+        "iostream"
+      ]
     },
     "host": {
       "target": "de_host",
@@ -486,33 +302,7 @@
         "methods",
         "denoise"
       ],
-      "external": [],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ]
+      "external": []
     },
     "entry": {
       "target": "docenhance",
@@ -523,33 +313,11 @@
         "host"
       ],
       "external": [],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
-      ],
       "may_catch": true,
-      "public_headers": false
+      "public_headers": false,
+      "allow_headers": [
+        "iostream"
+      ]
     },
     "color": {
       "target": "de_color",
@@ -560,32 +328,6 @@
       ],
       "external": [
         "lcms"
-      ],
-      "forbidden_headers": [
-        "condition_variable",
-        "execution",
-        "filesystem",
-        "fstream",
-        "future",
-        "iostream",
-        "latch",
-        "semaphore",
-        "stop_token",
-        "thread"
-      ],
-      "forbidden_calls": [
-        "aligned_alloc",
-        "calloc",
-        "fopen",
-        "free",
-        "getenv",
-        "malloc",
-        "popen",
-        "posix_memalign",
-        "realloc",
-        "secure_getenv",
-        "strdup",
-        "system"
       ],
       "may_catch": true,
       "may_allocate": true
@@ -600,23 +342,6 @@
       ],
       "external": [
         "opencv"
-      ],
-      "forbidden_headers": [
-        "filesystem",
-        "fstream",
-        "iostream",
-        "thread",
-        "future",
-        "execution"
-      ],
-      "forbidden_calls": [
-        "getenv",
-        "fopen",
-        "imread",
-        "imwrite",
-        "system",
-        "malloc",
-        "free"
       ],
       "may_catch": true
     }

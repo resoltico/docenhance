@@ -4,12 +4,13 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/paths.hpp"
 #include "docenhance/io/png.hpp"
+#include "docenhance/io/publication.hpp"
+#include "native_publication.hpp"
 #include "png_fixture.hpp"
 #include "png_rows.hpp"
 #include "png_transaction.hpp"
-#include "publication.hpp"
 #include "temporary_directory.hpp"
 
 #include <algorithm>

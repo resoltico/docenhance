@@ -6,10 +6,10 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/bundle.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/png.hpp"
-#include "publication.hpp"
+#include "docenhance/io/publication.hpp"
+#include "native_publication.hpp"
 
 #include <array>
 #include <cstdint>

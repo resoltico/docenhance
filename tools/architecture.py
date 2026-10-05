@@ -17,6 +17,12 @@ import re
 from pathlib import PurePosixPath
 from typing import Any
 
+from architecture_boundary import (
+    INCLUDE_DIRECTIVE,
+    client_source_errors,
+    private_directive_error,
+    resolved_layer,
+)
 from architecture_manifest import validate_shape
 from deps import ROOT
 
@@ -26,7 +32,6 @@ SOURCE_ROOTS = ("src", "include/docenhance")
 SOURCE_SUFFIXES = (".hpp", ".cpp")
 # Written by the build; a header generated from the version is first-party but owned by no layer.
 GENERATED_INCLUDES = ("docenhance/version.hpp",)
-INCLUDE_DIRECTIVE = re.compile(r'^[ \t]*#[ \t]*include[ \t]*[<"]([^">]+)[">]', re.MULTILINE)
 TABLE_ROW = re.compile(r"^\| `([a-z_]+)` \| ([^|]*?) \| ([^|]*?) \|$", re.MULTILINE)
 
 
@@ -44,6 +49,8 @@ class Manifest:
         except (TypeError, ValueError) as exc:
             raise ArchitectureError(str(exc)) from exc
         self.layers: dict[str, dict[str, Any]] = data["layers"]
+        self.restrictions: dict[str, list[str]] = data["restrictions"]
+        self.clients: dict[str, str] = data["clients"]
         self.packages: dict[str, dict[str, list[str]]] = data["packages"]
         self.target_layer = {layer["target"]: name for name, layer in self.layers.items()}
         self.package_target = {
@@ -53,6 +60,10 @@ class Manifest:
     def uses(self, layer: str) -> set[str]:
         """The layers this one may name directly."""
         return set(self.layers[layer]["uses"])
+
+    def forbidden(self, layer: str, field: str) -> set[str]:
+        """The one baseline, minus explicitly reviewed permissions at this owner."""
+        return set(self.restrictions[field]) - set(self.layers[layer].get(f"allow_{field}", []))
 
     def external(self, layer: str) -> set[str]:
         """The packages this layer may include and link directly."""
@@ -185,6 +196,20 @@ def include_errors(manifest: Manifest) -> list[str]:
                     manifest, layer, text, public=relative.parts[0] == "include"
                 )
             ]
+            for spelled in INCLUDE_DIRECTIVE.findall(text):
+                reason = private_directive_error(
+                    layer, ROOT / relative, spelled, public=relative.parts[0] == "include"
+                )
+                if reason:
+                    errors.append(f"{relative}: {reason}")
+                named = resolved_layer(manifest, ROOT / relative, spelled)
+                if (
+                    not spelled.startswith("docenhance/")
+                    and named is not None
+                    and named != layer
+                    and named not in manifest.uses(layer)
+                ):
+                    errors.append(f"{relative}: {layer} may not use {named} ({spelled})")
     return errors
 
 
@@ -222,7 +247,7 @@ def directive_errors(manifest: Manifest, layer: str, spelled: str) -> list[str]:
     if package is not None:
         allowed = package in manifest.external(layer)
         return [] if allowed else [f"{layer} may not use the {package} package ({spelled})"]
-    forbidden = spelled in manifest.layers[layer]["forbidden_headers"]
+    forbidden = spelled in manifest.forbidden(layer, "headers")
     return [f"{layer} may not include <{spelled}>"] if forbidden else []
 
 
@@ -259,4 +284,9 @@ def document_errors(manifest: Manifest) -> list[str]:
 def source_violations() -> list[str]:
     """Every architecture rule that needs no build."""
     manifest = load_manifest()
-    return layout_errors(manifest) + include_errors(manifest) + document_errors(manifest)
+    return (
+        layout_errors(manifest)
+        + include_errors(manifest)
+        + document_errors(manifest)
+        + client_source_errors(manifest)
+    )

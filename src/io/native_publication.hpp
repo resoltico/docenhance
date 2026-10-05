@@ -3,7 +3,7 @@
 #pragma once
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/publication.hpp"
 #include "entry_identity.hpp"
 
 #include <cstddef>

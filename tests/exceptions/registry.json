@@ -69,7 +69,7 @@
     "src/entry/signals.hpp:clang-tidy/modernize-deprecated-headers@6c5b764d": {
       "explanation": "POSIX sigaction, signal sets and SA_RESTART are declared by the native signal.h provider, not the standard C++ csignal interface. The platform boundary requires that direct include; scope installation/restoration and real interrupts are tested without weakening signal safety."
     },
-    "src/io/bundle_png.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@50aca3c8": {
+    "src/io/png_artifact.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@50aca3c8": {
       "explanation": "The decoder borrows an unsigned-byte view of an immutable budget-owned snapshot. The view preserves object representation, uses the same length, and never outlives the buffer; malformed PNG and cancellation tests cover this boundary."
     },
     "src/io/bundle_posix.cpp:clang-tidy/concurrency-mt-unsafe@810416d9": {
@@ -138,7 +138,7 @@
     "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@bc0db12c": {
       "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
     },
-    "src/io/png_context.cpp:clang-tidy/cppcoreguidelines-owning-memory@cd3cd5d9": {
+    "src/io/file_stream.cpp:clang-tidy/cppcoreguidelines-owning-memory@cd3cd5d9": {
       "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths."
     },
     "src/io/png_decode.cpp:msvc/4611@eab8232f": {

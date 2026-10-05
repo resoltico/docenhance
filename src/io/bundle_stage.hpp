@@ -4,7 +4,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "entry_identity.hpp"
-#include "publication.hpp"
+#include "native_publication.hpp"
 
 #include <algorithm>
 #include <filesystem>

@@ -4,9 +4,9 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "native_publication.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
-#include "publication.hpp"
 
 #include <algorithm>
 #include <csetjmp>

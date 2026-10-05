@@ -6,7 +6,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/source.hpp"
-#include "png_context.hpp"
+#include "file_access.hpp"
 
 #include <algorithm>
 #include <cstddef>

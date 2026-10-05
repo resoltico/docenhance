@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/io/png_artifact.hpp"
+
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/bundle.hpp"
 #include "png_metadata.hpp"
 #include "png_rows.hpp"
 
@@ -88,8 +89,9 @@ bool canonical_chunks(std::span<const std::uint8_t> bytes, const core::Cancellat
     return remaining.empty();
 }
 } // namespace
-core::Result<PngArtifact> observe_bundle_png(std::span<const std::byte> bytes, core::Budget& budget,
-                                             const core::Cancellation& cancellation) {
+core::Result<PngArtifact> observe_png_artifact(std::span<const std::byte> bytes,
+                                               core::Budget& budget,
+                                               const core::Cancellation& cancellation) {
     // Bytes are a borrowed view of the retained immutable encoded snapshot.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     const auto* const data = reinterpret_cast<const std::uint8_t*>(bytes.data());

@@ -81,8 +81,8 @@ def package_roots(entry: dict[str, str], build: Path) -> list[str]:
     return [str(path) for path in candidates if any(path.is_relative_to(base) for base in bases)]
 
 
-def included_headers(entry: dict[str, str]) -> list[str]:
-    """Every header the compiler reads for this translation unit, transitively."""
+def included_headers(entry: dict[str, str]) -> list[tuple[str, str]]:
+    """Compiler-spelled and resolved identities of every transitively read header."""
     output = run_compiler(
         [*compiler_arguments(entry), entry["file"], "-H", "-fsyntax-only"],
         entry["directory"],
@@ -94,4 +94,7 @@ def included_headers(entry: dict[str, str]) -> list[str]:
     if any(not path.is_file() for path in paths):
         msg = f"Compiler include trace contains an unidentified file: {entry['file']}"
         raise ArchitectureError(msg)
-    return [str(path) for path in paths]
+    spellings = [
+        name if Path(name).is_absolute() else f"{entry['directory']}/{name}" for name in names
+    ]
+    return list(zip(spellings, (str(path) for path in paths), strict=True))

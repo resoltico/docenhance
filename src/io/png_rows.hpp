@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
+#include "entry_identity.hpp"
 #include "png_context.hpp"
 
 #include <cstdint>

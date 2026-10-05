@@ -204,9 +204,17 @@ decoder; only those targets link the codec layer.
 
 Source checks validate manifest shape, duplicate targets, directory ownership, direct includes and
 this table. Compiler-backed checks read the real include graph, require public headers to compile
-alone/twice, and compare actual includes with registered links. `clang-query` checks forbidden calls,
+alone/twice, and compare actual includes with registered links. `clang-query` checks forbidden function references, thread constructors/launch APIs,
 throw/catch boundaries, explicit allocator calls as well as new/delete expressions, and namespaces.
-An unparsed translation unit or unanswered matcher is a failure, never an empty success result.
+One manifest-owned restriction baseline has explicit layer allowances; `may_thread` permits worker
+ownership only at the scheduler. Private production headers cannot cross layer owners or escape
+through public interfaces. The registered CLI fuzz client is checked against the CLI public closure
+using real includes and generator-time target links. Final CMake target properties must agree with
+production registrations, including additions made after registration. White-box tests intentionally
+use private numerical/native failure seams; they are not production layers.
+AST locations use exact compiler-observed file spellings and resolved layer ownership; a checkout
+ancestor named `src` cannot make foreign code subject to project permissions. An unparsed translation
+unit or unanswered matcher is a failure, never an empty success result.
 
 Strict compiler warnings, clang-tidy, file-size limits, formatting, Ruff, mypy and reviewed local
 suppression identities remain enforced. Suppressions name a specific unavoidable boundary and its
@@ -313,3 +321,6 @@ The [execution/state/ownership audit](execution-ownership-audit.md) records dete
 native-handle, contradictory-return and sustained-allocation-refusal counterexamples. Directory
 access requires an active owner and confined entry names. CLI resource fallbacks allocate nothing;
 rendering remains separately fallible.
+
+The [architecture boundary review](architecture-boundaries-audit.md) assesses source/build evidence,
+method change coupling, private headers, restriction authority and the I/O interface separation.

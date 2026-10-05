@@ -5,7 +5,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/publication.hpp"
 
 #include <string>
 namespace docenhance::host {

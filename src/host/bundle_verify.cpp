@@ -9,8 +9,11 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
+#include "docenhance/io/bundle_snapshot.hpp"
 #include "docenhance/io/digest.hpp"
+#include "docenhance/io/png_artifact.hpp"
+#include "docenhance/io/publication.hpp"
 #include "docenhance/methods/binarization.hpp"
 
 #include <expected>
@@ -24,7 +27,7 @@ core::Result<void> artifacts(const bundle::DeclaredBundle& declared,
     if (!declared.operation) {
         return core::failure(core::ErrorCode::input, "Missing bundle operation");
     }
-    auto image = io::observe_bundle_png(bytes.image.bytes(), budget, cancellation);
+    auto image = io::observe_png_artifact(bytes.image.bytes(), budget, cancellation);
     if (!image) {
         return std::unexpected(image.error());
     }
@@ -43,7 +46,7 @@ core::Result<void> artifacts(const bundle::DeclaredBundle& declared,
     if (!declared.protection) {
         return {};
     }
-    auto mask = io::observe_bundle_png(bytes.mask.bytes(), budget, cancellation);
+    auto mask = io::observe_png_artifact(bytes.mask.bytes(), budget, cancellation);
     if (!mask) {
         return std::unexpected(mask.error());
     }

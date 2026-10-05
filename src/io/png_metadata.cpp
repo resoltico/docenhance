@@ -7,7 +7,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/png.hpp"
 #include "exif.hpp"
 #include "png_chunks.hpp"

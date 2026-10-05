@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "bundle.hpp"
+#include "run_publication.hpp"
 
 #include "bundle_verify.hpp"
 #include "docenhance/bundle/record.hpp"
@@ -8,10 +8,11 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/bundle.hpp"
+#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
+#include "docenhance/io/publication.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
