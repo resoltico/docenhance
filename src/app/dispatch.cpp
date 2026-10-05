@@ -36,9 +36,9 @@ Outcome succeeded(const contract::Invocation& invocation, Payload payload) {
         .payload = std::move(payload),
     };
 }
-Outcome unavailable(const contract::Invocation& invocation, std::string message) {
+Outcome not_implemented(const contract::Invocation& invocation, std::string message) {
     return failure(invocation,
-                   {.code = core::ErrorCode::unavailable, .message = std::move(message)});
+                   {.code = core::ErrorCode::not_implemented, .message = std::move(message)});
 }
 
 Outcome process(const contract::Invocation& invocation, Processor& processor,
@@ -172,16 +172,16 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor, V
             const auto selected = std::ranges::find(available.methods, invocation.subject,
                                                     &methods::ImplementedMethod::id);
             if (selected == available.methods.end()) {
-                return unavailable(invocation, "No completed method with this ID is available; "
-                                               "see docs/methods.md for planned methods");
+                return not_implemented(invocation, "No completed method with this ID is available; "
+                                                   "see docs/methods.md for planned methods");
             }
             available.methods = available.methods.subspan(
                 static_cast<std::size_t>(selected - available.methods.begin()), 1);
         }
         return succeeded(invocation, Methods{.capabilities = available});
     }
-    return unavailable(invocation, std::string(contract::command_name(invocation.command)) +
-                                       " is specified but not implemented; no inputs were "
-                                       "opened and no outputs were created");
+    return not_implemented(invocation, std::string(contract::command_name(invocation.command)) +
+                                           " is specified but not implemented; no inputs were "
+                                           "opened and no outputs were created");
 }
 } // namespace docenhance::app

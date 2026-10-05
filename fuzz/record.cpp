@@ -87,8 +87,8 @@ void accepted_records_are_usable(const bundle::DeclaredBundle& declared) {
             "protection presence agrees with request");
     require(declared.output.shape.width != 0 && declared.output.shape.height != 0,
             "accepted output has nonempty dimensions");
-    require(declared.output.shape.depth == image::byte_bits ||
-                declared.output.shape.depth == image::word_bits,
+    require(declared.output.shape.depth == image::SampleDepth::byte() ||
+                declared.output.shape.depth == image::SampleDepth::word(),
             "accepted output uses supported precision");
     require(declared.output.artifact.name == bundle::image_name,
             "accepted output has its unique role");
@@ -148,7 +148,7 @@ std::string written_record(FuzzInput& input) {
                         .width = 1,
                         .height = 1,
                         .model = image::SampleModel::gray,
-                        .depth = 8,
+                        .depth = image::SampleDepth::byte(),
                     },
                 .profile_embedded = false,
                 .resolution = std::nullopt,

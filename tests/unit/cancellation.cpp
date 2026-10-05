@@ -255,4 +255,41 @@ TEST_CASE("Box mean cancellation reaches the second pass", "[cancellation]") {
     CHECK(output.view().row(0).front() == 1.0F);
     CHECK(output.view().row(1).front() == untouched);
 }
+namespace {
+std::atomic<unsigned> completed_items{0};
+constexpr unsigned final_items = 8;
+bool stop_after_completion(core::Checkpoint /*phase*/) noexcept {
+    return completed_items.load() == final_items;
+}
+} // namespace
+TEST_CASE("A terminal stop observation cannot cancel already completed work", "[cancellation]") {
+    for (const unsigned count : {1U, 2U, 4U}) {
+        completed_items.store(0);
+        const exec::Scheduler scheduler{workers(count),
+                                        core::Cancellation{{}, stop_after_completion}};
+        const auto task = [](std::size_t) -> core::Result<void> {
+            completed_items.fetch_add(1);
+            return {};
+        };
+        CHECK(scheduler.for_each(final_items, exec::WorkRef{task}));
+        CHECK(completed_items.load() == final_items);
+    }
+}
+TEST_CASE("A stop requested by the final completed task has worker-independent success",
+          "[cancellation]") {
+    for (const unsigned count : {1U, 2U, 4U}) {
+        std::stop_source source;
+        std::atomic<unsigned> finished{0};
+        const exec::Scheduler scheduler{workers(count), core::Cancellation{source.get_token()}};
+        const auto task = [&](std::size_t) -> core::Result<void> {
+            if (finished.fetch_add(1) + 1 == final_items) {
+                request_stop(source);
+            }
+            return {};
+        };
+        CHECK(scheduler.for_each(final_items, exec::WorkRef{task}));
+        CHECK(finished.load() == final_items);
+        CHECK(source.stop_requested());
+    }
+}
 } // namespace docenhance::tests

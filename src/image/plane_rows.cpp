@@ -17,7 +17,7 @@ OutputDescriptor PlaneRows::descriptor() const noexcept {
                 .width = image_.width(),
                 .height = image_.height(),
                 .model = SampleModel::gray,
-                .depth = byte_bits,
+                .depth = SampleDepth::byte(),
             },
         .profile = {},
         .resolution = std::nullopt,

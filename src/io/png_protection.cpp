@@ -76,7 +76,8 @@ decode_protection_png(std::span<const std::uint8_t> bytes, image::Extent extent,
     if (!raster) {
         return std::unexpected(raster.error());
     }
-    if (raster->metadata.orientation != 1 || image::is_color(raster->shape.model)) {
+    if (raster->metadata.orientation != image::Orientation{} ||
+        image::is_color(raster->shape.model)) {
         return core::failure(core::ErrorCode::input,
                              "Protection mask must have normal orientation and gray samples");
     }

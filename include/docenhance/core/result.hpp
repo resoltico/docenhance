@@ -13,7 +13,6 @@ enum class ExitCode : int {
     input = 3,
     processing = 4,
     output = 5,
-    partial = 6,
     publication_unknown = 7,
     invariant = 8,
     cancelled = 130,
@@ -28,7 +27,7 @@ enum class ErrorCode {
     output,
     output_verify,
     publication_unknown,
-    unavailable,
+    not_implemented,
     method_inapplicable,
     numerical,
     invariant,
@@ -45,12 +44,13 @@ struct Error {
             return publication == Publication::not_started ||
                    publication == Publication::not_published ||
                    publication == Publication::completed;
+        case ErrorCode::not_implemented:
+            return publication == Publication::not_started;
         case ErrorCode::cancelled:
         case ErrorCode::argument:
         case ErrorCode::input:
         case ErrorCode::resource:
         case ErrorCode::output:
-        case ErrorCode::unavailable:
         case ErrorCode::method_inapplicable:
         case ErrorCode::numerical:
         case ErrorCode::invariant:
@@ -68,7 +68,7 @@ struct Error {
         case ErrorCode::input:
             return ExitCode::input;
         case ErrorCode::resource:
-        case ErrorCode::unavailable:
+        case ErrorCode::not_implemented:
         case ErrorCode::method_inapplicable:
         case ErrorCode::numerical:
             return ExitCode::processing;
@@ -96,7 +96,7 @@ struct Error {
             return "E_OUTPUT";
         case ErrorCode::output_verify:
             return "E_OUTPUT_VERIFY";
-        case ErrorCode::unavailable:
+        case ErrorCode::not_implemented:
             return "E_NOT_IMPLEMENTED";
         case ErrorCode::method_inapplicable:
             return "E_METHOD_INAPPLICABLE";

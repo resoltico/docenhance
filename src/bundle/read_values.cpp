@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/identity.hpp"
+#include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
 #include "read_fields.hpp"
 
@@ -36,7 +37,7 @@ bool record_boolean(const RecordJson& value) {
 std::string record_text(const RecordJson& value) {
     return value.get<std::string>();
 }
-image::RasterShape record_shape(const RecordJson& value) {
+core::Result<image::RasterShape> record_shape(const RecordJson& value) {
     constexpr unsigned channels_max = 4;
     const auto channels = record_integer(record_field(value, "channels"), channels_max);
     constexpr auto models = std::to_array({
@@ -46,14 +47,18 @@ image::RasterShape record_shape(const RecordJson& value) {
         image::SampleModel::rgb,
         image::SampleModel::rgba,
     });
-    return {
+    const auto depth = image::SampleDepth::from_bits(
+        static_cast<unsigned>(record_integer(record_field(value, "bit_depth"), UINT32_MAX)));
+    if (!depth) {
+        return core::failure(core::ErrorCode::input, "Unsupported recorded sample depth");
+    }
+    return image::RasterShape{
         .width =
             static_cast<std::uint32_t>(record_integer(record_field(value, "width"), UINT32_MAX)),
         .height =
             static_cast<std::uint32_t>(record_integer(record_field(value, "height"), UINT32_MAX)),
         .model = models.at(channels),
-        .depth = static_cast<unsigned>(
-            record_integer(record_field(value, "bit_depth"), image::word_bits)),
+        .depth = *depth,
     };
 }
 std::optional<image::Resolution> record_resolution(const RecordJson& value) {

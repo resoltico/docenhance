@@ -21,7 +21,12 @@ void attempt(std::span<const std::uint8_t> profile, docenhance::image::SampleMod
     de::core::Budget budget{memory_limit};
     {
         de::image::Raster source;
-        source.shape = {.width = 1, .height = 1, .model = model, .depth = de::image::word_bits};
+        source.shape = {
+            .width = 1,
+            .height = 1,
+            .model = model,
+            .depth = de::image::SampleDepth::word(),
+        };
         source.pixels = de::image::Plane<std::uint8_t>::allocate(
                             budget, de::image::raster_row_bytes(source.shape).value(), 1)
                             .value();

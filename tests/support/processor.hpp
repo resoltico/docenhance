@@ -13,7 +13,7 @@ class RejectingProcessor final : public app::Processor {
                                              const core::Cancellation& /*cancellation*/) override {
         ++calls;
         return app::process_failure(
-            {.code = core::ErrorCode::unavailable, .message = "No I/O processor in this test"});
+            {.code = core::ErrorCode::not_implemented, .message = "No I/O processor in this test"});
     }
 };
 } // namespace docenhance::tests

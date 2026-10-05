@@ -50,7 +50,8 @@ class Reservation {
     BudgetState* state_ = nullptr;
 };
 
-// Owning, aligned, move-only bytes, charged to the budget that produced them.
+// Owning, aligned, move-only raw storage, charged to the budget that produced it.
+// Allocation leaves payload bytes uninitialized; an owner must write before reading them.
 class Buffer {
   public:
     Buffer() noexcept = default;
@@ -110,7 +111,9 @@ class Budget {
     ~Budget();
 
     // Zero bytes is an empty buffer and costs nothing; anything else is charged before it is
-    // allocated, and the charge is returned if the allocator cannot satisfy it.
+    // allocated, and the charge is returned if the allocator cannot satisfy it. Nonempty payload
+    // storage is uninitialized. Initialization belongs to its consumer: codecs retain their
+    // format-specific zeroing and bounded execution checkpoints, rather than an implicit fill.
     [[nodiscard]] Result<Buffer> allocate(std::size_t bytes);
     // Used includes both directly owned buffers and live native reservations.
     [[nodiscard]] Result<Reservation> reserve(std::size_t bytes);

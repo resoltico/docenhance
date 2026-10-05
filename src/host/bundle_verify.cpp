@@ -52,8 +52,9 @@ core::Result<void> artifacts(const bundle::DeclaredBundle& declared,
     }
     const auto& protection = *declared.protection;
     if (mask->shape.width != protection.width || mask->shape.height != protection.height ||
-        mask->shape.model != image::SampleModel::gray || mask->shape.depth != image::byte_bits ||
-        mask->profile_embedded || mask->resolution || !mask->mask_samples ||
+        mask->shape.model != image::SampleModel::gray ||
+        mask->shape.depth != image::SampleDepth::byte() || mask->profile_embedded ||
+        mask->resolution || !mask->mask_samples ||
         mask->protected_samples != declared.illumination.protected_samples) {
         return core::failure(core::ErrorCode::input,
                              "Bundle mask contradicts its recorded semantics");

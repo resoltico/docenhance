@@ -101,7 +101,8 @@ bool mean_along_row(std::span<const float> source, std::span<float> destination,
     // The one place a sample is reached by a computed index; every index is folded into the plane
     // first, and the sanitizer presets check that with a hardened standard library.
     const auto sample = [source, width](std::int64_t at) {
-        return static_cast<double>(source[fold(at, width)]); // NOLINT(*-unchecked-container-access)
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        return static_cast<double>(source[fold(at, width)]);
     };
     auto initial = reflected_window_sum(sample, 0, width, window.radius, cancellation);
     if (!initial) {

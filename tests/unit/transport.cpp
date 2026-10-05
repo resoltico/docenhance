@@ -48,7 +48,7 @@ class CapturingProcessor final : public app::Processor {
                                const core::Cancellation& /*cancellation*/) override {
         received = request;
         return app::process_failure({
-            .code = core::ErrorCode::unavailable,
+            .code = core::ErrorCode::not_implemented,
             .message = "Captured without processing effects",
         });
     }

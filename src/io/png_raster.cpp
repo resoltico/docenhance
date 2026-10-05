@@ -143,7 +143,12 @@ core::Result<image::Raster> decode_raster(std::span<const std::uint8_t> bytes, c
         return std::unexpected(context.error(core::ErrorCode::input));
     }
     auto shape = scanned->shape;
-    shape.depth = png_get_bit_depth(context.png, context.info);
+    const auto depth = image::SampleDepth::from_bits(png_get_bit_depth(context.png, context.info));
+    if (!depth) {
+        return core::failure(core::ErrorCode::input,
+                             "PNG expansion produced unsupported sample precision");
+    }
+    shape.depth = *depth;
     shape.model = sample_model(context);
     auto size = image::raster_row_bytes(shape);
     if (!size) {

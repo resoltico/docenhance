@@ -15,6 +15,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 namespace docenhance::bundle {
 namespace {
@@ -23,9 +24,7 @@ core::Result<void> invalid() {
                          "The run record contains invalid or inconsistent claims");
 }
 bool valid_shape(image::RasterShape s) {
-    return s.width != 0 && s.height != 0 &&
-           (s.depth == image::byte_bits || s.depth == image::word_bits) &&
-           image::raster_row_bytes(s).has_value();
+    return s.width != 0 && s.height != 0 && image::raster_row_bytes(s).has_value();
 }
 bool observations_agree(const DeclaredBundle& d) {
     if (!d.operation) {
@@ -42,7 +41,7 @@ bool observations_agree(const DeclaredBundle& d) {
     if (binary) {
         return !d.conversion && !d.protection && !r.requested && !r.complete &&
                r.eligible_samples == 0 && o.shape.model == image::SampleModel::gray &&
-               o.shape.depth == image::byte_bits && !o.profile_embedded && !o.resolution;
+               o.shape.depth == image::SampleDepth::byte() && !o.profile_embedded && !o.resolution;
     }
     if (!d.conversion || !o.profile_embedded || !r.complete ||
         r.status == methods::SurfaceStatus::failed) {
@@ -53,10 +52,14 @@ bool observations_agree(const DeclaredBundle& d) {
            r.eligible_samples == pixels - r.protected_samples &&
            image::valid_conversion(c, std::get<image::Continuous>(*d.operation));
 }
-OutputFacts output(const RecordJson& v) {
-    return {
+core::Result<OutputFacts> output(const RecordJson& v) {
+    auto shape = record_shape(v);
+    if (!shape) {
+        return std::unexpected(std::move(shape.error()));
+    }
+    return OutputFacts{
         .artifact = {.name = record_text(record_field(v, "path")), .identity = record_identity(v)},
-        .shape = record_shape(v),
+        .shape = *shape,
         .profile_embedded = record_boolean(record_field(v, "profile_embedded")),
         .resolution = record_resolution(record_field(v, "resolution")),
         .verification = Verification::decoded_and_compared,
@@ -127,6 +130,11 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
     if (!op || !light) {
         return invalid();
     }
+    auto out = output(record_field(document, "output"));
+    if (!out) {
+        return std::unexpected(std::move(out.error()));
+    }
+    d.output = std::move(*out);
     auto denoise_claims = validate_denoising_claims(document, d, *op, *light);
     if (!denoise_claims) {
         return denoise_claims;
@@ -141,7 +149,6 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
         }
         d.conversion = *c;
     }
-    d.output = output(record_field(document, "output"));
     d.protection = protection(record_field(document, "protection"));
     const bool supplied = record_boolean(record_field(request, "protection_supplied"));
     d.build = {

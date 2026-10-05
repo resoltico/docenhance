@@ -123,14 +123,13 @@ core::Result<void> prepare_conversion(ConversionState& state, core::Budget& budg
     state.report.output.model = gray ? image::SampleModel::gray : image::SampleModel::rgb;
     if (state.parameters.depth != image::OutputDepth::automatic) {
         state.report.output.depth = state.parameters.depth == image::OutputDepth::word
-                                        ? image::word_bits
-                                        : image::byte_bits;
+                                        ? image::SampleDepth::word()
+                                        : image::SampleDepth::byte();
     }
     state.report.depth_reduced = state.report.output.depth < source.shape.depth;
     state.report.orientation = source.metadata.orientation;
     state.report.resolution = source.metadata.resolution;
-    constexpr unsigned first_transposed = 5;
-    if (state.report.resolution && source.metadata.orientation >= first_transposed) {
+    if (state.report.resolution && source.metadata.orientation.transposed()) {
         std::swap(state.report.resolution->x, state.report.resolution->y);
     }
     auto interpretation = prepare_transform(state);

@@ -9,7 +9,7 @@
 namespace docenhance::exec {
 // How many workers one page is processed with. Three things decide it, in this order:
 //
-//   the request     `--threads`: a number the caller chose, or "auto"
+//   the override    an internal caller-selected worker count, or automatic selection
 //   the machine     how many hardware threads there are, asked for once and passed in
 //   the budget      how much working memory a worker needs, and how much there is
 //
@@ -19,9 +19,10 @@ namespace docenhance::exec {
 //
 // This is not OpenCV's thread count. OpenCV's own parallel_for_ cannot be pinned on every platform
 // (macOS dispatches through Grand Central Dispatch, which ignores a requested count), so the
-// --threads contract is honoured here, over the tiles of one page, and never delegated.
+// internal worker selection is honoured here, over the tiles of one page, and never delegated.
+// The public CLI exposes no worker-count option. Tests and fuzzers pin this internal API directly.
 
-// The contract's bounds: `auto`, or an integer in [1, 64].
+// Internal selection: automatic, or an integer in [1, 64].
 inline constexpr unsigned min_workers = 1;
 inline constexpr unsigned max_workers = 64;
 // `auto` is deliberately modest: four workers saturate memory bandwidth on a page long before they
@@ -30,7 +31,7 @@ inline constexpr unsigned automatic_workers = 4;
 
 class Concurrency {
   public:
-    // requested: the parsed `--threads` value, or nothing for `auto`.
+    // requested: an internal worker-count override, or nothing for automatic selection.
     // hardware: what the machine reports, which only `auto` uses.
     // available_bytes / per_worker_bytes: the budget, and what one worker needs of it. A
     // per-worker size of zero means the work is not memory-bound and only the request applies.

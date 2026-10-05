@@ -175,7 +175,7 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
             value.illumination.max_gain = std::numeric_limits<double>::quiet_NaN();
         }
         if (change == 4) {
-            value.conversion.orientation = 0;
+            value.conversion.depth_reduced = true;
         }
         ReturningProcessor processor{value};
         CHECK(error(app::dispatch(invocation(false), processor, verifier)).publication ==

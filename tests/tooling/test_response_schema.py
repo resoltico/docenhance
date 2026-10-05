@@ -82,6 +82,23 @@ class ResponseSchemaTests(unittest.TestCase):
         self.assertFalse(validator.is_valid(response | {"exit_code": 5}))
         self.assertFalse(validator.is_valid(response | {"publication": "completed"}))
 
+    def test_unimplemented_capability_never_starts_publication(self) -> None:
+        """An unavailable processing branch has exit four and no execution effects."""
+        response = {
+            "schema_version": 3,
+            "command": "process",
+            "version": "0.6.0",
+            "exit_code": 4,
+            "publication": "not_started",
+            "error": {"code": "E_NOT_IMPLEMENTED", "message": "Unsupported branch"},
+        }
+        validator = Draft202012Validator(SCHEMA)
+        validator.validate(response)
+        for publication in ("not_published", "completed", "unknown"):
+            with self.subTest(publication=publication):
+                self.assertFalse(validator.is_valid(response | {"publication": publication}))
+        self.assertFalse(validator.is_valid(response | {"exit_code": 3}))
+
     def test_integrity_failure_can_retain_known_publication(self) -> None:
         """A failed postcommit inspection cannot erase an observed successful rename."""
         response = {

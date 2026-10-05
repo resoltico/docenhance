@@ -68,7 +68,7 @@ bundle::RunRecord binarized_record() {
                         .width = 100,
                         .height = 50,
                         .model = image::SampleModel::gray,
-                        .depth = 8,
+                        .depth = image::SampleDepth::byte(),
                     },
                 .profile_embedded = false,
                 .resolution = std::nullopt,
@@ -121,6 +121,20 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);
+    }
+    SECTION("decoded output depth must belong to the admitted domain") {
+        for (const auto depth : {0, 1, 12, 32}) {
+            auto altered = *written;
+            const auto output_at = altered.find("\"output\"");
+            REQUIRE(output_at != std::string::npos);
+            const auto at = altered.find("\"bit_depth\": 8", output_at);
+            REQUIRE(at != std::string::npos);
+            altered.replace(at, std::string_view("\"bit_depth\": 8").size(),
+                            "\"bit_depth\": " + std::to_string(depth));
+            const auto refused = bundle::read_record(as_bytes(altered));
+            REQUIRE(!refused);
+            CHECK(refused.error().code == core::ErrorCode::input);
+        }
     }
     SECTION("a path that leaves the bundle") {
         for (const auto* const escape : {"../secret.png", "/etc/passwd", "a/../../b.png"}) {

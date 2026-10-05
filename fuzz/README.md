@@ -8,7 +8,10 @@ contracts, and [quality gates](../docs/quality.md) for commands.
 Harness sources describe their byte layouts and independent oracles. `png_decode` consumes raw
 encoded bytes; `png_samples` consumes five selector bytes (width, height, depth, interlace,
 scanline filter) followed by sample indices, constructing valid inputs without the production
-encoder. The CLI harness has no host/filesystem authority.
+encoder. Record inputs start with a selector: an even byte is followed by the raw JSON document;
+an odd byte selects synthetic-record construction and mutation. Continuous-tone seeds include
+precision and orientation claims; obsolete record versions remain rejection inputs.
+The CLI harness has no host/filesystem authority.
 
 `corpus/<target>/` holds reviewed seeds; `regressions/<target>/` holds reproducers.
 Every input is replayed in normal builds. Campaign preparation copies distinct contents by hash

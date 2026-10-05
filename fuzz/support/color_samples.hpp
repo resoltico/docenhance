@@ -125,7 +125,7 @@ inline void compare_rows(const ColorFixture& f, color::Converter& converter, cor
     const auto shape = converter.descriptor().shape;
     const auto width = f.orientation >= 5 ? f.height : f.width;
     const auto height = f.orientation >= 5 ? f.width : f.height;
-    require(shape.width == width && shape.height == height && shape.depth == f.output_depth,
+    require(shape.width == width && shape.height == height && shape.depth.bits() == f.output_depth,
             "independent oriented color shape");
     const unsigned channels = f.gray ? 1 : 3;
     auto output =
@@ -164,9 +164,14 @@ inline void check_color_samples(std::span<const std::uint8_t> bytes) {
             .width = f.width,
             .height = f.height,
             .model = image::SampleModel::rgba,
-            .depth = f.source_depth,
+            .depth = f.source_depth == 16 ? image::SampleDepth::word() : image::SampleDepth::byte(),
         };
-        source.metadata.orientation = f.orientation;
+        const auto orientation = image::Orientation::from_code(f.orientation);
+        if (!orientation) {
+            require(false, "normalized fixture orientation is admitted");
+            return;
+        }
+        source.metadata.orientation = *orientation;
         if (f.linear) {
             source.metadata.png()->gamma = 100000;
         }

@@ -16,7 +16,6 @@
 #include <variant>
 namespace docenhance::bundle {
 namespace {
-constexpr unsigned first_transposed = 5;
 unsigned integer(const RecordJson& value, unsigned maximum) {
     return static_cast<unsigned>(record_integer(value, maximum));
 }
@@ -115,15 +114,15 @@ bool png_agrees(const image::PngSource& png, const image::ConversionReport& conv
     const unsigned depth = png.depth == image::word_bits ? image::word_bits : image::byte_bits;
     const bool color = png.color_type == 2 || png.color_type == image::png_palette ||
                        png.color_type == image::png_rgb_alpha;
-    return png.width == decoded.width && png.height == decoded.height && depth == decoded.depth &&
-           color == image::is_color(decoded.model) &&
+    return png.width == decoded.width && png.height == decoded.height &&
+           depth == decoded.depth.bits() && color == image::is_color(decoded.model) &&
            ((png.color_type != image::png_gray_alpha && png.color_type != image::png_rgb_alpha) ||
             image::has_alpha(decoded.model));
 }
 bool jpeg_agrees(const image::JpegSource& jpeg, const image::ConversionReport& conversion) {
     const auto decoded = conversion.source;
     auto resolution = jpeg.exif_resolution ? jpeg.exif_resolution : jpeg.jfif_resolution;
-    if (resolution && conversion.orientation >= first_transposed) {
+    if (resolution && conversion.orientation.transposed()) {
         std::swap(resolution->x, resolution->y);
     }
     const bool interpretation =
@@ -131,10 +130,10 @@ bool jpeg_agrees(const image::JpegSource& jpeg, const image::ConversionReport& c
         conversion.interpretation == image::Interpretation::overridden_srgb ||
         conversion.interpretation == image::Interpretation::icc;
     return jpeg.width == decoded.width && jpeg.height == decoded.height &&
-           decoded.depth == image::byte_bits &&
+           decoded.depth == image::SampleDepth::byte() &&
            decoded.model == (jpeg.color == image::JpegColor::gray ? image::SampleModel::gray
                                                                   : image::SampleModel::rgb) &&
-           (jpeg.exif_present || conversion.orientation == 1) &&
+           (jpeg.exif_present || conversion.orientation == image::Orientation{}) &&
            resolution == conversion.resolution && interpretation;
 }
 } // namespace

@@ -75,15 +75,22 @@ def process(
 
 
 def refused(
-    exe: Path, root: Path, name: str, source: bytes, status: int = 3, *options: str
+    exe: Path,
+    root: Path,
+    name: str,
+    source: bytes,
+    error: str = "E_INPUT",
+    *options: str,
 ) -> None:
     """Neither invalid input nor unsupported domains may leave a published/staged bundle."""
+    status = {"E_INPUT": 3, "E_RESOURCE": 4, "E_NOT_IMPLEMENTED": 4}[error]
     input_path = root / f"{name}.jpg"
     input_path.write_bytes(source)
     directory = root / name
     response = call_json(
         exe, ["process", str(input_path), "--out-dir", str(directory), *options, "--json"], status
     )
+    expect(response["error"]["code"] == error, "refusal has the specified error class")
     expect(response["publication"] == "not_started", "decode refusal precedes staging")
     expect(
         not directory.exists() and not list(root.glob(f"{name}.staging-*")),
@@ -118,7 +125,7 @@ def encodings(exe: Path, root: Path) -> None:
     expect(
         decode_output(data).depth == WORD_DEPTH, "output precision is a separate explicit choice"
     )
-    refused(exe, root, "jpeg-binary", source, 4, "--output-mode", "bw")
+    refused(exe, root, "jpeg-binary", source, "E_NOT_IMPLEMENTED", "--output-mode", "bw")
     png = Fixture(3, 1, ((0,), (128,), (255,))).encoded()
     input_path = root / "png-named-jpeg.jpg"
     input_path.write_bytes(png)
@@ -240,7 +247,7 @@ def profiles(exe: Path, root: Path) -> None:
         root,
         "icc-incomplete-override",
         prepend(source, malformed),
-        3,
+        "E_INPUT",
         "--profile-policy",
         "srgb",
     )
@@ -276,7 +283,7 @@ def failures(exe: Path, root: Path) -> None:
         ("gain-map", marker(225, b"http://ns.adobe.com/hdr-gain-map/1.0/")),
         ("jumbf", marker(235, b"opaque")),
     ):
-        refused(exe, root, label, prepend(source, declaration), 4)
+        refused(exe, root, label, prepend(source, declaration))
     frame = source.index(b"\xff\xc0")
     for label, index, value in (
         ("twelve-bit", frame + 4, 12),
@@ -286,7 +293,26 @@ def failures(exe: Path, root: Path) -> None:
     ):
         altered = bytearray(source)
         altered[index] = value
-        refused(exe, root, label, bytes(altered), 4)
+        refused(exe, root, label, bytes(altered))
+    adobe = b"Adobe" + bytes((0, 100, 0, 0, 0, 0, 2))
+    refused(exe, root, "adobe-transform", prepend(source, marker(238, adobe)))
+    ycc = (DATA / "ycbcr-1x1-baseline.jpg").read_bytes()
+    color_frame = ycc.index(b"\xff\xc0")
+    for label, offset, value in (("chroma-sampling", 14, 0x21), ("mcu-block-bound", 11, 0x44)):
+        altered = bytearray(ycc)
+        altered[color_frame + offset] = value
+        refused(exe, root, label, bytes(altered))
+    # Remove JFIF and consistently rename component identities in frame and scan: the coding
+    # structure remains complete, but none of the admitted color interpretations applies.
+    jfif = ycc.index(b"\xff\xe0")
+    size = int.from_bytes(ycc[jfif + 2 : jfif + 4], "big")
+    unknown = bytearray(ycc[:jfif] + ycc[jfif + 2 + size :])
+    frame = unknown.index(b"\xff\xc0")
+    scan = unknown.index(b"\xff\xda")
+    for index, identity in enumerate((7, 8, 9)):
+        unknown[frame + 10 + 3 * index] = identity
+        unknown[scan + 5 + 2 * index] = identity
+    refused(exe, root, "ambiguous-color", bytes(unknown))
     # Complete framing does not legalize damaged entropy or a native recovery warning.
     entropy = source.index(b"\xff\xda")
     altered = bytearray(source)
@@ -314,6 +340,12 @@ def records(exe: Path, root: Path) -> None:
         altered["source"]["decoding"][field] = value
         path.write_text(json.dumps(altered), encoding="utf-8")
         call_json(exe, ["verify", str(path.parent), "--json"], 3)
+    for orientation in (0, 9, 4294967295):
+        altered = copy.deepcopy(record)
+        altered["execution"]["conversion"]["source_orientation"] = orientation
+        path.write_text(json.dumps(altered), encoding="utf-8")
+        response = call_json(exe, ["verify", str(path.parent), "--json"], 3)
+        expect(response["error"]["code"] == "E_INPUT", "invalid orientation fails admission")
     altered = copy.deepcopy(record)
     altered["execution"]["conversion"]["verified"] = False
     path.write_text(json.dumps(altered), encoding="utf-8")

@@ -90,7 +90,9 @@ while destroying that same object is still invalid caller behavior.
 
 Buffer bytes and owning-plane views can be borrowed only from lvalues; converters likewise
 refuse temporary raster owners. A WorkRef can name only a live lvalue callable, and synchronous
-scheduler tasks remain in scope through all joins. Small shape/parameter accessors return values.
+scheduler tasks remain in scope through all joins. Small shape/parameter accessors return values. Decoded/output sample depth and EXIF orientation
+are admitted values with private constructors, so consumers cannot carry an unsupported precision
+or silently reinterpret an invalid orientation. Encoded PNG depth is a separate container fact.
 Raster metadata borrows likewise require lvalues, and row adapters check their range before
 borrowing. Moved requests consume the source path; native ports reject unready values before I/O.
 These restrictions reject temporary-owner mistakes but do not extend backing storage lifetime.
@@ -108,7 +110,10 @@ which can coexist with live processing buffers; see [processing bundles](bundles
 This is **not a process-RSS bound**: small standard-library metadata, the accounting ledger, C stream
 buffers, OS thread resources and stacks are outside it. The codec allocator uses a bounded
 registry; exhaustion is a resource failure, never permission to allocate elsewhere. Generic
-`std::string`/container use is not inaccurately described as zero-allocation.
+`std::string`/container use is not inaccurately described as zero-allocation. Charged payload storage
+begins uninitialized; consumers initialize input samples before reading and write every output
+sample. Padding is excluded from pixel semantics. Codec row merging and progressive coefficients
+retain explicit bounded zero-initialization and cancellation checkpoints.
 
 ## PNG codec boundaries
 

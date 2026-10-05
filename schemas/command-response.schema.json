@@ -692,10 +692,7 @@
               }
             },
             "publication": {
-              "enum": [
-                "not_started",
-                "not_published"
-              ]
+              "const": "not_started"
             }
           }
         },

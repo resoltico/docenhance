@@ -129,11 +129,11 @@ core::Result<void> sampling_contract(const JpegMarkers& state) {
         const auto sampling = source.sampling.at(i);
         if ((source.color != image::JpegColor::ycbcr || i != 0) &&
             (sampling.horizontal != 1 || sampling.vertical != 1)) {
-            return core::failure(core::ErrorCode::unavailable, "Unsupported JPEG sampling layout");
+            return core::failure(core::ErrorCode::input, "Unsupported JPEG sampling layout");
         }
     }
     if ((first.horizontal * first.vertical) + (state.components - 1) > image::jpeg_mcu_blocks_max) {
-        return core::failure(core::ErrorCode::unavailable,
+        return core::failure(core::ErrorCode::input,
                              "JPEG sampling exceeds the admitted MCU extent");
     }
     return {};
@@ -167,7 +167,7 @@ core::Result<void> choose_color(JpegMarkers& state) {
         } else if (rgb_ids) {
             source.color = image::JpegColor::rgb;
         } else {
-            return core::failure(core::ErrorCode::unavailable,
+            return core::failure(core::ErrorCode::input,
                                  "JPEG component interpretation is ambiguous");
         }
     }
@@ -213,7 +213,7 @@ core::Result<void> retain(JpegMarkers& state, Declaration kind,
     case Declaration::adobe:
         if (state.scan.source.adobe_transform || bytes.size() != adobe_marker_bytes ||
             bytes.back() > 1) {
-            return core::failure(core::ErrorCode::unavailable,
+            return core::failure(core::ErrorCode::input,
                                  "Unsupported or conflicting JPEG Adobe declaration");
         }
         state.scan.source.adobe_transform = bytes.back();
@@ -236,7 +236,7 @@ core::Result<void> jpeg_metadata(JpegMarkers& state, unsigned marker,
         return core::failure(core::ErrorCode::input, "Malformed JPEG metadata signature");
     }
     if (unsupported_extension(marker, bytes)) {
-        return core::failure(core::ErrorCode::unavailable,
+        return core::failure(core::ErrorCode::input,
                              "JPEG multi-image, gain-map or extended metadata is unsupported");
     }
     const auto kind = declaration(marker, bytes);

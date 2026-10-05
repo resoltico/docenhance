@@ -75,7 +75,7 @@ bool matching_header(const PngContext& context, image::OutputDescriptor descript
         shape.model == image::SampleModel::gray ? PNG_COLOR_TYPE_GRAY : PNG_COLOR_TYPE_RGB;
     if (png_get_image_width(context.png, context.info) != shape.width ||
         png_get_image_height(context.png, context.info) != shape.height ||
-        png_get_bit_depth(context.png, context.info) != shape.depth ||
+        png_get_bit_depth(context.png, context.info) != shape.depth.bits() ||
         std::cmp_not_equal(png_get_color_type(context.png, context.info), type) ||
         png_get_interlace_type(context.png, context.info) != PNG_INTERLACE_NONE) {
         return false;

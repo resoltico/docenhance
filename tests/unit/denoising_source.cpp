@@ -64,7 +64,7 @@ TEST_CASE("Prepared D01 protection and zero corrections preserve exact entering 
         .width = width,
         .height = 1,
         .model = image::SampleModel::rgb,
-        .depth = image::byte_bits,
+        .depth = image::SampleDepth::byte(),
     };
     REQUIRE(image::quantize_linear(shape, original, original_bytes));
     REQUIRE(image::quantize_linear(shape, output, output_bytes));
