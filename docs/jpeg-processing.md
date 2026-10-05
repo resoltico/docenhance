@@ -34,7 +34,7 @@ Fixtures cover every admitted integral sampling combination and partial MCU edge
 Physical dimensions are positive, no larger than the pinned decoder's 65,500 per-axis maximum,
 and at most 40,000,000 pixels. Encoded input is at most 128 MiB. Coding processes other than SOF0/
 SOF2, arithmetic/lossless coding, higher precision, CMYK/YCCK and unknown component interpretation
-are explicit refusals. There is no reduced-resolution decode, precision fallback or first-image
+are explicit `E_INPUT` refusals (exit 3, `not_started`). There is no reduced-resolution decode, precision fallback or first-image
 selection. An explicit 16-bit PNG output is subsequent representation precision, not recovered
 JPEG information.
 

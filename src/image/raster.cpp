@@ -32,62 +32,41 @@ bool has_alpha(SampleModel model) noexcept {
 }
 core::Result<std::uint32_t> raster_row_bytes(RasterShape shape) {
     const auto channels = components(shape.model);
-    if (shape.width == 0 || shape.height == 0 || channels == 0 ||
-        (shape.depth != byte_bits && shape.depth != word_bits)) {
+    if (shape.width == 0 || shape.height == 0 || channels == 0) {
         return core::failure(core::ErrorCode::argument, "Invalid integer raster description");
     }
-    const auto bytes = std::uint64_t{shape.width} * channels * (shape.depth / byte_bits);
+    const auto bytes = std::uint64_t{shape.width} * channels * shape.depth.bytes();
     if (bytes > std::numeric_limits<std::uint32_t>::max()) {
         return core::failure(core::ErrorCode::resource, "The raster row exceeds its storage range");
     }
     return static_cast<std::uint32_t>(bytes);
 }
-RasterShape oriented_shape(RasterShape shape, unsigned orientation) noexcept {
-    constexpr unsigned transpose = 5;
-    if (orientation >= transpose) {
+RasterShape oriented_shape(RasterShape shape, Orientation orientation) noexcept {
+    if (orientation.transposed()) {
         std::swap(shape.width, shape.height);
     }
     return shape;
 }
-Coordinate source_coordinate(RasterShape shape, unsigned orientation, Coordinate p) noexcept {
-    enum class Orientation : unsigned {
-        normal = 1,
-        mirror = 2,
-        turn = 3,
-        flip = 4,
-        transpose = 5,
-        right = 6,
-        transverse = 7,
-        left = 8,
-    };
-    switch (static_cast<Orientation>(orientation)) {
-    case Orientation::mirror:
-        return {.x = shape.width - 1 - p.x, .y = p.y};
-    case Orientation::turn:
-        return {.x = shape.width - 1 - p.x, .y = shape.height - 1 - p.y};
-    case Orientation::flip:
-        return {.x = p.x, .y = shape.height - 1 - p.y};
-    case Orientation::transpose:
-        return {.x = p.y, .y = p.x};
-    case Orientation::right:
-        return {.x = p.y, .y = shape.height - 1 - p.x};
-    case Orientation::transverse:
-        return {.x = shape.width - 1 - p.y, .y = shape.height - 1 - p.x};
-    case Orientation::left:
-        return {.x = shape.width - 1 - p.y, .y = p.x};
-    case Orientation::normal:
-    default:
-        return p;
+Coordinate source_coordinate(RasterShape shape, Orientation orientation, Coordinate p) noexcept {
+    if (orientation.transposed()) {
+        std::swap(p.x, p.y);
     }
+    if (orientation.mirrored_x()) {
+        p.x = shape.width - 1 - p.x;
+    }
+    if (orientation.mirrored_y()) {
+        p.y = shape.height - 1 - p.y;
+    }
+    return p;
 }
-std::uint16_t read_sample(std::span<const std::uint8_t> bytes, unsigned depth) noexcept {
-    return depth == byte_bits
+std::uint16_t read_sample(std::span<const std::uint8_t> bytes, SampleDepth depth) noexcept {
+    return depth == SampleDepth::byte()
                ? bytes.front()
                : static_cast<std::uint16_t>((std::uint32_t{bytes.front()} << byte_bits) |
                                             bytes.subspan(1).front());
 }
-void write_sample(std::span<std::uint8_t> bytes, unsigned depth, std::uint16_t sample) noexcept {
-    if (depth == word_bits) {
+void write_sample(std::span<std::uint8_t> bytes, SampleDepth depth, std::uint16_t sample) noexcept {
+    if (depth == SampleDepth::word()) {
         bytes.front() = static_cast<std::uint8_t>(sample >> byte_bits);
         bytes = bytes.subspan(1);
     }

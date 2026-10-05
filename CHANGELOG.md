@@ -6,14 +6,18 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (C++ values):** decoded/output sample depth and orientation use `image::SampleDepth` and `image::Orientation`. Construct wire values through their validating factories and use explicit bit/code accessors. The obsolete `ErrorCode::unavailable` name is replaced by `not_implemented`; the unused exit-6 enumerator is removed.
 - **Breaking (C++ interfaces):** publication, immutable bundle snapshots and PNG artifact observations have separate headers. Replace `io/bundle.hpp` includes with the relevant `io/publication.hpp`, `io/bundle_snapshot.hpp` or `io/png_artifact.hpp`; filename helpers and shared artifact bounds are in `io/paths.hpp` and `io/artifact_limits.hpp`. Staged-file identity belongs to publication, while `io/digest.hpp` handles in-memory content. Generated method metadata is `methods/reviewed_methods.hpp`; obsolete header names are removed.
 
 ### Fixed
 
+- **Breaking (JPEG refusal codes):** unsupported continuous-input JPEG coding, precision, sampling, color interpretation and recognized multi-image/HDR extensions now return `E_INPUT`, exit 3, before staging. Scripts must update checks that expected exit 4. JPEG on the binary PNG-only branch still uses `E_NOT_IMPLEMENTED`, exit 4; that code now requires `not_started` in both typed errors and the response schema.
+- A stop request arriving after all scheduled work completes no longer turns a multi-worker result into cancellation. Skipped work, genuine-error precedence, joins and the publication cutoff retain their contracts.
 - Generated source-license inventories identify their tool creator and actual generation time, and give distinct document contents distinct SPDX namespaces. Regenerate native package metadata before inspection; obsolete build-info metadata is rejected. SPDX metadata remains CC0-1.0, independently of the software licenses.
 
 ### Internal
 
+- Numeric reference checks reject non-finite output and exercise poisoned row padding and unwritten destinations; explicit lint suppressions must name exact rules rather than wildcard patterns. Continuous-tone record fuzz seeds reach the raw reader and precision/orientation admission.
 - Architecture checks use one restriction baseline with explicit layer permissions, enforce thread ownership and private-header boundaries through the compiler, validate final CMake links and check the CLI fuzz client's actual public closure before campaign launch. AST ownership follows exact compiler-observed files, and fatal parsing diagnostics cannot masquerade as zero-match success; obsolete per-layer restriction declarations are rejected.
 
 ## [0.6.0] - 2026-10-04

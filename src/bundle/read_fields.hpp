@@ -27,7 +27,7 @@ using RecordJson = nlohmann::json;
 [[nodiscard]] double record_number(const RecordJson& value);
 [[nodiscard]] bool record_boolean(const RecordJson& value);
 [[nodiscard]] std::string record_text(const RecordJson& value);
-[[nodiscard]] image::RasterShape record_shape(const RecordJson& value);
+[[nodiscard]] core::Result<image::RasterShape> record_shape(const RecordJson& value);
 [[nodiscard]] std::optional<image::Resolution> record_resolution(const RecordJson& value);
 [[nodiscard]] core::ContentIdentity record_identity(const RecordJson& value);
 [[nodiscard]] core::Result<Operation> record_operation(const RecordJson& value);

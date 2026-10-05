@@ -35,7 +35,7 @@ core::Result<void> ContinuousRows::row(std::uint32_t index, std::span<std::uint8
     if (!required || bytes.size() != *required || index >= shape.height) {
         return core::failure(core::ErrorCode::argument, "Continuous row extent mismatch");
     }
-    const auto pixel_bytes = image::components(shape.model) * (shape.depth / image::byte_bits);
+    const auto pixel_bytes = image::components(shape.model) * shape.depth.bytes();
     for (std::uint32_t first = 0; first < shape.width;) {
         const auto count = std::min(image::linear_block_pixels, shape.width - first);
         auto const rgb = block_.view().row(0).first(std::size_t{count} * image::rgb_channels);

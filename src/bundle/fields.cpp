@@ -175,7 +175,7 @@ Json dimensions(image::RasterShape shape) {
         {"width", shape.width},
         {"height", shape.height},
         {"channels", image::components(shape.model)},
-        {"bit_depth", shape.depth},
+        {"bit_depth", shape.depth.bits()},
     };
 }
 Json warnings(const image::ConversionReport& value) {
@@ -205,7 +205,7 @@ nlohmann::ordered_json conversion_fields(const image::ConversionReport& report) 
         {"profile_decision", image::interpretation_name(report.interpretation)},
         {"assumed_transfer", report.assumed_transfer},
         {"assumed_primaries", report.assumed_primaries},
-        {"source_orientation", report.orientation},
+        {"source_orientation", report.orientation.code()},
         {"resolution", resolution},
         {"alpha_flattened_pixels", report.flattened_pixels},
         {"clipped_components", report.clipped_components},

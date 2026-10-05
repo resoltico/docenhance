@@ -38,7 +38,7 @@ bool begin_rows(PngContext& context, image::OutputDescriptor description) {
     const int type =
         shape.model == image::SampleModel::gray ? PNG_COLOR_TYPE_GRAY : PNG_COLOR_TYPE_RGB;
     png_set_IHDR(context.png, context.info, shape.width, shape.height,
-                 static_cast<int>(shape.depth), type, PNG_INTERLACE_NONE,
+                 static_cast<int>(shape.depth.bits()), type, PNG_INTERLACE_NONE,
                  PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
     constexpr int compression_level = 6;
     constexpr int default_strategy = 0;

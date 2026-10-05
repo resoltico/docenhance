@@ -128,7 +128,7 @@ Json output_fields(const OutputFacts& output) {
         {"width", output.shape.width},
         {"height", output.shape.height},
         {"channels", image::components(output.shape.model)},
-        {"bit_depth", output.shape.depth},
+        {"bit_depth", output.shape.depth.bits()},
         {"profile_embedded", output.profile_embedded},
         {"resolution", resolution},
         {"verification", verification_fields(output.verification)},

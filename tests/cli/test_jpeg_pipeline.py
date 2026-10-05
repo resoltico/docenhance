@@ -80,7 +80,7 @@ def resolution(exe: Path, root: Path) -> None:
         refused(exe, root, name, prepend(bytes(source), marker(225, body)))
     wrong_mask = root / "wrong-mask.png"
     wrong_mask.write_bytes(Fixture(17, 9, tuple((255,) for _ in range(17 * 9))).encoded())
-    refused(exe, root, "unoriented-mask", encoded, 3, "--protect-mask", str(wrong_mask))
+    refused(exe, root, "unoriented-mask", encoded, "E_INPUT", "--protect-mask", str(wrong_mask))
 
 
 def limits(exe: Path, root: Path) -> None:
@@ -104,31 +104,35 @@ def limits(exe: Path, root: Path) -> None:
     too_large = [
         marker(226, b"ICC_PROFILE\0" + bytes([i + 1, 65]) + b"x" * 65000) for i in range(65)
     ]
-    refused(exe, root, "profile-byte-ceiling", prepend(source, *too_large), 4)
+    refused(exe, root, "profile-byte-ceiling", prepend(source, *too_large), error="E_RESOURCE")
     refused(
         exe,
         root,
         "profile-byte-ceiling-override",
         prepend(source, *too_large),
-        4,
+        "E_RESOURCE",
         "--profile-policy",
         "srgb",
     )
     refused(
-        exe, root, "marker-count", prepend(source, *(marker(254, b"") for _ in range(65536))), 4
+        exe,
+        root,
+        "marker-count",
+        prepend(source, *(marker(254, b"") for _ in range(65536))),
+        error="E_RESOURCE",
     )
     refused(
         exe,
         root,
         "marker-bytes",
         prepend(source, *(marker(254, b"x" * 65000) for _ in range(130))),
-        4,
+        error="E_RESOURCE",
     )
     # Framing refuses excessive work before decoding repeated invalid progressive scans.
     progressive = (DATA / "gray-1x1-progressive.jpg").read_bytes()
     last_scan = progressive.rindex(b"\xff\xda")
     repeated = progressive[:-2] + progressive[last_scan:-2] * 128 + progressive[-2:]
-    refused(exe, root, "scan-ceiling", repeated, 4)
+    refused(exe, root, "scan-ceiling", repeated, error="E_RESOURCE")
     late = source[:-2] + marker(225, b"Exif\0\0" + exif(1)) + source[-2:]
     refused(exe, root, "late-interpretation", late)
     refused(
@@ -136,7 +140,6 @@ def limits(exe: Path, root: Path) -> None:
         root,
         "iso-gain-map",
         prepend(source, marker(226, b"urn:iso:std:iso:ts:21496:-1\0opaque")),
-        4,
     )
 
 

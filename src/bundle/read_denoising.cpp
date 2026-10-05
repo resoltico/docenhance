@@ -105,8 +105,7 @@ core::Result<void> validate_denoising_claims(const RecordJson& document, Declare
     if (RecordJson(denoising_request_fields(*denoising)) != denoise_request) {
         return core::failure(core::ErrorCode::input, "Inconsistent denoising claims");
     }
-    return observations_agree(*denoising, operation, light,
-                              record_shape(record_field(document, "output")));
+    return observations_agree(*denoising, operation, light, d.output.shape);
 }
 
 } // namespace docenhance::bundle

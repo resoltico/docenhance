@@ -35,7 +35,7 @@ core::Result<void> frame(JpegMarkers& state, unsigned marker, std::span<const st
     const auto components = bytes.subspan(component_count_offset, 1).front();
     if (bytes.front() != image::byte_bits ||
         (components != 1 && components != image::jpeg_components)) {
-        return core::failure(core::ErrorCode::unavailable,
+        return core::failure(core::ErrorCode::input,
                              "JPEG requires 8-bit grayscale or three-component color");
     }
     if (bytes.size() != frame_fields + (std::size_t{components} * component_descriptor_bytes)) {
@@ -167,8 +167,7 @@ core::Result<Segment> take_segment(std::span<const std::uint8_t>& bytes,
     constexpr auto coding = std::to_array<unsigned>(
         {jpeg_sof_baseline, jpeg_sof_progressive, jpeg_dht, jpeg_dqt, jpeg_dri, jpeg_sos});
     if (!application_marker(*marker) && std::ranges::find(coding, *marker) == coding.end()) {
-        return core::failure(core::ErrorCode::unavailable,
-                             "Unsupported JPEG coding process or marker");
+        return core::failure(core::ErrorCode::input, "Unsupported JPEG coding process or marker");
     }
     if (bytes.size() < 2) {
         return core::failure(core::ErrorCode::input, "Truncated JPEG marker length");

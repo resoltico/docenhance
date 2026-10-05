@@ -38,7 +38,7 @@ core::Result<IdentifiedImage> load_grayscale_png(const std::string& input, core:
     if (encoded->size() >= 2 && std::span{data, encoded->size()}.front() == jpeg_marker_prefix &&
         std::span{data, encoded->size()}.subspan(1, 1).front() == jpeg_soi) {
         return core::failure(
-            core::ErrorCode::unavailable,
+            core::ErrorCode::not_implemented,
             "JPEG input supports continuous output only; binary processing requires grayscale PNG");
     }
     auto decoded = decode_grayscale_png({data, encoded->size()}, budget, PngLimits(), cancellation);

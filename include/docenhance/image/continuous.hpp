@@ -38,7 +38,7 @@ struct ConversionReport {
     RasterShape source;
     RasterShape output;
     Interpretation interpretation = Interpretation::assumed_srgb;
-    unsigned orientation = 1;
+    Orientation orientation = Orientation::normal();
     std::optional<Resolution> resolution;
     std::uint64_t flattened_pixels{};
     std::uint64_t clipped_components{};

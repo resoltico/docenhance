@@ -112,6 +112,17 @@ class RegistryTests(GateTestCase):
         self.assertIn(f"Unregistered suppression {second}", errors[0])
         self.assertIn("Stale suppression registry entry: src/a.cpp:clang-tidy/misc-z", errors[1])
 
+    def test_wildcard_suppression_rules_are_never_registrable(self) -> None:
+        """A reviewed exact rule cannot expand to future checks through a pattern."""
+        for rule in ("*", "*-reinterpret-cast", "misc-?", "misc-[xy]"):
+            with self.subTest(rule=rule):
+                result = suppressions.scan_cxx("probe.cpp", f"int value; // NOLINT({rule})\n")
+                self.assertTrue(any("wildcard" in error for error in result.errors))
+                self.assertEqual(result.suppressions, [])
+        self.assertEqual(
+            suppressions.scan_cxx("probe.cpp", "int value; // NOLINT(misc-x)\n").errors, []
+        )
+
     def test_key_survives_line_shifts_but_not_edits(self) -> None:
         """Moving a suppression keeps its key; changing the suppressed line does not."""
         write(self.root, "src/a.cpp", "int a; // NOLINT(misc-x)\n")

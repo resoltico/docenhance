@@ -70,12 +70,12 @@ bool source_matches(const image::SourceDescription& source, image::RasterShape s
                 const bool color = decoded.color_type == 2 ||
                                    decoded.color_type == image::png_palette ||
                                    decoded.color_type == image::png_rgb_alpha;
-                return shape.depth == depth && image::is_color(shape.model) == color;
+                return shape.depth.bits() == depth && image::is_color(shape.model) == color;
             } else {
                 const auto model = decoded.color == image::JpegColor::gray
                                        ? image::SampleModel::gray
                                        : image::SampleModel::rgb;
-                return shape.depth == image::byte_bits && shape.model == model;
+                return shape.depth == image::SampleDepth::byte() && shape.model == model;
             }
         },
         source);

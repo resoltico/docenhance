@@ -45,7 +45,6 @@ std::string_view interpretation_name(Interpretation value) noexcept {
 namespace {
 bool valid_shape(RasterShape shape) noexcept {
     return shape.width != 0 && shape.height != 0 && components(shape.model) != 0 &&
-           (shape.depth == byte_bits || shape.depth == word_bits) &&
            std::uint64_t{shape.width} * shape.height <= source_pixels_max;
 }
 bool known_interpretation(Interpretation interpretation) noexcept {
@@ -65,8 +64,7 @@ bool known_interpretation(Interpretation interpretation) noexcept {
 bool valid_conversion(const ConversionReport& report, const Continuous& operation) noexcept {
     const auto& c = report;
     if (!c.verified || !valid_shape(c.source) || !valid_shape(c.output) ||
-        !known_interpretation(c.interpretation) || c.orientation == 0 ||
-        c.orientation > orientation_max || has_alpha(c.output.model) ||
+        !known_interpretation(c.interpretation) || has_alpha(c.output.model) ||
         (c.resolution && (c.resolution->x == 0 || c.resolution->y == 0))) {
         return false;
     }
@@ -83,9 +81,9 @@ bool valid_conversion(const ConversionReport& report, const Continuous& operatio
     const auto oriented = oriented_shape(c.source, c.orientation);
     auto depth = c.source.depth;
     if (p.depth == OutputDepth::byte) {
-        depth = byte_bits;
+        depth = SampleDepth::byte();
     } else if (p.depth == OutputDepth::word) {
-        depth = word_bits;
+        depth = SampleDepth::word();
     }
     const auto model = p.mode == ToneMode::gray || !is_color(c.source.model) ? SampleModel::gray
                                                                              : SampleModel::rgb;

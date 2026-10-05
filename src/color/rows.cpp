@@ -28,9 +28,10 @@ struct RowPart {
 core::Result<void> gather(ConversionState& state, RowPart part, image::RowUse use) {
     const auto& source = state.source.get();
     const unsigned channels = image::is_color(source.shape.model) ? image::rgb_channels : 1;
-    const auto bytes = source.shape.depth / image::byte_bits;
+    const auto bytes = source.shape.depth.bytes();
     const auto stride = image::components(source.shape.model) * bytes;
-    const auto maximum = source.shape.depth == image::word_bits ? image::word_max : image::byte_max;
+    const auto maximum =
+        source.shape.depth == image::SampleDepth::word() ? image::word_max : image::byte_max;
     auto const input = state.input.view().row(0);
     auto const alpha = state.alpha.view().row(0);
     for (std::uint32_t i = 0; i < part.count; ++i) {
@@ -112,7 +113,7 @@ core::Result<void> quantize(ConversionState& state, RowPart part, std::span<std:
                             image::RowUse use) {
     const auto shape = state.report.output;
     const auto channels = image::components(shape.model);
-    const auto bytes = shape.depth / image::byte_bits;
+    const auto bytes = shape.depth.bytes();
     for (std::uint32_t i = 0; i < part.count; ++i) {
         auto values = opaque_pixel(state, i, use);
         if (!values) {

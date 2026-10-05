@@ -208,6 +208,15 @@ inline void agrees_with_definition(std::uint32_t width, std::uint32_t height,
     const auto one = scheduler_of(1);
     auto page = filled_plane(budget, width, height, -1.0F);
     auto blurred = image::Plane<float>::allocate(budget, width, height);
+    // Poison padding and prior destination contents: neither may influence any output sample.
+    const auto padding = page->view().row_pitch() - width;
+    const auto poison = std::numeric_limits<float>::quiet_NaN();
+    for (std::uint32_t y = 0; y < height; ++y) {
+        std::ranges::fill(page->view().storage().subspan(
+                              (std::size_t{y} * page->view().row_pitch()) + width, padding),
+                          poison);
+    }
+    std::ranges::fill(blurred->view().storage(), poison);
     const auto source = page->view().as_const();
     require(methods::box_mean(source, blurred->view(), radius, one, budget).has_value(),
             "a page blurs at every radius");
@@ -215,6 +224,8 @@ inline void agrees_with_definition(std::uint32_t width, std::uint32_t height,
     for (std::uint32_t y = 0; y < height; ++y) {
         const auto row = blurred->view().row(y);
         for (std::uint32_t x = 0; x < width; ++x) {
+            require(std::isfinite(row[x]),
+                    "every output sample is written and ignores poisoned padding");
             const auto expected = naive_box_mean(source, {.x = x, .y = y}, radius);
             worst = std::max(worst, std::abs(static_cast<double>(row[x]) - expected));
         }
@@ -240,7 +251,8 @@ inline void box_mean_determinism_cases() {
     const auto one = scheduler_of(1);
     auto page = filled_plane(budget, width, height, -1.0F);
     const auto source = page->view().as_const();
-    // The promise the schedule exists to keep: the same bits, whatever --threads said.
+    // The promise the schedule exists to keep: the same bits, whatever internal worker count is
+    // selected.
     auto reference = image::Plane<float>::allocate(budget, width, height);
     require(methods::box_mean(source, reference->view(), 7, one, budget).has_value(), "one worker");
     for (const unsigned workers : {2U, 3U, 8U}) {

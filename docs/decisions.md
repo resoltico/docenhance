@@ -359,3 +359,19 @@ One architecture restriction baseline has reviewed owner exceptions. Thread owne
 scheduler permission even through transitive headers; private production headers stay within their
 owner. Registered clients inherit only a named public closure. Observe final CMake links, not only
 registration arguments. See [the design and separate challenge](architecture-boundaries-audit.md).
+
+## Admitted values and computation completion
+
+Decoded sample precision and orientation have validating factories and private construction; raw
+container declarations remain distinct. Record admission returns explicit domain failures before
+constructing those values. Preserve an error whole when forwarding it, including publication state.
+Unimplemented capabilities refuse before execution; unsupported input within an implemented
+admission path is an input refusal. A completed schedule does not poll an exhausted queue and invent
+a cancellation outcome. Cancellation still stops skipped work and cannot erase genuine errors.
+
+Raw charged storage deliberately has a write-before-read contract. Codec merging/coefficient
+initialization stays bounded and interruptible at its owning boundary. Blanket zero filling is not
+proof of correct initialization and would remove those checkpoints if substituted mechanically.
+Independent numerical references poison padding and old output values and require finite results,
+so NaN cannot disappear into an error accumulator. Suppressions name exact checks; fixed foreign
+callback parameter-count exceptions do not change mandatory source-file line ceilings.

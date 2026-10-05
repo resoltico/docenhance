@@ -167,9 +167,13 @@ inline void capabilities_cases() {
                 methods::implemented_methods().front().id == "I01" &&
                 methods::implemented_methods().back().id == "B03",
             "Only I01, D01, B02 and B03 are advertised");
-    const core::Error unavailable{.code = core::ErrorCode::unavailable, .message = "not ready"};
-    require(unavailable.exit_code() == core::ExitCode::processing,
-            "unavailable is not publication-unknown");
-    require(unavailable.identifier() == "E_NOT_IMPLEMENTED", "stable unavailable diagnostic");
+    const core::Error not_implemented{
+        .code = core::ErrorCode::not_implemented,
+        .message = "not ready",
+    };
+    require(not_implemented.exit_code() == core::ExitCode::processing,
+            "unimplemented capability uses processing refusal");
+    require(not_implemented.identifier() == "E_NOT_IMPLEMENTED",
+            "stable unimplemented capability diagnostic");
 }
 } // namespace docenhance::tests

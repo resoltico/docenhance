@@ -73,9 +73,12 @@ struct WorkState {
     }
 };
 void work_through(WorkState& state, Outcome& outcome) noexcept {
-    while (!state.stop.load(std::memory_order_relaxed) && !state.observe_stop()) {
+    while (!state.stop.load(std::memory_order_relaxed)) {
         const auto index = state.claim();
         if (!index) {
+            return;
+        }
+        if (state.observe_stop()) {
             return;
         }
         perform(state.work.get(), *index, outcome);
@@ -127,13 +130,14 @@ core::Result<void> run_here(std::size_t count, const WorkRef& work,
     }
     return {};
 }
-[[nodiscard]] bool launch(WorkState& state, unsigned workers,
-                          std::array<Outcome, max_workers>& outcomes) {
+[[nodiscard]] bool launch_and_join(WorkState& state, unsigned workers,
+                                   std::array<Outcome, max_workers>& outcomes) {
     // Partial launch failure stops assignment and joins every started worker before returning.
     std::array<std::jthread, max_workers> threads{};
     try {
         for (unsigned worker = 0; worker < workers; ++worker) {
-            if (state.observe_stop()) {
+            if (state.stop.load(std::memory_order_relaxed) ||
+                state.next.load(std::memory_order_relaxed) == state.count) {
                 break;
             }
             threads.at(worker) =
@@ -152,7 +156,10 @@ core::Result<void> run_on_workers(std::size_t count, const WorkRef& work, unsign
                                   const core::Cancellation& cancellation) {
     std::array<Outcome, max_workers> outcomes{};
     WorkState state{.work = work, .cancellation = cancellation, .count = count};
-    if (!launch(state, workers, outcomes)) {
+    if (state.observe_stop()) {
+        return core::cancelled();
+    }
+    if (!launch_and_join(state, workers, outcomes)) {
         return core::failure(core::ErrorCode::resource, "The system refused a worker thread");
     }
     return earliest(outcomes, workers, state.interrupted.load(std::memory_order_relaxed));

@@ -89,13 +89,12 @@ core::Result<void> read_entry(const Exif& exif, std::size_t at, ExifFields& fiel
     return {};
 }
 core::Result<void> assign_fields(const ExifFields& fields, image::RasterMetadata& metadata) {
-    constexpr unsigned orientation_max = 8;
-    metadata.orientation = fields.orientation.value_or(1);
-    if (metadata.orientation < 1 || metadata.orientation > orientation_max ||
-        (fields.unit && (*fields.unit < 1 || *fields.unit > short_type))) {
+    const auto orientation = image::Orientation::from_code(fields.orientation.value_or(1));
+    if (!orientation || (fields.unit && (*fields.unit < 1 || *fields.unit > short_type))) {
         return core::failure(core::ErrorCode::input,
                              "EXIF orientation or resolution unit is invalid");
     }
+    metadata.orientation = *orientation;
     const bool partial = fields.x.has_value() != fields.y.has_value();
     const bool invalid = (fields.x && *fields.x <= 0) || (fields.y && *fields.y <= 0);
     if (partial || invalid) {

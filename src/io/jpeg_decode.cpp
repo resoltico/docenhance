@@ -63,7 +63,7 @@ core::Result<DecodedJpeg> decode_jpeg(std::span<const std::uint8_t> bytes, core:
         .height = observed.height,
         .model = observed.color == image::JpegColor::gray ? image::SampleModel::gray
                                                           : image::SampleModel::rgb,
-        .depth = image::byte_bits,
+        .depth = image::SampleDepth::byte(),
     };
     auto row = image::raster_row_bytes(shape);
     if (!row) {

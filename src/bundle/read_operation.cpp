@@ -3,6 +3,7 @@
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/raster.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "read_fields.hpp"
@@ -12,8 +13,8 @@
 #include <expected>
 #include <string>
 #include <string_view>
+#include <utility>
 namespace docenhance::bundle {
-constexpr unsigned last_orientation = 8;
 namespace {
 core::Result<Operation> binary(const RecordJson& value) {
     const auto& method = record_field(value, "method");
@@ -100,12 +101,24 @@ core::Result<image::ConversionReport> record_conversion(const RecordJson& value)
     const auto decision = record_text(record_field(value, "profile_decision"));
     for (const auto interpretation : interpretations) {
         if (image::interpretation_name(interpretation) == decision) {
+            auto source = record_shape(record_field(value, "decoded_input"));
+            auto output = record_shape(record_field(value, "encoded_output"));
+            const auto orientation = image::Orientation::from_code(static_cast<unsigned>(
+                record_integer(record_field(value, "source_orientation"), UINT32_MAX)));
+            if (!source) {
+                return std::unexpected(std::move(source.error()));
+            }
+            if (!output) {
+                return std::unexpected(std::move(output.error()));
+            }
+            if (!orientation) {
+                return core::failure(core::ErrorCode::input, "Unsupported recorded orientation");
+            }
             return image::ConversionReport{
-                .source = record_shape(record_field(value, "decoded_input")),
-                .output = record_shape(record_field(value, "encoded_output")),
+                .source = *source,
+                .output = *output,
                 .interpretation = interpretation,
-                .orientation = static_cast<unsigned>(
-                    record_integer(record_field(value, "source_orientation"), last_orientation)),
+                .orientation = *orientation,
                 .resolution = record_resolution(record_field(value, "resolution")),
                 .flattened_pixels =
                     record_integer(record_field(value, "alpha_flattened_pixels"), UINT64_MAX),

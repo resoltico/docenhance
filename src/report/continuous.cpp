@@ -34,7 +34,7 @@ nlohmann::ordered_json continuous_fields(const app::PublishedContinuous& value) 
 std::string continuous_text(const app::PublishedContinuous& value) {
     const auto& report = value.conversion;
     std::string text = "Wrote verified continuous-tone PNG: " + value.output + "\n";
-    text += std::to_string(report.output.depth) + " bits; " +
+    text += std::to_string(report.output.depth.bits()) + " bits; " +
             std::to_string(image::components(report.output.model)) + " channels; interpretation: " +
             std::string(image::interpretation_name(report.interpretation)) + "\n";
     for (const auto warning : bundle::conversion_warnings(report)) {

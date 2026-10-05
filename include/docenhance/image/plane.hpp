@@ -7,6 +7,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <span>
 #include <type_traits>
 #include <utility>
@@ -123,6 +124,9 @@ template <typename Left, typename Right>
 }
 
 // An owning plane. Its memory is charged to the budget that allocated it and refunded when it dies.
+// Samples and padding begin uninitialized. Kernels consume initialized input samples and write all
+// output samples; padding is not pixel data. Codec merging initializes its backing storage
+// explicitly.
 template <typename Sample> class Plane {
     static_assert(is_sample<Sample> && !std::is_const_v<Sample>,
                   "Plane owns mutable uint8, uint16, uint64, float or double samples");
@@ -145,15 +149,15 @@ template <typename Sample> class Plane {
                                                       std::uint32_t height) {
         auto shape = plane_shape(width, height, sizeof(Sample));
         if (!shape) {
-            return core::failure(shape.error().code, shape.error().message);
+            return std::unexpected(std::move(shape.error()));
         }
         auto bytes = plane_bytes(*shape);
         if (!bytes) {
-            return core::failure(bytes.error().code, bytes.error().message);
+            return std::unexpected(std::move(bytes.error()));
         }
         auto buffer = budget.allocate(*bytes);
         if (!buffer) {
-            return core::failure(buffer.error().code, buffer.error().message);
+            return std::unexpected(std::move(buffer.error()));
         }
         return Plane{std::move(*buffer), *shape};
     }
@@ -190,10 +194,9 @@ template <typename Sample> class Plane {
         using Byte = std::conditional_t<std::is_const_v<Self>, const std::byte, std::byte>;
         using Element = std::conditional_t<std::is_const_v<Self>, const Sample, Sample>;
         const std::span<Byte> bytes = self.buffer_.bytes();
-        return std::span<Element>{
-            reinterpret_cast<Element*>(bytes.data()), // NOLINT(*-reinterpret-cast)
-            bytes.size() / sizeof(Sample),
-        };
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        auto* const data = reinterpret_cast<Element*>(bytes.data());
+        return std::span<Element>{data, bytes.size() / sizeof(Sample)};
     }
     [[nodiscard]] std::span<Sample> samples() noexcept {
         return samples_of(*this);

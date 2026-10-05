@@ -39,7 +39,8 @@ std::filesystem::path published_bundle(const TemporaryDirectory& temporary,
     const auto encoded = make_gray_png(fixture);
     {
         std::ofstream writing{input, std::ios::binary};
-        writing.write(reinterpret_cast<const char*>(encoded.data()), // NOLINT(*-reinterpret-cast)
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        writing.write(reinterpret_cast<const char*>(encoded.data()),
                       static_cast<std::streamsize>(encoded.size()));
     }
     contract::Invocation invocation;

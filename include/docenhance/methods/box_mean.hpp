@@ -22,7 +22,8 @@ namespace docenhance::methods {
 // What it guarantees:
 //   same answers    The work is divided into tiles of a fixed size, never into one piece per
 //                   worker, so the order the sums accumulate in — and therefore every rounded
-//                   result — is identical whatever --threads says. Runs are bitwise reproducible.
+//                   result — is identical whatever internal worker count is selected. Runs are
+//                   bitwise reproducible.
 //   bounded work    Initialization is at most one reflected extent per pass, never proportional
 //                   to the radius. The running passes are linear in the plane size.
 //   bounded memory  The only allocation is the intermediate plane, charged to the budget. The

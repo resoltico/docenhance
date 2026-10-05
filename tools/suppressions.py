@@ -175,6 +175,11 @@ def _match_line(
                 result.errors.append(f"{where}: blanket {marker.tool} suppression; name each rule")
                 continue
             for rule in rules or ["*"]:
+                if rules and any(character in rule for character in "*?[]"):
+                    result.errors.append(
+                        f"{where}: wildcard {marker.tool} suppression; name each exact rule"
+                    )
+                    continue
                 rule_name = f"{marker.tool}/{rule}"
                 result.suppressions.append(Suppression(path, number, rule_name, text))
     return result

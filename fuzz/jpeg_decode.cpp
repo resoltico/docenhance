@@ -21,7 +21,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         if (decoded) {
             require(docenhance::image::valid_source_description(decoded->source),
                     "accepted JPEG has complete valid source observations");
-            require(decoded->raster.shape.depth == docenhance::image::byte_bits,
+            require(decoded->raster.shape.depth == docenhance::image::SampleDepth::byte(),
                     "JPEG has no hidden precision mode");
             require(decoded->raster.metadata.png() == nullptr,
                     "JPEG does not pretend to carry PNG color declarations");

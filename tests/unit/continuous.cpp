@@ -30,12 +30,12 @@ constexpr std::size_t continuous_budget = std::size_t{32} * 1024 * 1024;
 constexpr std::uint32_t ramp_samples = 65536;
 image::Raster ramp(core::Budget& budget) {
     image::Raster source;
-    source.shape = {.width = ramp_samples, .height = 1, .depth = image::word_bits};
+    source.shape = {.width = ramp_samples, .height = 1, .depth = image::SampleDepth::word()};
     const auto bytes = image::raster_row_bytes(source.shape).value();
     source.pixels = image::Plane<std::uint8_t>::allocate(budget, bytes, 1).value();
     const auto row = source.pixels.view().row(0);
     for (std::uint32_t i = 0; i < ramp_samples; ++i) {
-        image::write_sample(row.subspan(std::size_t{i} * 2, 2), image::word_bits,
+        image::write_sample(row.subspan(std::size_t{i} * 2, 2), image::SampleDepth::word(),
                             static_cast<std::uint16_t>(i));
     }
     return source;
@@ -156,8 +156,8 @@ TEST_CASE("Invalid raw raster descriptors cannot enter color conversion",
     source.shape.width = 1;
     CHECK(!color::Converter::create(source, operation, budget));
     source.shape.width = ramp_samples;
-    source.metadata.orientation = 0;
-    CHECK(!color::Converter::create(source, operation, budget));
+    CHECK(!image::Orientation::from_code(0));
+    CHECK(!image::SampleDepth::from_bits(12));
     // A fixed-underlying enum deliberately carries an unnamed value to test factory rejection.
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     CHECK(!image::Continuous::create({.depth = static_cast<image::OutputDepth>(255)}));

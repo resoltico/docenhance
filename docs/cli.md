@@ -81,7 +81,9 @@ exit 3; resource refusal uses `E_RESOURCE`, exit 4; a known output refusal uses 
 `E_OUTPUT_VERIFY`, also exit 5: before commit it prevents publication; after known commit success
 it retains `publication: completed` and the published directory. Inspect the reported state.
 `E_METHOD_INAPPLICABLE` and `E_NUMERICAL` use exit 4 and retain available I01 diagnostics.
-An unimplemented method ID uses `E_NOT_IMPLEMENTED`, exit 4. Publication states distinguish
+An unimplemented method, command or format/operation branch uses `E_NOT_IMPLEMENTED`, exit 4,
+with `not_started` publication. JPEG on the binary PNG-only branch is such a refusal; unsupported
+JPEG coding, sampling, color and metadata within continuous admission use `E_INPUT`, exit 3. Publication states distinguish
 `not_started`, `not_published` and `completed`. An unreported processing effect, ambiguous commit
 or unconfirmed staging cleanup uses `E_PUBLICATION_UNKNOWN`, exit 7, with state `unknown`.
 

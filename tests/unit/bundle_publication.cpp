@@ -73,7 +73,13 @@ WrittenBundle written_bundle() {
         .output =
             {
                 .artifact = {.name = bundle::image_name, .identity = *digest},
-                .shape = {.width = 2, .height = 2, .model = image::SampleModel::gray, .depth = 8},
+                .shape =
+                    {
+                        .width = 2,
+                        .height = 2,
+                        .model = image::SampleModel::gray,
+                        .depth = image::SampleDepth::byte(),
+                    },
                 .profile_embedded = false,
                 .resolution = std::nullopt,
                 .verification = bundle::Verification::decoded_and_compared,
