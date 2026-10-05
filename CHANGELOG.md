@@ -14,7 +14,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
-- Architecture checks use one restriction baseline with explicit layer permissions, enforce thread ownership and private-header boundaries through the compiler, validate final CMake links and check the CLI fuzz client's actual public closure before campaign launch. AST ownership follows exact compiler-observed files; obsolete per-layer restriction declarations are rejected.
+- Architecture checks use one restriction baseline with explicit layer permissions, enforce thread ownership and private-header boundaries through the compiler, validate final CMake links and check the CLI fuzz client's actual public closure before campaign launch. AST ownership follows exact compiler-observed files, and fatal parsing diagnostics cannot masquerade as zero-match success; obsolete per-layer restriction declarations are rejected.
 
 ## [0.6.0] - 2026-10-04
 

@@ -18,7 +18,7 @@ from architecture import ArchitectureError, Manifest
 from deps import ROOT
 
 SUMMARY = re.compile(r"^(\d+) match(?:es)?\.$", re.MULTILINE)
-ERROR_LINE = re.compile(r"^(?:.*: )?error: ", re.MULTILINE)
+ERROR_LINE = re.compile(r"^(?:.*: )?(?:fatal )?error: ", re.MULTILINE)
 
 
 def matchers(manifest: Manifest, files: dict[str, set[str]]) -> list[tuple[str, str]]:

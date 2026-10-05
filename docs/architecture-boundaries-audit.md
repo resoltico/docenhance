@@ -10,7 +10,7 @@ including isolated native workflows; absence of a build is not a current prerequ
 | --- | --- |
 | Acyclic layer graph and one manifest authority | Confirmed. Retain the graph; shared restrictions and explicit client roots also belong to that manifest. |
 | Links match includes in both directions | The declared-link check does both comparisons. Its registration could miss a later actual CMake link addition. Final target-property validation now rejects that counterexample. |
-| AST checking fails closed | Parsing and matcher-answer checks are sound, but directory-fragment location patterns can classify foreign headers as project code under a checkout ancestor named `src`. Scope rules to exact compiler-observed spellings and resolved ownership; keep parsing/answer failure visible. Real controls exclude a foreign throw while detecting an owned one. |
+| AST checking fails closed | Matcher-answer and nonzero-exit checks work, but a fatal parse diagnostic could accompany zero-match outputs and escape the detector. Directory-fragment patterns also classified foreign headers as project code under an ancestor named `src`. Detect fatal diagnostics and scope rules to exact observed files; real controls refuse missing-header parsing, exclude a foreign throw and detect an owned one. |
 | Public package leakage is restricted | Retain direct package/interface permissions and compiler package reach. The record field serializer's JSON permission is deliberate; it supplies the response and persisted record with one spelling. |
 | Private headers cannot leak because only public include paths are exported | Incorrect as a guarantee. Relative or absolute private-header spellings can bypass exported paths, and an allowed layer edge did not establish privacy. Resolve written includes and inspect compiler traces; public interfaces and registered clients cannot consume private production headers. |
 | I/O has 47 files, about 5.3k lines and three intertwined responsibilities | The count is accurate at the reviewed baseline: 47 files, 5,274 lines of 14,638 source lines. It is not itself a defect. No literal header include cycle was found. Real coupling exists where filesystem ownership uses PNG context declarations and result decoding includes the broad bundle API for limits. Separate those interfaces and the in-memory/staged-file identity implementations. |
@@ -81,3 +81,17 @@ metacharacters in the checkout name. The clang-query matcher language preserves 
 JSON-encoding a matcher string silently changes them. A positive control exposed that error before
 the corrected locator was used on a real native build. The locator was implemented in an isolated
 copy while ongoing workflows retained stable inputs.
+
+The Intel macOS CI run exposed a fixture assumption: its pinned source-built LLVM directory
+contains analysis tools, not a compiler. Real probe compilation follows the declared platform
+compiler role (Apple clang on macOS), while AST evaluation keeps the pinned LLVM tool. A tools-only
+layout control prevents inventing a sibling compiler; canonical fixture paths keep the compiler
+command and exact AST ownership consistent. Other native/sanitizer/fuzz CI jobs passed on that
+first candidate, but the aggregate correctly refused the failed tooling case.
+
+The probe must also supply the Apple SDK to the pinned parser, as the real CMake build does. A
+missing standard header reproduced a fatal diagnostic with zero matches and no nonzero process
+status; the error detector previously missed the word `fatal`. Treat ordinary and fatal parse
+diagnostics as refusal. A deliberately absent header now tests that real failure independently.
+Both AST test modules share the same compiler/SDK fixture owner, without adding a project compiler
+requirement to the tools-only Intel macOS installation.

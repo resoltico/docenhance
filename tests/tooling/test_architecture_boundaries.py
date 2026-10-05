@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import copy
 import json
-import os
 import shutil
 import subprocess
 import tempfile
@@ -16,6 +15,8 @@ from unittest.mock import patch
 
 from tools_path import ROOT
 
+from compiler_probes import compiler_probe, fixture_compiler
+
 import architecture
 import architecture_api
 import architecture_boundary
@@ -23,23 +24,38 @@ import architecture_build
 import compile_db
 
 
-def compiler_probe(root: Path, source: Path, text: str) -> dict[str, str]:
-    """Use the real pinned compiler and compilation database, without executing a probe."""
-    source.parent.mkdir(parents=True, exist_ok=True)
-    source.write_text(text, encoding="utf-8")
-    query = Path(architecture_api.find_clang_query()).resolve()
-    compiler = query.with_name("clang++.exe" if os.name == "nt" else "clang++")
-    entry = {
-        "directory": str(root),
-        "file": str(source),
-        "command": f'"{compiler}" -std=c++23 -c "{source}"',
-    }
-    (root / "compile_commands.json").write_text(json.dumps([entry]), encoding="utf-8")
-    return entry
-
-
 class RestrictionPolicyTests(unittest.TestCase):
     """A shared baseline cannot silently lose enforcement at a native adapter."""
+
+    def test_analysis_tools_only_layout_does_not_invent_a_compiler(self) -> None:
+        """Intel macOS uses Apple clang while versioned Linux/Windows installations own clang."""
+        with tempfile.TemporaryDirectory() as directory:
+            tools = Path(directory) / "tools"
+            tools.mkdir()
+            query = tools / "clang-query"
+            query.write_text("analysis-tool layout", encoding="utf-8")
+            self.assertFalse(query.with_name("clang++").exists())
+            self.assertEqual(fixture_compiler("Darwin", query), Path("/usr/bin/clang++"))
+            self.assertEqual(fixture_compiler("Linux", query), query.resolve().with_name("clang++"))
+            self.assertEqual(
+                fixture_compiler("Windows", query), query.resolve().with_name("clang++.exe")
+            )
+
+    def test_fatal_parse_failure_cannot_be_zero_match_success(self) -> None:
+        """A real missing header can answer every matcher with zero; the fatal diagnostic wins."""
+        manifest = architecture.load_manifest()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            entry = compiler_probe(
+                root, root / "src/image/probe.cpp", '#include "intentionally-absent.hpp"\n'
+            )
+            with self.assertRaisesRegex(architecture.ArchitectureError, "clang-query failed"):
+                architecture_api.api_violations(
+                    architecture_api.find_clang_query(),
+                    root,
+                    entry,
+                    architecture_api.matchers(manifest, {"image": {entry["file"]}}),
+                )
 
     def test_native_adapter_inherits_all_baseline_restrictions(self) -> None:
         """Denoising cannot allocate C blocks, escape process control or own new threads."""

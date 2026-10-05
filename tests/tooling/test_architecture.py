@@ -9,8 +9,6 @@ and the documentation, and that each rule rejects what it claims to reject.
 
 from __future__ import annotations
 
-import json
-import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,6 +16,8 @@ from typing import Any, override
 from unittest.mock import patch
 
 import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone unittest discovery.
+
+from compiler_probes import compiler_probe
 
 import architecture
 import architecture_api
@@ -152,23 +152,13 @@ class ManifestBoundaryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             source = root / "src/image/probe.cpp"
-            source.parent.mkdir(parents=True)
-            source.write_text(
+            entry = compiler_probe(
+                root,
+                source,
                 "#include <new>\nnamespace docenhance::image {\n"
                 "void probe() { void* p = ::operator new(16); ::operator delete(p); "
                 "int* q = new int; delete q; }\n}\n",
-                encoding="utf-8",
             )
-            compiler = "clang++"
-            if os.name == "nt":
-                compiler = str(Path(clang_query).with_name("clang++.exe"))
-            source_name = source.as_posix()
-            entry = {
-                "directory": directory,
-                "file": source_name,
-                "command": f'{compiler} -std=c++23 -c "{source_name}"',
-            }
-            (root / "compile_commands.json").write_text(json.dumps([entry]), encoding="utf-8")
             rules = architecture_api.matchers(
                 architecture.load_manifest(), {"image": {entry["file"]}}
             )
