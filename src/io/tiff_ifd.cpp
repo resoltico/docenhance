@@ -31,7 +31,27 @@ constexpr unsigned long_bytes = sizeof(std::uint32_t);
 constexpr unsigned long8_bytes = sizeof(std::uint64_t);
 unsigned type_size(unsigned type) noexcept {
     constexpr std::array<unsigned, 19> sizes{
-        0, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8, 4, 0, 0, 8, 8, 8,
+        // Classic field types; zero is invalid and types 14/15 are reserved.
+        0,
+        1,
+        1,
+        2,
+        4,
+        8,
+        1,
+        1,
+        2,
+        4,
+        8,
+        4,
+        8,
+        4,
+        0,
+        0,
+        // BigTIFF LONG8, SLONG8 and IFD8 fields.
+        8,
+        8,
+        8,
     };
     return type < sizes.size() ? std::span{sizes}.subspan(type, 1).front() : 0;
 }

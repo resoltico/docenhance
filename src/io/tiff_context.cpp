@@ -142,7 +142,6 @@ int prepare(void* const owner, void* const decoder) noexcept {
 void install(void* const owner, void* const decoder) noexcept {
     auto& state = *static_cast<TiffContext*>(owner);
     auto* const native = static_cast<j_common_ptr>(decoder);
-    state.jpeg.native_error_handler = true;
     native->client_data = &state.jpeg;
     install_jpeg_memory(state.jpeg, native);
     state.jpeg.scan_limit = image::jpeg_scan_max;

@@ -11,7 +11,6 @@
 #include "tiff_ifd.hpp"
 #include "tiff_layout.hpp"
 
-#include <csetjmp>
 #include <cstddef>
 #include <cstdint>
 #include <docenhance_tiff.h>
@@ -21,7 +20,7 @@
 namespace docenhance::io {
 struct TiffContext {
     explicit TiffContext(core::Budget& budget, const core::Cancellation& control) noexcept
-        : cancellation(control), jpeg(budget, control, unused_jump) {}
+        : cancellation(control), jpeg(budget, control, nullptr) {}
     TiffContext(const TiffContext&) = delete;
     TiffContext& operator=(const TiffContext&) = delete;
     TiffContext(TiffContext&&) = delete;
@@ -36,7 +35,6 @@ struct TiffContext {
     bool failed = false;
     bool exhausted = false;
     bool cancelled = false;
-    std::jmp_buf unused_jump{};
     JpegContext jpeg;
     [[nodiscard]] core::Error error() const;
     [[nodiscard]] bool good() const noexcept;

@@ -42,6 +42,9 @@ Deflate requires exact decoded size, stream end and checksum completion; trailin
 streams are refused. No environment-controlled JPEG memory
 or backing-file policy is relied on. Raster, decoded-unit and ICC buffers use the shared ledger.
 This is allocation accounting, not a process-RSS bound.
+A borrowed jump-frame pointer routes standalone JPEG failures; a null frame delegates to
+libtiff's non-returning native handler. Both return to codec wrappers with C++ owners outside
+the jump frame.
 
 Use per-handle diagnostics, immutable memory callbacks and no process-global TIFF handlers.
 Callbacks check cancellation during transfers of at most 64 KiB; directory work, strile boundaries

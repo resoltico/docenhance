@@ -35,7 +35,7 @@ core::Result<DecodedJpeg> decode_jpeg(std::span<const std::uint8_t> bytes, core:
         return std::unexpected(bootstrap.error());
     }
     std::jmp_buf native_jump{};
-    JpegContext context{budget, cancellation, native_jump};
+    JpegContext context{budget, cancellation, &native_jump};
     context.scan_limit = limits.scans;
     context.working_charge_peak = budget.used();
     if (!jpeg_header(context, bytes)) {

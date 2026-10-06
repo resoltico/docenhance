@@ -41,7 +41,7 @@ struct JpegMemory {
 };
 struct JpegContext {
     JpegContext(core::Budget& working_budget, const core::Cancellation& control,
-                std::jmp_buf& native_jump) noexcept
+                std::jmp_buf* native_jump) noexcept
         : budget(working_budget), cancellation(control), jump(native_jump) {}
     JpegContext(const JpegContext&) = delete;
     JpegContext& operator=(const JpegContext&) = delete;
@@ -56,9 +56,9 @@ struct JpegContext {
     jpeg_progress_mgr progress{};
     j_decompress_ptr active_decoder = nullptr;
     JpegMemory memory;
-    std::reference_wrapper<std::jmp_buf> jump;
+    // Null delegates failures to the native decoder's non-returning error handler.
+    std::jmp_buf* jump;
     std::span<const std::uint8_t> remaining;
-    bool native_error_handler = false;
     bool invalid = false;
     bool exhausted = false;
     bool cancelled = false;
