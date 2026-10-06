@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/process.hpp"
 
+#include "contrast.hpp"
 #include "denoising.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/parse.hpp"
@@ -191,10 +192,15 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     if (!denoising) {
         return std::unexpected(denoising.error());
     }
-    return ProcessRequest{invocation.subject,
-                          invocation.output_directory,
-                          *method,
-                          {.illumination = *illumination, .denoising = *denoising},
-                          invocation.protect_mask};
+    const auto contrast = prepare_contrast(invocation);
+    if (!contrast) {
+        return std::unexpected(contrast.error());
+    }
+    return ProcessRequest{
+        invocation.subject,
+        invocation.output_directory,
+        *method,
+        {.illumination = *illumination, .denoising = *denoising, .contrast = *contrast},
+        invocation.protect_mask};
 }
 } // namespace docenhance::app

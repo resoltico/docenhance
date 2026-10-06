@@ -9,7 +9,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <expected>
-#include <span>
 #include <string>
 #include <string_view>
 namespace docenhance::image {
@@ -81,17 +80,6 @@ core::Result<Rgb> transport_luminance(const Rgb& rgb, double target) {
         c = std::clamp(c, 0.0, 1.0);
     }
     return out;
-}
-core::Result<double> nearest_rank(std::span<double> values, double p) {
-    if (values.empty() || !unit(p) ||
-        !std::ranges::all_of(values, [](double v) { return std::isfinite(v); })) {
-        return std::unexpected(bad("Invalid percentile input"));
-    }
-    const auto rank = static_cast<std::size_t>(std::ceil(p * static_cast<double>(values.size())));
-    const auto index = rank == 0 ? 0 : std::min(rank - 1, values.size() - 1);
-    // Sorting caller-owned scratch bounds adversarial comparison work by O(n log n).
-    std::ranges::sort(values);
-    return values.subspan(index, 1).front();
 }
 std::size_t reflect101_folded(std::int64_t coordinate, std::size_t extent) noexcept {
     if (extent == 1) {

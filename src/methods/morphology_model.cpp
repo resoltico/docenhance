@@ -63,7 +63,8 @@ core::Result<double> analysis_fill(MorphologyContext context) {
     detail.stride = sampled->stride;
     detail.fallback = sampled->fallback;
     constexpr double quantile = 0.9;
-    return image::nearest_rank(values->view().row(0).first(sampled->count), quantile);
+    return image::nearest_rank(values->view().row(0).first(sampled->count), quantile,
+                               context.cancellation.get());
 }
 double gaussian_weights(std::span<double> weights, const MorphologyMeasurements& detail) {
     double normalization = 0;

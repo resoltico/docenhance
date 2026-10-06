@@ -83,24 +83,30 @@
       "id": "C01",
       "name": "Percentile levels",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--contrast",
         "--contrast-blend",
         "--levels-low",
-        "--levels-high"
-      ]
+        "--levels-high",
+        "--protect-mask"
+      ],
+      "family": "contrast",
+      "selector": "levels"
     },
     {
       "id": "C02",
       "name": "Gamma",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--contrast",
         "--contrast-blend",
-        "--gamma"
-      ]
+        "--gamma",
+        "--protect-mask"
+      ],
+      "family": "contrast",
+      "selector": "gamma"
     },
     {
       "id": "C03",

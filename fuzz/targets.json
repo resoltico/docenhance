@@ -179,6 +179,15 @@
         "de_methods"
       ],
       "max_len": 130
+    },
+    "contrast": {
+      "source": "contrast.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_methods"
+      ],
+      "max_len": 130
     }
   }
 }

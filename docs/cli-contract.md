@@ -184,7 +184,7 @@ Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and c
 
 1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
 
-**Applicable methods:** I01,I02,D01,D02.
+**Applicable methods:** I01,I02,D01,D02,C01,C02.
 
 ## `--denoise METHOD`
 
@@ -249,3 +249,43 @@ TV-L1 only. Iteration cap; exhaustion retains a usable iterate and emits W_TV_IT
 TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iteration checkpoints, starting at iteration 20.
 
 **Applicable methods:** D02.
+
+## `--contrast METHOD`
+
+**Scope:** P. **Domain/default:** off; off|levels|gamma.
+
+Explicit percentile levels or gamma on continuous PNG/JPEG/TIFF after illumination and denoising.
+
+**Applicable methods:** C01,C02.
+
+## `--contrast-blend A`
+
+**Scope:** P. **Domain/default:** 1; finite `[0,1]`.
+
+Blend once in perceptual luminance. Zero retains entering samples after source/mask validation.
+
+**Applicable methods:** C01,C02.
+
+## `--levels-low P`
+
+**Scope:** P. **Domain/default:** 0.5; finite `[0,10]` percent.
+
+Levels only. Nearest-rank lower percentile among all unprotected perceptual samples.
+
+**Applicable methods:** C01.
+
+## `--levels-high P`
+
+**Scope:** P. **Domain/default:** 99.5; finite `[90,100]` percent.
+
+Levels only. Nearest-rank upper percentile, greater than low. A range below 1e-6 retains exact entering RGB.
+
+**Applicable methods:** C01.
+
+## `--gamma G`
+
+**Scope:** P. **Domain/default:** 1.2; finite `[0.25,4]`.
+
+Gamma only. f_new=f^G; above one darkens midtones. Endpoints and gamma one are exact identities.
+
+**Applicable methods:** C02.

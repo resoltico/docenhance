@@ -4,6 +4,7 @@
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 
 #include <cstddef>
@@ -47,6 +48,7 @@ struct DeclaredBundle {
     std::optional<image::ConversionReport> conversion = std::nullopt;
     methods::IlluminationReport illumination{};
     methods::DenoisingReport denoising{};
+    methods::ContrastReport contrast{};
 };
 
 [[nodiscard]] core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes);

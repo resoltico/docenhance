@@ -54,7 +54,7 @@ def implemented(
             raise ValueError(msg)
         if entry["status"] != "implemented":
             continue
-        if entry.get("family") not in {"binarization", "illumination", "denoising"}:
+        if entry.get("family") not in {"binarization", "illumination", "denoising", "contrast"}:
             msg = f"{identity}: implemented methods require an executable family"
             raise ValueError(msg)
         selector = entry.get("selector", "")
@@ -211,6 +211,15 @@ def metadata_outputs(
             in {entry["id"] for entry in active if entry["family"] == "denoising"}
         ],
     }
+    schema["$defs"]["contrast_method"] = {
+        **schema["$defs"]["method"],
+        "oneOf": [
+            alternative
+            for alternative in schema["$defs"]["method"]["oneOf"]
+            if alternative["properties"]["id"]["const"]
+            in {entry["id"] for entry in active if entry["family"] == "contrast"}
+        ],
+    }
     matrix = support_matrix(support)
     for branch in schema["oneOf"]:
         if "methods" in branch.get("properties", {}):
@@ -234,6 +243,9 @@ def metadata_outputs(
     record["$defs"].update(
         source_decoding=schema["$defs"]["source_decoding"],
         tiff_resolution=schema["$defs"]["tiff_resolution"],
+        contrast=schema["$defs"]["contrast"],
+        contrast_request=schema["$defs"]["contrast_request"],
+        contrast_method=schema["$defs"]["contrast_method"],
         denoising=schema["$defs"]["denoising"],
         denoising_request=schema["$defs"]["denoising_request"],
         denoising_method=schema["$defs"]["denoising_method"],

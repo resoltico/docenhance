@@ -92,15 +92,7 @@ core::Result<image::Rgb> nlm_correct(const image::Rgb& rgb, std::uint16_t input,
     constexpr double maximum = image::word_max;
     const auto delta = static_cast<std::int32_t>(output) - static_cast<std::int32_t>(input);
     const auto candidate = std::clamp(*f + (static_cast<double>(delta) / maximum), 0.0, 1.0);
-    const auto next = ((1 - blend) * *f) + (blend * candidate);
-    if (next == *f) {
-        return rgb;
-    }
-    auto target = image::srgb_decode(next);
-    if (!target) {
-        return std::unexpected(target.error());
-    }
-    return image::transport_luminance(rgb, *target);
+    return image::blend_perceptual(rgb, *f, candidate, blend);
 }
 core::Result<std::size_t> nlm_native_scratch(image::Extent e, const Nlm& method) {
     const auto p = method.parameters();

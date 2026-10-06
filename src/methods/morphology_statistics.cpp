@@ -36,9 +36,13 @@ core::Result<void> morphology_background_statistics(MorphologyContext context,
     const auto data = values->view().row(0).first(sampled->count);
     constexpr double low_quantile = 0.1;
     constexpr double high_quantile = 0.9;
-    const auto low = image::nearest_rank(data, low_quantile);
-    const auto middle = image::nearest_rank(data, 0.5);
-    const auto high = image::nearest_rank(data, high_quantile);
+    auto sorted = image::sort_samples(data, context.cancellation.get());
+    if (!sorted) {
+        return std::unexpected(sorted.error());
+    }
+    const auto low = image::nearest_rank_index(data.size(), low_quantile);
+    const auto middle = image::nearest_rank_index(data.size(), 0.5);
+    const auto high = image::nearest_rank_index(data.size(), high_quantile);
     if (!low) {
         return std::unexpected(low.error());
     }
@@ -48,9 +52,9 @@ core::Result<void> morphology_background_statistics(MorphologyContext context,
     if (!high) {
         return std::unexpected(high.error());
     }
-    detail.background_q10 = *low;
-    detail.background_q50 = *middle;
-    detail.background_q90 = *high;
+    detail.background_q10 = data.subspan(*low, 1).front();
+    detail.background_q50 = data.subspan(*middle, 1).front();
+    detail.background_q90 = data.subspan(*high, 1).front();
     detail.background_min = 1;
     detail.background_max = 0;
     constexpr std::uint32_t interval = 1024;

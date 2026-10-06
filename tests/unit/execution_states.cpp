@@ -79,6 +79,8 @@ app::PublishedContinuous continuous() {
     value.conversion.verified = true;
     value.illumination.complete = true;
     value.illumination.eligible_samples = 4;
+    value.contrast.complete = true;
+    value.contrast.eligible_samples = 4;
     value.denoising.complete = true;
     value.denoising.eligible_samples = 4;
     return value;

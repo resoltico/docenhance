@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "continuous.hpp"
 
+#include "contrast.hpp"
 #include "denoising.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/bundle/fields.hpp"
@@ -20,6 +21,7 @@ nlohmann::ordered_json continuous_fields(const app::PublishedContinuous& value) 
         {"operation", "continuous"},
         {"illumination", bundle::illumination_fields(value.illumination)},
         {"denoising", bundle::denoising_fields(value.denoising)},
+        {"contrast", bundle::contrast_fields(value.contrast)},
         {"output", value.output},
         {"publication", "completed"},
         {"conversion", bundle::conversion_fields(value.conversion)},
@@ -42,6 +44,7 @@ std::string continuous_text(const app::PublishedContinuous& value) {
     }
     text += illumination_text(value.illumination);
     text += denoising_text(value.denoising);
+    text += contrast_text(value.contrast);
     return text;
 }
 } // namespace docenhance::report

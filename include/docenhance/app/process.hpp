@@ -10,6 +10,7 @@
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
@@ -28,7 +29,8 @@ class ProcessRequest {
     ProcessRequest(ProcessRequest&& other) noexcept
         : input_(std::exchange(other.input_, {})), output_(std::move(other.output_)),
           operation_(other.operation_), illumination_(other.illumination_),
-          protection_(std::move(other.protection_)), denoising_(other.denoising_) {}
+          protection_(std::move(other.protection_)), denoising_(other.denoising_),
+          contrast_(other.contrast_) {}
     ProcessRequest& operator=(ProcessRequest&& other) noexcept {
         if (this != &other) {
             input_ = std::exchange(other.input_, {});
@@ -37,6 +39,7 @@ class ProcessRequest {
             illumination_ = other.illumination_;
             protection_ = std::move(other.protection_);
             denoising_ = other.denoising_;
+            contrast_ = other.contrast_;
         }
         return *this;
     }
@@ -65,6 +68,10 @@ class ProcessRequest {
         return denoising_;
     }
     [[nodiscard]] const methods::Denoising& denoising() const&& = delete;
+    [[nodiscard]] const methods::Contrast& contrast() const& noexcept {
+        return contrast_;
+    }
+    [[nodiscard]] const methods::Contrast& contrast() const&& = delete;
     [[nodiscard]] const Operation& operation() const& noexcept {
         return operation_;
     }
@@ -75,18 +82,20 @@ class ProcessRequest {
     struct Enhancements {
         methods::Illumination illumination;
         methods::Denoising denoising;
+        methods::Contrast contrast;
     };
     ProcessRequest(std::string input, std::string output, Operation operation,
                    Enhancements enhancements, std::optional<std::string> protection)
         : input_(std::move(input)), output_(std::move(output)), operation_(operation),
           illumination_(enhancements.illumination), protection_(std::move(protection)),
-          denoising_(enhancements.denoising) {}
+          denoising_(enhancements.denoising), contrast_(enhancements.contrast) {}
     std::string input_;
     std::string output_;
     Operation operation_;
     methods::Illumination illumination_;
     std::optional<std::string> protection_;
     methods::Denoising denoising_;
+    methods::Contrast contrast_;
 };
 [[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
 // A published bundle is identified by the run and record digest, not a persisted publication claim.
@@ -105,6 +114,7 @@ struct PublishedContinuous {
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
     methods::DenoisingReport denoising;
+    methods::ContrastReport contrast;
 };
 using Published = std::variant<PublishedBinary, PublishedContinuous>;
 struct Processed {
@@ -117,15 +127,18 @@ struct Processed {
 struct ProcessFailure {
     core::Error error;
     std::optional<methods::DenoisingReport> denoising = std::nullopt;
+    std::optional<methods::ContrastReport> contrast = std::nullopt;
     std::optional<methods::IlluminationReport> illumination = std::nullopt;
 };
 using ProcessResult = std::expected<Published, ProcessFailure>;
 [[nodiscard]] inline std::unexpected<ProcessFailure>
 process_failure(core::Error error, std::optional<methods::IlluminationReport> illumination = {},
-                std::optional<methods::DenoisingReport> denoising = {}) {
+                std::optional<methods::DenoisingReport> denoising = {},
+                std::optional<methods::ContrastReport> contrast = {}) {
     return std::unexpected(ProcessFailure{
         .error = std::move(error),
         .denoising = denoising,
+        .contrast = contrast,
         .illumination = illumination,
     });
 }

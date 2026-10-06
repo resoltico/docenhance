@@ -88,6 +88,7 @@ WrittenBundle written_bundle() {
         .conversion = std::nullopt,
         .illumination = illumination,
         .denoising = {.complete = true},
+        .contrast = {.complete = true},
     };
     auto record = bundle::serialize(facts);
     REQUIRE(record);

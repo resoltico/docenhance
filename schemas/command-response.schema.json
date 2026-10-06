@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 6
+      "const": 7
     },
     "command": {
       "enum": [
@@ -88,7 +88,7 @@
             "$ref": "#/$defs/method"
           },
           "minItems": 1,
-          "maxItems": 6,
+          "maxItems": 8,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -158,7 +158,7 @@
             "$ref": "#/$defs/method"
           },
           "minItems": 1,
-          "maxItems": 6,
+          "maxItems": 8,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -525,6 +525,9 @@
         },
         "denoising": {
           "$ref": "#/$defs/denoising"
+        },
+        "contrast": {
+          "$ref": "#/$defs/contrast"
         }
       },
       "required": [
@@ -535,7 +538,8 @@
         "publication",
         "record",
         "source_decoding",
-        "denoising"
+        "denoising",
+        "contrast"
       ]
     },
     {
@@ -628,6 +632,9 @@
         },
         "denoising": {
           "$ref": "#/$defs/denoising"
+        },
+        "contrast": {
+          "$ref": "#/$defs/contrast"
         }
       },
       "required": [
@@ -975,6 +982,26 @@
           "properties": {
             "id": {
               "const": "D02"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
+              "const": "C01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
+              "const": "C02"
             },
             "method_version": {
               "const": 1
@@ -2768,6 +2795,449 @@
                   "maximum": 256
                 }
               ]
+            }
+          }
+        }
+      ]
+    },
+    "contrast_method": {
+      "type": "object",
+      "required": [
+        "id",
+        "method_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "method_version": {
+          "type": "integer"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "id": {
+              "const": "C01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
+              "const": "C02"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        }
+      ]
+    },
+    "contrast_request": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/contrast_method"
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "low",
+                "high",
+                "blend"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "low": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 10
+                },
+                "high": {
+                  "type": "number",
+                  "minimum": 90,
+                  "maximum": 100
+                },
+                "blend": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "gamma",
+                "blend"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "gamma": {
+                  "type": "number",
+                  "minimum": 0.25,
+                  "maximum": 4
+                },
+                "blend": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C01"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/1"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/2"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "contrast": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters",
+        "status",
+        "reason",
+        "complete",
+        "representation",
+        "levels",
+        "eligible_samples",
+        "protected_samples",
+        "measured_samples",
+        "evaluated_samples",
+        "corrected_samples",
+        "changed_samples",
+        "clipped_low_samples",
+        "clipped_high_samples",
+        "clipped_low_fraction",
+        "clipped_high_fraction",
+        "preparation_charge_peak"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "$ref": "#/$defs/contrast_request/properties/method"
+        },
+        "parameters": {
+          "$ref": "#/$defs/contrast_request/properties/parameters"
+        },
+        "status": {
+          "enum": [
+            "disabled",
+            "no_change",
+            "applied",
+            "failed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "none",
+            "zero_blend",
+            "no_eligible_samples",
+            "identity_gamma",
+            "insufficient_dynamic_range",
+            "no_effect",
+            "processing_failure"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "representation": {
+          "enum": [
+            null,
+            "float64"
+          ]
+        },
+        "levels": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "low",
+                "high"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "low": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "high": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            }
+          ]
+        },
+        "eligible_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "protected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "measured_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "evaluated_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "corrected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "changed_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "clipped_low_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "clipped_high_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "clipped_low_fraction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
+        },
+        "clipped_high_fraction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
+        },
+        "preparation_charge_peak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              },
+              "status": {
+                "const": "disabled"
+              },
+              "reason": {
+                "const": "none"
+              },
+              "representation": {
+                "type": "null"
+              },
+              "levels": {
+                "type": "null"
+              },
+              "preparation_charge_peak": {
+                "const": 0
+              },
+              "measured_samples": {
+                "const": 0
+              },
+              "evaluated_samples": {
+                "const": 0
+              },
+              "corrected_samples": {
+                "const": 0
+              },
+              "changed_samples": {
+                "const": 0
+              },
+              "clipped_low_samples": {
+                "const": 0
+              },
+              "clipped_high_samples": {
+                "const": 0
+              },
+              "clipped_low_fraction": {
+                "type": "null"
+              },
+              "clipped_high_fraction": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "type": "object"
+              },
+              "representation": {
+                "const": "float64"
+              },
+              "status": {
+                "enum": [
+                  "no_change",
+                  "applied",
+                  "failed"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C02"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "levels": {
+                "type": "null"
+              },
+              "measured_samples": {
+                "const": 0
+              },
+              "clipped_low_samples": {
+                "const": 0
+              },
+              "clipped_high_samples": {
+                "const": 0
+              },
+              "clipped_low_fraction": {
+                "type": "null"
+              },
+              "clipped_high_fraction": {
+                "type": "null"
+              }
             }
           }
         }

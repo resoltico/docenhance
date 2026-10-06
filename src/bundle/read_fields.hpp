@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
@@ -44,4 +45,8 @@ validate_denoising_claims(const RecordJson& document, DeclaredBundle& d, const O
 [[nodiscard]] core::Result<image::SourceDescription> record_source(const RecordJson& value);
 [[nodiscard]] core::Result<SourceFacts> record_source_facts(const RecordJson& value);
 [[nodiscard]] bool source_agrees(const DeclaredBundle& declared);
+[[nodiscard]] core::Result<void> validate_contrast_claims(const RecordJson& document,
+                                                          DeclaredBundle& d,
+                                                          const Operation& operation,
+                                                          const methods::IlluminationReport& light);
 } // namespace docenhance::bundle

@@ -102,6 +102,7 @@ core::Result<void> canonical_claims(const RecordJson& document, const DeclaredBu
         .conversion = d.conversion,
         .illumination = d.illumination,
         .denoising = d.denoising,
+        .contrast = d.contrast,
     };
     auto canonical = serialize(record);
     if (!canonical) {
@@ -138,6 +139,10 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
     auto denoise_claims = validate_denoising_claims(document, d, *op, *light);
     if (!denoise_claims) {
         return denoise_claims;
+    }
+    auto contrast_claims = validate_contrast_claims(document, d, *op, *light);
+    if (!contrast_claims) {
+        return contrast_claims;
     }
     d.operation = *op;
     d.illumination = *light;

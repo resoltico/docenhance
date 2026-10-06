@@ -98,7 +98,8 @@ core::Result<bool> should_fit(FitContext context) {
 // A cell darker than the paper reference divided by the largest admissible gain is beyond any
 // illumination I01 could correct. It is dark content such as a solid fill or dark photograph, not
 // evidence of lighting, so it stays unmeasured and the fitted field spans it from nearby paper.
-core::Result<void> exclude_dark_cells(image::PlaneView<double> work, IlluminationReport& report) {
+core::Result<void> exclude_dark_cells(image::PlaneView<double> work, IlluminationReport& report,
+                                      const core::Cancellation& cancellation) {
     const auto weights = work.row(0);
     const auto logs = work.row(1);
     const auto scratch = work.row(2); // The right-hand side is assembled after this step.
@@ -111,7 +112,8 @@ core::Result<void> exclude_dark_cells(image::PlaneView<double> work, Illuminatio
     if (measured == 0) {
         return {};
     }
-    const auto selected = image::nearest_rank(scratch.first(measured), surface_reference_rank);
+    const auto selected =
+        image::nearest_rank(scratch.first(measured), surface_reference_rank, cancellation);
     if (!selected) {
         return std::unexpected(selected.error());
     }
@@ -149,7 +151,7 @@ core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext 
     if (!measured) {
         return std::unexpected(measured.error());
     }
-    auto excluded = exclude_dark_cells(work->view(), report);
+    auto excluded = exclude_dark_cells(work->view(), report, context.cancellation.get());
     if (!excluded) {
         return std::unexpected(excluded.error());
     }
