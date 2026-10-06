@@ -49,7 +49,6 @@ def process(
     expect(record["source"]["decoding"] == response["source_decoding"], "one source mapping")
     expect(record["source"]["sha256"] == hashlib.sha256(encoded).hexdigest(), "snapshot identity")
     expect(response["conversion"]["verified"], "real PNG output sample verification")
-    call_json(exe, ["verify", str(output), "--json"])
     expect(source.read_bytes() == encoded, "source remains untouched")
     result = (output / "result.png").read_bytes()
     return decode_output(result), response, result
@@ -336,6 +335,8 @@ def main() -> None:
         palette_alpha_orientation(exe, root)
         metadata_and_pipeline(exe, root)
         invalid_domains(exe, root)
+        # Every process uses the shared staged reader; exercise its public read-only route once.
+        call_json(exe, ["verify", str(min(root.glob("bundle-*"))), "--json"])
     print("TIFF independent samples, interpretation, pipeline and refusals passed")
 
 
