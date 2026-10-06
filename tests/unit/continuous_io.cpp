@@ -145,7 +145,7 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     methods::IlluminationReport report;
     const auto method = methods::Surface::create({.strength = 1, .target = 1}).value();
-    auto const model =
+    host::IlluminationModel const model =
         methods::SurfaceModel::prepare({*converter, {}}, method, budget, {}, report).value();
     auto block =
         image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1)
@@ -160,7 +160,7 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(report.complete);
-    CHECK(report.status == methods::SurfaceStatus::applied);
+    CHECK(report.status == methods::IlluminationStatus::applied);
     CHECK(report.evaluated_samples == 64);
     CHECK(report.changed_samples == 64);
     CHECK(empty_directory(directory.path));
@@ -176,7 +176,7 @@ TEST_CASE("I01 cancellation in application versus verification preserves stage t
     for (const auto phase : {core::Checkpoint::processing, core::Checkpoint::verification}) {
         methods::IlluminationReport report;
         const auto method = methods::Surface::create({.strength = 1, .target = 1}).value();
-        auto const model =
+        host::IlluminationModel const model =
             methods::SurfaceModel::prepare({*converter, {}}, method, budget, {}, report).value();
         auto block = image::Plane<double>::allocate(
                          budget, image::linear_block_pixels * image::rgb_channels, 1)

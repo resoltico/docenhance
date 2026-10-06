@@ -19,8 +19,12 @@ denoising_request_fields(const methods::DenoisingReport& report);
 // One mapping from typed execution facts to their written form. The persistent record and the
 // command response both use it, so a fact cannot be spelled one way on disk and another on
 // stdout, and a field cannot be added to one and forgotten in the other.
-[[nodiscard]] std::string_view status_name(methods::SurfaceStatus status) noexcept;
-[[nodiscard]] std::string_view reason_name(methods::SurfaceReason reason) noexcept;
+[[nodiscard]] std::string_view status_name(methods::IlluminationStatus status) noexcept;
+[[nodiscard]] std::string_view reason_name(methods::IlluminationReason reason) noexcept;
+[[nodiscard]] nlohmann::ordered_json
+morphology_parameters_fields(const methods::MorphologyParameters& parameters);
+[[nodiscard]] nlohmann::ordered_json
+morphology_fields(const methods::MorphologyMeasurements& measurements);
 [[nodiscard]] nlohmann::ordered_json illumination_fields(const methods::IlluminationReport& report);
 [[nodiscard]] nlohmann::ordered_json conversion_fields(const image::ConversionReport& report);
 [[nodiscard]] nlohmann::ordered_json source_fields(const image::SourceDescription& description);

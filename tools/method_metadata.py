@@ -241,6 +241,7 @@ def metadata_outputs(
         conversion=record_conversion,
         resolution=conversion["properties"]["resolution"],
         illumination=schema["$defs"]["illumination"],
+        illumination_request=schema["$defs"]["illumination_request"],
         illumination_method=schema["$defs"]["illumination_method"],
         binary_method={
             **schema["$defs"]["method"],

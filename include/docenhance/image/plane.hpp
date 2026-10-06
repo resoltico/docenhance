@@ -113,14 +113,18 @@ template <typename Sample> class PlaneView {
 // Addresses are compared as integers without forming an overflowing end address or comparing
 // unrelated pointers. Full backing spans (including padding) must be disjoint for separate roles.
 template <typename Left, typename Right>
-[[nodiscard]] bool overlaps(PlaneView<Left> left, PlaneView<Right> right) noexcept {
+[[nodiscard]] bool overlaps(std::span<Left> left, std::span<Right> right) noexcept {
     if (left.empty() || right.empty()) {
         return false;
     }
-    const auto first = std::bit_cast<std::uintptr_t>(left.storage().data());
-    const auto second = std::bit_cast<std::uintptr_t>(right.storage().data());
-    return first <= second ? second - first < left.storage().size_bytes()
-                           : first - second < right.storage().size_bytes();
+    const auto first = std::bit_cast<std::uintptr_t>(left.data());
+    const auto second = std::bit_cast<std::uintptr_t>(right.data());
+    return first <= second ? second - first < left.size_bytes()
+                           : first - second < right.size_bytes();
+}
+template <typename Left, typename Right>
+[[nodiscard]] bool overlaps(PlaneView<Left> left, PlaneView<Right> right) noexcept {
+    return overlaps(left.storage(), right.storage());
 }
 
 // An owning plane. Its memory is charged to the budget that allocated it and refunded when it dies.

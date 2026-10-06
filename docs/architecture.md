@@ -231,7 +231,7 @@ The top-level CMake project owns versioning. `deps/lock.json` owns source identi
 `deps/features.json` owns upstream feature policy; `deps/tools.json` owns developer-tool versions.
 `spec/cli-contract.json` owns the format/mode matrix; its generated descriptor supplies runtime
 reporting and both capability schema branches. Response-envelope version comes from the response
-schema template. `spec/method-contract.json` owns all implemented method identities, including D01;
+schema template. `spec/method-contract.json` owns all implemented method identities, including I02 and D01;
 the generated descriptors feed typed method values and serialization, with compiled alternatives
 checked against the reviewed catalog. Method-option attribution is checked in both directions.
 These contracts generate descriptors, reference docs and
@@ -259,7 +259,7 @@ operation's observation; codecs and publication receive the same control explici
 
 `image::LinearSource` exposes bounded, interpreted linear RGB blocks without encoded output
 round trips. The color adapter implements this alongside its no-filter row source. `de_methods`
-measures and fits I01 without codec/native types or filesystem authority; `de_host` composes the
+measures I01 surfaces and I02 morphology fields without codec/native types or filesystem authority; `de_host` composes the
 immutable model, oriented protection mask and downstream quantizer. `de_io` keeps exclusive
 ownership of encoding/verification/publication. There is no plugin or generic recipe framework.
 
@@ -301,7 +301,7 @@ orientation is applied once in the existing converter. See [TIFF](tiff-processin
 `de_denoise` wraps only the pinned CV_16U/L1 operation, with bounded tile extents, native scratch
 reservation and contained exceptions. Completed reservation/combined-charge observations are
 returned by the native owner while its lease is live; orchestration does not predict them. `de_methods` owns closed NLM settings, scalar correction and
-resource estimates without native types. The host composes linear interpretation, frozen I01,
+resource estimates without native types. The host composes linear interpretation, frozen illumination models,
 prepared D01 and final integer rows. Completed earlier-stage observations survive downstream
 failures; publication remains one complete bundle transaction. The prepared scalar planes and
 original source/model outlive encoding and verification. See [denoising](denoising.md).

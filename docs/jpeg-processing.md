@@ -122,8 +122,8 @@ charged allocations, peak RSS and runtime are different evidence, never intercha
 
 ## Persistent and response compatibility
 
-New production records use format version 4 and require a closed `source.decoding` PNG/JPEG/TIFF
-alternative. Response schema version 4 exposes the same mapping as `source_decoding` and reports an
+New production records use format version 5 and require a closed `source.decoding` PNG/JPEG/TIFF
+alternative. Response schema version 5 exposes the same mapping as `source_decoding` and reports an
 explicit input/output-mode matrix. A custom processing port can report unknown source observations
 as null; the native host always supplies them. Numerical method versions are unchanged.
 

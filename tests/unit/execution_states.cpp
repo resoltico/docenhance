@@ -200,14 +200,12 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
     auto request = invocation(false);
     request.illumination = "surface";
     methods::IlluminationReport wrong;
-    wrong.requested = methods::SurfaceParameters{};
-    wrong.requested->strength = 0.5;
-    wrong.status = methods::SurfaceStatus::failed;
+    wrong.requested = methods::SurfaceParameters{.strength = 0.5};
+    wrong.status = methods::IlluminationStatus::failed;
     ReturningProcessor mismatch{app::process_failure(
         {.code = core::ErrorCode::resource, .message = "Partial failure"}, wrong)};
     CHECK(error(app::dispatch(request, mismatch, verifier)).publication ==
           core::Publication::unknown);
-    wrong.requested = methods::SurfaceParameters{};
     wrong.solver = methods::SolverReport{.residual = std::numeric_limits<double>::quiet_NaN()};
     ReturningProcessor nonfinite{app::process_failure(
         {
@@ -291,5 +289,48 @@ TEST_CASE("Invalid command values have no scope bits and cannot reach execution"
     CHECK(error(outcome).code == core::ErrorCode::argument);
     CHECK(outcome.command == contract::Command::root);
     CHECK(processor.calls == 0);
+}
+TEST_CASE("I02 failure observations reject foreign fields and invalid scalar domains",
+          "[app][morphology]") {
+    UnusedVerifier verifier;
+    auto request = invocation(false);
+    request.illumination = "morph";
+    const methods::MorphologyParameters parameters;
+    methods::IlluminationReport report{
+        .status = methods::IlluminationStatus::failed,
+        .reason = methods::IlluminationReason::processing_failure,
+        .requested = parameters,
+    };
+    const core::Error failure{.code = core::ErrorCode::resource, .message = "Before processing"};
+    ReturningProcessor valid{app::process_failure(failure, report)};
+    CHECK(error(app::dispatch(request, valid, verifier)).code == core::ErrorCode::resource);
+    for (unsigned mutation = 0; mutation < 6; ++mutation) {
+        methods::IlluminationReport bad{
+            .status = methods::IlluminationStatus::failed,
+            .reason = methods::IlluminationReason::processing_failure,
+            .requested = parameters,
+        };
+        if (mutation == 0) {
+            bad.cells = 1;
+        } else if (mutation == 1) {
+            bad.predicates.front() = false;
+        } else if (mutation == 2) {
+            bad.complete = true;
+            bad.status = methods::IlluminationStatus::no_change;
+        } else {
+            bad.morphology =
+                methods::MorphologyMeasurements{.radius = 8, .sigma = 4, .gaussian_radius = 12};
+            if (mutation == 3) {
+                bad.morphology->sigma = 129;
+            } else if (mutation == 4) {
+                bad.morphology->background_q10 = -0.1;
+            } else {
+                bad.morphology->count = 1;
+            }
+        }
+        ReturningProcessor malformed{app::process_failure(failure, bad)};
+        CHECK(error(app::dispatch(request, malformed, verifier)).publication ==
+              core::Publication::unknown);
+    }
 }
 } // namespace docenhance::tests

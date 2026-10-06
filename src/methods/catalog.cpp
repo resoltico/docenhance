@@ -15,13 +15,17 @@
 #include <variant>
 namespace docenhance::methods {
 namespace {
-template <std::size_t... Indices>
-constexpr auto executable_catalog(std::index_sequence<Indices...> /*indices*/) noexcept {
-    return std::array{Surface::descriptor(), Nlm::descriptor(),
+template <std::size_t... Lights, std::size_t... Indices>
+constexpr auto executable_catalog(std::index_sequence<Lights...> /*lights*/,
+                                  std::index_sequence<Indices...> /*indices*/) noexcept {
+    return std::array{std::variant_alternative_t<Lights + 1, Illumination>::descriptor()...,
+                      Nlm::descriptor(),
                       std::variant_alternative_t<Indices, Binarization>::descriptor()...};
 }
-constexpr auto catalog =
-    executable_catalog(std::make_index_sequence<std::variant_size_v<Binarization>>{});
+constexpr auto illumination_indices =
+    std::make_index_sequence<std::variant_size_v<Illumination> - 1>{};
+constexpr auto binarization_indices = std::make_index_sequence<std::variant_size_v<Binarization>>{};
+constexpr auto catalog = executable_catalog(illumination_indices, binarization_indices);
 static_assert(std::ranges::equal(catalog, reviewed_methods),
               "Reviewed capabilities and executable method types must agree");
 } // namespace

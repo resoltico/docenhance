@@ -56,46 +56,6 @@ Interval interval(Axis axis, std::uint32_t coordinate) noexcept {
         .fraction = (coordinate - axis.center(low - 1)) / (axis.center(low) - axis.center(low - 1)),
     };
 }
-void observe(double gain, double raw_target, bool capped, IlluminationReport& report) noexcept {
-    if (report.evaluated_samples == 0) {
-        report.min_gain = gain;
-        report.max_gain = gain;
-    } else {
-        report.min_gain = std::min(report.min_gain, gain);
-        report.max_gain = std::max(report.max_gain, gain);
-    }
-    ++report.evaluated_samples;
-    report.gain_capped_samples += static_cast<std::uint64_t>(capped);
-    report.saturated_samples += static_cast<std::uint64_t>(raw_target > 1);
-}
-core::Result<void> modify(std::span<double> pixel, double background,
-                          const SurfaceParameters& options, double target,
-                          IlluminationReport& report) {
-    const image::Rgb original{pixel.front(), surface_at(pixel, 1), surface_at(pixel, 2)};
-    const auto y = image::luminance(original);
-    if (!y) {
-        return std::unexpected(y.error());
-    }
-    const double ratio = target / std::max(background, surface_floor);
-    const double gain = std::clamp(ratio, 1.0, options.max_gain);
-    const double raw_target = *y * std::pow(gain, options.strength);
-    const double desired = std::clamp(raw_target, 0.0, 1.0);
-    observe(gain, raw_target, ratio >= options.max_gain, report);
-    if (desired == *y) {
-        return {};
-    }
-    const auto changed = image::transport_luminance(original, desired);
-    if (!changed) {
-        return std::unexpected(changed.error());
-    }
-    if (*changed != original) {
-        ++report.changed_samples;
-        report.status = SurfaceStatus::applied;
-        report.reason = SurfaceReason::none;
-        std::ranges::copy(*changed, pixel.begin());
-    }
-    return {};
-}
 } // namespace
 core::Result<double> SurfaceModel::background(std::uint32_t x, std::uint32_t y) const {
     if (x >= grid_.extent.width || y >= grid_.extent.height || logarithms_.empty()) {
@@ -151,8 +111,10 @@ core::Result<void> SurfaceModel::apply(image::RowRange range, std::span<double> 
         if (!b) {
             return std::unexpected(b.error());
         }
-        const auto changed = modify(rgb.subspan(i * image::rgb_channels, image::rgb_channels), *b,
-                                    method_.parameters(), target_, report);
+        const auto p = method_.parameters();
+        const auto changed = apply_illumination_pixel(
+            rgb.subspan(i * image::rgb_channels, image::rgb_channels), *b,
+            {.target = target_, .strength = p.strength, .max_gain = p.max_gain}, report);
         if (!changed) {
             return changed;
         }

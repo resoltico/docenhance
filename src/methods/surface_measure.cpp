@@ -30,7 +30,7 @@ struct CellBuffers {
     std::span<double> samples;
     std::span<double> rgb;
 };
-core::Result<std::size_t> cell_samples(SurfaceInput input, Cell cell, CellBuffers buffers,
+core::Result<std::size_t> cell_samples(IlluminationInput input, Cell cell, CellBuffers buffers,
                                        const core::Cancellation& cancellation) {
     std::size_t count = 0;
     for (std::uint32_t row = cell.y; row < cell.y + cell.height; ++row) {
@@ -58,7 +58,7 @@ core::Result<std::size_t> cell_samples(SurfaceInput input, Cell cell, CellBuffer
     }
     return count;
 }
-core::Result<void> measure_cell(SurfaceInput input, Cell cell, CellBuffers buffers,
+core::Result<void> measure_cell(IlluminationInput input, Cell cell, CellBuffers buffers,
                                 std::span<double> output, MeasurementContext context) {
     const auto n = cell_samples(input, cell, buffers, context.cancellation.get());
     if (!n) {
@@ -80,14 +80,14 @@ core::Result<void> measure_cell(SurfaceInput input, Cell cell, CellBuffers buffe
     if (!quantile) {
         return std::unexpected(quantile.error());
     }
-    if (*quantile >= surface_floor) {
+    if (*quantile >= illumination_floor) {
         output.front() = static_cast<double>(*n) / area;
         surface_at(output, 1) = std::log(*quantile);
     }
     return {};
 }
 } // namespace
-core::Result<void> measure_cells(SurfaceInput input, const SurfaceGrid& grid,
+core::Result<void> measure_cells(IlluminationInput input, const SurfaceGrid& grid,
                                  image::PlaneView<double> measurements,
                                  MeasurementContext context) {
     const auto sample_count =

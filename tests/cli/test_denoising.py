@@ -17,7 +17,7 @@ from test_continuous import transfer_decode, transfer_encode
 
 DATA = Path(__file__).resolve().parents[1] / "fixtures/jpeg"
 SIDE = 64
-RECORD_VERSION = 4
+RECORD_VERSION = 5
 ASSESSMENT_THRESHOLD = 100
 COMPOSITION_TOLERANCE = 3
 OPTIONS = ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]
@@ -182,8 +182,8 @@ def orientations(exe: Path, root: Path) -> None:
         )
 
 
-def composition(exe: Path, root: Path) -> None:
-    """Compare explicit I01->D01 against a high-precision serialized I01 intermediate."""
+def composition(exe: Path, root: Path, selection: str = "surface") -> None:
+    """Compare illumination followed by D01 against a serialized illumination intermediate."""
     pixels = tuple(
         (round(65535 * (0.35 + 0.5 * (x / (SIDE - 1))) + (y % 3) * 100),)
         for y in range(SIDE)
@@ -192,8 +192,8 @@ def composition(exe: Path, root: Path) -> None:
     source = source_fixture(root, Fixture(SIDE, SIDE, pixels, depth=16))
     illumination = [
         "--illumination",
-        "surface",
-        "--background-cell",
+        selection,
+        "--background-cell" if selection == "surface" else "--background-radius",
         "8",
         "--background-target",
         "0.9",
@@ -210,7 +210,7 @@ def composition(exe: Path, root: Path) -> None:
         <= COMPOSITION_TOLERANCE,
         "composition agrees within intermediate quantization error",
     )
-    expect(report["illumination"]["complete"], "I01 completed before D01")
+    expect(report["illumination"]["complete"], "illumination completed before D01")
     for mode in ("preserve", "gray"):
         source = root / f"jpeg-{mode}.jpg"
         source.write_bytes((DATA / "gray-document-progressive.jpeg").read_bytes())
@@ -223,7 +223,7 @@ def record_validation(exe: Path, root: Path) -> None:
     _, _, output = process(exe, root, source, OPTIONS)
     path = output / "run.json"
     record = json.loads(path.read_text())
-    for version in (1, 2):
+    for version in (1, 2, 3, 4, 6):
         old = json.loads(json.dumps(record))
         old["record"]["version"] = version
         path.write_text(json.dumps(old))

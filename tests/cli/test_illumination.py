@@ -51,9 +51,11 @@ def run(
     result = call_json(
         exe, ["process", str(source), "--out-dir", str(output), *options, "--json"], code
     )
-    expect(source.read_bytes() == fixture.encoded(), "I01 never overwrites source")
+    expect(source.read_bytes() == fixture.encoded(), "illumination never overwrites source")
     if code:
-        expect(set(root.iterdir()) == before, "I01 refusal leaves no final or staging path")
+        expect(
+            set(root.iterdir()) == before, "illumination refusal leaves no final or staging path"
+        )
         return None, result
     expect(result["conversion"]["verified"], "illumination output verified before commit")
     expect(result["illumination"]["complete"], "reported illumination is complete")
@@ -179,7 +181,7 @@ def independent_model(exe: Path, root: Path) -> None:
     )
 
 
-def oriented_protection(exe: Path, root: Path) -> None:
+def oriented_protection(exe: Path, root: Path, selection: str = "surface") -> None:
     """A mask is in already-oriented coordinates; it must not be oriented a second time."""
     width, height = 16, 8
     source = gray_fixture(width, height, [0.3] * (width * height))
@@ -197,7 +199,7 @@ def oriented_protection(exe: Path, root: Path) -> None:
             fixture,
             [
                 "--illumination",
-                "surface",
+                selection,
                 "--background-target",
                 "1",
                 "--background-strength",
@@ -213,7 +215,7 @@ def oriented_protection(exe: Path, root: Path) -> None:
     run(exe, root, fixture, ["--protect-mask", str(mask)], 3)
 
 
-def colored_transport(exe: Path, root: Path) -> None:
+def colored_transport(exe: Path, root: Path, selection: str = "surface") -> None:
     """Color transport lifts linear luminance, not three independently equalized channels."""
     color = (6000, 20000, 42000)
     fixture = Fixture(8, 8, (color,) * 64, depth=DEPTH, color=RGB, metadata=LINEAR)
@@ -227,7 +229,7 @@ def colored_transport(exe: Path, root: Path) -> None:
     expected = [c + ((target - y) / (1 - y)) * (1 - c) for c in rgb]
     options = [
         "--illumination",
-        "surface",
+        selection,
         "--background-target",
         "1",
         "--background-strength",

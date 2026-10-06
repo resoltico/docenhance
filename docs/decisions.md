@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 4; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 5; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -391,3 +391,15 @@ completion; the locked adapter therefore requires complete striles. JPEG admissi
 policy after headers, with bounded scans and cancellation. Response/record version 4 closes the
 TIFF source alternative and rejects obsolete forms. See [TIFF admission](tiff-processing.md)
 for the separate design QA, exact domains, resource accounting and evidence obligations.
+
+## Explicit morphological illumination shares luminance transport
+
+I02 closes eligible linear luminance with a square maximum then minimum and smooths the field
+with a normalized Gaussian. Protected samples receive the eligible Y90 fill only for analysis;
+output protection remains exact. First-party separable float64 kernels keep this method within
+`de_methods`, avoiding an additional native allocator/exception boundary. Two charged page planes
+and bounded scratch refuse insufficient memory without approximation. The retained field is reused
+for output verification and later D01; auto selection continues to select only I01.
+
+Response/record version 5 introduces closed method-specific illumination parameters and morphology
+observations. Current readers reject obsolete records. See [I02 design and separate QA](morphological-illumination.md).

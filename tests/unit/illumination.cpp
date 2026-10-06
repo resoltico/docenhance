@@ -98,7 +98,7 @@ TEST_CASE("Disabled algebra and all-protected input avoid fit allocation exactly
                                                           options(), empty_budget, {}, report);
     REQUIRE(protected_model);
     CHECK(!protected_model->active());
-    CHECK(report.reason == methods::SurfaceReason::no_eligible_samples);
+    CHECK(report.reason == methods::IlluminationReason::no_eligible_samples);
     CHECK(report.protected_samples == std::uint64_t{page.width} * page.height);
     auto params = options().parameters();
     params.strength = 0;
@@ -148,7 +148,7 @@ TEST_CASE("I01 measurement, fit, interpolation and application preserve protecte
         CHECK(pixels.front() == protected_dark);
         CHECK(pixels.subspan(image::rgb_channels, 1).front() > paper);
         CHECK(report.evaluated_samples == page.width - 1);
-        CHECK(report.status == methods::SurfaceStatus::applied);
+        CHECK(report.status == methods::IlluminationStatus::applied);
     }
     CHECK(budget.used() == held);
 }
@@ -163,8 +163,8 @@ TEST_CASE("I01 automatic skip and explicit inapplicability are not numerical fai
             methods::SurfaceModel::prepare({source, {}}, options(true), budget, {}, report);
         REQUIRE(skipped);
         CHECK(!skipped->active());
-        CHECK(report.status == methods::SurfaceStatus::skipped);
-        CHECK(report.reason == methods::SurfaceReason::automatic_predicates);
+        CHECK(report.status == methods::IlluminationStatus::skipped);
+        CHECK(report.reason == methods::IlluminationReason::automatic_predicates);
         REQUIRE(report.predicates.at(3).has_value());
         CHECK(report.predicates.at(3) == false);
     }
@@ -174,7 +174,7 @@ TEST_CASE("I01 automatic skip and explicit inapplicability are not numerical fai
     CHECK(refused.error().code == core::ErrorCode::method_inapplicable);
     auto skipped = methods::SurfaceModel::prepare({source, {}}, options(true), budget, {}, report);
     REQUIRE(skipped);
-    CHECK(report.status == methods::SurfaceStatus::skipped);
+    CHECK(report.status == methods::IlluminationStatus::skipped);
 }
 TEST_CASE("I01 resource refusal and phase cancellation refund scratch", "[surface][resource]") {
     core::Budget input_budget{surface_budget};

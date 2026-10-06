@@ -22,7 +22,7 @@
 namespace docenhance::methods {
 namespace {
 struct FitContext {
-    SurfaceInput input;
+    IlluminationInput input;
     std::reference_wrapper<const Surface> method;
     std::reference_wrapper<core::Budget> budget;
     std::reference_wrapper<const core::Cancellation> cancellation;
@@ -62,14 +62,14 @@ core::Result<void> count_eligible(FitContext context) {
         (std::uint64_t{extent.width} * extent.height) - report.protected_samples;
     return {};
 }
-core::Result<bool> applicable(bool enough, SurfaceReason reason, FitContext context) {
+core::Result<bool> applicable(bool enough, IlluminationReason reason, FitContext context) {
     if (enough) {
         return true;
     }
     auto& report = context.report.get();
     report.reason = reason;
     if (context.method.get().parameters().mode == SurfaceMode::automatic) {
-        report.status = SurfaceStatus::skipped;
+        report.status = IlluminationStatus::skipped;
         return false;
     }
     return core::failure(core::ErrorCode::method_inapplicable,
@@ -79,21 +79,21 @@ core::Result<bool> should_fit(FitContext context) {
     auto& report = context.report.get();
     const auto& parameters = context.method.get().parameters();
     if (report.eligible_samples == 0) {
-        report.reason = SurfaceReason::no_eligible_samples;
+        report.reason = IlluminationReason::no_eligible_samples;
     } else if (parameters.strength == 0) {
-        report.reason = SurfaceReason::zero_strength;
+        report.reason = IlluminationReason::zero_strength;
     } else if (parameters.max_gain == 1) {
-        report.reason = SurfaceReason::unit_gain;
+        report.reason = IlluminationReason::unit_gain;
     }
-    if (report.reason != SurfaceReason::none) {
-        report.status = SurfaceStatus::no_change;
+    if (report.reason != IlluminationReason::none) {
+        report.status = IlluminationStatus::no_change;
         return false;
     }
     constexpr std::uint64_t minimum_samples = 16;
     const auto extent = context.input.source.get().extent();
     return applicable(report.eligible_samples >=
                           std::min(minimum_samples, std::uint64_t{extent.width} * extent.height),
-                      SurfaceReason::insufficient_samples, context);
+                      IlluminationReason::insufficient_samples, context);
 }
 // A cell darker than the paper reference divided by the largest admissible gain is beyond any
 // illumination I01 could correct. It is dark content such as a solid fill or dark photograph, not
@@ -117,7 +117,7 @@ core::Result<void> exclude_dark_cells(image::PlaneView<double> work, Illuminatio
     }
     const double reference = *selected;
     report.background_reference = std::exp(reference);
-    const double floor = reference - std::log(surface_gain_limit);
+    const double floor = reference - std::log(illumination_gain_limit);
     for (std::size_t i = 0; i < weights.size(); ++i) {
         if (surface_at(weights, i) > 0 && surface_at(logs, i) < floor) {
             surface_at(weights, i) = 0;
@@ -163,7 +163,7 @@ core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext 
     const auto covered =
         applicable(report.measured_cells != 0 &&
                        coverage >= (automatic ? automatic_coverage : explicit_coverage),
-                   SurfaceReason::insufficient_cells, context);
+                   IlluminationReason::insufficient_cells, context);
     if (!covered) {
         return std::unexpected(covered.error());
     }
@@ -184,11 +184,11 @@ core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext 
     return std::move(*logs); // Work and selection scratch are released before lattice allocation.
 }
 } // namespace
-core::Result<SurfaceModel> SurfaceModel::prepare(SurfaceInput input, const Surface& method,
+core::Result<SurfaceModel> SurfaceModel::prepare(IlluminationInput input, const Surface& method,
                                                  core::Budget& budget,
                                                  const core::Cancellation& cancellation,
                                                  IlluminationReport& report) {
-    report = {.status = SurfaceStatus::failed, .requested = method.parameters()};
+    report = {.status = IlluminationStatus::failed, .requested = method.parameters()};
     if (cancellation.requested(core::Checkpoint::measurement)) {
         return core::cancelled();
     }
@@ -235,14 +235,14 @@ core::Result<SurfaceModel> SurfaceModel::prepare(SurfaceInput input, const Surfa
     model.target_ = samples->target;
     const bool eligible = surface_eligible(report);
     if (method.parameters().mode == SurfaceMode::automatic && !eligible) {
-        report.status = SurfaceStatus::skipped;
-        report.reason = SurfaceReason::automatic_predicates;
+        report.status = IlluminationStatus::skipped;
+        report.reason = IlluminationReason::automatic_predicates;
         report.complete = true;
         return model;
     }
     model.active_ = true;
-    report.status = SurfaceStatus::no_change;
-    report.reason = SurfaceReason::no_effect;
+    report.status = IlluminationStatus::no_change;
+    report.reason = IlluminationReason::no_effect;
     return model;
 }
 } // namespace docenhance::methods

@@ -4,14 +4,14 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MPL-2.0-licensed.
 
-> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01 illumination and D01 denoising, and two binarizers.**
+> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01 denoising, and two binarizers.**
 > `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
 > and metadata policies. Explicit `--output-mode bw` selects B02/B03 on their narrower stored-gray
 > input domain. All output is published into a new directory. See [PNG processing](docs/png-processing.md)
 > [JPEG admission](docs/jpeg-processing.md), [bounded single-page TIFF/BigTIFF](docs/tiff-processing.md),
 > and [typed binarization](docs/binarization.md). Batch processing, presets and
-> other restoration methods remain unsupported. I01 surface/auto illumination and protected
+> other restoration methods remain unsupported. I01 surface/auto and explicit I02 morph illumination and protected
 > regions are specified in [illumination](docs/illumination.md); the default remains off.
 
 ## Start here
@@ -82,7 +82,7 @@ out/dev/app/bin/docenhance methods --json
 out/dev/app/bin/docenhance process --help --json
 ```
 
-`methods` reports I01 illumination, D01 denoising, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
+`methods` reports I01 surface and I02 morphological illumination, D01 denoising, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout

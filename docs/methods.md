@@ -10,9 +10,9 @@ Method-specific argument references: `--illumination`, `--background-strength`, 
 
 ## I02 — Morphological illumination
 
-Status: **not-implemented**.
+Status: **implemented**.
 
-Method-specific argument references: `--illumination`, `--background-strength`, `--background-max-gain`, `--background-target`, `--background-radius`.
+Method-specific argument references: `--illumination`, `--background-strength`, `--background-max-gain`, `--background-target`, `--background-radius`, `--protect-mask`.
 
 ## D01 — 16-bit NLM-L1
 

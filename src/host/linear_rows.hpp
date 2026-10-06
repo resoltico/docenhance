@@ -5,15 +5,18 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/surface.hpp"
 
 #include <functional>
 #include <span>
 #include <utility>
+#include <variant>
 namespace docenhance::host {
+using IlluminationModel = std::variant<methods::SurfaceModel, methods::MorphologyModel>;
 class IlluminatedSource final : public image::LinearSource {
   public:
-    IlluminatedSource(color::Converter& source, const methods::SurfaceModel* model,
+    IlluminatedSource(color::Converter& source, const IlluminationModel* model,
                       image::PlaneView<const std::uint8_t> protection,
                       methods::IlluminationReport& report, core::Cancellation cancellation)
         : source_(source), model_(model), protection_(protection), report_(report),
@@ -26,7 +29,7 @@ class IlluminatedSource final : public image::LinearSource {
 
   private:
     std::reference_wrapper<color::Converter> source_;
-    const methods::SurfaceModel* model_;
+    const IlluminationModel* model_;
     image::PlaneView<const std::uint8_t> protection_;
     std::reference_wrapper<methods::IlluminationReport> report_;
     core::Cancellation cancellation_;

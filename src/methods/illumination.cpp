@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <variant>
 
 namespace docenhance::methods {
 namespace {
@@ -25,7 +26,7 @@ core::Result<Surface> Surface::create(SurfaceParameters parameters) {
     const bool valid_mode = parameters.mode == SurfaceMode::explicit_surface ||
                             parameters.mode == SurfaceMode::automatic;
     if (!valid_mode || !in_range(parameters.strength, 0, 1) ||
-        !in_range(parameters.max_gain, 1, surface_gain_limit) ||
+        !in_range(parameters.max_gain, 1, illumination_gain_limit) ||
         !in_range(parameters.quantile, quantile_floor, quantile_limit) ||
         !in_range(parameters.smooth, smooth_floor, smooth_limit) ||
         (parameters.target && !in_range(*parameters.target, target_floor, 1)) ||
@@ -47,8 +48,8 @@ bool measurements_agree(const SurfaceMeasurements& m) {
            unit(m.dark_fraction);
 }
 bool disabled(const IlluminationReport& r) {
-    return r.status == SurfaceStatus::disabled && r.reason == SurfaceReason::none && !r.cell &&
-           !r.solver && !r.measurements && !r.background_reference && r.cells == 0 &&
+    return r.status == IlluminationStatus::disabled && r.reason == IlluminationReason::none &&
+           !r.cell && !r.solver && !r.measurements && !r.background_reference && r.cells == 0 &&
            r.evaluated_samples == 0 && r.min_gain == 1 && r.max_gain == 1 &&
            std::ranges::all_of(r.predicates, [](const auto& value) { return !value; });
 }
@@ -63,32 +64,32 @@ bool reason_agrees(const IlluminationReport& r) {
     if (!r.requested) {
         return disabled(r);
     }
-    const auto& p = *r.requested;
+    const auto& p = std::get<SurfaceParameters>(*r.requested);
     switch (r.status) {
-    case SurfaceStatus::applied:
-        return r.reason == SurfaceReason::none && r.solver && r.measurements && r.cell &&
+    case IlluminationStatus::applied:
+        return r.reason == IlluminationReason::none && r.solver && r.measurements && r.cell &&
                r.changed_samples != 0;
-    case SurfaceStatus::skipped:
+    case IlluminationStatus::skipped:
         return p.mode == SurfaceMode::automatic &&
-               (r.reason == SurfaceReason::insufficient_samples ||
-                r.reason == SurfaceReason::insufficient_cells ||
-                r.reason == SurfaceReason::automatic_predicates) &&
+               (r.reason == IlluminationReason::insufficient_samples ||
+                r.reason == IlluminationReason::insufficient_cells ||
+                r.reason == IlluminationReason::automatic_predicates) &&
                r.evaluated_samples == 0;
-    case SurfaceStatus::no_change:
+    case IlluminationStatus::no_change:
         switch (r.reason) {
-        case SurfaceReason::zero_strength:
+        case IlluminationReason::zero_strength:
             return p.strength == 0 && unmeasured(r);
-        case SurfaceReason::unit_gain:
+        case IlluminationReason::unit_gain:
             return p.max_gain == 1 && unmeasured(r);
-        case SurfaceReason::no_eligible_samples:
+        case IlluminationReason::no_eligible_samples:
             return r.eligible_samples == 0 && unmeasured(r);
-        case SurfaceReason::no_effect:
+        case IlluminationReason::no_effect:
             return fitted(r) && r.changed_samples == 0;
         default:
             return false;
         }
-    case SurfaceStatus::disabled:
-    case SurfaceStatus::failed:
+    case IlluminationStatus::disabled:
+    case IlluminationStatus::failed:
         return false;
     }
     return false;
@@ -100,7 +101,7 @@ bool grid_agrees(const IlluminationReport& r, image::Extent extent) {
     if (!r.requested || *r.cell < Surface::min_cell || *r.cell > Surface::max_cell) {
         return false;
     }
-    const auto method = Surface::create(*r.requested);
+    const auto method = Surface::create(std::get<SurfaceParameters>(*r.requested));
     if (!method) {
         return false;
     }
@@ -109,12 +110,18 @@ bool grid_agrees(const IlluminationReport& r, image::Extent extent) {
 }
 } // namespace
 bool valid_illumination(const IlluminationReport& report, image::Extent extent, bool protection) {
+    if (report.requested && std::holds_alternative<MorphologyParameters>(*report.requested)) {
+        return valid_morphology_report(report, extent, protection);
+    }
+    if (report.morphology) {
+        return false;
+    }
     const auto& r = report;
     if (r.measured_cells > r.cells || r.dark_cells > r.cells - r.measured_cells ||
         r.changed_samples > r.evaluated_samples || r.gain_capped_samples > r.evaluated_samples ||
         r.saturated_samples > r.evaluated_samples || r.evaluated_samples > r.eligible_samples ||
         !std::isfinite(r.min_gain) || !std::isfinite(r.max_gain) || r.min_gain < 1 ||
-        r.max_gain < r.min_gain || r.max_gain > surface_gain_limit) {
+        r.max_gain < r.min_gain || r.max_gain > illumination_gain_limit) {
         return false;
     }
     if (r.solver && (!std::isfinite(r.solver->residual) || !std::isfinite(r.solver->tolerance) ||
@@ -133,7 +140,7 @@ bool valid_illumination(const IlluminationReport& report, image::Extent extent, 
     if (!protection && r.protected_samples != 0) {
         return false;
     }
-    if (r.requested && r.max_gain > r.requested->max_gain) {
+    if (r.requested && r.max_gain > std::get<SurfaceParameters>(*r.requested).max_gain) {
         return false;
     }
     return reason_agrees(r) && grid_agrees(r, extent);

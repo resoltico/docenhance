@@ -15,43 +15,45 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <variant>
 #include <vector>
 namespace docenhance::bundle {
 using Json = nlohmann::ordered_json;
-std::string_view status_name(methods::SurfaceStatus status) noexcept {
+std::string_view status_name(methods::IlluminationStatus status) noexcept {
     switch (status) {
-    case methods::SurfaceStatus::disabled:
+    case methods::IlluminationStatus::disabled:
         return "disabled";
-    case methods::SurfaceStatus::no_change:
+    case methods::IlluminationStatus::no_change:
         return "no_change";
-    case methods::SurfaceStatus::skipped:
+    case methods::IlluminationStatus::skipped:
         return "skipped";
-    case methods::SurfaceStatus::applied:
+    case methods::IlluminationStatus::applied:
         return "applied";
-    case methods::SurfaceStatus::failed:
+    case methods::IlluminationStatus::failed:
         return "failed";
     }
     return "failed";
 }
-std::string_view reason_name(methods::SurfaceReason reason) noexcept {
+std::string_view reason_name(methods::IlluminationReason reason) noexcept {
     switch (reason) {
-    case methods::SurfaceReason::none:
+    case methods::IlluminationReason::none:
         return "none";
-    case methods::SurfaceReason::zero_strength:
+    case methods::IlluminationReason::zero_strength:
         return "zero_strength";
-    case methods::SurfaceReason::unit_gain:
+    case methods::IlluminationReason::unit_gain:
         return "unit_gain";
-    case methods::SurfaceReason::no_eligible_samples:
+    case methods::IlluminationReason::no_eligible_samples:
         return "no_eligible_samples";
-    case methods::SurfaceReason::insufficient_samples:
+    case methods::IlluminationReason::insufficient_samples:
         return "insufficient_samples";
-    case methods::SurfaceReason::insufficient_cells:
+    case methods::IlluminationReason::insufficient_cells:
         return "insufficient_cells";
-    case methods::SurfaceReason::automatic_predicates:
+    case methods::IlluminationReason::automatic_predicates:
         return "automatic_predicates";
-    case methods::SurfaceReason::no_effect:
+    case methods::IlluminationReason::no_effect:
         return "no_effect";
-    case methods::SurfaceReason::processing_failure:
+    case methods::IlluminationReason::processing_failure:
         return "processing_failure";
     }
     return "processing_failure";
@@ -107,7 +109,9 @@ Json fraction(std::uint64_t count, std::uint64_t total) {
 nlohmann::ordered_json illumination_fields(const methods::IlluminationReport& r) {
     Json identity = nullptr;
     if (r.requested) {
-        constexpr auto method = methods::Surface::descriptor();
+        const auto method = std::holds_alternative<methods::MorphologyParameters>(*r.requested)
+                                ? methods::Morphology::descriptor()
+                                : methods::Surface::descriptor();
         identity = {{"id", method.id}, {"method_version", method.method_version}};
     }
     Json solver = nullptr;
@@ -118,12 +122,26 @@ nlohmann::ordered_json illumination_fields(const methods::IlluminationReport& r)
             {"tolerance", r.solver->tolerance},
         };
     }
+    Json requested = nullptr;
+    if (r.requested) {
+        requested = std::visit(
+            [](const auto& p) {
+                using Parameters = std::decay_t<decltype(p)>;
+                if constexpr (std::is_same_v<Parameters, methods::SurfaceParameters>) {
+                    return parameters(p);
+                } else {
+                    return morphology_parameters_fields(p);
+                }
+            },
+            *r.requested);
+    }
     return {
         {"status", status_name(r.status)},
         {"complete", r.complete},
         {"reason", reason_name(r.reason)},
         {"method", identity},
-        {"requested", r.requested ? parameters(*r.requested) : Json(nullptr)},
+        {"requested", requested},
+        {"morphology", r.morphology ? morphology_fields(*r.morphology) : Json(nullptr)},
         {"resolved_cell", r.cell ? Json(*r.cell) : Json(nullptr)},
         {"eligible_samples", r.eligible_samples},
         {"protected_samples", r.protected_samples},

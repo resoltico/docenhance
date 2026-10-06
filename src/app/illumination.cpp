@@ -19,20 +19,19 @@
 
 namespace docenhance::app {
 namespace {
-core::Result<std::optional<std::uint32_t>> cell_value(const std::optional<std::string>& raw) {
+core::Result<std::optional<std::uint32_t>> integer_value(const std::optional<std::string>& raw,
+                                                         const std::string& name) {
     if (!raw || *raw == "auto") {
         return std::nullopt;
     }
     if (raw->empty() || !std::ranges::all_of(*raw, [](char c) { return c >= '0' && c <= '9'; })) {
-        return core::failure(core::ErrorCode::argument,
-                             "--background-cell requires auto or digits");
+        return core::failure(core::ErrorCode::argument, name + " requires auto or digits");
     }
     std::uint32_t value{};
     const auto result =
         std::from_chars(std::to_address(raw->begin()), std::to_address(raw->end()), value);
     if (result.ec != std::errc{} || result.ptr != std::to_address(raw->end())) {
-        return core::failure(core::ErrorCode::argument,
-                             "--background-cell exceeds its integer range");
+        return core::failure(core::ErrorCode::argument, name + " exceeds its integer range");
     }
     return value;
 }
@@ -47,7 +46,7 @@ core::Result<methods::Surface> surface(const contract::Invocation& v) {
     const auto gain = numeric(v.background_max_gain, defaults.max_gain);
     const auto quantile = numeric(v.background_quantile, defaults.quantile);
     const auto smooth = numeric(v.background_smooth, defaults.smooth);
-    const auto cell = cell_value(v.background_cell);
+    const auto cell = integer_value(v.background_cell, "--background-cell");
     if (!strength) {
         return std::unexpected(strength.error());
     }
@@ -82,10 +81,36 @@ core::Result<methods::Surface> surface(const contract::Invocation& v) {
         .smooth = *smooth,
     });
 }
+core::Result<methods::Morphology> morphology(const contract::Invocation& v) {
+    const methods::MorphologyParameters defaults;
+    const auto strength = numeric(v.background_strength, defaults.strength);
+    const auto gain = numeric(v.background_max_gain, defaults.max_gain);
+    const auto radius = integer_value(v.background_radius, "--background-radius");
+    if (!strength) {
+        return std::unexpected(strength.error());
+    }
+    if (!gain) {
+        return std::unexpected(gain.error());
+    }
+    if (!radius) {
+        return std::unexpected(radius.error());
+    }
+    std::optional<double> target;
+    if (v.background_target && *v.background_target != "source") {
+        const auto parsed = numeric(v.background_target, 0);
+        if (!parsed) {
+            return std::unexpected(parsed.error());
+        }
+        target = *parsed;
+    }
+    return methods::Morphology::create(
+        {.strength = *strength, .max_gain = *gain, .target = target, .radius = *radius});
+}
 } // namespace
 core::Result<methods::Illumination> prepare_illumination(const contract::Invocation& v) {
     const bool parameters = v.background_strength || v.background_max_gain || v.background_target ||
-                            v.background_cell || v.background_quantile || v.background_smooth;
+                            v.background_cell || v.background_quantile || v.background_smooth ||
+                            v.background_radius;
     if (v.output_mode == "bw" && (v.illumination || parameters || v.protect_mask)) {
         return core::failure(core::ErrorCode::argument,
                              "Illumination and protection require continuous-tone output");
@@ -98,14 +123,26 @@ core::Result<methods::Illumination> prepare_illumination(const contract::Invocat
     const auto mode = v.illumination.value_or("off");
     if (mode == "off") {
         if (parameters) {
-            return core::failure(core::ErrorCode::argument,
-                                 "Background parameters require surface or auto illumination");
+            return core::failure(
+                core::ErrorCode::argument,
+                "Background parameters require surface, auto or morph illumination");
         }
         return methods::IlluminationOff{};
     }
+    if (mode == "morph") {
+        if (v.background_cell || v.background_quantile || v.background_smooth) {
+            return core::failure(core::ErrorCode::argument,
+                                 "Cell, quantile and smooth options require I01 surface or auto");
+        }
+        return morphology(v).transform([](auto value) -> methods::Illumination { return value; });
+    }
+    if (v.background_radius) {
+        return core::failure(core::ErrorCode::argument,
+                             "--background-radius requires morph illumination");
+    }
     if (mode != "surface" && mode != "auto") {
         return core::failure(core::ErrorCode::argument,
-                             "--illumination requires off, surface or auto");
+                             "--illumination requires off, surface, auto or morph");
     }
     return surface(v).transform([](auto value) -> methods::Illumination { return value; });
 }
