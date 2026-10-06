@@ -9,7 +9,6 @@
 #include "docenhance/methods/tvl1.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -17,26 +16,7 @@
 namespace docenhance::methods {
 core::Result<image::Rgb> tvl1_correct(const image::Rgb& rgb, double input, double output,
                                       double blend) {
-    auto y = image::luminance(rgb);
-    if (!y) {
-        return std::unexpected(y.error());
-    }
-    if (!std::isfinite(input) || !std::isfinite(output) || !std::isfinite(blend) || input < 0 ||
-        input > 1 || output < 0 || output > 1 || blend < 0 || blend > 1) {
-        return core::failure(core::ErrorCode::argument, "Invalid TV-L1 correction values");
-    }
-    if (input == output || blend == 0) {
-        return rgb;
-    }
-    const double next = ((1 - blend) * input) + (blend * output);
-    if (next == input) {
-        return rgb;
-    }
-    auto target = image::srgb_decode(next);
-    if (!target) {
-        return std::unexpected(target.error());
-    }
-    return image::transport_luminance(rgb, *target);
+    return image::blend_perceptual(rgb, input, output, blend);
 }
 core::Result<void> Tvl1Model::apply(image::RowRange range, std::span<double> rgb,
                                     image::PlaneView<const std::uint8_t> protection,

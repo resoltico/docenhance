@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 6; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 7; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -412,3 +412,11 @@ Iteration exhaustion preserves a usable iterate with a warning, never a toleranc
 claim. No native package or graph edge is required. Response/record version 6 distinguishes
 D01 native observations from D02 solver diagnostics and rejects obsolete forms. See the
 [design and separate numerical challenge](tvl1-denoising.md).
+
+## Contrast freezes eligible levels and preserves gamma endpoints
+
+C01 uses every eligible perceptual sample and an interruptible, bounded-memory ordering step.
+C02 applies the specified power to perceptual luminance. Both reuse shared blending and the
+neutral-axis transport, with exact protected output and algebraic identities. Scalar mappings
+are frozen once and reused during verification. Response/record version 7 adds closed typed
+contrast observations and rejects obsolete forms. See [design and separate QA](contrast.md).

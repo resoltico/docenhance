@@ -20,7 +20,7 @@ The application contains unreported processing exceptions as unknown publication
 
 Do not advertise a method or format until its complete contract and tests exist. B02 Sauvola and B03 fixed-threshold
 grayscale-PNG processing, I01 surface and I02 morphological continuous-tone illumination and D01 bounded 16-bit NLM-L1 / D02 floating-point TV-L1 denoising
-are implemented; other method entries remain plans. Continuous-tone
+and C01 percentile levels / C02 gamma contrast are implemented; other method entries remain plans. Continuous-tone
 PNG representation is separately implemented; read docs/png-processing.md. It is not a fictional
 enhancement method. Keep binary sample meaning separate from color/profile interpretation. Never use no-op/copy
 stubs to manufacture successful processing. `E_NOT_IMPLEMENTED` uses exit 4 and `not_started`;
@@ -169,3 +169,7 @@ Consolidate related pending work into its final outcome. Omit routine churn and 
 Use established categories consistently and omit empty ones. Internal is for noteworthy implementation, verification or release-process outcomes, not routine churn or concealed compatibility changes, new build requirements or user-visible effects. Keep technical method and protocol identifiers; omit development-phase labels.
 
 Retain Unreleased and release history. Preserve version attribution, dates, links and publication-status distinctions. Published entries may be clarified, consolidated or reclassified without changing what they say shipped; factual corrections require evidence. Do not prune or relocate history without an explicit policy or request, or alter tags or published artifacts when editing the working file.
+
+For contrast read `docs/contrast.md`. Fit levels once using every eligible perceptual sample,
+retain the immutable thresholds for verification, and preserve strict clipping endpoints and
+flat-image identities. Gamma uses f^G, not a reciprocal or channel-wise transform.

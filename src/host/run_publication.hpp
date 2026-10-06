@@ -11,6 +11,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
@@ -43,6 +44,7 @@ struct ContinuousArtwork {
     std::optional<MaskFacts> mask;
     std::reference_wrapper<const methods::IlluminationReport> illumination;
     std::reference_wrapper<const methods::DenoisingReport> denoising;
+    std::reference_wrapper<const methods::ContrastReport> contrast;
 };
 using Artwork = std::variant<BinaryArtwork, ContinuousArtwork>;
 struct RunPublication {

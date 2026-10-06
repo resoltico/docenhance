@@ -4,6 +4,7 @@
 #include "docenhance/core/identity.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/source.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
@@ -36,4 +37,6 @@ morphology_fields(const methods::MorphologyMeasurements& measurements);
 // The warning codes a conversion earned, in the order they are always reported.
 [[nodiscard]] std::vector<std::string_view>
 conversion_warnings(const image::ConversionReport& report);
+[[nodiscard]] nlohmann::ordered_json contrast_fields(const methods::ContrastReport& report);
+[[nodiscard]] nlohmann::ordered_json contrast_request_fields(const methods::ContrastReport& report);
 } // namespace docenhance::bundle

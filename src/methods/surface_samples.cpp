@@ -95,6 +95,45 @@ core::Result<void> gather(Samples& samples, Sampling sampling, std::uint32_t str
     }
     return {};
 }
+struct SurfaceQuantiles {
+    double b10;
+    double b50;
+    double b90;
+    double y90;
+};
+core::Result<SurfaceQuantiles> sample_quantiles(const Samples& samples,
+                                                const core::Cancellation& cancellation) {
+    const auto b = samples.b.first(samples.count);
+    const auto y = samples.y.first(samples.count);
+    constexpr double low_quantile = 0.1;
+    constexpr double high_quantile = 0.9;
+    auto sorted_b = image::sort_samples(b, cancellation);
+    if (!sorted_b) {
+        return std::unexpected(sorted_b.error());
+    }
+    auto sorted_y = image::sort_samples(y, cancellation);
+    if (!sorted_y) {
+        return std::unexpected(sorted_y.error());
+    }
+    const auto b10 = image::nearest_rank_index(b.size(), low_quantile).transform([b](auto i) {
+        return b.subspan(i, 1).front();
+    });
+    const auto b50 = image::nearest_rank_index(b.size(), 0.5).transform([b](auto i) {
+        return b.subspan(i, 1).front();
+    });
+    const auto b90 = image::nearest_rank_index(b.size(), high_quantile).transform([b](auto i) {
+        return b.subspan(i, 1).front();
+    });
+    const auto y90 = image::nearest_rank_index(y.size(), high_quantile).transform([y](auto i) {
+        return y.subspan(i, 1).front();
+    });
+    for (const auto* const selected : {&b10, &b50, &b90, &y90}) {
+        if (!*selected) {
+            return std::unexpected(selected->error());
+        }
+    }
+    return SurfaceQuantiles{.b10 = *b10, .b50 = *b50, .b90 = *b90, .y90 = *y90};
+}
 } // namespace
 core::Result<SurfaceMeasurements> measure_surface(IlluminationInput input,
                                                   const SurfaceModel& model, core::Budget& budget,
@@ -140,29 +179,21 @@ core::Result<SurfaceMeasurements> measure_surface(IlluminationInput input,
     if (cancellation.requested(core::Checkpoint::measurement)) {
         return core::cancelled();
     }
-    const auto b = samples.b.first(samples.count);
-    const auto y = samples.y.first(samples.count);
-    constexpr double low_quantile = 0.1;
-    constexpr double high_quantile = 0.9;
-    const auto b10 = image::nearest_rank(b, low_quantile);
-    const auto b50 = image::nearest_rank(b, 0.5);
-    const auto b90 = image::nearest_rank(b, high_quantile);
-    const auto y90 = image::nearest_rank(y, high_quantile);
-    for (const auto* const selected : {&b10, &b50, &b90, &y90}) {
-        if (!*selected) {
-            return std::unexpected(selected->error());
-        }
+    const auto quantiles = sample_quantiles(samples, cancellation);
+    if (!quantiles) {
+        return std::unexpected(quantiles.error());
     }
     return SurfaceMeasurements{
         .stride = stride,
         .count = samples.count,
         .fallback = fallback,
-        .target = *b90,
-        .background_q10 = *b10,
-        .background_q50 = *b50,
-        .background_q90 = *b90,
-        .luminance_q90 = *y90,
-        .variation = (*b90 - *b10) / std::max(*b90, illumination_floor),
+        .target = quantiles->b90,
+        .background_q10 = quantiles->b10,
+        .background_q50 = quantiles->b50,
+        .background_q90 = quantiles->b90,
+        .luminance_q90 = quantiles->y90,
+        .variation =
+            (quantiles->b90 - quantiles->b10) / std::max(quantiles->b90, illumination_floor),
         .paper_fraction = static_cast<double>(samples.paper) / samples.count,
         .dark_fraction = static_cast<double>(samples.dark) / samples.count,
     };

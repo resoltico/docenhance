@@ -13,6 +13,7 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/io/publication.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 
@@ -124,6 +125,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         run.artwork);
     const methods::IlluminationReport none;
     const methods::DenoisingReport disabled{.complete = true};
+    const methods::ContrastReport disabled_contrast{.complete = true};
     bundle::RunRecord record{
         .context = run.context.get(),
         .build = core::build_facts(),
@@ -140,6 +142,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         .conversion = composed.conversion,
         .illumination = none,
         .denoising = disabled,
+        .contrast = disabled_contrast,
     };
     std::visit(
         [&record](const auto& artwork) {
@@ -147,6 +150,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
             if constexpr (std::is_same_v<Kind, ContinuousArtwork>) {
                 record.illumination = artwork.illumination.get();
                 record.denoising = artwork.denoising.get();
+                record.contrast = artwork.contrast.get();
             }
         },
         run.artwork);

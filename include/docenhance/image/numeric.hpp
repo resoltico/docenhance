@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 
 #include <array>
@@ -18,7 +19,13 @@ using Rgb = std::array<double, rgb_channels>;
 [[nodiscard]] core::Result<Rgb> transport_luminance(const Rgb& rgb, double target);
 // Sorts caller-owned scratch in place with O(n log n) worst-case comparisons.
 // Invalid input is rejected before mutation.
-[[nodiscard]] core::Result<double> nearest_rank(std::span<double> values, double p);
+[[nodiscard]] core::Result<double> nearest_rank(std::span<double> values, double p,
+                                                const core::Cancellation& cancellation = {});
+[[nodiscard]] core::Result<std::size_t> nearest_rank_index(std::size_t count, double p);
+[[nodiscard]] core::Result<void> sort_samples(std::span<double> values,
+                                              const core::Cancellation& cancellation = {});
+[[nodiscard]] core::Result<Rgb> blend_perceptual(const Rgb& rgb, double input, double output,
+                                                 double blend);
 [[nodiscard]] core::Result<std::size_t> reflect101(std::int64_t coordinate, std::size_t extent);
 // The same fold without the validation, for a caller that has already validated the extent with
 // reflect101 above. A kernel folds once per border sample and cannot afford to carry an Error.

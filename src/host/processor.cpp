@@ -17,6 +17,7 @@
 #include "docenhance/io/paths.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "run_publication.hpp"
@@ -85,6 +86,24 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         .source_decoding = loaded->description,
     };
 }
+void failed_stages(methods::IlluminationReport& report, methods::DenoisingReport& denoising,
+                   methods::ContrastReport& contrast) {
+    if (report.requested && !report.complete) {
+        report.status = methods::IlluminationStatus::failed;
+        if (report.reason == methods::IlluminationReason::none ||
+            report.reason == methods::IlluminationReason::no_effect) {
+            report.reason = methods::IlluminationReason::processing_failure;
+        }
+    }
+    if (denoising.requested && !denoising.complete) {
+        denoising.status = methods::DenoiseStatus::failed;
+        denoising.reason = methods::DenoiseReason::processing_failure;
+    }
+    if (contrast.requested && !contrast.complete) {
+        contrast.status = methods::ContrastStatus::failed;
+        contrast.reason = methods::ContrastReason::processing_failure;
+    }
+}
 } // namespace
 app::ProcessResult Processor::process(const app::ProcessRequest& request,
                                       const core::Cancellation& cancellation) {
@@ -113,21 +132,14 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
     }
     methods::IlluminationReport report;
     methods::DenoisingReport denoising;
-    auto result = continuous(request, std::get<image::Continuous>(request.operation()),
-                             {.cancellation = cancellation, .context = context}, report, denoising);
+    methods::ContrastReport contrast;
+    auto result =
+        continuous(request, std::get<image::Continuous>(request.operation()),
+                   {.cancellation = cancellation, .context = context},
+                   {.illumination = report, .denoising = denoising, .contrast = contrast});
     if (!result) {
-        if (report.requested && !report.complete) {
-            report.status = methods::IlluminationStatus::failed;
-            if (report.reason == methods::IlluminationReason::none ||
-                report.reason == methods::IlluminationReason::no_effect) {
-                report.reason = methods::IlluminationReason::processing_failure;
-            }
-        }
-        if (denoising.requested && !denoising.complete) {
-            denoising.status = methods::DenoiseStatus::failed;
-            denoising.reason = methods::DenoiseReason::processing_failure;
-        }
-        return app::process_failure(std::move(result.error()), report, denoising);
+        failed_stages(report, denoising, contrast);
+        return app::process_failure(std::move(result.error()), report, denoising, contrast);
     }
     return std::move(*result);
 }

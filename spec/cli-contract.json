@@ -245,7 +245,7 @@
       "scope": "P",
       "group": "Protection arguments",
       "domain": "Absent",
-      "methods": "I01,I02,D01,D02",
+      "methods": "I01,I02,D01,D02,C01,C02",
       "description": "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.",
       "binding": "protect_mask"
     },
@@ -328,6 +328,56 @@
       "methods": "D02",
       "description": "TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iteration checkpoints, starting at iteration 20.",
       "binding": "tv_tolerance"
+    },
+    {
+      "name": "--contrast",
+      "metavar": "METHOD",
+      "scope": "P",
+      "group": "Contrast arguments",
+      "domain": "off; off|levels|gamma",
+      "methods": "C01,C02",
+      "binding": "contrast",
+      "description": "Explicit percentile levels or gamma on continuous PNG/JPEG/TIFF after illumination and denoising."
+    },
+    {
+      "name": "--contrast-blend",
+      "metavar": "A",
+      "scope": "P",
+      "group": "Contrast arguments",
+      "domain": "1; finite `[0,1]`",
+      "methods": "C01,C02",
+      "binding": "contrast_blend",
+      "description": "Blend once in perceptual luminance. Zero retains entering samples after source/mask validation."
+    },
+    {
+      "name": "--levels-low",
+      "metavar": "P",
+      "scope": "P",
+      "group": "Contrast arguments",
+      "domain": "0.5; finite `[0,10]` percent",
+      "methods": "C01",
+      "binding": "levels_low",
+      "description": "Levels only. Nearest-rank lower percentile among all unprotected perceptual samples."
+    },
+    {
+      "name": "--levels-high",
+      "metavar": "P",
+      "scope": "P",
+      "group": "Contrast arguments",
+      "domain": "99.5; finite `[90,100]` percent",
+      "methods": "C01",
+      "binding": "levels_high",
+      "description": "Levels only. Nearest-rank upper percentile, greater than low. A range below 1e-6 retains exact entering RGB."
+    },
+    {
+      "name": "--gamma",
+      "metavar": "G",
+      "scope": "P",
+      "group": "Contrast arguments",
+      "domain": "1.2; finite `[0.25,4]`",
+      "methods": "C02",
+      "binding": "gamma",
+      "description": "Gamma only. f_new=f^G; above one darkens midtones. Endpoints and gamma one are exact identities."
     }
   ],
   "input_support": [

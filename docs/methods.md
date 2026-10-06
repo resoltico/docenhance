@@ -34,15 +34,15 @@ Method-specific argument references: `--deblur`, `--psf`, `--wiener-k`, `--deblu
 
 ## C01 — Percentile levels
 
-Status: **not-implemented**.
+Status: **implemented**.
 
-Method-specific argument references: `--contrast`, `--contrast-blend`, `--levels-low`, `--levels-high`.
+Method-specific argument references: `--contrast`, `--contrast-blend`, `--levels-low`, `--levels-high`, `--protect-mask`.
 
 ## C02 — Gamma
 
-Status: **not-implemented**.
+Status: **implemented**.
 
-Method-specific argument references: `--contrast`, `--contrast-blend`, `--gamma`.
+Method-specific argument references: `--contrast`, `--contrast-blend`, `--gamma`, `--protect-mask`.
 
 ## C03 — Masked floating-point CLAHE
 

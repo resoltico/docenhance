@@ -152,3 +152,7 @@ It checks decoded/source agreement and allocation refunds on acceptance and refu
 The TV-L1 harness consumes dimensions and 16-bit sample selectors, compares simultaneous
 reference iterations with the production full-field dual/primal passes, and checks finite bounds.
 Its additional execution wave retains the full per-target PR budget and watchdog allowances.
+
+The contrast harness compares interruptible sample ordering and nearest ranks to independent
+sorting and scalar levels/gamma formulas. It extends the manifest to 20 targets, still ten
+concurrent waves at two jobs and 60 seconds per target; the reviewed total allowance is unchanged.

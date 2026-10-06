@@ -27,6 +27,16 @@ inline constexpr ImplementedMethod tvl1_descriptor{
     .method_version = 1U,
     .selector = "tvl1",
 };
+inline constexpr ImplementedMethod levels_descriptor{
+    .id = "C01",
+    .method_version = 1U,
+    .selector = "levels",
+};
+inline constexpr ImplementedMethod gamma_descriptor{
+    .id = "C02",
+    .method_version = 1U,
+    .selector = "gamma",
+};
 inline constexpr ImplementedMethod sauvola_descriptor{
     .id = "B02",
     .method_version = 1U,
@@ -42,6 +52,8 @@ inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({
     morph_descriptor,
     nlm_descriptor,
     tvl1_descriptor,
+    levels_descriptor,
+    gamma_descriptor,
     sauvola_descriptor,
     fixed_descriptor,
 });

@@ -30,7 +30,7 @@ canonical protection mask when one was supplied. Profile assumptions, alpha flat
 orientation and verified output descriptors are reported. Bounded 8-bit baseline/progressive
 Huffman JPEG supports preserve/gray through the same pipeline; see [JPEG admission](jpeg-processing.md).
 Bounded single-page TIFF/BigTIFF supports preserve/gray; see [TIFF admission](tiff-processing.md).
-Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02 remain unsupported.
+Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02/C01/C02 remain unsupported.
 
 Only explicit `bw` activates a binarizer (Sauvola by default). B02/B03 retain the separate published
 1/2/4/8-bit grayscale-without-transparency input contract and 8-bit binary output. They do not run
@@ -41,7 +41,7 @@ Wrong-method, wrong-operation and explicitly empty values fail admission before 
 owned sibling staging and atomically publishes without replacement after encoding and closing
 succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
-`docenhance methods` reports I01, I02, D01, D02, B02 and B03. `methods ID` selects one entry.
+`docenhance methods` reports I01, I02, D01, D02, C01, C02, B02 and B03. `methods ID` selects one entry.
 `version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
 Help, version and capability discovery do not invoke the image-processing host.
 
@@ -70,11 +70,23 @@ quantization, with exact protection of masked destinations. Both are opt-in and 
 output; see [denoising](denoising.md) and [TV-L1 denoising](tvl1-denoising.md) for parameters,
 resource accounting, stopping diagnostics and cancellation.
 
+## Optional contrast
+
+```sh
+docenhance process INPUT.png --out-dir LEVELS --contrast levels
+docenhance process INPUT.png --out-dir GAMMA --contrast gamma --gamma 1.2
+```
+
+Contrast follows illumination and denoising. It defaults to off; both alternatives require
+continuous output, preserve protected entering RGB and share perceptual blending and color
+transport. Levels fits every eligible sample; gamma applies f^G with exact endpoints. See
+[contrast](contrast.md) for percentile units, clipping, identities and resources.
+
 ## Responses and failures
 
 With `--json`, binary success contains the admitted `method` and `method_version`. Continuous
 success instead contains `operation: continuous`, a typed `conversion` record and an
-`illumination` and `denoising` stage records (including disabled), with no fictional conversion-method ID. Both identify the final output path and `publication: completed`. The delivered machine contract is
+`illumination`, `denoising` and `contrast` stage records (including disabled), with no fictional conversion-method ID. Both identify the final output path and `publication: completed`. The delivered machine contract is
 [command-response.schema.json](../schemas/command-response.schema.json); edit the authoring
 schema and method catalog under `spec/`, then regenerate, rather than editing generated output.
 

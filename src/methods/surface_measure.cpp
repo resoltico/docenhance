@@ -76,7 +76,8 @@ core::Result<void> measure_cell(IlluminationInput input, Cell cell, CellBuffers 
         return {};
     }
     const auto quantile =
-        image::nearest_rank(buffers.samples.first(*n), context.method.get().parameters().quantile);
+        image::nearest_rank(buffers.samples.first(*n), context.method.get().parameters().quantile,
+                            context.cancellation.get());
     if (!quantile) {
         return std::unexpected(quantile.error());
     }

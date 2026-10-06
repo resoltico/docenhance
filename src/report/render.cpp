@@ -3,6 +3,7 @@
 #include "docenhance/report/render.hpp"
 
 #include "continuous.hpp"
+#include "contrast.hpp"
 #include "denoising.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
@@ -130,6 +131,28 @@ std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     }
     return text;
 }
+std::string failure_stages(const app::ProcessFailure& payload) {
+    return (payload.illumination ? illumination_text(*payload.illumination) : "") +
+           (payload.denoising ? denoising_text(*payload.denoising) : "") +
+           (payload.contrast ? contrast_text(*payload.contrast) : "");
+}
+Json failure_fields(const app::ProcessFailure& payload) {
+    const Json error = {
+        {"code", payload.error.identifier()},
+        {"message", diagnostic(payload.error)},
+    };
+    Json fields = {{"error", error}, {"publication", publication_name(payload.error.publication)}};
+    if (payload.contrast) {
+        fields.emplace("contrast", bundle::contrast_fields(*payload.contrast));
+    }
+    if (payload.denoising) {
+        fields.emplace("denoising", bundle::denoising_fields(*payload.denoising));
+    }
+    if (payload.illumination) {
+        fields.emplace("illumination", bundle::illumination_fields(*payload.illumination));
+    }
+    return fields;
+}
 Output text_form(const app::Outcome& outcome) {
     return std::visit(
         [&outcome](const auto& payload) -> Output {
@@ -164,9 +187,7 @@ Output text_form(const app::Outcome& outcome) {
                 return {
                     .out = {},
                     .err = std::string(payload.error.identifier()) + ": " +
-                           std::string(diagnostic(payload.error)) + "\n" +
-                           (payload.illumination ? illumination_text(*payload.illumination) : "") +
-                           (payload.denoising ? denoising_text(*payload.denoising) : ""),
+                           std::string(diagnostic(payload.error)) + "\n" + failure_stages(payload),
                 };
             }
         },
@@ -227,21 +248,7 @@ Output json_form(const app::Outcome& outcome) {
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else {
-                const Json error = {
-                    {"code", payload.error.identifier()},
-                    {"message", diagnostic(payload.error)},
-                };
-                Json fields = {
-                    {"error", error},
-                    {"publication", publication_name(payload.error.publication)},
-                };
-                if (payload.denoising) {
-                    fields.emplace("denoising", bundle::denoising_fields(*payload.denoising));
-                }
-                if (payload.illumination) {
-                    fields.emplace("illumination",
-                                   bundle::illumination_fields(*payload.illumination));
-                }
+                const auto fields = failure_fields(payload);
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             }
         },

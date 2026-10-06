@@ -14,6 +14,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
@@ -73,6 +74,27 @@ bool denoising_request(const methods::DenoisingReport& report, const ProcessRequ
             }
         },
         request.denoising());
+}
+bool contrast_request(const methods::ContrastReport& r, const ProcessRequest& request) {
+    return std::visit(
+        [&](const auto& selected) {
+            using M = std::decay_t<decltype(selected)>;
+            if constexpr (std::is_same_v<M, methods::ContrastOff>) {
+                return !r.requested;
+            } else {
+                return r.requested &&
+                       *r.requested == methods::ContrastParameters{selected.parameters()};
+            }
+        },
+        request.contrast());
+}
+bool partial_contrast(const methods::ContrastReport& r, const ProcessRequest& request) {
+    if (!contrast_request(r, request) || !methods::valid_contrast_observations(r)) {
+        return false;
+    }
+    return r.complete ? methods::valid_contrast(r, request.contrast())
+                      : (!r.requested || (r.status == methods::ContrastStatus::failed &&
+                                          r.reason == methods::ContrastReason::processing_failure));
 }
 bool source_matches(const image::SourceDescription& source, image::RasterShape shape) {
     if (!image::valid_source_description(source)) {
@@ -213,19 +235,23 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
         !methods::valid_denoising_extent(value.denoising,
                                          {.width = c.output.width, .height = c.output.height}) ||
         value.denoising.eligible_samples != light.eligible_samples ||
-        value.denoising.protected_samples != light.protected_samples) {
+        value.denoising.protected_samples != light.protected_samples ||
+        !methods::valid_contrast(value.contrast, request.contrast()) ||
+        value.contrast.eligible_samples != light.eligible_samples ||
+        value.contrast.protected_samples != light.protected_samples) {
         return false;
     }
     return !value.source_decoding || source_matches(*value.source_decoding, c.source);
 }
 bool valid_failure(const ProcessFailure& value, const ProcessRequest& request) {
     if (std::holds_alternative<methods::Binarization>(request.operation()) &&
-        (value.illumination || value.denoising)) {
+        (value.illumination || value.denoising || value.contrast)) {
         return false;
     }
     return value.error.valid_publication() &&
            (!value.illumination || partial_illumination(*value.illumination, request)) &&
-           (!value.denoising || partial_denoising(*value.denoising, request));
+           (!value.denoising || partial_denoising(*value.denoising, request)) &&
+           (!value.contrast || partial_contrast(*value.contrast, request));
 }
 bool valid_verified(const Verified& value, const VerifyRequest& request) {
     if (value.directory != request.directory() ||
