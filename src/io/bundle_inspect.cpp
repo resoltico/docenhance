@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "bundle_native.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/bundle_snapshot.hpp"
 #include "docenhance/io/digest.hpp"
 #include "file_access.hpp"
@@ -88,7 +88,8 @@ core::Result<void> read_mask(const BundleDirectory& root, BundleSnapshot& result
     if (!names || names->size() != 1 || names->front() != "protect-mask.png") {
         return core::failure(core::ErrorCode::input, "Bundle assets inventory is not closed");
     }
-    auto mask = read(*assets, "protect-mask.png", bundle_max_file_bytes, budget, cancellation);
+    auto mask =
+        read(*assets, "protect-mask.png", core::bundle_max_file_bytes, budget, cancellation);
     if (!mask) {
         return std::unexpected(mask.error());
     }
@@ -124,8 +125,8 @@ core::Result<BundleSnapshot> read_bundle(const std::string& directory, core::Bud
         if (name != "run.json" && name != "result.png") {
             return core::failure(core::ErrorCode::input, "Bundle contains an undeclared entry");
         }
-        const auto limit = name == "run.json" ? std::min(record_limit, bundle_max_file_bytes)
-                                              : bundle_max_file_bytes;
+        const auto limit = name == "run.json" ? std::min(record_limit, core::bundle_max_file_bytes)
+                                              : core::bundle_max_file_bytes;
         auto bytes = read(*root, name, limit, budget, cancellation);
         if (!bytes) {
             return std::unexpected(bytes.error());

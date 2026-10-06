@@ -5,9 +5,9 @@
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/contract/command.hpp"
-#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/core/utf8.hpp"
 #include "docenhance/report/render.hpp"
 #include "failures.hpp"
 
@@ -116,7 +116,7 @@ std::optional<Outcome> apply_root_flags(const CLI::App& cli, Invocation root,
 }
 Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invocation, Ports ports,
                            const core::Cancellation& cancellation) {
-    if (std::ranges::any_of(args, [](const char* arg) { return !contract::valid_utf8(arg); })) {
+    if (std::ranges::any_of(args, [](const char* arg) { return !core::valid_utf8(arg); })) {
         return argument_error(invocation, "Arguments must be well-formed UTF-8");
     }
     CLI::App cli{"DocEnhance"};

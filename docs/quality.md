@@ -37,7 +37,9 @@ new execution contracts must extend the guard and its rejection controls. This e
 not arbitrary script correctness or completed CI. Hosted execution and native evidence remain
 necessary, including Windows' distinct compiler-shell helper. Native cases run with at most two
 concurrent processes, separately from build/AST worker counts. Every case, assertion, per-contract
-timeout and complete-result reconciliation remains required. The outer native-suite watchdog
+timeout and complete-result reconciliation remains required. The full composition reference case
+runs in isolation from other test processes, retaining its deadline and internal scheduler checks.
+The outer native-suite watchdog
 allows 30 minutes for the whole graph, including the separately weighted compiler/AST check;
 it is not a processing-latency guarantee.
 

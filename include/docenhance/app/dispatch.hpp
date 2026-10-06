@@ -22,6 +22,7 @@ struct Capabilities {
 };
 struct Help {
     bool list_commands = false;
+    Capabilities capabilities;
 };
 struct Version {
     Capabilities capabilities;

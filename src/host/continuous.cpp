@@ -7,6 +7,7 @@
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/color/converter.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
@@ -24,7 +25,6 @@
 #include "run_publication.hpp"
 
 #include <algorithm>
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <functional>
@@ -148,8 +148,7 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
                                                   methods::DenoisingReport& denoising) {
     const auto& cancellation = execution.cancellation.get();
     const auto& context = execution.context.get();
-    constexpr std::size_t continuous_budget_bytes = std::size_t{1024} * 1024 * 1024;
-    core::Budget budget{continuous_budget_bytes};
+    core::Budget budget{core::continuous_processing_budget};
     initialize_stages(request, illumination, denoising);
     auto decoded =
         io::load_source(request.input(), budget, operation.parameters().profile, cancellation);

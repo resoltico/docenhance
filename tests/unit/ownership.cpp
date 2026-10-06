@@ -199,7 +199,7 @@ TEST_CASE("Moved requests become unready and native ports refuse them before can
     source = std::stop_source{std::nostopstate};
     CHECK(stopped.requested(core::Checkpoint::admission));
     CHECK(!source.stop_possible());
-    host::Processor processor{{.identity = "unused", .recorded = "unused"}};
+    host::Processor processor;
     const auto refused = processor.process(original, stopped);
     REQUIRE(!refused);
     CHECK(refused.error().error.code == core::ErrorCode::argument);

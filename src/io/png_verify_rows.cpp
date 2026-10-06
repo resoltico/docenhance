@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/artifact_limits.hpp"
 #include "entry_identity.hpp"
 #include "png_context.hpp"
 #include "png_rows.hpp"
@@ -157,7 +157,7 @@ core::Result<void> verify_png_rows(const std::filesystem::path& path, image::Row
     PngInput input{
         .state = nullptr,
         .read = read_file,
-        .remaining = bundle_max_file_bytes,
+        .remaining = core::bundle_max_file_bytes,
         .checkpoint = core::Checkpoint::verification,
     };
     if (!context.open_reading(path)) {

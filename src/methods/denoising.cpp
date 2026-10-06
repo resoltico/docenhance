@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/methods/denoising.hpp"
 
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
@@ -113,6 +114,9 @@ core::Result<std::size_t> nlm_native_scratch(image::Extent e, const Nlm& method)
 }
 namespace {
 bool valid_native_observations(const DenoisingReport& r) noexcept {
+    if (r.preparation_charge_peak > core::continuous_processing_budget) {
+        return false;
+    }
     if (r.native_calls == 0) {
         return r.native_reserved_peak == 0 && r.preparation_charge_peak == 0;
     }

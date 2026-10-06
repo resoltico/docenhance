@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/contract/command.hpp"
-#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
@@ -42,8 +42,8 @@ class ProcessRequest {
     }
     ~ProcessRequest() = default;
     [[nodiscard]] bool ready() const noexcept {
-        return contract::valid_path(input_) && contract::valid_path(output_) &&
-               (!protection_ || contract::valid_path(*protection_));
+        return core::valid_path(input_) && core::valid_path(output_) &&
+               (!protection_ || core::valid_path(*protection_));
     }
     [[nodiscard]] const std::string& input() const& noexcept {
         return input_;

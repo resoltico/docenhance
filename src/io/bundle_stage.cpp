@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "bundle_stage.hpp"
 
+#include "docenhance/core/bundle_path.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/artifact_limits.hpp"
@@ -99,22 +100,6 @@ bool private_directory(const std::filesystem::path& path, std::error_code& error
                          "All bounded staging names are occupied; existing paths were preserved");
 }
 namespace {
-core::Result<std::filesystem::path> component_path(std::string_view part) {
-    if (part.empty() || part == "." || part == "..") {
-        return core::failure(core::ErrorCode::invariant,
-                             "A bundle file must be named relative to the bundle");
-    }
-    auto component = utf8_path(part);
-    if (component.has_root_path() || component.filename() != component
-#ifdef _WIN32
-        || part.contains(':')
-#endif
-    ) {
-        return core::failure(core::ErrorCode::argument,
-                             "A bundle component must be one relative native filename");
-    }
-    return component;
-}
 core::Result<std::optional<EntryIdentity>> owned_directory(Stage& stage,
                                                            const std::filesystem::path& path) {
     std::error_code error;
@@ -136,7 +121,7 @@ core::Result<std::optional<EntryIdentity>> owned_directory(Stage& stage,
 // The path a bundle file occupies inside staging. Directories are created as they are needed and
 // recorded in the order they were made, so cleanup can undo exactly this invocation's work.
 [[nodiscard]] core::Result<BundleSlot> place(Stage& stage, std::string_view relative) {
-    if (relative.empty() || relative.back() == '/' || relative.contains('\0')) {
+    if (!core::valid_bundle_path(relative)) {
         return core::failure(core::ErrorCode::argument, "A bundle needs a complete relative name");
     }
     if (!stage.owns_entries()) {
@@ -152,11 +137,7 @@ core::Result<std::optional<EntryIdentity>> owned_directory(Stage& stage,
         }
         const auto stop = std::min(relative.find('/', start), relative.size());
         const auto part = relative.substr(start, stop - start);
-        const auto component = component_path(part);
-        if (!component) {
-            return std::unexpected(component.error());
-        }
-        path /= *component;
+        path /= utf8_path(part);
         if (stop != relative.size()) {
             auto owned = owned_directory(stage, path);
             if (!owned) {

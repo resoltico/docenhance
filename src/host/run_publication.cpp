@@ -5,10 +5,10 @@
 #include "bundle_verify.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/artifact_limits.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
@@ -63,7 +63,7 @@ core::Result<void> write_image(void* const state, const io::BundleSlot& slot) {
     if (!written) {
         return written;
     }
-    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes, run.cancellation.get());
+    auto identity = io::identify_slot(slot, core::bundle_max_file_bytes, run.cancellation.get());
     if (!identity) {
         return std::unexpected(identity.error());
     }
@@ -96,7 +96,7 @@ core::Result<void> write_mask(void* const state, const io::BundleSlot& slot) {
     if (!written) {
         return written;
     }
-    auto identity = io::identify_slot(slot, io::bundle_max_file_bytes, run.cancellation.get());
+    auto identity = io::identify_slot(slot, core::bundle_max_file_bytes, run.cancellation.get());
     if (!identity) {
         return std::unexpected(identity.error());
     }

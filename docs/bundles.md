@@ -38,7 +38,10 @@ continuous operation, with reviewed method versions and validated parameters. Mi
 fields, duplicate object keys (including escaped equivalents), out-of-range numbers and inconsistent
 observations are refused. Numeric domains are checked before narrowing. Run identities are 32
 lowercase hexadecimal characters; recorded instants use `YYYY-MM-DDTHH:MM:SSZ` with a valid
-calendar date. Identity text is strict UTF-8 and is never repaired.
+calendar date. Identity text is strict UTF-8 and is never repaired. Each admitted execution takes its own
+run identity and instant, including repeated calls through the same native processor. Portable
+artifact paths are at most 128 UTF-8 bytes, separated by `/`, without empty, `.` or `..` components,
+NUL, backslash or colon. This domain is shared by staging, record reading and application observations.
 
 The generated [run-record schema](../schemas/run-record.schema.json) is shipped with the response
 schema. The typed reader remains authoritative and also checks relationships that JSON Schema

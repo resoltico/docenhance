@@ -1,16 +1,19 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/contract/utf8.hpp"
+#include "docenhance/core/utf8.hpp"
+
+#include "docenhance/core/bundle_path.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 
 namespace docenhance::tests {
-static_assert(contract::valid_utf8("A\xc4\x80\xf0\x9f\x93\x84"));
-static_assert(!contract::valid_utf8("\xc0\x80"));
+static_assert(core::valid_utf8("A\xc4\x80\xf0\x9f\x93\x84"));
+static_assert(!core::valid_utf8("\xc0\x80"));
 namespace {
 struct EncodedScalar {
     std::array<char, 4> bytes{};
@@ -47,13 +50,13 @@ TEST_CASE("UTF-8 admits every scalar and rejects surrogate encodings") {
     for (std::uint32_t value = 0; value <= 0x10ffff; ++value) {
         const auto encoded = encode(value);
         const bool scalar = value < 0xd800 || value > 0xdfff;
-        if (contract::valid_utf8(encoded.text()) != scalar) {
+        if (core::valid_utf8(encoded.text()) != scalar) {
             FAIL("Scalar encoding mismatch at " << value);
         }
     }
-    REQUIRE(contract::valid_utf8(""));
-    REQUIRE(contract::valid_utf8(std::string_view{"\0", 1}));
-    REQUIRE(contract::valid_utf8("A\xc4\x80\xe2\x82\xac\xf0\x9f\x93\x84"));
+    REQUIRE(core::valid_utf8(""));
+    REQUIRE(core::valid_utf8(std::string_view{"\0", 1}));
+    REQUIRE(core::valid_utf8("A\xc4\x80\xe2\x82\xac\xf0\x9f\x93\x84"));
 }
 TEST_CASE("UTF-8 rejects invalid ranges and every truncated multi-byte scalar") {
     const auto invalid = std::to_array<std::string_view>({
@@ -81,15 +84,33 @@ TEST_CASE("UTF-8 rejects invalid ranges and every truncated multi-byte scalar") 
         "\xef\xbf\xbf\x80",
     });
     for (const auto text : invalid) {
-        REQUIRE(!contract::valid_utf8(text));
+        REQUIRE(!core::valid_utf8(text));
     }
     for (std::uint32_t value = 0x80; value <= 0x10ffff; ++value) {
         const auto encoded = encode(value);
         for (std::size_t length = 1; length < encoded.size; ++length) {
-            if (contract::valid_utf8(encoded.text().substr(0, length))) {
+            if (core::valid_utf8(encoded.text().substr(0, length))) {
                 FAIL("Truncated scalar accepted at " << value << " length " << length);
             }
         }
     }
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Portable bundle paths preserve UTF-8 and enforce the artifact domain",
+          "[bundle][utf8]") {
+    for (const auto* const path : {"result.png", "assets/protect-mask.png", "a/\xc4\x80.png"}) {
+        CHECK(core::valid_bundle_path(path));
+    }
+    CHECK(core::valid_bundle_path(std::string(128, 'a')));
+    CHECK(!core::valid_bundle_path(std::string(129, 'a')));
+    CHECK(core::valid_bundle_path(std::string(126, 'a') + "\xc4\x80"));
+    CHECK(!core::valid_bundle_path(std::string(127, 'a') + "\xc4\x80"));
+    for (const auto* const path :
+         {"", "/a", "a/", "a//b", ".", "..", "a/./b", "a/../b", "a\\b", "a:b", "\xff"}) {
+        CHECK(!core::valid_bundle_path(path));
+    }
+    CHECK(!core::valid_bundle_path(std::string{"a\0b", 3}));
 }
 } // namespace docenhance::tests

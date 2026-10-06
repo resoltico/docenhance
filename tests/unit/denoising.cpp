@@ -169,3 +169,25 @@ TEST_CASE("Cancellation after native completion reports completed calls and refu
     REQUIRE(budget.used() == live);
 }
 } // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Completed D01 observations cannot exceed the continuous charged-buffer ceiling") {
+    const auto method = methods::Nlm::create().value();
+    methods::DenoisingReport report{
+        .status = methods::DenoiseStatus::applied,
+        .complete = true,
+        .requested = method.parameters(),
+        .native_h = methods::nlm_native_strength(method.parameters()),
+        .eligible_samples = 1,
+        .evaluated_samples = 1,
+        .corrected_samples = 1,
+        .changed_samples = 1,
+        .native_calls = 1,
+        .native_reserved_peak = 1,
+        .preparation_charge_peak = 1073741824,
+    };
+    CHECK(methods::valid_denoising(report, methods::Denoising{method}));
+    ++report.preparation_charge_peak;
+    CHECK(!methods::valid_denoising(report, methods::Denoising{method}));
+}
+} // namespace docenhance::tests

@@ -44,7 +44,7 @@
       "max_len": 4096,
       "source": "utf8.cpp",
       "links": [
-        "de_contract",
+        "de_core",
         "nlohmann_json::nlohmann_json"
       ]
     },

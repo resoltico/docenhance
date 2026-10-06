@@ -3,6 +3,7 @@
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/bundle/inventory.hpp"
 #include "docenhance/bundle/record.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/binarization.hpp"
@@ -65,9 +66,8 @@ core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value)
     r.native_calls = record_integer(record_field(value, "native_calls"), UINT64_MAX);
     r.native_reserved_peak =
         record_integer(record_field(value, "native_reserved_peak"), UINT64_MAX);
-    constexpr std::uint64_t preparation_limit = std::uint64_t{1024} * 1024 * 1024;
-    r.preparation_charge_peak =
-        record_integer(record_field(value, "preparation_charge_peak"), preparation_limit);
+    r.preparation_charge_peak = record_integer(record_field(value, "preparation_charge_peak"),
+                                               core::continuous_processing_budget);
     if (!methods::valid_denoising(r, selected) || RecordJson(denoising_fields(r)) != value) {
         return core::failure(core::ErrorCode::input, "Invalid denoising execution claims");
     }

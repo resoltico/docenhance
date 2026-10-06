@@ -203,3 +203,32 @@ TEST_CASE("Record parsing stops at its event boundary before later malformed tok
     CHECK(bundle::read_record(as_bytes(*written)));
 }
 } // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Record depth is bounded by library container events", "[bundle][resource]") {
+    const auto nested = [](std::size_t depth) {
+        std::string text = "0";
+        for (std::size_t i = 0; i < depth; ++i) {
+            text.insert(0, i % 2 == 0 ? "[" : "{\"x\":");
+            text += i % 2 == 0 ? ']' : '}';
+        }
+        return text;
+    };
+    const auto exact = bundle::read_record(as_bytes(nested(bundle::record_max_depth)));
+    REQUIRE(!exact);
+    CHECK(exact.error().message.contains("identifying header"));
+    const auto excessive = bundle::read_record(as_bytes(nested(bundle::record_max_depth + 1)));
+    REQUIRE(!excessive);
+    CHECK(excessive.error().message.contains("depth ceiling"));
+    const auto unread =
+        bundle::read_record(as_bytes(std::string(bundle::record_max_depth + 1, '[') + "?"));
+    REQUIRE(!unread);
+    CHECK(unread.error().message.contains("depth ceiling"));
+    const auto duplicate = bundle::read_record(as_bytes(R"({"x":0,"\u0078":1})"));
+    REQUIRE(!duplicate);
+    CHECK(duplicate.error().message.contains("unique keys"));
+    const auto quoted = bundle::read_record(as_bytes(R"({"x":"{}[]\\\""})"));
+    REQUIRE(!quoted);
+    CHECK(quoted.error().message.contains("identifying header"));
+}
+} // namespace docenhance::tests

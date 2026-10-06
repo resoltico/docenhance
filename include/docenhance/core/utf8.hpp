@@ -5,7 +5,7 @@
 #include <cstddef>
 #include <string_view>
 
-namespace docenhance::contract {
+namespace docenhance::core {
 
 // Validates scalar encoding, not assigned characters or normalization. NUL is valid Unicode;
 // path admission rejects it separately. No allocation, replacement, locale or byte rewriting.
@@ -67,4 +67,4 @@ namespace docenhance::contract {
 [[nodiscard]] constexpr bool valid_path(std::string_view value) noexcept {
     return !value.empty() && !value.contains('\0') && valid_utf8(value);
 }
-} // namespace docenhance::contract
+} // namespace docenhance::core

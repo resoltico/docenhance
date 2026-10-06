@@ -305,8 +305,9 @@ from fallible rendering. See [the separate design/challenge](execution-ownership
 ## Bound parser work and adversarial selection
 
 A JSON discard callback does not stop the parser and can suppress closing callbacks required by
-external bookkeeping. Admit through the library SAX interface, whose refusal terminates parsing,
-before constructing a bounded DOM. Release admission bookkeeping between the passes. Preserve byte/depth checks and duplicate-key rejection. Percentile
+external bookkeeping. Admit depth, event counts and unique decoded keys through the library SAX
+interface, whose refusal terminates parsing, before constructing a bounded DOM. Release admission
+bookkeeping between the passes. The byte ceiling remains before parsing; no separate JSON lexer is needed. Percentile
 selection sorts existing scratch instead of using average-linear partitioning; the worst-case
 comparison bound matters for hostile sample order. Quantiles and resource ledgers are unchanged.
 See [the resource design and separate challenge](resource-limits-audit.md).
@@ -345,7 +346,9 @@ configuration and attribution while removing unused gzip-file sources from the p
 
 Monitor verified source identities against OSV separately from offline acquisition/build admission.
 Report source matches even when mandatory feature closure excludes their affected code. Bind narrow
-review dispositions to source, feature policy and advisory bytes, and refuse changed evidence.
+review dispositions to source, feature policy and all advisory fields except a validated
+`modified` timestamp; changing observation time alone is not changed vulnerability evidence.
+Refuse malformed timestamps, changed evidence and unknown added fields.
 Database coverage and recipe exclusions remain explicit; neither pinning nor an empty result proves
 absence of vulnerabilities. See [dependency review](dependencies.md#advisory-observations).
 

@@ -3,7 +3,9 @@
 #include "docenhance/bundle/inventory.hpp"
 
 #include "docenhance/bundle/record.hpp"
+#include "docenhance/core/bundle_path.hpp"
 #include "docenhance/core/identity.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "read_fields.hpp"
 
@@ -22,65 +24,8 @@
 namespace docenhance::bundle {
 using Json = nlohmann::json;
 namespace {
-// A path longer than this is refused: bundle paths are short by construction, and a bound here
-// is one less thing a hostile record can grow.
-constexpr std::size_t max_path_length = 128;
-
 [[nodiscard]] core::Error rejected(std::string detail) {
     return {.code = core::ErrorCode::input, .message = "The run record " + std::move(detail)};
-}
-
-// Nesting depth, counted over the bytes themselves. A recursive-descent parser answers a deeply
-// nested document with the stack rather than with an error, so the bound is applied first.
-[[nodiscard]] bool within_depth(std::span<const std::byte> bytes, std::size_t limit) noexcept {
-    std::size_t depth = 0;
-    bool quoted = false;
-    bool escaped = false;
-    for (const auto raw : bytes) {
-        const auto character = static_cast<char>(raw);
-        if (quoted) {
-            quoted = escaped || character != '"';
-            escaped = !escaped && character == '\\';
-            continue;
-        }
-        if (character == '"') {
-            quoted = true;
-        } else if (character == '{' || character == '[') {
-            ++depth;
-            if (depth > limit) {
-                return false;
-            }
-        } else if ((character == '}' || character == ']') && depth > 0) {
-            --depth;
-        }
-    }
-    return !quoted && depth == 0;
-}
-
-[[nodiscard]] bool hexadecimal(std::string_view text) noexcept {
-    return text.size() == core::sha256_hex_length && std::ranges::all_of(text, [](char character) {
-               return (character >= '0' && character <= '9') ||
-                      (character >= 'a' && character <= 'f');
-           });
-}
-
-// Inside the bundle and nowhere else: relative, forward slashes, no parent step, no root, no
-// backslash that a different platform would read as a separator.
-[[nodiscard]] bool contained(std::string_view path) {
-    if (path.empty() || path.size() > max_path_length || path.front() == '/' ||
-        path.contains('\\') || path.contains(':')) {
-        return false;
-    }
-    std::size_t start = 0;
-    while (start <= path.size()) {
-        const auto stop = std::min(path.find('/', start), path.size());
-        const auto part = path.substr(start, stop - start);
-        if (part.empty() || part == "." || part == "..") {
-            return false;
-        }
-        start = stop + 1;
-    }
-    return true;
 }
 
 // Found by walking the object rather than by a lookup that orders the keys. Ordering a stored
@@ -110,15 +55,14 @@ constexpr std::size_t max_path_length = 128;
     }
     const auto spelling = path->get<std::string>();
     const auto sha256 = digest->get<std::string>();
-    if (!contained(spelling)) {
+    if (!core::valid_bundle_path(spelling)) {
         return std::unexpected(rejected("names a path outside the bundle: " + spelling));
     }
-    if (!hexadecimal(sha256)) {
+    if (!core::valid_hexadecimal(sha256, core::sha256_hex_length)) {
         return std::unexpected(rejected("declares a digest that is not a SHA-256"));
     }
     const auto count = bytes->get<std::uint64_t>();
-    constexpr std::uint64_t artifact_limit = std::uint64_t{256} * 1024 * 1024;
-    if (count == 0 || count > artifact_limit) {
+    if (count == 0 || count > core::bundle_max_file_bytes) {
         return std::unexpected(rejected("declares an artifact outside its byte domain"));
     }
     return Artifact{
@@ -207,9 +151,6 @@ core::Result<void> agrees(const DeclaredBundle& declared,
 core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes) {
     if (bytes.size() > record_max_bytes) {
         return std::unexpected(rejected("is larger than a run record may be"));
-    }
-    if (!within_depth(bytes, record_max_depth)) {
-        return std::unexpected(rejected("is nested more deeply than a run record may be"));
     }
     try {
         // char is the narrow-character view of the same immutable bytes; the parser reads a

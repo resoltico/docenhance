@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/contract/utf8.hpp"
+#include "docenhance/core/utf8.hpp"
 
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
@@ -41,7 +41,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     constexpr std::size_t max_text_bytes = 4096;
     const auto text = input.rest(max_text_bytes);
     const auto parsed = nlohmann::json::parse(json_string_token(text), nullptr, false);
-    const bool valid = docenhance::contract::valid_utf8(text);
+    const bool valid = docenhance::core::valid_utf8(text);
     docenhance::fuzz::require(valid == !parsed.is_discarded(),
                               "UTF-8 validation agrees with an independent strict decoder");
     if (valid) {

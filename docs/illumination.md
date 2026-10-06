@@ -206,8 +206,12 @@ measurements, target, six optional predicate decisions and application counters.
 to g before the strength exponent; capped samples include equality at max_gain; saturation counts
 raw target above one. Fractions with no evaluated samples are null.
 
-`complete` means the illumination stage finished, **not** that output was committed. Encoding's
-last generated row completes the stage; a subsequent verification/publication failure retains the
+`complete` means the illumination stage finished, **not** that output was committed.
+One contiguous row-major output traversal completes the stage;
+repeated, skipped or out-of-order output blocks are refused before counting observations.
+Verification may read arbitrary blocks without advancing completion. With D01 active, its
+preparation traversal completes I01 before encoding; otherwise the encoder traversal does.
+A subsequent verification/publication failure retains the
 completed stage record alongside the actual command error. An interrupted or failed incomplete
 stage is `failed`, without erasing prior diagnostics. A completed stage is `applied` only when some
 working samples changed, otherwise `no_change`; an automatic decision not to apply is `skipped`.
@@ -245,8 +249,8 @@ Real-executable tests independently decode PNG samples and compare against a Pyt
 all orientation cases and linear color-transport references. Clearly synthetic P01/P02 fixtures
 require an already-good automatic skip, at least 40% reduction of background coefficient of
 variation, and at least 75% retention of the defined local normalized mark contrast. These are
-acceptance tests, not evidence of performance on arbitrary documents or handwriting. The aggregate
-native-suite limit is 600 seconds to accommodate the expanded compiler/header checks; individual
+acceptance tests, not evidence of performance on arbitrary documents or handwriting. The
+aggregate watchdog and native process bound follow [native verification](quality.md); individual
 90-second CLI contract limits and all numerical/failure gates remain intact. Log exact command results
 and platforms separately; CI or benchmark success is not implied by these obligations.
 

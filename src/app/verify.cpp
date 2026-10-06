@@ -3,8 +3,8 @@
 #include "docenhance/app/verify.hpp"
 
 #include "docenhance/contract/command.hpp"
-#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/core/utf8.hpp"
 
 namespace docenhance::app {
 core::Result<VerifyRequest> prepare_verify(const contract::Invocation& invocation) {
@@ -17,7 +17,7 @@ core::Result<VerifyRequest> prepare_verify(const contract::Invocation& invocatio
     if (invocation.subject.contains('\0')) {
         return core::failure(core::ErrorCode::argument, "Paths cannot contain NUL bytes");
     }
-    if (!contract::valid_utf8(invocation.subject)) {
+    if (!core::valid_utf8(invocation.subject)) {
         return core::failure(core::ErrorCode::argument, "Paths must be well-formed UTF-8");
     }
     return VerifyRequest{invocation.subject};

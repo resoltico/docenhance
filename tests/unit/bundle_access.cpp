@@ -3,6 +3,7 @@
 #include "bundle_native.hpp"
 #include "cancellation_probe.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/io/artifact_limits.hpp"
@@ -77,7 +78,7 @@ TEST_CASE("Bundle reading and hashing observe bounded cancellation", "[bundle][c
     const CheckpointStop stop{core::Checkpoint::verification, 1};
     core::Budget budget{io::bundle_snapshot_budget};
     auto read = io::read_bundle(utf8_spelling(root), budget, stop.cancellation(),
-                                io::bundle_max_file_bytes);
+                                core::bundle_max_file_bytes);
     REQUIRE(!read);
     CHECK(read.error().code == core::ErrorCode::cancelled);
     CHECK(budget.used() == 0);

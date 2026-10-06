@@ -6,6 +6,8 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/identity.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
@@ -19,7 +21,6 @@
 #include "docenhance/methods/illumination.hpp"
 #include "run_publication.hpp"
 
-#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <optional>
@@ -34,8 +35,7 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
     if (cancellation.requested(core::Checkpoint::admission)) {
         return core::cancelled();
     }
-    constexpr std::size_t processing_budget_bytes = std::size_t{128} * 1024 * 1024;
-    core::Budget budget{processing_budget_bytes};
+    core::Budget budget{core::binary_processing_budget};
     auto loaded = io::load_grayscale_png(request.input(), budget, cancellation);
     if (!loaded) {
         return std::unexpected(loaded.error());
@@ -98,8 +98,14 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
     if (cancellation.requested(core::Checkpoint::admission)) {
         return app::process_failure(core::cancelled().error());
     }
+    const auto context = context_source_();
+    if (!core::valid_hexadecimal(context.identity, core::run_identity_hex_length) ||
+        !core::valid_instant(context.recorded)) {
+        return app::process_failure(
+            {.code = core::ErrorCode::invariant, .message = "Invalid execution run context"});
+    }
     if (const auto* const method = std::get_if<methods::Binarization>(&request.operation())) {
-        auto result = binary(request, *method, cancellation, context_);
+        auto result = binary(request, *method, cancellation, context);
         if (!result) {
             return app::process_failure(std::move(result.error()));
         }
@@ -107,9 +113,8 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
     }
     methods::IlluminationReport report;
     methods::DenoisingReport denoising;
-    auto result =
-        continuous(request, std::get<image::Continuous>(request.operation()),
-                   {.cancellation = cancellation, .context = context_}, report, denoising);
+    auto result = continuous(request, std::get<image::Continuous>(request.operation()),
+                             {.cancellation = cancellation, .context = context}, report, denoising);
     if (!result) {
         if (report.requested && !report.complete) {
             report.status = methods::SurfaceStatus::failed;

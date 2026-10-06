@@ -4,8 +4,8 @@
 
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/parse.hpp"
-#include "docenhance/contract/utf8.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/core/utf8.hpp"
 #include "docenhance/methods/illumination.hpp"
 
 #include <algorithm>
@@ -91,7 +91,7 @@ core::Result<methods::Illumination> prepare_illumination(const contract::Invocat
                              "Illumination and protection require continuous-tone output");
     }
     if (v.protect_mask && (v.protect_mask->empty() || v.protect_mask->contains('\0') ||
-                           !contract::valid_utf8(*v.protect_mask))) {
+                           !core::valid_utf8(*v.protect_mask))) {
         return core::failure(core::ErrorCode::argument,
                              "--protect-mask needs a nonempty UTF-8 path without NUL");
     }

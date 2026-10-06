@@ -74,7 +74,11 @@ The TIFF archive uses an OSS-Fuzz package-version query, whose coverage is narro
 commit query. An empty database result is not proof that a source is vulnerability-free.
 
 Every match is reported. New matches and changes to reviewed source, feature policy or advisory
-bytes require review. The two current reviewed exclusions concern zlib gzip-file writing and
+evidence require review. A valid OSV `modified` timestamp is observation metadata and does not
+change the review binding by itself; every other field, including unknown fields and withdrawal,
+remains bound. Missing or malformed timestamps are refused. See the
+[OSV field definitions](https://ossf.github.io/osv-schema/#id-modified-fields).
+The two current reviewed exclusions concern zlib gzip-file writing and
 OpenCV JPEG-2000 decoding: the former is removed from the private build, while the latter is outside
 the mandatory module/provider closure. These reviews are code-bound in the exception registry and
 rely on independent native build audits; hashes establish freshness, not review quality. They do
@@ -85,3 +89,5 @@ Acquisition claims one writer per cache. Git commands ignore inherited Git envir
 configuration and grant only the exact owned working directory as safe. Release objects and
 source inventories remain mandatory. The Intel LLVM tool cache similarly requires both tools,
 source/recipe identity and byte-matching readiness evidence; partial caches are not adopted.
+CI may reuse these verified analysis tools; each application/dependency build still starts in its
+own native build tree. Reusing a compiler installation is not proof of binary reproducibility.
