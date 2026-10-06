@@ -17,6 +17,7 @@
 #include <expected>
 #include <limits>
 #include <new>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -186,7 +187,8 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
     auto impossible_native = continuous();
     auto& native = impossible_native.denoising;
     native.requested = methods::NlmParameters{};
-    native.native_h = methods::nlm_native_strength(*native.requested);
+    native.native_h =
+        methods::nlm_native_strength(std::get<methods::NlmParameters>(*native.requested));
     native.status = methods::DenoiseStatus::applied;
     native.evaluated_samples = 4;
     native.corrected_samples = 1;
@@ -331,6 +333,49 @@ TEST_CASE("I02 failure observations reject foreign fields and invalid scalar dom
         ReturningProcessor malformed{app::process_failure(failure, bad)};
         CHECK(error(app::dispatch(request, malformed, verifier)).publication ==
               core::Publication::unknown);
+    }
+}
+TEST_CASE("TV-L1 failure reports reject native claims and fictional stopping", "[app][tvl1]") {
+    UnusedVerifier verifier;
+    auto request = invocation(false);
+    request.denoise = "tvl1";
+    const core::Error failure{.code = core::ErrorCode::resource, .message = "Before solve"};
+    const methods::Tvl1Parameters parameters;
+    for (unsigned mutation = 0; mutation < 8; ++mutation) {
+        methods::DenoisingReport report{
+            .status = methods::DenoiseStatus::failed,
+            .reason = methods::DenoiseReason::processing_failure,
+            .requested = parameters,
+        };
+        if (mutation == 1) {
+            report.native_calls = 1;
+        }
+        if (mutation == 2) {
+            report.tvl1 = methods::Tvl1Report{
+                .iterations = 20,
+                .stop = methods::Tvl1Stop::tolerance_met,
+                .passing_checkpoints = 2,
+            };
+        }
+        if (mutation == 3) {
+            report.tvl1 = methods::Tvl1Report{.primal_update = 1};
+        }
+        if (mutation >= 4) {
+            report.eligible_samples = 1;
+            report.preparation_charge_peak = mutation == 7 ? 320 : 100000;
+            report.tvl1 = methods::Tvl1Report{
+                .iterations = 20,
+                .passing_checkpoints = mutation == 5 ? 0U : 1U,
+                .dual_update = mutation == 4 ? 1.0 : 0.0,
+                .objective_start = 0,
+                .field_bytes = 64,
+            };
+        }
+        ReturningProcessor processor{app::process_failure(failure, std::nullopt, report)};
+        const auto result = error(app::dispatch(request, processor, verifier));
+        CHECK(result.publication == ((mutation == 0 || mutation == 6)
+                                         ? core::Publication::not_started
+                                         : core::Publication::unknown));
     }
 }
 } // namespace docenhance::tests

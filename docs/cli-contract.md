@@ -184,23 +184,23 @@ Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and c
 
 1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
 
-**Applicable methods:** I01,I02,D01.
+**Applicable methods:** I01,I02,D01,D02.
 
 ## `--denoise METHOD`
 
-**Scope:** P. **Domain/default:** off; off|nlm.
+**Scope:** P. **Domain/default:** off; off|nlm|tvl1.
 
-Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG/TIFF after I01. No binary denoising.
+Explicit NLM-L1 or full-field floating-point TV-L1 for continuous PNG/JPEG/TIFF after illumination. No binary denoising.
 
-**Applicable methods:** D01.
+**Applicable methods:** D01,D02.
 
 ## `--denoise-blend A`
 
 **Scope:** P. **Domain/default:** 0.5; finite `[0,1]`.
 
-NLM only. Blend once; zero preserves entering samples after source/mask validation.
+Blend once in perceptual luminance; zero preserves entering samples after source/mask validation.
 
-**Applicable methods:** D01.
+**Applicable methods:** D01,D02.
 
 ## `--nlm-h H`
 
@@ -225,3 +225,27 @@ NLM only. Square patch width.
 NLM only. Search at least patch; active processing requires fit in smaller oriented dimension.
 
 **Applicable methods:** D01.
+
+## `--tv-lambda LAMBDA`
+
+**Scope:** P. **Domain/default:** 1.5; finite `[0.05,20]`.
+
+TV-L1 only. L1 fidelity weight; larger values mean less smoothing.
+
+**Applicable methods:** D02.
+
+## `--tv-iterations N`
+
+**Scope:** P. **Domain/default:** 150; integer `[10,1000]`.
+
+TV-L1 only. Iteration cap; exhaustion retains a usable iterate and emits W_TV_ITERATION_LIMIT.
+
+**Applicable methods:** D02.
+
+## `--tv-tolerance EPS`
+
+**Scope:** P. **Domain/default:** 0.00001; finite `[1e-8,1e-3]`.
+
+TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iteration checkpoints, starting at iteration 20.
+
+**Applicable methods:** D02.

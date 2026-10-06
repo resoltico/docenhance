@@ -59,7 +59,7 @@ void check(std::span<const std::uint8_t> bytes) {
     const auto q = input.integer<std::uint16_t>();
     constexpr double sample = 0.123456789;
     const image::Rgb rgb{sample, sample, sample};
-    require(methods::nlm_correct(rgb, q, q, methods::nlm_default_blend).value() == rgb,
+    require(methods::nlm_correct(rgb, q, q, methods::denoising_default_blend).value() == rgb,
             "zero correction preserves entering doubles");
 }
 } // namespace

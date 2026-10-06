@@ -3,6 +3,7 @@
 #include "docenhance/report/render.hpp"
 
 #include "continuous.hpp"
+#include "denoising.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
@@ -11,7 +12,6 @@
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
-#include "docenhance/methods/denoising.hpp"
 #include "illumination.hpp"
 
 #include <nlohmann/json.hpp>
@@ -166,13 +166,7 @@ Output text_form(const app::Outcome& outcome) {
                     .err = std::string(payload.error.identifier()) + ": " +
                            std::string(diagnostic(payload.error)) + "\n" +
                            (payload.illumination ? illumination_text(*payload.illumination) : "") +
-                           (payload.denoising
-                                ? "Denoising: " +
-                                      std::string(methods::status_name(payload.denoising->status)) +
-                                      " (" +
-                                      std::string(methods::reason_name(payload.denoising->reason)) +
-                                      ")\n"
-                                : ""),
+                           (payload.denoising ? denoising_text(*payload.denoising) : ""),
                 };
             }
         },

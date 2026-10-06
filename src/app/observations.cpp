@@ -17,6 +17,7 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/tvl1.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -61,9 +62,17 @@ bool illumination_request(const methods::IlluminationReport& report,
         request.illumination());
 }
 bool denoising_request(const methods::DenoisingReport& report, const ProcessRequest& request) {
-    const auto* const selected = std::get_if<methods::Nlm>(&request.denoising());
-    return selected == nullptr ? !report.requested
-                               : report.requested && *report.requested == selected->parameters();
+    return std::visit(
+        [&](const auto& selected) {
+            using Method = std::decay_t<decltype(selected)>;
+            if constexpr (std::is_same_v<Method, methods::DenoisingOff>) {
+                return !report.requested;
+            } else {
+                return report.requested &&
+                       *report.requested == methods::DenoisingParameters{selected.parameters()};
+            }
+        },
+        request.denoising());
 }
 bool source_matches(const image::SourceDescription& source, image::RasterShape shape) {
     if (!image::valid_source_description(source)) {
@@ -151,6 +160,15 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
         r.changed_samples > r.corrected_samples || !std::isfinite(r.native_h)) {
         return false;
     }
+    if (r.requested && std::holds_alternative<methods::Tvl1Parameters>(*r.requested)) {
+        return methods::valid_tvl1_observations(r) &&
+               (r.complete ? methods::valid_denoising(r, request.denoising())
+                           : r.status == methods::DenoiseStatus::failed &&
+                                 r.reason == methods::DenoiseReason::processing_failure);
+    }
+    if (r.tvl1) {
+        return false;
+    }
     // The machine contract caps this reported processing charge; this does not cap RSS.
     if (r.preparation_charge_peak > core::continuous_processing_budget ||
         (r.native_calls == 0 && (r.native_reserved_peak != 0 || r.preparation_charge_peak != 0)) ||
@@ -163,7 +181,8 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
     }
     return r.requested ? r.status == methods::DenoiseStatus::failed &&
                              r.reason == methods::DenoiseReason::processing_failure &&
-                             r.native_h == methods::nlm_native_strength(*r.requested)
+                             r.native_h == methods::nlm_native_strength(
+                                               std::get<methods::NlmParameters>(*r.requested))
                        : r.status == methods::DenoiseStatus::disabled &&
                              r.reason == methods::DenoiseReason::none && r.native_h == 0;
 }

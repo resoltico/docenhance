@@ -19,7 +19,7 @@ response delivery, never processing rules. `de_app` admits `ProcessRequest`; `de
 The application contains unreported processing exceptions as unknown publication, not safe retry.
 
 Do not advertise a method or format until its complete contract and tests exist. B02 Sauvola and B03 fixed-threshold
-grayscale-PNG processing, I01 surface and I02 morphological continuous-tone illumination and D01 bounded 16-bit NLM-L1 denoising
+grayscale-PNG processing, I01 surface and I02 morphological continuous-tone illumination and D01 bounded 16-bit NLM-L1 / D02 floating-point TV-L1 denoising
 are implemented; other method entries remain plans. Continuous-tone
 PNG representation is separately implemented; read docs/png-processing.md. It is not a fictional
 enhancement method. Keep binary sample meaning separate from color/profile interpretation. Never use no-op/copy

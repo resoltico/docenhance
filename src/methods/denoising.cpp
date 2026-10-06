@@ -6,7 +6,9 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/methods/tvl1.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -123,7 +125,15 @@ bool valid_native_observations(const DenoisingReport& r) noexcept {
     return r.native_reserved_peak > 0 && r.preparation_charge_peak >= r.native_reserved_peak;
 }
 } // namespace
-bool valid_denoising(const DenoisingReport& r, const Denoising& requested) noexcept {
+bool valid_denoising(const DenoisingReport& r, const Denoising& requested) {
+    if (const auto* const tv = std::get_if<Tvl1>(&requested)) {
+        return r.changed_samples <= r.corrected_samples &&
+               r.corrected_samples <= r.evaluated_samples &&
+               r.evaluated_samples <= r.eligible_samples && valid_tvl1_report(r, *tv);
+    }
+    if (r.tvl1) {
+        return false;
+    }
     const auto* const method = std::get_if<Nlm>(&requested);
     if (!r.complete || r.status == DenoiseStatus::failed ||
         r.changed_samples > r.corrected_samples || r.corrected_samples > r.evaluated_samples ||
@@ -136,8 +146,10 @@ bool valid_denoising(const DenoisingReport& r, const Denoising& requested) noexc
                r.evaluated_samples == 0 && r.corrected_samples == 0 && r.changed_samples == 0 &&
                r.native_reserved_peak == 0 && r.preparation_charge_peak == 0;
     }
-    if (!r.requested || *r.requested != method->parameters() ||
-        r.native_h != nlm_native_strength(*r.requested)) {
+    const auto* const parameters =
+        r.requested ? std::get_if<NlmParameters>(&*r.requested) : nullptr;
+    if (parameters == nullptr || *parameters != method->parameters() ||
+        r.native_h != nlm_native_strength(*parameters)) {
         return false;
     }
     if (!valid_native_observations(r)) {
@@ -151,7 +163,7 @@ bool valid_denoising(const DenoisingReport& r, const Denoising& requested) noexc
         return false;
     }
     if (r.reason == DenoiseReason::zero_blend) {
-        return r.requested->blend == 0 && r.native_calls == 0 && r.evaluated_samples == 0;
+        return parameters->blend == 0 && r.native_calls == 0 && r.evaluated_samples == 0;
     }
     if (r.reason == DenoiseReason::no_eligible_samples) {
         return r.eligible_samples == 0 && r.native_calls == 0 && r.evaluated_samples == 0;
@@ -161,14 +173,32 @@ bool valid_denoising(const DenoisingReport& r, const Denoising& requested) noexc
 }
 bool valid_denoising_extent(const DenoisingReport& report, image::Extent extent) {
     const auto& r = report;
+    if (r.requested && std::holds_alternative<Tvl1Parameters>(*r.requested)) {
+        if (!r.tvl1) {
+            return false;
+        }
+        const auto& detail = *r.tvl1;
+        if (detail.field_bytes == 0) {
+            return true;
+        }
+        auto shape = image::plane_shape(extent.width, extent.height, sizeof(double));
+        auto bytes = shape ? image::plane_bytes(*shape)
+                           : core::Result<std::size_t>{
+                                 core::failure(core::ErrorCode::argument, "Invalid TV-L1 extent")};
+        return bytes && detail.field_bytes == *bytes;
+    }
     if (r.native_calls == 0) {
         return true;
     }
     if (!r.requested) {
         return false;
     }
-    auto method = Nlm::create(*r.requested);
-    if (!method || r.requested->search > std::min(extent.width, extent.height)) {
+    const auto* const parameters = std::get_if<NlmParameters>(&*r.requested);
+    if (parameters == nullptr) {
+        return false;
+    }
+    auto method = Nlm::create(*parameters);
+    if (!method || parameters->search > std::min(extent.width, extent.height)) {
         return false;
     }
     const auto p = method->parameters();

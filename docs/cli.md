@@ -30,7 +30,7 @@ canonical protection mask when one was supplied. Profile assumptions, alpha flat
 orientation and verified output descriptors are reported. Bounded 8-bit baseline/progressive
 Huffman JPEG supports preserve/gray through the same pipeline; see [JPEG admission](jpeg-processing.md).
 Bounded single-page TIFF/BigTIFF supports preserve/gray; see [TIFF admission](tiff-processing.md).
-Animation, multipage input, recipes, presets and enhancement methods other than I01/D01 remain unsupported.
+Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02 remain unsupported.
 
 Only explicit `bw` activates a binarizer (Sauvola by default). B02/B03 retain the separate published
 1/2/4/8-bit grayscale-without-transparency input contract and 8-bit binary output. They do not run
@@ -41,7 +41,7 @@ Wrong-method, wrong-operation and explicitly empty values fail admission before 
 owned sibling staging and atomically publishes without replacement after encoding and closing
 succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
-`docenhance methods` reports I01, I02, D01, B02 and B03. `methods ID` selects one entry.
+`docenhance methods` reports I01, I02, D01, D02, B02 and B03. `methods ID` selects one entry.
 `version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
 Help, version and capability discovery do not invoke the image-processing host.
 
@@ -65,9 +65,10 @@ value are errors. A supplied mask is decoded and checked even with off/zero-stre
 docenhance process INPUT.jpg --out-dir RESULT --denoise nlm
 ```
 
-D01 runs after I01 and before final quantization, with exact protection of masked destinations.
-It is opt-in and requires continuous output; see [denoising](denoising.md) for the bounded
-NLM-L1 parameters, resource accounting and cancellation contract.
+D01 (`nlm`) and D02 (`tvl1`) run after the selected illumination method and before final
+quantization, with exact protection of masked destinations. Both are opt-in and require continuous
+output; see [denoising](denoising.md) and [TV-L1 denoising](tvl1-denoising.md) for parameters,
+resource accounting, stopping diagnostics and cancellation.
 
 ## Responses and failures
 

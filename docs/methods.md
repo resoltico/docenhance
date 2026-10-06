@@ -22,9 +22,9 @@ Method-specific argument references: `--denoise`, `--denoise-blend`, `--nlm-h`, 
 
 ## D02 — Floating-point TV-L1
 
-Status: **not-implemented**.
+Status: **implemented**.
 
-Method-specific argument references: `--denoise`, `--denoise-blend`, `--tv-lambda`, `--tv-iterations`, `--tv-tolerance`.
+Method-specific argument references: `--denoise`, `--denoise-blend`, `--tv-lambda`, `--tv-iterations`, `--tv-tolerance`, `--protect-mask`.
 
 ## R01 — Known-PSF regularized Fourier restoration
 

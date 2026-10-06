@@ -76,7 +76,7 @@ void check_json(const Outcome& outcome) {
     require(outcome.err.empty(), "JSON mode writes nothing to stderr");
     const auto document = nlohmann::json::parse(outcome.out, nullptr, false);
     require(!document.is_discarded() && document.is_object(), "JSON output parses as an object");
-    require(document.value("schema_version", 0) == 5, "JSON output carries schema_version 5");
+    require(document.value("schema_version", 0) == 6, "JSON output carries schema_version 6");
     require(document.value("exit_code", -1) == outcome.code, "JSON exit_code equals the exit code");
     if (outcome.code != exit_success) {
         const auto error = document.find("error");

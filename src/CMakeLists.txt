@@ -44,11 +44,12 @@ de_library(de_methods LAYER methods
           methods/surface_samples.cpp methods/surface_fit.cpp methods/surface_apply.cpp
           methods/illumination_apply.cpp methods/morphology_extrema.cpp methods/morphology_gaussian.cpp
           methods/morphology_detail.hpp methods/morphology_measure.cpp methods/morphology_statistics.cpp
-          methods/morphology_model.cpp methods/morphology_apply.cpp methods/morphology_validation.cpp
+          methods/morphology_model.cpp methods/morphology_apply.cpp methods/morphology_validation.cpp methods/tvl1_iteration.cpp methods/tvl1_operators.hpp
+          methods/tvl1_objective.cpp methods/tvl1_model.cpp methods/tvl1_apply.cpp methods/tvl1_validation.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
           "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
-          "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp"
+          "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp" "${DE_INCLUDE}/methods/tvl1.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
   SOURCES app/observations.cpp app/observations.hpp app/denoising.cpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
@@ -57,13 +58,13 @@ de_library(de_app LAYER app
   LINKS de_core de_contract de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_bundle LAYER bundle
-  SOURCES bundle/morphology_fields.cpp bundle/denoising_fields.cpp bundle/read_denoising.cpp bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp bundle/read_fields.hpp bundle/read_values.cpp bundle/read_json.cpp
+  SOURCES bundle/morphology_fields.cpp bundle/denoising_fields.cpp bundle/tvl1_fields.cpp bundle/read_denoising.cpp bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp bundle/read_fields.hpp bundle/read_values.cpp bundle/read_json.cpp
           bundle/read_observations.cpp bundle/read_operation.cpp bundle/read_illumination.cpp bundle/read_claims.cpp bundle/source_fields.cpp bundle/read_source.cpp
   HEADERS "${DE_INCLUDE}/bundle/fields.hpp" "${DE_INCLUDE}/bundle/record.hpp"
           "${DE_INCLUDE}/bundle/inventory.hpp"
   LINKS de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_report LAYER report
-  SOURCES report/render.cpp report/continuous.cpp report/continuous.hpp report/illumination.cpp report/illumination.hpp HEADERS "${DE_INCLUDE}/report/render.hpp"
+  SOURCES report/render.cpp report/continuous.cpp report/continuous.hpp report/illumination.cpp report/denoising.cpp report/denoising.hpp report/illumination.hpp HEADERS "${DE_INCLUDE}/report/render.hpp"
   LINKS de_app de_bundle de_contract de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_cli LAYER cli
   SOURCES cli/run.cpp cli/failures.hpp HEADERS "${DE_INCLUDE}/cli/run.hpp"

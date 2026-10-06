@@ -15,6 +15,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <utility>
 namespace docenhance::tests {
 TEST_CASE("Prepared D01 protection and zero corrections preserve exact entering working samples") {
     constexpr std::size_t bytes = std::size_t{1024} * 1024;
@@ -29,20 +30,21 @@ TEST_CASE("Prepared D01 protection and zero corrections preserve exact entering 
                               .subspan(std::size_t{x} * image::rgb_channels, image::rgb_channels)
                               .begin());
     }
-    host::DenoisingPlanes planes{
+    host::NlmPlanes nlm_planes{
         .input = image::Plane<std::uint16_t>::allocate(budget, width, 1).value(),
         .output = image::Plane<std::uint16_t>::allocate(budget, width, 1).value(),
     };
-    std::ranges::fill(planes.input.view().row(0), quantized);
-    std::ranges::fill(planes.output.view().row(0), quantized);
-    planes.output.view().row(0).front() = UINT16_MAX;
-    planes.output.view().row(0).back() = static_cast<std::uint16_t>(quantized + 1);
+    std::ranges::fill(nlm_planes.input.view().row(0), quantized);
+    std::ranges::fill(nlm_planes.output.view().row(0), quantized);
+    nlm_planes.output.view().row(0).front() = UINT16_MAX;
+    nlm_planes.output.view().row(0).back() = static_cast<std::uint16_t>(quantized + 1);
     auto mask = image::Plane<std::uint8_t>::allocate(budget, width, 1).value();
     std::ranges::fill(mask.view().row(0), 0);
     mask.view().row(0).front() = 1;
     const auto method = methods::Nlm::create().value();
     methods::DenoisingReport report{.requested = method.parameters()};
-    host::DenoisedSource prepared{source, planes, mask.view().as_const(), report};
+    const host::DenoisingPlanes planes{std::move(nlm_planes)};
+    host::DenoisedSource prepared{source, planes, mask.view().as_const(), report, {}};
     std::array<double, width * image::rgb_channels> output{};
     REQUIRE(prepared.read({.row = 0, .first = 0}, output, image::RowUse::output));
     REQUIRE(std::ranges::equal(std::span{output}.first(image::rgb_channels), entering));

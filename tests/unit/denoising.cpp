@@ -30,7 +30,8 @@ methods::Nlm method(std::uint32_t patch = 3, std::uint32_t search = 7) {
 TEST_CASE("NLM correction retains entering doubles and uses a signed native difference") {
     const image::Rgb between{0.123456789, 0.345678912, 0.789123456};
     const auto q = methods::nlm_quantize(between).value();
-    REQUIRE(methods::nlm_correct(between, q, q, methods::nlm_default_blend).value() == between);
+    REQUIRE(methods::nlm_correct(between, q, q, methods::denoising_default_blend).value() ==
+            between);
     REQUIRE(methods::nlm_correct(between, q, 0, 0).value() == between);
     constexpr double maximum = 65535;
     const auto f = image::srgb_encode(image::luminance(between).value()).value();

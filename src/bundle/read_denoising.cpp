@@ -14,13 +14,29 @@
 #include <array>
 #include <cstdint>
 #include <expected>
+#include <optional>
+#include <type_traits>
 #include <variant>
 namespace docenhance::bundle {
-core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value) {
-    methods::DenoisingReport r;
+namespace {
+core::Result<methods::Denoising> recorded_method(const RecordJson& value) {
     const auto& p = record_field(value, "parameters");
-    methods::Denoising selected = methods::DenoisingOff{};
+
     if (!p.is_null()) {
+        if (record_text(record_field(record_field(value, "method"), "id")) ==
+            methods::Tvl1::descriptor().id) {
+            auto method = methods::Tvl1::create({
+                .lambda = record_number(record_field(p, "lambda")),
+                .iterations = static_cast<std::uint32_t>(
+                    record_integer(record_field(p, "iterations"), UINT32_MAX)),
+                .tolerance = record_number(record_field(p, "tolerance")),
+                .blend = record_number(record_field(p, "blend")),
+            });
+            if (!method) {
+                return core::failure(core::ErrorCode::input, "Invalid recorded TV-L1 parameters");
+            }
+            return methods::Denoising{*method};
+        }
         auto method = methods::Nlm::create({
             .h = record_number(record_field(p, "h")),
             .patch =
@@ -32,9 +48,55 @@ core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value)
         if (!method) {
             return core::failure(core::ErrorCode::input, "Invalid recorded NLM parameters");
         }
-        r.requested = method->parameters();
-        selected = *method;
+        return methods::Denoising{*method};
     }
+    return methods::Denoising{methods::DenoisingOff{}};
+}
+std::optional<methods::Tvl1Report> recorded_tvl1(const RecordJson& tv) {
+
+    if (!tv.is_null()) {
+        methods::Tvl1Report details;
+        details.iterations =
+            static_cast<std::uint32_t>(record_integer(record_field(tv, "iterations"), UINT32_MAX));
+        details.passing_checkpoints = static_cast<std::uint32_t>(
+            record_integer(record_field(tv, "passing_checkpoints"), UINT32_MAX));
+        details.primal_update = record_number(record_field(tv, "primal_update"));
+        details.dual_update = record_number(record_field(tv, "dual_update"));
+        details.field_bytes = record_integer(record_field(tv, "field_bytes"), UINT64_MAX);
+        if (!record_field(tv, "stop").is_null()) {
+            const auto stop = record_text(record_field(tv, "stop"));
+            if (stop == "tolerance_met") {
+                details.stop = methods::Tvl1Stop::tolerance_met;
+            } else if (stop == "iteration_limit") {
+                details.stop = methods::Tvl1Stop::iteration_limit;
+            }
+        }
+        if (!record_field(tv, "objective_start").is_null()) {
+            details.objective_start = record_number(record_field(tv, "objective_start"));
+        }
+        if (!record_field(tv, "objective_end").is_null()) {
+            details.objective_end = record_number(record_field(tv, "objective_end"));
+        }
+        return details;
+    }
+    return std::nullopt;
+}
+} // namespace
+core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value) {
+    methods::DenoisingReport r;
+    auto selected_result = recorded_method(value);
+    if (!selected_result) {
+        return std::unexpected(selected_result.error());
+    }
+    const auto selected = *selected_result;
+    std::visit(
+        [&](const auto& method) {
+            using Method = std::decay_t<decltype(method)>;
+            if constexpr (!std::is_same_v<Method, methods::DenoisingOff>) {
+                r.requested = method.parameters();
+            }
+        },
+        selected);
     for (const auto status : std::array{
              methods::DenoiseStatus::disabled,
              methods::DenoiseStatus::no_change,
@@ -57,6 +119,7 @@ core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value)
         }
     }
     r.complete = record_boolean(record_field(value, "complete"));
+    r.tvl1 = recorded_tvl1(record_field(value, "tvl1"));
     r.native_h = record_number(record_field(value, "native_h"));
     r.eligible_samples = record_integer(record_field(value, "eligible_samples"), UINT64_MAX);
     r.protected_samples = record_integer(record_field(value, "protected_samples"), UINT64_MAX);

@@ -13,6 +13,7 @@
 #include <vector>
 
 namespace docenhance::bundle {
+[[nodiscard]] nlohmann::ordered_json tvl1_fields(const methods::Tvl1Report& report);
 [[nodiscard]] nlohmann::ordered_json denoising_fields(const methods::DenoisingReport& report);
 [[nodiscard]] nlohmann::ordered_json
 denoising_request_fields(const methods::DenoisingReport& report);

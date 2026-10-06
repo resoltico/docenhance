@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 5
+          "const": 6
         },
         "run": {
           "type": "string",
@@ -1769,7 +1769,10 @@
         "changed_samples",
         "native_calls",
         "native_reserved_peak",
-        "preparation_charge_peak"
+        "preparation_charge_peak",
+        "representation",
+        "tvl1",
+        "warnings"
       ],
       "additionalProperties": false,
       "properties": {
@@ -1800,10 +1803,17 @@
           "type": "boolean"
         },
         "analysis_depth": {
-          "const": 16
+          "enum": [
+            null,
+            16,
+            64
+          ]
         },
         "distance": {
-          "const": "L1"
+          "enum": [
+            null,
+            "L1"
+          ]
         },
         "native_h": {
           "type": "number",
@@ -1811,10 +1821,17 @@
           "maximum": 6425
         },
         "tile_width": {
-          "const": 256
+          "enum": [
+            0,
+            256
+          ]
         },
         "border": {
-          "const": "REFLECT_101"
+          "enum": [
+            null,
+            "REFLECT_101",
+            "forward_zero_terminal"
+          ]
         },
         "eligible_samples": {
           "type": "integer",
@@ -1855,6 +1872,100 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1073741824
+        },
+        "representation": {
+          "enum": [
+            null,
+            "uint16",
+            "float64"
+          ]
+        },
+        "tvl1": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "iterations",
+                "stop",
+                "passing_checkpoints",
+                "primal_update",
+                "dual_update",
+                "objective_start",
+                "objective_end",
+                "field_bytes"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "iterations": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1000
+                },
+                "stop": {
+                  "enum": [
+                    null,
+                    "tolerance_met",
+                    "iteration_limit"
+                  ]
+                },
+                "passing_checkpoints": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "primal_update": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "dual_update": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2.0000000000000036
+                },
+                "objective_start": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "objective_end": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "field_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1073741824
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "W_TV_ITERATION_LIMIT"
+            ]
+          },
+          "uniqueItems": true,
+          "maxItems": 1
         }
       },
       "allOf": [
@@ -1879,6 +1990,128 @@
                 "type": "object"
               }
             }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "D02"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "representation": {
+                "const": "float64"
+              },
+              "analysis_depth": {
+                "const": 64
+              },
+              "distance": {
+                "const": "L1"
+              },
+              "tile_width": {
+                "const": 0
+              },
+              "border": {
+                "const": "forward_zero_terminal"
+              },
+              "native_h": {
+                "const": 0
+              },
+              "native_calls": {
+                "const": 0
+              },
+              "native_reserved_peak": {
+                "const": 0
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "complete": {
+                      "const": true
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "tvl1": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "properties": {
+              "tvl1": {
+                "type": "null"
+              },
+              "warnings": {
+                "maxItems": 0
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "method": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "representation": {
+                      "type": "null"
+                    },
+                    "analysis_depth": {
+                      "type": "null"
+                    },
+                    "distance": {
+                      "type": "null"
+                    },
+                    "tile_width": {
+                      "const": 0
+                    },
+                    "border": {
+                      "type": "null"
+                    }
+                  }
+                },
+                "else": {
+                  "properties": {
+                    "representation": {
+                      "const": "uint16"
+                    },
+                    "analysis_depth": {
+                      "const": 16
+                    },
+                    "distance": {
+                      "const": "L1"
+                    },
+                    "tile_width": {
+                      "const": 256
+                    },
+                    "border": {
+                      "const": "REFLECT_101"
+                    }
+                  }
+                }
+              }
+            ]
           }
         }
       ]
@@ -1962,6 +2195,38 @@
                   "maximum": 1
                 }
               }
+            },
+            {
+              "type": "object",
+              "required": [
+                "lambda",
+                "iterations",
+                "tolerance",
+                "blend"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "lambda": {
+                  "type": "number",
+                  "minimum": 0.05,
+                  "maximum": 20
+                },
+                "iterations": {
+                  "type": "integer",
+                  "minimum": 10,
+                  "maximum": 1000
+                },
+                "tolerance": {
+                  "type": "number",
+                  "minimum": 1e-08,
+                  "maximum": 0.001
+                },
+                "blend": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
             }
           ]
         }
@@ -1989,6 +2254,44 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "D02"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/denoising_request/properties/parameters/oneOf/2"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/$defs/denoising_request/properties/parameters/oneOf/1"
+                  }
+                ]
+              }
+            }
+          }
         }
       ]
     },
@@ -2012,6 +2315,16 @@
           "properties": {
             "id": {
               "const": "D01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
+              "const": "D02"
             },
             "method_version": {
               "const": 1
