@@ -115,9 +115,9 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
     }
     SECTION("a version this build does not support") {
         auto altered = *written;
-        const auto at = altered.find("\"version\": 5");
+        const auto at = altered.find("\"version\": 6");
         REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 5").size(), "\"version\": 4");
+        altered.replace(at, std::string_view("\"version\": 6").size(), "\"version\": 5");
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);

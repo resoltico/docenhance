@@ -170,6 +170,15 @@
         "de_methods"
       ],
       "max_len": 67
+    },
+    "tvl1": {
+      "source": "tvl1.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_methods"
+      ],
+      "max_len": 130
     }
   }
 }

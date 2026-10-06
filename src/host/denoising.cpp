@@ -12,31 +12,29 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/tvl1.hpp"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <span>
+#include <type_traits>
 #include <utility>
 #include <variant>
 namespace docenhance::host {
-core::Result<void> DenoisedSource::read(image::RowRange range, std::span<double> rgb,
-                                        image::RowUse use) {
-    const auto& planes = planes_.get();
-    auto read =
-        source_.get().read(range, rgb, planes.input.empty() ? use : image::RowUse::verification);
-    if (!read || planes.input.empty()) {
-        return read;
-    }
-    auto& report = report_.get();
-    if (!report.requested) {
-        return core::failure(core::ErrorCode::invariant,
-                             "Prepared denoising requires its settings");
+namespace {
+core::Result<void> apply_nlm(const NlmPlanes& planes, image::RowRange range, std::span<double> rgb,
+                             image::PlaneView<const std::uint8_t> protection,
+                             methods::DenoisingReport& report) {
+    const auto* const parameters =
+        report.requested ? std::get_if<methods::NlmParameters>(&*report.requested) : nullptr;
+    if (parameters == nullptr) {
+        return core::failure(core::ErrorCode::invariant, "Prepared NLM requires its settings");
     }
     for (std::size_t i = 0; i < rgb.size() / image::rgb_channels; ++i) {
         const auto x = range.first + static_cast<std::uint32_t>(i);
-        if (!protection_.empty() && protection_.row(range.row).subspan(x, 1).front() != 0) {
+        if (!protection.empty() && protection.row(range.row).subspan(x, 1).front() != 0) {
             continue;
         }
         const auto q = planes.input.view().row(range.row).subspan(x, 1).front();
@@ -47,11 +45,11 @@ core::Result<void> DenoisedSource::read(image::RowRange range, std::span<double>
             rgb.subspan(offset + 1, 1).front(),
             rgb.subspan(offset + 2, 1).front(),
         };
-        auto corrected = methods::nlm_correct(before, q, qd, report.requested.value().blend);
+        auto corrected = methods::nlm_correct(before, q, qd, parameters->blend);
         if (!corrected) {
             return std::unexpected(corrected.error());
         }
-        if (use == image::RowUse::output) {
+        {
             ++report.evaluated_samples;
             report.corrected_samples += static_cast<std::uint64_t>(q != qd);
             report.changed_samples += static_cast<std::uint64_t>(*corrected != before);
@@ -60,6 +58,41 @@ core::Result<void> DenoisedSource::read(image::RowRange range, std::span<double>
     }
     return {};
 }
+} // namespace
+bool active_denoising(const DenoisingPlanes& planes) {
+    return std::visit(
+        [](const auto& value) {
+            using Planes = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<Planes, NlmPlanes>) {
+                return !value.input.empty();
+            } else {
+                return value.active();
+            }
+        },
+        planes);
+}
+core::Result<void> DenoisedSource::read(image::RowRange range, std::span<double> rgb,
+                                        image::RowUse use) {
+    const auto& planes = planes_.get();
+    const bool active = active_denoising(planes);
+    auto read = source_.get().read(range, rgb, active ? image::RowUse::verification : use);
+    if (!read || !active) {
+        return read;
+    }
+    auto ignored = report_.get();
+    auto& report = use == image::RowUse::output ? report_.get() : ignored;
+    return std::visit(
+        [&](const auto& value) -> core::Result<void> {
+            using Planes = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<Planes, NlmPlanes>) {
+                return apply_nlm(value, range, rgb, protection_, report);
+            } else {
+                return value.apply(range, rgb, protection_, report, cancellation_);
+            }
+        },
+        planes);
+}
+
 namespace {
 core::Result<void> quantize_block(std::span<const double> rgb, std::span<std::uint16_t> values) {
     for (std::uint32_t i = 0; i < values.size(); ++i) {
@@ -106,33 +139,43 @@ core::Result<void> quantize_source(image::LinearSource& source,
     return {};
 }
 } // namespace
-core::Result<DenoisingPlanes> prepare_denoising(image::LinearSource& source,
+core::Result<DenoisingPlanes> prepare_denoising(DenoisingInput source_input,
                                                 const app::ProcessRequest& request,
                                                 core::Budget& budget,
                                                 const core::Cancellation& cancellation,
                                                 methods::DenoisingReport& report) {
+    auto& source = source_input.source.get();
+    const auto protection = source_input.protection;
+    if (const auto* const tv = std::get_if<methods::Tvl1>(&request.denoising())) {
+        auto model =
+            methods::Tvl1Model::prepare(source, protection, *tv, {budget, cancellation, report});
+        if (!model) {
+            return std::unexpected(model.error());
+        }
+        return DenoisingPlanes{std::move(*model)};
+    }
     const auto* const method = std::get_if<methods::Nlm>(&request.denoising());
     if (method == nullptr) {
         report.complete = true;
         return DenoisingPlanes{};
     }
     report.requested = method->parameters();
-    report.native_h = methods::nlm_native_strength(*report.requested);
+    report.native_h = methods::nlm_native_strength(method->parameters());
+    const auto parameters = method->parameters();
     report.status = methods::DenoiseStatus::failed;
-    if (report.requested.value().blend == 0 || report.eligible_samples == 0) {
+    if (parameters.blend == 0 || report.eligible_samples == 0) {
         report.status = methods::DenoiseStatus::no_change;
-        report.reason = report.requested.value().blend == 0
-                            ? methods::DenoiseReason::zero_blend
-                            : methods::DenoiseReason::no_eligible_samples;
+        report.reason = parameters.blend == 0 ? methods::DenoiseReason::zero_blend
+                                              : methods::DenoiseReason::no_eligible_samples;
         report.complete = true;
         return DenoisingPlanes{};
     }
     const auto extent = source.extent();
-    if (report.requested->search > std::min(extent.width, extent.height)) {
+    if (parameters.search > std::min(extent.width, extent.height)) {
         return core::failure(core::ErrorCode::method_inapplicable,
                              "NLM search must fit the oriented image");
     }
-    DenoisingPlanes planes;
+    NlmPlanes planes;
     auto input = image::Plane<std::uint16_t>::allocate(budget, extent.width, extent.height);
     if (!input) {
         return std::unexpected(input.error());
@@ -153,7 +196,7 @@ core::Result<DenoisingPlanes> prepare_denoising(image::LinearSource& source,
     if (!run) {
         return std::unexpected(run.error());
     }
-    return planes;
+    return DenoisingPlanes{std::move(planes)};
 }
 core::Result<void> assess_denoising(DenoisedSource& source, core::Budget& budget,
                                     const core::Cancellation& cancellation,

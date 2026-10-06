@@ -102,10 +102,14 @@ void initialize_stages(const app::ProcessRequest& request,
         illumination.status = methods::IlluminationStatus::failed;
         illumination.requested = method->parameters();
     }
+    if (const auto* const method = std::get_if<methods::Tvl1>(&request.denoising())) {
+        denoising.status = methods::DenoiseStatus::failed;
+        denoising.requested = method->parameters();
+    }
     if (const auto* const method = std::get_if<methods::Nlm>(&request.denoising())) {
         denoising.status = methods::DenoiseStatus::failed;
         denoising.requested = method->parameters();
-        denoising.native_h = methods::nlm_native_strength(*denoising.requested);
+        denoising.native_h = methods::nlm_native_strength(method->parameters());
     }
 }
 struct Protection {
@@ -194,12 +198,14 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     denoising.protected_samples = illumination.protected_samples;
     IlluminatedSource entering{**converter, *prepared ? &**prepared : nullptr,
                                protection->mask.view().as_const(), illumination, cancellation};
-    auto planes = prepare_denoising(entering, request, budget, cancellation, denoising);
+    auto planes = prepare_denoising({entering, protection->mask.view().as_const()}, request, budget,
+                                    cancellation, denoising);
     if (!planes) {
         return std::unexpected(planes.error());
     }
-    DenoisedSource final_source{entering, *planes, protection->mask.view().as_const(), denoising};
-    if (!planes->input.empty()) {
+    DenoisedSource final_source{entering, *planes, protection->mask.view().as_const(), denoising,
+                                cancellation};
+    if (active_denoising(*planes)) {
         auto assessed = assess_denoising(final_source, budget, cancellation, denoising);
         if (!assessed) {
             return std::unexpected(assessed.error());
@@ -211,7 +217,7 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
         return std::unexpected(block.error());
     }
     ContinuousRows rows{final_source, (*converter)->descriptor(), std::move(*block),
-                        !planes->input.empty()};
+                        active_denoising(*planes)};
     auto published = publish_run({
         .output_directory = request.output_directory(),
         .artwork =

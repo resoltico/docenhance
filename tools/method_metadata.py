@@ -139,10 +139,9 @@ def render_catalog(active: list[dict[str, Any]]) -> str:
     call = f"std::to_array<ImplementedMethod>({{{descriptors}}});"
     line_width = 100
     if len(call) + 4 > line_width:
-        text += (
-            "inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>(\n"
-            f"    {{{descriptors}}});\n"
-        )
+        text += "inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({\n"
+        text += "".join(f"    {entry['selector']}_descriptor,\n" for entry in active)
+        text += "});\n"
     else:
         text += "inline constexpr auto reviewed_methods =\n    " + call + "\n"
     return text + "} // namespace docenhance::methods\n"

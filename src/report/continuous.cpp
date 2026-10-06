@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "continuous.hpp"
 
+#include "denoising.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/methods/denoising.hpp"
 #include "illumination.hpp"
 
 #include <nlohmann/json.hpp>
@@ -41,9 +41,7 @@ std::string continuous_text(const app::PublishedContinuous& value) {
         text += std::string(warning) + "\n";
     }
     text += illumination_text(value.illumination);
-    text += "Denoising: " + std::string(methods::status_name(value.denoising.status)) + " (" +
-            std::string(methods::reason_name(value.denoising.reason)) +
-            "); changed=" + std::to_string(value.denoising.changed_samples) + "\n";
+    text += denoising_text(value.denoising);
     return text;
 }
 } // namespace docenhance::report

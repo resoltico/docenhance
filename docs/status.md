@@ -1,7 +1,7 @@
 # Status
 
 The executable admits **static PNG and bounded 8-bit Huffman baseline/progressive JPEG, and bounded single-page TIFF/BigTIFF** into **continuous-tone PNG representation** with opt-in **I01 quantile
-log-surface illumination** or explicit **I02 morphological illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
+log-surface illumination** or explicit **I02 morphological illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising** or **D02 floating-point TV-L1**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
 It is not a complete restoration suite.
 
 ## Implemented product paths
@@ -12,15 +12,15 @@ profile interpretation, linear-light compositing, exact metadata orientation and
 output metadata. Output rows and metadata are independently verified before exclusive publication.
 JPEG admits gray/RGB/YCbCr through the same interpretation/I01 path; `bw` remains grayscale PNG only.
 TIFF admits the reviewed 1/8/16-bit sample, color, alpha and strip/tile domains through the same
-illumination/D01 pipeline; see [bounded TIFF admission](tiff-processing.md).
+illumination/denoising pipeline; see [bounded TIFF admission](tiff-processing.md).
 See [JPEG source admission](jpeg-processing.md) for complete coding, metadata, resource and failure rules.
 I01 can be selected explicitly or through its opt-in automatic predicates, with original-depth
 1/8-bit grayscale protection masks in oriented coordinates. Fitting, linear application and output
 verification share explicit resource/cancellation contracts; see [illumination](illumination.md).
 See [PNG processing](png-processing.md) for precise domains, limits and explicit assumptions.
 I02 is explicitly selected with `--illumination morph`; see [morphological illumination](morphological-illumination.md).
-D01 follows the selected illumination before final quantization; protection is exact and native execution occurs once.
-See [denoising](denoising.md) for numerical, resource, cancellation and record contracts.
+The selected denoiser follows illumination before final quantization; protection is exact and preparation executes once.
+See [NLM](denoising.md) and [TV-L1](tvl1-denoising.md) for numerical, resource, cancellation and record contracts.
 
 `--output-mode bw` activates B02/B03; default selection is Sauvola. Their existing stored-gray
 sample semantics and 1/2/4/8-bit nontransparent PNG input domain are unchanged, and broader input

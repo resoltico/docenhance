@@ -135,7 +135,7 @@ workload admission, so the added target must fit the configured campaign budget.
 The denoising harness invokes actual pinned CV_16U/L1 execution, compares global halos against a
 whole native call, checks correction identity and resource refunds. Isolated fuzz builds instrument
 OpenCV core/photo/imgproc alongside the codec archives; imported archive symbols establish actual
-ASan/UBSan and coverage presence. The required PR workload budget is 2100 seconds for the expanded
+ASan/UBSan and coverage presence. The required PR workload budget is 2400 seconds for the expanded
 complete target set. Native assembly remains outside the instrumentation claim.
 
 Archive sanitizer/coverage symbols establish their presence in the actual imported archives.
@@ -148,3 +148,7 @@ The `tiff_decode` harness feeds malformed classic/BigTIFF snapshots through prod
 strile and native codec admission with tighter byte/pixel limits and a finite charged budget.
 It checks decoded/source agreement and allocation refunds on acceptance and refusal. Independent
 8/16-bit fixtures test exact samples separately; see [TIFF processing](tiff-processing.md).
+
+The TV-L1 harness consumes dimensions and 16-bit sample selectors, compares simultaneous
+reference iterations with the production full-field dual/primal passes, and checks finite bounds.
+Its additional execution wave retains the full per-target PR budget and watchdog allowances.

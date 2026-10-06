@@ -55,14 +55,17 @@
       "id": "D02",
       "name": "Floating-point TV-L1",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--denoise",
         "--denoise-blend",
         "--tv-lambda",
         "--tv-iterations",
-        "--tv-tolerance"
-      ]
+        "--tv-tolerance",
+        "--protect-mask"
+      ],
+      "selector": "tvl1",
+      "family": "denoising"
     },
     {
       "id": "R01",

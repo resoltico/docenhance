@@ -214,10 +214,10 @@ original document.
 
 ## Source observations and format compatibility
 
-Current native output uses record version 5. It requires closed source decoding observations,
+Current native output uses record version 6. It requires closed source decoding observations,
 a denoising request and complete execution report, alongside verified conversion and output facts.
 The reader accepts only this format; obsolete versions and unknown fields are refused. No backward
-compatibility reader or migration exists. The command response uses schema version 5.
+compatibility reader or migration exists. The command response uses schema version 6.
 
 D01 observations include typed settings, native float strength, 16-bit/L1 policy, global reflection,
 tile size, eligible/protected/evaluated/corrected/changed pixels, completed native calls and reserved/

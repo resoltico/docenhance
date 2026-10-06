@@ -59,6 +59,9 @@ struct Invocation {
     std::optional<std::string> nlm_h = std::nullopt;
     std::optional<std::string> nlm_patch = std::nullopt;
     std::optional<std::string> nlm_search = std::nullopt;
+    std::optional<std::string> tv_lambda = std::nullopt;
+    std::optional<std::string> tv_iterations = std::nullopt;
+    std::optional<std::string> tv_tolerance = std::nullopt;
     std::optional<std::string> protect_mask = std::nullopt;
     std::optional<std::string> binarize = std::nullopt;
     std::optional<std::string> fixed_threshold = std::nullopt;

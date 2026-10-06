@@ -1,7 +1,7 @@
 # Bounded luminance denoising
 
 This is the reviewed D01 implementation contract. Capability admission requires the implementation
-and executable evidence below. D02, presets, binary processing and configurable operation graphs
+and executable evidence below. Presets, binary processing and configurable operation graphs
 are outside this operation; no fallback method is substituted.
 
 ## Admission and mathematics
@@ -13,7 +13,7 @@ default 0.5. Active denoising requires search to fit the smaller oriented dimens
 and entirely protected inputs bypass native execution after parameter, source and mask validation.
 Continuous PNG/JPEG/TIFF preserve/gray are supported; any denoise option on bw is rejected.
 
-The entering samples are opaque oriented linear sRGB doubles, after the frozen I01 operation.
+The entering samples are opaque oriented linear sRGB doubles, after the selected frozen illumination operation.
 For each RGB triplet C, Y = 0.2126 R + 0.7152 G + 0.0722 B and f = sRGB_encode(Y), using
 `image::numeric`'s existing transfer definitions. Quantize Q = floor(65535 f + 0.5).
 The locked OpenCV 5.0.0 single-channel CV_16U fastNlMeansDenoising vector-strength overload,
@@ -30,20 +30,20 @@ chromatic denoising, semantic mark recognition, JPEG deblocking or lost-detail r
 
 ## Execution and ownership
 
-The host composes interpreted linear source -> immutable I01 view -> prepared D01 view -> one
+The host composes interpreted linear source -> immutable illumination view -> prepared D01 view -> one
 shared final quantizer. Numeric method types and correction kernels remain native-free. A narrow
 `de_denoise` adapter owns OpenCV calls, reservations and exception containment, using only core,
 image and methods. The host gains that one edge in spec/architecture.json. Native types never
 escape adapter-private files; CLI, application, records and numeric kernels acquire no native effects.
 
 D01 preparation creates budgeted Q and Qd planes once. Preparation traverses the entering view
-once, completing I01 application observations before any native tile starts. Retained decoded
-source, converter and immutable I01 model can replay the exact entering samples for reconstruction;
+once, completing illumination application observations before any native tile starts. Retained decoded
+source, converter and immutable illumination model can replay the exact entering samples for reconstruction;
 replay never refits, requantizes a saved image, reruns NLM or changes stage counters.
 The denoising result remains immutable for encoding and independent output verification.
 A separate reconstruction traversal establishes D01 working-space effects and completion before
 publication; equal final encoded bytes do not erase a genuine working-space modification.
-No-op denoising must still complete preceding I01 during the normal output traversal.
+No-op denoising must still complete preceding illumination during the normal output traversal.
 
 Stage reports distinguish disabled, no_change, applied and failed, with complete separate from
 publication. Failure preserves completed earlier stages, partial counts and the actual error.
@@ -84,9 +84,9 @@ The existing final precommit cutoff and truthful publication reconciliation rema
 
 ## Records and verification
 
-New production records use version 5, with a closed denoising request and execution report; new
-responses use schema version 5. Only the current record format is accepted; obsolete formats are refused, with no migration.
-Version 4 requires
+New production records use version 6, with a closed denoising request and execution report; new
+responses use schema version 6. Only the current record format is accepted; obsolete formats are refused, with no migration.
+The current format requires
 source decoding, full output verification and matching complete stage observations. Binary records
 carry explicit off/disabled D01 only. Writer, complete reader, generated schemas and public response
 share one typed serialization. Method identity is D01 version 1; I01/B02/B03 versions are unchanged.
@@ -145,3 +145,5 @@ bind the audited denoising/parallel behavior as well as the Mat ownership overri
 See [resource observations](denoising-resource-observations.md) for measured payloads, RSS and
 runtime. NLM's noise family assumes approximately additive white Gaussian noise in the perceptual
 scalar plane; admission does not certify that a source meets that model.
+
+D02 is the explicit floating-point alternative; see [TV-L1 design and contracts](tvl1-denoising.md).

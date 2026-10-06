@@ -119,7 +119,7 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
         "matrix.engine == 'afl'",
     )
     seconds = '"$SECONDS_PER_TARGET"' if nightly else "60"
-    budget = "19800" if nightly else "2100"
+    budget = "19800" if nightly else "2400"
     required_step(
         job,
         f"python tools/run_fuzz_campaign.py --plan --seconds {seconds} "

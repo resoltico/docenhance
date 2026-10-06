@@ -146,6 +146,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "I01", "method_version": 1},
             {"id": "I02", "method_version": 1},
             {"id": "D01", "method_version": 1},
+            {"id": "D02", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
         ],
@@ -162,6 +163,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "I01", "method_version": 1},
             {"id": "I02", "method_version": 1},
             {"id": "D01", "method_version": 1},
+            {"id": "D02", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
         ],
@@ -171,7 +173,7 @@ def discovery_cases(exe: Path) -> None:
         text = call(exe, [*([command] if command else []), "--help"])
         for method in version["methods"]:
             expect(method["id"] in text, "help includes each implemented method")
-        expect("D02" not in text, "help excludes planned methods")
+        expect("R01" not in text, "help excludes planned methods")
         expect("png: preserve, gray, bw" in text, "help reports PNG modes")
         expect("jpeg: preserve, gray\n" in text, "help reports scoped JPEG modes")
         response = call_json(exe, [*([command] if command else []), "--help", "--json"])
@@ -219,7 +221,7 @@ def unavailable_cases(exe: Path) -> None:
         args = ["version", os.fsdecode(b"\x80"), "--json"]
         response = call_json(exe, args, EXIT_INVOCATION)
         expect(response["error"]["code"] == "E_ARGUMENT", "non-UTF-8 argument is an argument error")
-    call(exe, ["methods", "D02"], EXIT_PROCESSING)
+    call(exe, ["methods", "R01"], EXIT_PROCESSING)
 
 
 def processing_case(exe: Path) -> None:

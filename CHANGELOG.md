@@ -6,13 +6,15 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Added
 
+- Explicit D02 TV-L1 denoising (`--denoise tvl1`) after illumination, using full-field float64 primal-dual updates, exact gradient/adjoint boundaries, output protection and perceptual blending. Bounded resources refuse approximation; iteration caps emit W_TV_ITERATION_LIMIT rather than a false tolerance claim. See [TV-L1](docs/tvl1-denoising.md).
+
 - Explicit I02 morphological illumination (`--illumination morph`): bounded float64 grayscale closing and Gaussian smoothing, protected analysis fill, shared luminance transport and complete field/resource diagnostics. Radius is `auto` or 1..256; automatic illumination remains I01 only. See [I02 contract](docs/morphological-illumination.md).
 
 - Bounded single-page TIFF/BigTIFF input for preserve/gray PNG bundles, including opt-in I01 illumination and D01 denoising. Reviewed compression, unsigned 1/8/16-bit samples, strips/tiles, separate planes, palette, alpha and orientation use the existing verified publication pipeline. Multipage input and unsupported coding are refused. Allocation accounting is not an RSS limit; see [TIFF admission](docs/tiff-processing.md).
 
 ### Changed
 
-- **Breaking (machine contracts):** command responses and processing records use version 5 with closed TIFF source observations and method-specific I01/I02 illumination requests and diagnostics. Update schema consumers and C++ visitors for `image::TiffSource` and `image::TiffDeclarations`, and the illumination parameter/model variants; obsolete records are refused without a compatibility reader or migration.
+- **Breaking (machine contracts):** command responses and processing records use version 6 with closed TIFF source observations and method-specific I01/I02 illumination and D01/D02 denoising requests and diagnostics. Update schema consumers and C++ visitors for `image::TiffSource` and `image::TiffDeclarations`, and the illumination and denoising parameter/model variants; obsolete records are refused without a compatibility reader or migration.
 
 - **Breaking (C++ values):** decoded/output sample depth and orientation use `image::SampleDepth` and `image::Orientation`. Construct wire values through their validating factories and use explicit bit/code accessors. The obsolete `ErrorCode::unavailable` name is replaced by `not_implemented`; the unused exit-6 enumerator is removed.
 - **Breaking (C++ interfaces):** publication, immutable bundle snapshots and PNG artifact observations have separate headers. Replace `io/bundle.hpp` includes with the relevant `io/publication.hpp`, `io/bundle_snapshot.hpp` or `io/png_artifact.hpp`; filename helpers are in `io/paths.hpp`, native inventory/snapshot bounds in `io/artifact_limits.hpp`
