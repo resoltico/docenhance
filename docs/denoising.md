@@ -84,8 +84,8 @@ The existing final precommit cutoff and truthful publication reconciliation rema
 
 ## Records and verification
 
-New production records use version 4, with a closed denoising request and execution report; new
-responses use schema version 4. Only the current record format is accepted; obsolete formats are refused, with no migration.
+New production records use version 5, with a closed denoising request and execution report; new
+responses use schema version 5. Only the current record format is accepted; obsolete formats are refused, with no migration.
 Version 4 requires
 source decoding, full output verification and matching complete stage observations. Binary records
 carry explicit off/disabled D01 only. Writer, complete reader, generated schemas and public response

@@ -20,6 +20,7 @@
 #include "docenhance/io/source.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "linear_rows.hpp"
 #include "run_publication.hpp"
@@ -62,9 +63,19 @@ core::Result<void> disabled_observations(ContinuousRun run,
 // through the illumination model. Publication happens once, afterwards, for the whole bundle.
 // The model outlives the rows that reference it, so both belong to the caller: the rows are read
 // during publication, long after this function returns.
-core::Result<std::optional<methods::SurfaceModel>>
+core::Result<std::optional<IlluminationModel>>
 prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
     const auto* const surface = std::get_if<methods::Surface>(&run.request.get().illumination());
+    if (const auto* const morphology =
+            std::get_if<methods::Morphology>(&run.request.get().illumination())) {
+        auto model = methods::MorphologyModel::prepare({run.converter.get(), protection},
+                                                       *morphology, run.budget.get(),
+                                                       run.cancellation.get(), run.report.get());
+        if (!model) {
+            return std::unexpected(model.error());
+        }
+        return model->active() ? std::optional<IlluminationModel>{std::move(*model)} : std::nullopt;
+    }
     if (surface == nullptr) {
         auto observed = disabled_observations(run, protection);
         if (!observed) {
@@ -78,13 +89,17 @@ prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
     if (!model) {
         return std::unexpected(model.error());
     }
-    return model->active() ? std::optional{std::move(*model)} : std::nullopt;
+    return model->active() ? std::optional<IlluminationModel>{std::move(*model)} : std::nullopt;
 }
 void initialize_stages(const app::ProcessRequest& request,
                        methods::IlluminationReport& illumination,
                        methods::DenoisingReport& denoising) {
     if (const auto* const method = std::get_if<methods::Surface>(&request.illumination())) {
-        illumination.status = methods::SurfaceStatus::failed;
+        illumination.status = methods::IlluminationStatus::failed;
+        illumination.requested = method->parameters();
+    }
+    if (const auto* const method = std::get_if<methods::Morphology>(&request.illumination())) {
+        illumination.status = methods::IlluminationStatus::failed;
         illumination.requested = method->parameters();
     }
     if (const auto* const method = std::get_if<methods::Nlm>(&request.denoising())) {

@@ -11,7 +11,10 @@ scanline filter) followed by sample indices, constructing valid inputs without t
 encoder. Record inputs start with a selector: an even byte is followed by the raw JSON document;
 an odd byte selects synthetic-record construction and mutation. Continuous-tone seeds include
 precision and orientation claims; obsolete record versions remain rejection inputs.
-The CLI harness has no host/filesystem authority.
+The CLI harness has no host/filesystem authority. `morphology` consumes three selector bytes
+(width/height 1..8 and radius 1..4), followed by luminance bytes. It compares the complete
+I02 field against direct two-dimensional square extrema and Gaussian neighborhoods, including
+degenerate axes, and checks ownership refunds.
 
 `corpus/<target>/` holds reviewed seeds; `regressions/<target>/` holds reproducers.
 Every input is replayed in normal builds. Campaign preparation copies distinct contents by hash

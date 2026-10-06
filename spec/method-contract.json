@@ -23,14 +23,17 @@
       "id": "I02",
       "name": "Morphological illumination",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--illumination",
         "--background-strength",
         "--background-max-gain",
         "--background-target",
-        "--background-radius"
-      ]
+        "--background-radius",
+        "--protect-mask"
+      ],
+      "selector": "morph",
+      "family": "illumination"
     },
     {
       "id": "D01",

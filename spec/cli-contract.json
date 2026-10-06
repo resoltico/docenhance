@@ -164,9 +164,9 @@
       "metavar": "MODE",
       "scope": "P",
       "group": "Illumination arguments",
-      "domain": "off; off|surface|auto",
-      "methods": "I01",
-      "description": "Select I01 for continuous preserve/gray output only. Off is the default; auto may skip for explicitly reported applicability predicates.",
+      "domain": "off; off|surface|auto|morph",
+      "methods": "I01,I02",
+      "description": "Select explicit I01 surface or I02 morphological illumination for continuous preserve/gray. Auto remains I01 only.",
       "binding": "illumination"
     },
     {
@@ -175,8 +175,8 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "1; finite [0,1]",
-      "methods": "I01",
-      "description": "Exponent applied to the I01 gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation.",
+      "methods": "I01,I02",
+      "description": "Exponent applied to the illumination gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation.",
       "binding": "background_strength"
     },
     {
@@ -185,8 +185,8 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "2; finite [1,4]",
-      "methods": "I01",
-      "description": "Maximum I01 multiplicative gain. One is an exact photometric no-op.",
+      "methods": "I01,I02",
+      "description": "Maximum illumination multiplicative gain. One is an exact photometric no-op.",
       "binding": "background_max_gain"
     },
     {
@@ -195,7 +195,7 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "source; source or finite [0.1,1]",
-      "methods": "I01",
+      "methods": "I01,I02",
       "description": "Linear-light target. Source uses the fitted background nearest-rank 90th percentile, not forced paper white.",
       "binding": "background_target"
     },
@@ -230,12 +230,22 @@
       "binding": "background_smooth"
     },
     {
+      "name": "--background-radius",
+      "metavar": "RADIUS",
+      "scope": "P",
+      "group": "Illumination arguments",
+      "domain": "auto; auto or integer [1,256]",
+      "methods": "I02",
+      "description": "Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and clamps to [8,128]; Gaussian sigma=max(0.5,radius/2).",
+      "binding": "background_radius"
+    },
+    {
       "name": "--protect-mask",
       "metavar": "PATH",
       "scope": "P",
       "group": "Protection arguments",
       "domain": "Absent",
-      "methods": "I01,D01",
+      "methods": "I01,I02,D01",
       "description": "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.",
       "binding": "protect_mask"
     },

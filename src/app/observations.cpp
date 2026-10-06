@@ -16,6 +16,7 @@
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/morphology.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -47,9 +48,17 @@ bool publication(std::string_view output, std::string_view run, const core::Cont
 }
 bool illumination_request(const methods::IlluminationReport& report,
                           const ProcessRequest& request) {
-    const auto* const selected = std::get_if<methods::Surface>(&request.illumination());
-    return selected == nullptr ? !report.requested
-                               : report.requested && *report.requested == selected->parameters();
+    return std::visit(
+        [&](const auto& selected) {
+            using Method = std::decay_t<decltype(selected)>;
+            if constexpr (std::is_same_v<Method, methods::IlluminationOff>) {
+                return !report.requested;
+            } else {
+                return report.requested &&
+                       *report.requested == methods::IlluminationParameters{selected.parameters()};
+            }
+        },
+        request.illumination());
 }
 bool denoising_request(const methods::DenoisingReport& report, const ProcessRequest& request) {
     const auto* const selected = std::get_if<methods::Nlm>(&request.denoising());
@@ -92,6 +101,19 @@ bool finite_illumination(const methods::IlluminationReport& report) {
     if (report.background_reference && !std::isfinite(*report.background_reference)) {
         return false;
     }
+    if (report.morphology) {
+        const auto& m = *report.morphology;
+        if (!std::isfinite(m.sigma) || (m.analysis_fill && !std::isfinite(*m.analysis_fill)) ||
+            (m.target && !std::isfinite(*m.target)) || !std::isfinite(m.background_q10) ||
+            !std::isfinite(m.background_q50) || !std::isfinite(m.background_q90) ||
+            !std::isfinite(m.background_min) || !std::isfinite(m.background_max) ||
+            m.radius < methods::Morphology::min_radius ||
+            m.radius > methods::Morphology::max_radius ||
+            m.field_bytes > core::continuous_processing_budget ||
+            m.preparation_charge_peak > core::continuous_processing_budget) {
+            return false;
+        }
+    }
     if (!report.measurements) {
         return true;
     }
@@ -101,21 +123,26 @@ bool finite_illumination(const methods::IlluminationReport& report) {
            std::isfinite(m.luminance_q90) && std::isfinite(m.variation) &&
            std::isfinite(m.paper_fraction) && std::isfinite(m.dark_fraction);
 }
+bool illumination_shape(const methods::IlluminationReport& r) {
+    return r.requested && std::holds_alternative<methods::MorphologyParameters>(*r.requested)
+               ? methods::valid_morphology_observations(r)
+               : !r.morphology;
+}
 bool partial_illumination(const methods::IlluminationReport& r, const ProcessRequest& request) {
-    return illumination_request(r, request) && finite_illumination(r) &&
+    return illumination_request(r, request) && finite_illumination(r) && illumination_shape(r) &&
            static_cast<unsigned>(r.status) <=
-               static_cast<unsigned>(methods::SurfaceStatus::failed) &&
+               static_cast<unsigned>(methods::IlluminationStatus::failed) &&
            static_cast<unsigned>(r.reason) <=
-               static_cast<unsigned>(methods::SurfaceReason::processing_failure) &&
-           (!r.complete || r.status != methods::SurfaceStatus::failed) &&
-           (r.complete || !r.requested || r.status == methods::SurfaceStatus::failed) &&
+               static_cast<unsigned>(methods::IlluminationReason::processing_failure) &&
+           (!r.complete || r.status != methods::IlluminationStatus::failed) &&
+           (r.complete || !r.requested || r.status == methods::IlluminationStatus::failed) &&
            r.eligible_samples <= image::source_pixels_max &&
            r.protected_samples <= image::source_pixels_max - r.eligible_samples &&
            r.evaluated_samples <= r.eligible_samples && r.changed_samples <= r.evaluated_samples &&
            r.gain_capped_samples <= r.evaluated_samples &&
            r.saturated_samples <= r.evaluated_samples && std::isfinite(r.min_gain) &&
            std::isfinite(r.max_gain) && r.min_gain >= 1 && r.max_gain >= r.min_gain &&
-           r.max_gain <= methods::surface_gain_limit;
+           r.max_gain <= methods::illumination_gain_limit;
 }
 bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& request) {
     if (!denoising_request(r, request) || r.eligible_samples > image::source_pixels_max ||

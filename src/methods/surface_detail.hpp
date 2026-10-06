@@ -39,7 +39,7 @@ struct MeasurementContext {
     std::reference_wrapper<core::Budget> budget;
     std::reference_wrapper<const core::Cancellation> cancellation;
 };
-[[nodiscard]] core::Result<void> measure_cells(SurfaceInput input, const SurfaceGrid& grid,
+[[nodiscard]] core::Result<void> measure_cells(IlluminationInput input, const SurfaceGrid& grid,
                                                image::PlaneView<double> measurements,
                                                MeasurementContext context);
 struct SurfaceSystem {
@@ -88,7 +88,7 @@ struct SolverContext {
                                                std::span<double> logarithms, SolverReport& report,
                                                SolverContext context);
 [[nodiscard]] core::Result<SurfaceMeasurements>
-measure_surface(SurfaceInput input, const SurfaceModel& model, core::Budget& budget,
+measure_surface(IlluminationInput input, const SurfaceModel& model, core::Budget& budget,
                 const core::Cancellation& cancellation);
 // Independent predicates, exposed to unit tests so each threshold is challenged at its boundary.
 [[nodiscard]] bool surface_eligible(IlluminationReport& report);

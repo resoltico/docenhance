@@ -19,7 +19,7 @@ from test_cli import call_json, expect
 from test_jpeg import oriented_fixture
 from tiff_fixtures import Field, TiffFixture, container
 
-WIRE_VERSION = 4
+WIRE_VERSION = 5
 BYTE_DEPTH = 8
 WORD_DEPTH = 16
 FLATTENED_PIXELS = 3
@@ -264,25 +264,26 @@ def metadata_and_pipeline(exe: Path, root: Path) -> None:
         tuple((150 + x * 70 // (size - 1),) for _ in range(size) for x in range(size)),
         depth=8,
     )
-    _, response, _ = process(
-        exe,
-        root,
-        lit.encoded(),
-        "--illumination",
-        "surface",
-        "--background-cell",
-        "8",
-        "--denoise",
-        "nlm",
-        "--nlm-patch",
-        "3",
-        "--nlm-search",
-        "7",
-    )
-    expect(
-        response["illumination"]["complete"] and response["denoising"]["complete"],
-        "TIFF composes real I01 and D01 with verified PNG publication",
-    )
+    for selection in ("surface", "morph"):
+        _, response, _ = process(
+            exe,
+            root,
+            lit.encoded(),
+            "--illumination",
+            selection,
+            "--background-cell" if selection == "surface" else "--background-radius",
+            "8",
+            "--denoise",
+            "nlm",
+            "--nlm-patch",
+            "3",
+            "--nlm-search",
+            "7",
+        )
+        expect(
+            response["illumination"]["complete"] and response["denoising"]["complete"],
+            "TIFF composes selected illumination and D01 with verified PNG publication",
+        )
     refused(exe, root, source.encoded(), "E_NOT_IMPLEMENTED", "--output-mode", "bw")
 
 

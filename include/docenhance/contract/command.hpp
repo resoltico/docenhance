@@ -50,6 +50,7 @@ struct Invocation {
     std::optional<std::string> background_strength = std::nullopt;
     std::optional<std::string> background_max_gain = std::nullopt;
     std::optional<std::string> background_target = std::nullopt;
+    std::optional<std::string> background_radius = std::nullopt;
     std::optional<std::string> background_cell = std::nullopt;
     std::optional<std::string> background_quantile = std::nullopt;
     std::optional<std::string> background_smooth = std::nullopt;

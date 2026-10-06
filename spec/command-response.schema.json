@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 4
+      "const": 5
     },
     "command": {
       "enum": [
@@ -880,7 +880,8 @@
         "measurements",
         "auto_predicates",
         "application",
-        "complete"
+        "complete",
+        "morphology"
       ],
       "additionalProperties": false,
       "properties": {
@@ -919,69 +920,7 @@
         "requested": {
           "anyOf": [
             {
-              "type": "object",
-              "required": [
-                "mode",
-                "strength",
-                "max_gain",
-                "target",
-                "cell",
-                "quantile",
-                "smooth"
-              ],
-              "additionalProperties": false,
-              "properties": {
-                "mode": {
-                  "enum": [
-                    "surface",
-                    "auto"
-                  ]
-                },
-                "strength": {
-                  "type": "number",
-                  "minimum": 0,
-                  "maximum": 1
-                },
-                "max_gain": {
-                  "type": "number",
-                  "minimum": 1,
-                  "maximum": 4
-                },
-                "target": {
-                  "anyOf": [
-                    {
-                      "const": "source"
-                    },
-                    {
-                      "type": "number",
-                      "minimum": 0.1,
-                      "maximum": 1
-                    }
-                  ]
-                },
-                "cell": {
-                  "anyOf": [
-                    {
-                      "const": "auto"
-                    },
-                    {
-                      "type": "integer",
-                      "minimum": 8,
-                      "maximum": 512
-                    }
-                  ]
-                },
-                "quantile": {
-                  "type": "number",
-                  "minimum": 0.75,
-                  "maximum": 0.99
-                },
-                "smooth": {
-                  "type": "number",
-                  "minimum": 0.1,
-                  "maximum": 20
-                }
-              }
+              "$ref": "#/$defs/illumination_request"
             },
             {
               "type": "null"
@@ -1293,6 +1232,122 @@
         },
         "complete": {
           "type": "boolean"
+        },
+        "morphology": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": [
+                "radius",
+                "sigma",
+                "gaussian_radius",
+                "stride",
+                "count",
+                "fallback",
+                "field_bytes",
+                "preparation_charge_peak",
+                "analysis_fill",
+                "target",
+                "background_q10",
+                "background_q50",
+                "background_q90",
+                "background_min",
+                "background_max"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "radius": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 256
+                },
+                "sigma": {
+                  "type": "number",
+                  "minimum": 0.5,
+                  "maximum": 128
+                },
+                "gaussian_radius": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 384
+                },
+                "stride": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1048576
+                },
+                "fallback": {
+                  "type": "boolean"
+                },
+                "field_bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1073741824
+                },
+                "preparation_charge_peak": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 1073741824
+                },
+                "analysis_fill": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "target": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 1
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "background_q10": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "background_q50": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "background_q90": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "background_min": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "background_max": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "allOf": [
@@ -1323,69 +1378,7 @@
                 "$ref": "#/$defs/illumination_method"
               },
               "requested": {
-                "type": "object",
-                "required": [
-                  "mode",
-                  "strength",
-                  "max_gain",
-                  "target",
-                  "cell",
-                  "quantile",
-                  "smooth"
-                ],
-                "additionalProperties": false,
-                "properties": {
-                  "mode": {
-                    "enum": [
-                      "surface",
-                      "auto"
-                    ]
-                  },
-                  "strength": {
-                    "type": "number",
-                    "minimum": 0,
-                    "maximum": 1
-                  },
-                  "max_gain": {
-                    "type": "number",
-                    "minimum": 1,
-                    "maximum": 4
-                  },
-                  "target": {
-                    "anyOf": [
-                      {
-                        "const": "source"
-                      },
-                      {
-                        "type": "number",
-                        "minimum": 0.1,
-                        "maximum": 1
-                      }
-                    ]
-                  },
-                  "cell": {
-                    "anyOf": [
-                      {
-                        "const": "auto"
-                      },
-                      {
-                        "type": "integer",
-                        "minimum": 8,
-                        "maximum": 512
-                      }
-                    ]
-                  },
-                  "quantile": {
-                    "type": "number",
-                    "minimum": 0.75,
-                    "maximum": 0.99
-                  },
-                  "smooth": {
-                    "type": "number",
-                    "minimum": 0.1,
-                    "maximum": 20
-                  }
-                }
+                "$ref": "#/$defs/illumination_request"
               }
             }
           }
@@ -1410,6 +1403,123 @@
                     "minimum": 1
                   }
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requested": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "const": "morph"
+                  }
+                },
+                "required": [
+                  "mode"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "method": {
+                "properties": {
+                  "id": {
+                    "const": "I02"
+                  }
+                }
+              },
+              "status": {
+                "enum": [
+                  "no_change",
+                  "applied",
+                  "failed"
+                ]
+              },
+              "solver": {
+                "type": "null"
+              },
+              "measurements": {
+                "type": "null"
+              },
+              "resolved_cell": {
+                "type": "null"
+              },
+              "background_reference": {
+                "type": "null"
+              },
+              "cells": {
+                "const": 0
+              },
+              "measured_cells": {
+                "const": 0
+              },
+              "dark_cells": {
+                "const": 0
+              },
+              "auto_predicates": {
+                "properties": {
+                  "coverage": {
+                    "type": "null"
+                  },
+                  "bright_quantile": {
+                    "type": "null"
+                  },
+                  "median_background": {
+                    "type": "null"
+                  },
+                  "background_variation": {
+                    "type": "null"
+                  },
+                  "paper_fraction": {
+                    "type": "null"
+                  },
+                  "dark_fraction": {
+                    "type": "null"
+                  }
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {
+                    "complete": {
+                      "const": true
+                    }
+                  }
+                },
+                "then": {
+                  "properties": {
+                    "morphology": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "properties": {
+              "morphology": {
+                "type": "null"
+              },
+              "method": {
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "properties": {
+                      "id": {
+                        "const": "I01"
+                      }
+                    }
+                  }
+                ]
               }
             }
           }
@@ -2029,6 +2139,125 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 4294967295
+            }
+          }
+        }
+      ]
+    },
+    "illumination_request": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "mode",
+            "strength",
+            "max_gain",
+            "target",
+            "cell",
+            "quantile",
+            "smooth"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "enum": [
+                "surface",
+                "auto"
+              ]
+            },
+            "strength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "max_gain": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "target": {
+              "anyOf": [
+                {
+                  "const": "source"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 1
+                }
+              ]
+            },
+            "cell": {
+              "anyOf": [
+                {
+                  "const": "auto"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 8,
+                  "maximum": 512
+                }
+              ]
+            },
+            "quantile": {
+              "type": "number",
+              "minimum": 0.75,
+              "maximum": 0.99
+            },
+            "smooth": {
+              "type": "number",
+              "minimum": 0.1,
+              "maximum": 20
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "mode",
+            "strength",
+            "max_gain",
+            "target",
+            "radius"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "mode": {
+              "const": "morph"
+            },
+            "strength": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "max_gain": {
+              "type": "number",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "target": {
+              "anyOf": [
+                {
+                  "const": "source"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0.1,
+                  "maximum": 1
+                }
+              ]
+            },
+            "radius": {
+              "anyOf": [
+                {
+                  "const": "auto"
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 256
+                }
+              ]
             }
           }
         }

@@ -161,6 +161,15 @@
         "de_io"
       ],
       "max_len": 65536
+    },
+    "morphology": {
+      "source": "morphology.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_methods"
+      ],
+      "max_len": 67
     }
   }
 }

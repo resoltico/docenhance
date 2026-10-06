@@ -44,7 +44,7 @@ bool observations_agree(const DeclaredBundle& d) {
                o.shape.depth == image::SampleDepth::byte() && !o.profile_embedded && !o.resolution;
     }
     if (!d.conversion || !o.profile_embedded || !r.complete ||
-        r.status == methods::SurfaceStatus::failed) {
+        r.status == methods::IlluminationStatus::failed) {
         return false;
     }
     const auto& c = *d.conversion;

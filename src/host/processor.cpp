@@ -117,10 +117,10 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
                              {.cancellation = cancellation, .context = context}, report, denoising);
     if (!result) {
         if (report.requested && !report.complete) {
-            report.status = methods::SurfaceStatus::failed;
-            if (report.reason == methods::SurfaceReason::none ||
-                report.reason == methods::SurfaceReason::no_effect) {
-                report.reason = methods::SurfaceReason::processing_failure;
+            report.status = methods::IlluminationStatus::failed;
+            if (report.reason == methods::IlluminationReason::none ||
+                report.reason == methods::IlluminationReason::no_effect) {
+                report.reason = methods::IlluminationReason::processing_failure;
             }
         }
         if (denoising.requested && !denoising.complete) {

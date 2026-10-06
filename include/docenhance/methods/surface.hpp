@@ -26,19 +26,10 @@ struct SurfaceGrid {
 [[nodiscard]] core::Result<SurfaceGrid> surface_grid(image::Extent extent, const Surface& method);
 inline constexpr std::uint32_t surface_cell_limit = 65536;
 inline constexpr std::uint32_t surface_sample_limit = 1048576;
-inline constexpr double surface_floor = 0.02;
-// Mask is already in oriented coordinates; an empty view means no protected samples.
-struct SurfaceInput {
-    std::reference_wrapper<image::LinearSource> source;
-    image::PlaneView<const std::uint8_t> protection;
-
-    SurfaceInput(image::LinearSource& linear, image::PlaneView<const std::uint8_t> mask) noexcept
-        : source(linear), protection(mask) {}
-};
 class SurfaceModel {
   public:
     [[nodiscard]] static core::Result<SurfaceModel>
-    prepare(SurfaceInput input, const Surface& method, core::Budget& budget,
+    prepare(IlluminationInput input, const Surface& method, core::Budget& budget,
             const core::Cancellation& cancellation, IlluminationReport& report);
     SurfaceModel(const SurfaceModel&) = delete;
     SurfaceModel& operator=(const SurfaceModel&) = delete;

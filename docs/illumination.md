@@ -16,7 +16,7 @@ docenhance process input.png --out-dir result --illumination auto --protect-mask
 `--illumination off` is the default. `surface` attempts I01 explicitly. `auto` applies the same
 method only after the predicates below pass. Both work with continuous `preserve` or `gray` output.
 All illumination/protection options are rejected with `bw`; there is no implicit change to binary
-sample meaning. No I02 fallback or automatic preset is introduced.
+sample meaning. Explicit I02 is a separate alternative; see [morphological illumination](morphological-illumination.md). Auto remains I01 only.
 
 | Option | Default | Domain |
 |---|---|---|

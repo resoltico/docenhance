@@ -116,27 +116,27 @@ Human-readable alias of `version`.
 
 ## `--illumination MODE`
 
-**Scope:** P. **Domain/default:** off; off|surface|auto.
+**Scope:** P. **Domain/default:** off; off|surface|auto|morph.
 
-Select I01 for continuous preserve/gray output only. Off is the default; auto may skip for explicitly reported applicability predicates.
+Select explicit I01 surface or I02 morphological illumination for continuous preserve/gray. Auto remains I01 only.
 
-**Applicable methods:** I01.
+**Applicable methods:** I01,I02.
 
 ## `--background-strength A`
 
 **Scope:** P. **Domain/default:** 1; finite [0,1].
 
-Exponent applied to the I01 gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation.
+Exponent applied to the illumination gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation.
 
-**Applicable methods:** I01.
+**Applicable methods:** I01,I02.
 
 ## `--background-max-gain G`
 
 **Scope:** P. **Domain/default:** 2; finite [1,4].
 
-Maximum I01 multiplicative gain. One is an exact photometric no-op.
+Maximum illumination multiplicative gain. One is an exact photometric no-op.
 
-**Applicable methods:** I01.
+**Applicable methods:** I01,I02.
 
 ## `--background-target TARGET`
 
@@ -144,7 +144,7 @@ Maximum I01 multiplicative gain. One is an exact photometric no-op.
 
 Linear-light target. Source uses the fitted background nearest-rank 90th percentile, not forced paper white.
 
-**Applicable methods:** I01.
+**Applicable methods:** I01,I02.
 
 ## `--background-cell SIZE`
 
@@ -170,13 +170,21 @@ Positive grid-Laplacian weight for fitting the logarithmic background.
 
 **Applicable methods:** I01.
 
+## `--background-radius RADIUS`
+
+**Scope:** P. **Domain/default:** auto; auto or integer [1,256].
+
+Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and clamps to [8,128]; Gaussian sigma=max(0.5,radius/2).
+
+**Applicable methods:** I02.
+
 ## `--protect-mask PATH`
 
 **Scope:** P. **Domain/default:** Absent.
 
 1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
 
-**Applicable methods:** I01,D01.
+**Applicable methods:** I01,I02,D01.
 
 ## `--denoise METHOD`
 

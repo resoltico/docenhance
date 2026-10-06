@@ -15,6 +15,18 @@ std::string illumination_text(const methods::IlluminationReport& r) {
         text += "I01 solver: iterations=" + std::to_string(r.solver->iterations) +
                 "; residual=" + std::to_string(r.solver->residual) + "\n";
     }
+    if (r.morphology) {
+        const auto& m = r.morphology.value();
+        text += "I02 field: radius=" + std::to_string(m.radius) +
+                "; sigma=" + std::to_string(m.sigma) +
+                "; Gaussian radius=" + std::to_string(m.gaussian_radius) +
+                "; samples=" + std::to_string(m.count) +
+                "; charged peak=" + std::to_string(m.preparation_charge_peak) + " bytes\n";
+        if (m.target && m.analysis_fill) {
+            text += "I02 analysis: fill=" + std::to_string(m.analysis_fill.value()) +
+                    "; target=" + std::to_string(m.target.value()) + "\n";
+        }
+    }
     return text;
 }
 } // namespace docenhance::report

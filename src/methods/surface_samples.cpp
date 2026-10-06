@@ -30,7 +30,7 @@ struct Samples {
     std::uint32_t dark{};
 };
 struct Sampling {
-    SurfaceInput input;
+    IlluminationInput input;
     std::reference_wrapper<const SurfaceModel> model;
     std::reference_wrapper<const core::Cancellation> cancellation;
 };
@@ -96,8 +96,8 @@ core::Result<void> gather(Samples& samples, Sampling sampling, std::uint32_t str
     return {};
 }
 } // namespace
-core::Result<SurfaceMeasurements> measure_surface(SurfaceInput input, const SurfaceModel& model,
-                                                  core::Budget& budget,
+core::Result<SurfaceMeasurements> measure_surface(IlluminationInput input,
+                                                  const SurfaceModel& model, core::Budget& budget,
                                                   const core::Cancellation& cancellation) {
     const auto extent = input.source.get().extent();
     const auto capacity = static_cast<std::uint32_t>(
@@ -162,7 +162,7 @@ core::Result<SurfaceMeasurements> measure_surface(SurfaceInput input, const Surf
         .background_q50 = *b50,
         .background_q90 = *b90,
         .luminance_q90 = *y90,
-        .variation = (*b90 - *b10) / std::max(*b90, surface_floor),
+        .variation = (*b90 - *b10) / std::max(*b90, illumination_floor),
         .paper_fraction = static_cast<double>(samples.paper) / samples.count,
         .dark_fraction = static_cast<double>(samples.dark) / samples.count,
     };

@@ -19,7 +19,7 @@ response delivery, never processing rules. `de_app` admits `ProcessRequest`; `de
 The application contains unreported processing exceptions as unknown publication, not safe retry.
 
 Do not advertise a method or format until its complete contract and tests exist. B02 Sauvola and B03 fixed-threshold
-grayscale-PNG processing, I01 continuous-tone illumination and D01 bounded 16-bit NLM-L1 denoising
+grayscale-PNG processing, I01 surface and I02 morphological continuous-tone illumination and D01 bounded 16-bit NLM-L1 denoising
 are implemented; other method entries remain plans. Continuous-tone
 PNG representation is separately implemented; read docs/png-processing.md. It is not a fictional
 enhancement method. Keep binary sample meaning separate from color/profile interpretation. Never use no-op/copy
@@ -61,7 +61,7 @@ cutoff, real-error precedence, worker joins and truthful publication states. Add
 inside new long-running loops and test them without timing sleeps. Read `docs/cancellation.md` before
 changing interrupts, scheduling, codecs or publication; never call `request_stop` from an OS handler.
 
-For illumination read `docs/illumination.md`. Keep the operation opt-in and its mask in already-oriented
+For illumination read `docs/illumination.md` and `docs/morphological-illumination.md`. Keep the operation opt-in and its mask in already-oriented
 coordinates. Fit once on eligible linear samples, verify the true solver residual and reuse the same
 immutable model during output verification. Do not change binary semantics, refit on verification,
 double-count observations, downsample on resource refusal or call numerical failure an automatic skip.

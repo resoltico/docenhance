@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <variant>
 namespace docenhance::host {
 core::Result<void> IlluminatedSource::read(image::RowRange range, std::span<double> rgb,
                                            image::RowUse use) {
@@ -27,7 +28,11 @@ core::Result<void> IlluminatedSource::read(image::RowRange range, std::span<doub
     if (model_ != nullptr) {
         auto ignored = report_.get();
         auto& observations = output ? report_.get() : ignored;
-        auto applied = model_->apply(range, rgb, protection_, observations, cancellation_);
+        auto applied = std::visit(
+            [&](const auto& model) {
+                return model.apply(range, rgb, protection_, observations, cancellation_);
+            },
+            *model_);
         if (!applied) {
             return applied;
         }

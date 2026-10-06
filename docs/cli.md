@@ -41,7 +41,7 @@ Wrong-method, wrong-operation and explicitly empty values fail admission before 
 owned sibling staging and atomically publishes without replacement after encoding and closing
 succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
-`docenhance methods` reports I01, D01, B02 and B03. `methods ID` selects one entry.
+`docenhance methods` reports I01, I02, D01, B02 and B03. `methods ID` selects one entry.
 `version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
 Help, version and capability discovery do not invoke the image-processing host.
 

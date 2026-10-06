@@ -13,8 +13,23 @@
 #include <string_view>
 namespace docenhance::bundle {
 namespace {
-core::Result<methods::SurfaceParameters> parameters(const RecordJson& value) {
+core::Result<methods::IlluminationParameters> parameters(const RecordJson& value) {
     const auto& target = record_field(value, "target");
+    if (record_text(record_field(value, "mode")) == "morph") {
+        const auto& radius = record_field(value, "radius");
+        auto admitted = methods::Morphology::create({
+            .strength = record_number(record_field(value, "strength")),
+            .max_gain = record_number(record_field(value, "max_gain")),
+            .target = target.is_string() ? std::nullopt : std::optional{record_number(target)},
+            .radius = radius.is_string() ? std::nullopt
+                                         : std::optional{static_cast<std::uint32_t>(
+                                               record_integer(radius, UINT32_MAX))},
+        });
+        if (!admitted) {
+            return std::unexpected(admitted.error());
+        }
+        return methods::IlluminationParameters{admitted->parameters()};
+    }
     const auto& cell = record_field(value, "cell");
     methods::SurfaceParameters const p{
         .mode = record_text(record_field(value, "mode")) == "auto"
@@ -33,7 +48,7 @@ core::Result<methods::SurfaceParameters> parameters(const RecordJson& value) {
     if (!admitted) {
         return std::unexpected(admitted.error());
     }
-    return admitted->parameters();
+    return methods::IlluminationParameters{admitted->parameters()};
 }
 methods::SurfaceMeasurements measurements(const RecordJson& v) {
     return {
@@ -108,22 +123,22 @@ void application(const RecordJson& v, methods::IlluminationReport& r) {
 core::Result<methods::IlluminationReport> record_illumination(const RecordJson& value) {
     methods::IlluminationReport r;
     constexpr auto statuses = std::to_array({
-        methods::SurfaceStatus::disabled,
-        methods::SurfaceStatus::no_change,
-        methods::SurfaceStatus::skipped,
-        methods::SurfaceStatus::applied,
-        methods::SurfaceStatus::failed,
+        methods::IlluminationStatus::disabled,
+        methods::IlluminationStatus::no_change,
+        methods::IlluminationStatus::skipped,
+        methods::IlluminationStatus::applied,
+        methods::IlluminationStatus::failed,
     });
     constexpr auto reasons = std::to_array({
-        methods::SurfaceReason::none,
-        methods::SurfaceReason::zero_strength,
-        methods::SurfaceReason::unit_gain,
-        methods::SurfaceReason::no_eligible_samples,
-        methods::SurfaceReason::insufficient_samples,
-        methods::SurfaceReason::insufficient_cells,
-        methods::SurfaceReason::automatic_predicates,
-        methods::SurfaceReason::no_effect,
-        methods::SurfaceReason::processing_failure,
+        methods::IlluminationReason::none,
+        methods::IlluminationReason::zero_strength,
+        methods::IlluminationReason::unit_gain,
+        methods::IlluminationReason::no_eligible_samples,
+        methods::IlluminationReason::insufficient_samples,
+        methods::IlluminationReason::insufficient_cells,
+        methods::IlluminationReason::automatic_predicates,
+        methods::IlluminationReason::no_effect,
+        methods::IlluminationReason::processing_failure,
     });
     for (const auto status : statuses) {
         if (status_name(status) == record_text(record_field(value, "status"))) {
@@ -143,6 +158,35 @@ core::Result<methods::IlluminationReport> record_illumination(const RecordJson& 
             return std::unexpected(p.error());
         }
         r.requested = *p;
+    }
+    const auto& morph = record_field(value, "morphology");
+    if (!morph.is_null()) {
+        methods::MorphologyMeasurements m;
+        m.radius =
+            static_cast<std::uint32_t>(record_integer(record_field(morph, "radius"), UINT32_MAX));
+        m.sigma = record_number(record_field(morph, "sigma"));
+        m.gaussian_radius = static_cast<std::uint32_t>(
+            record_integer(record_field(morph, "gaussian_radius"), UINT32_MAX));
+        m.stride =
+            static_cast<std::uint32_t>(record_integer(record_field(morph, "stride"), UINT32_MAX));
+        m.count =
+            static_cast<std::uint32_t>(record_integer(record_field(morph, "count"), UINT32_MAX));
+        m.fallback = record_boolean(record_field(morph, "fallback"));
+        if (!record_field(morph, "analysis_fill").is_null()) {
+            m.analysis_fill = record_number(record_field(morph, "analysis_fill"));
+        }
+        if (!record_field(morph, "target").is_null()) {
+            m.target = record_number(record_field(morph, "target"));
+        }
+        m.background_q10 = record_number(record_field(morph, "background_q10"));
+        m.background_q50 = record_number(record_field(morph, "background_q50"));
+        m.background_q90 = record_number(record_field(morph, "background_q90"));
+        m.background_min = record_number(record_field(morph, "background_min"));
+        m.background_max = record_number(record_field(morph, "background_max"));
+        m.field_bytes = record_integer(record_field(morph, "field_bytes"), UINT64_MAX);
+        m.preparation_charge_peak =
+            record_integer(record_field(morph, "preparation_charge_peak"), UINT64_MAX);
+        r.morphology = m;
     }
     observations(value, r);
     application(value, r);
