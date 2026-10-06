@@ -10,6 +10,10 @@ Apache-2.0, BSD, IJG, libpng, libtiff, Zlib and BSL-1.0 material is not relicens
 
 When distributed with libjpeg-turbo: **This software is based in part on the work of the Independent JPEG Group.** The original IJG legal notice is retained in `README.ijg` alongside the other JPEG license texts.
 
+The private libtiff build modifies `tif_jpeg.c` for per-handle charged JPEG control and
+`tif_zip.c` to require completed Deflate striles, including checksum trailers. Original libtiff source notices remain intact; the adapter
+header and build recipe are project-owned. Native packages retain libtiff's original license.
+
 ## OpenCV NLM source notice
 
 The native NLM source retains this upstream notice in addition to OpenCV's repository license.

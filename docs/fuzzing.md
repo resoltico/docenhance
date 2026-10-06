@@ -83,7 +83,7 @@ narrow images with omitted passes. Production validation is never disabled to ob
 These are complementary oracles: structured inputs reach successful decode paths; raw inputs
 exercise malformed headers, compressed streams, truncation and strict rejection behavior.
 
-The isolated fuzz build instruments the actual pinned libpng, zlib and Little CMS C archives with ASan,
+The isolated fuzz build instruments the actual pinned libpng, libjpeg-turbo, libtiff, zlib and Little CMS C archives with ASan,
 UBSan and the selected coverage engine. Before a campaign, application compilation commands are checked against requested fatal sanitizer modes, and the imported archive paths are checked
 for sanitizer/coverage symbols and hashed. Native sanitizer builds still make only their existing
 first-party instrumentation promise; this change does not instrument every planned dependency.
@@ -141,3 +141,10 @@ complete target set. Native assembly remains outside the instrumentation claim.
 Archive sanitizer/coverage symbols establish their presence in the actual imported archives.
 Build flags and locked sources support the instrumentation configuration; neither symbol presence
 nor a passing campaign proves that every object, assembly instruction or possible input was covered.
+
+## Bounded TIFF decoding
+
+The `tiff_decode` harness feeds malformed classic/BigTIFF snapshots through production directory,
+strile and native codec admission with tighter byte/pixel limits and a finite charged budget.
+It checks decoded/source agreement and allocation refunds on acceptance and refusal. Independent
+8/16-bit fixtures test exact samples separately; see [TIFF processing](tiff-processing.md).

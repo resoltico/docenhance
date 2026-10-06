@@ -89,7 +89,10 @@ def exercise(exe: Path, root: Path) -> None:
     source.write_bytes(gray_fixture(128, 128))
     jpeg = root / "source.jpg"
     jpeg.write_bytes((ROOT / "tests/fixtures/jpeg/ycbcr-2x2-progressive.jpg").read_bytes())
-    cases = (
+    tiff = root / "source.tiff"
+    tiff.write_bytes((ROOT / "tests/fixtures/tiff/d16-c3-t1-p2-b1-l0.tif").read_bytes())
+    cases: tuple[tuple[str, Path, list[str]], ...] = (
+        ("tiff", tiff, []),
         ("fixed", source, ["--output-mode", "bw", "--binarize", "fixed"]),
         ("sauvola", source, ["--output-mode", "bw", "--binarize", "sauvola"]),
         ("illumination", source, ["--illumination", "surface", "--background-cell", "8"]),

@@ -22,12 +22,20 @@ JpegContext& jpeg_context(j_common_ptr decoder) noexcept {
     if (decoder->err->msg_code == JERR_OUT_OF_MEMORY) {
         jpeg_context(decoder).exhausted = true;
     }
+    if (jpeg_context(decoder).jump == nullptr) {
+        // A TIFF-owned decoder retains its own trivial C jump frame and native diagnostics.
+        decoder->err->error_exit(decoder);
+        std::unreachable();
+    }
     // The jump lands in a native-call wrapper; all C++ owners live in its caller.
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    std::longjmp(std::begin(jpeg_context(decoder).jump.get()), 1);
+    std::longjmp(std::begin(*jpeg_context(decoder).jump), 1);
 }
 void jpeg_checkpoint(j_common_ptr decoder) {
     auto& context = jpeg_context(decoder);
+    if (context.invalid) {
+        jpeg_failure(decoder);
+    }
     if (context.cancellation.get().requested(core::Checkpoint::decode)) {
         context.cancelled = true;
         jpeg_failure(decoder);
@@ -50,7 +58,7 @@ void silent(j_common_ptr /*decoder*/) noexcept {
 void monitor(j_common_ptr decoder) {
     jpeg_checkpoint(decoder);
     auto& context = jpeg_context(decoder);
-    if (std::cmp_greater(context.decoder.input_scan_number, context.scan_limit)) {
+    if (std::cmp_greater(context.active_decoder->input_scan_number, context.scan_limit)) {
         context.exhausted = true;
         jpeg_failure(decoder);
     }
@@ -90,6 +98,11 @@ void finish_source(j_decompress_ptr /*decoder*/) noexcept {
     // Framing, final EOI and trailing-byte refusal were checked before native decoding.
 }
 } // namespace
+void install_jpeg_progress(JpegContext& context, j_decompress_ptr decoder) noexcept {
+    context.active_decoder = decoder;
+    context.progress.progress_monitor = monitor;
+    decoder->progress = &context.progress;
+}
 void install_jpeg_source(JpegContext& context, std::span<const std::uint8_t> bytes) noexcept {
     context.remaining = bytes;
     context.source = {
@@ -102,8 +115,7 @@ void install_jpeg_source(JpegContext& context, std::span<const std::uint8_t> byt
         .term_source = finish_source,
     };
     context.decoder.src = &context.source;
-    context.progress.progress_monitor = monitor;
-    context.decoder.progress = &context.progress;
+    install_jpeg_progress(context, &context.decoder);
 }
 bool jpeg_header(JpegContext& context, std::span<const std::uint8_t> bytes) {
 #ifdef _MSC_VER
@@ -111,7 +123,7 @@ bool jpeg_header(JpegContext& context, std::span<const std::uint8_t> bytes) {
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(std::begin(context.jump.get())) != 0) {
+    if (setjmp(std::begin(*context.jump)) != 0) {
         return false;
     }
 #ifdef _MSC_VER
@@ -123,7 +135,7 @@ bool jpeg_header(JpegContext& context, std::span<const std::uint8_t> bytes) {
     context.errors.emit_message = warning;
     context.errors.output_message = silent;
     jpeg_create_decompress(&context.decoder);
-    install_jpeg_memory(context);
+    install_jpeg_memory(context, common(&context.decoder));
     install_jpeg_source(context, bytes);
     return jpeg_read_header(&context.decoder, TRUE) == JPEG_HEADER_OK;
 }
@@ -133,7 +145,7 @@ bool jpeg_pixels(JpegContext& context, image::PlaneView<std::uint8_t> pixels) {
 #pragma warning(disable : 4611)
 #endif
     // NOLINTNEXTLINE(cert-err52-cpp,modernize-avoid-setjmp-longjmp)
-    if (setjmp(std::begin(context.jump.get())) != 0) {
+    if (setjmp(std::begin(*context.jump)) != 0) {
         return false;
     }
 #ifdef _MSC_VER

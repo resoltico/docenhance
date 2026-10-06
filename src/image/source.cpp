@@ -120,6 +120,9 @@ bool valid_source_description(const SourceDescription& description) noexcept {
     if (const auto* const png = std::get_if<PngSource>(&description)) {
         return png_description(*png);
     }
+    if (const auto* const tiff = std::get_if<TiffSource>(&description)) {
+        return valid_tiff_source(*tiff);
+    }
     const auto* const jpeg = std::get_if<JpegSource>(&description);
     return jpeg != nullptr && jpeg_description(*jpeg);
 }

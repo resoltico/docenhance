@@ -73,6 +73,8 @@ bool source_matches(const image::SourceDescription& source, image::RasterShape s
                                    decoded.color_type == image::png_palette ||
                                    decoded.color_type == image::png_rgb_alpha;
                 return shape.depth.bits() == depth && image::is_color(shape.model) == color;
+            } else if constexpr (std::is_same_v<Source, image::TiffSource>) {
+                return shape == image::decoded_tiff_shape(decoded);
             } else {
                 const auto model = decoded.color == image::JpegColor::gray
                                        ? image::SampleModel::gray

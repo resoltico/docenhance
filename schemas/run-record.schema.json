@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 3
+          "const": 4
         },
         "run": {
           "type": "string",
@@ -1483,6 +1483,142 @@
                 "minimum": 0,
                 "maximum": 255
               }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "format",
+            "decoder_policy",
+            "width",
+            "height",
+            "precision",
+            "samples",
+            "photometric",
+            "compression",
+            "planar",
+            "predictor",
+            "alpha",
+            "bigtiff",
+            "tiled",
+            "pages",
+            "orientation",
+            "resolution"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "const": "tiff"
+            },
+            "decoder_policy": {
+              "const": "bounded-tiff-striles-1"
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 40000000
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 40000000
+            },
+            "precision": {
+              "enum": [
+                1,
+                8,
+                16
+              ]
+            },
+            "samples": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "photometric": {
+              "enum": [
+                0,
+                1,
+                2,
+                3,
+                6
+              ]
+            },
+            "compression": {
+              "enum": [
+                1,
+                3,
+                4,
+                5,
+                7,
+                8,
+                32773,
+                32946
+              ]
+            },
+            "planar": {
+              "enum": [
+                1,
+                2
+              ]
+            },
+            "predictor": {
+              "enum": [
+                1,
+                2
+              ]
+            },
+            "alpha": {
+              "enum": [
+                0,
+                1,
+                2
+              ]
+            },
+            "bigtiff": {
+              "type": "boolean"
+            },
+            "tiled": {
+              "type": "boolean"
+            },
+            "pages": {
+              "const": 1
+            },
+            "orientation": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            },
+            "resolution": {
+              "$ref": "#/$defs/tiff_resolution"
+            }
+          }
+        }
+      ]
+    },
+    "tiff_resolution": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "required": [
+            "x_ppm",
+            "y_ppm"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "x_ppm": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            },
+            "y_ppm": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
             }
           }
         }

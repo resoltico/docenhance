@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 3; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 4; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -378,3 +378,16 @@ proof of correct initialization and would remove those checkpoints if substitute
 Independent numerical references poison padding and old output values and require finite results,
 so NaN cannot disappear into an error accumulator. Suppressions name exact checks; fixed foreign
 callback parameter-count exceptions do not change mandatory source-file line ceilings.
+
+## Bounded TIFF sources share interpretation and publication
+
+TIFF/BigTIFF adds a source decoder behind the same immutable acquisition, integer raster,
+color/orientation/alpha, I01/D01 and verified PNG bundle contracts. One top-level IFD is admitted;
+multipage input and unsupported sample/compression domains are refused. Direct strile decoding
+retains 16-bit precision; the RGBA convenience API is unsuitable. Per-handle callbacks and the
+shared charged JPEG allocator avoid process-global handlers and uncharged nested payloads.
+A source experiment showed that expected Deflate output length does not establish checksum
+completion; the locked adapter therefore requires complete striles. JPEG admission fixes its
+policy after headers, with bounded scans and cancellation. Response/record version 4 closes the
+TIFF source alternative and rejects obsolete forms. See [TIFF admission](tiff-processing.md)
+for the separate design QA, exact domains, resource accounting and evidence obligations.

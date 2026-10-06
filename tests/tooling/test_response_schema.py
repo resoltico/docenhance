@@ -19,15 +19,16 @@ SCHEMA = json.loads((ROOT / "schemas/command-response.schema.json").read_text(en
 def methods_response() -> dict[str, Any]:
     """Return one complete, valid response for mutation tests."""
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "command": "methods",
         "version": "0.2.0",
         "exit_code": 0,
         "methods": [{"id": "B03", "method_version": 1}],
-        "supported_formats": ["png", "jpeg"],
+        "supported_formats": ["png", "jpeg", "tiff"],
         "input_support": [
             {"format": "png", "output_modes": ["preserve", "gray", "bw"]},
             {"format": "jpeg", "output_modes": ["preserve", "gray"]},
+            {"format": "tiff", "output_modes": ["preserve", "gray"]},
         ],
     }
 
@@ -48,7 +49,8 @@ class ResponseSchemaTests(unittest.TestCase):
             {"schema_version": True},
             {"schema_version": 1},
             {"schema_version": 2},
-            {"schema_version": 4},
+            {"schema_version": 3},
+            {"schema_version": 5},
             {"exit_code": True},
             {"methods": [{"id": "B03", "method_version": True}]},
             {"methods": [{"id": "B03", "method_version": 1, "invented": 1}]},
@@ -69,7 +71,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_publication_uncertainty_is_distinct(self) -> None:
         """Unknown publication has one error code and may not claim a safe retry."""
         response = {
-            "schema_version": 3,
+            "schema_version": 4,
             "command": "process",
             "version": "0.2.0",
             "exit_code": 7,
@@ -85,7 +87,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_unimplemented_capability_never_starts_publication(self) -> None:
         """An unavailable processing branch has exit four and no execution effects."""
         response = {
-            "schema_version": 3,
+            "schema_version": 4,
             "command": "process",
             "version": "0.6.0",
             "exit_code": 4,
@@ -102,7 +104,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_integrity_failure_can_retain_known_publication(self) -> None:
         """A failed postcommit inspection cannot erase an observed successful rename."""
         response = {
-            "schema_version": 3,
+            "schema_version": 4,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 5,
@@ -117,7 +119,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_help_options_are_typed(self) -> None:
         """Every option item has the complete closed descriptor shape."""
         response = {
-            "schema_version": 3,
+            "schema_version": 4,
             "command": "root",
             "version": "0.2.0",
             "exit_code": 0,
@@ -131,7 +133,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_cancellation_cannot_claim_completion_or_uncertainty(self) -> None:
         """Cancellation has its own status; ambiguous publication is a different outcome."""
         response = {
-            "schema_version": 3,
+            "schema_version": 4,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 130,
@@ -158,7 +160,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_readonly_and_discovery_failures_cannot_claim_publication(self) -> None:
         """Only processing failures can describe staging, commit or uncertainty."""
         response: dict[str, Any] = {
-            "schema_version": 3,
+            "schema_version": 4,
             "command": "verify",
             "version": "0.5.0",
             "exit_code": 3,
@@ -179,7 +181,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_verification_success_requires_bounded_confined_identity(self) -> None:
         """Empty/unbounded inventories, zero identities and escaping paths are refused."""
         response: dict[str, Any] = {
-            "schema_version": 3,
+            "schema_version": 4,
             "command": "verify",
             "version": "0.5.0",
             "exit_code": 0,

@@ -188,8 +188,8 @@ void destroy(j_common_ptr decoder) noexcept {
     memory.bootstrap = nullptr;
 }
 } // namespace
-void install_jpeg_memory(JpegContext& context) noexcept {
-    context.memory.bootstrap = context.decoder.mem;
+void install_jpeg_memory(JpegContext& context, j_common_ptr decoder) noexcept {
+    context.memory.bootstrap = decoder->mem;
     context.memory.manager = {
         .alloc_small = native_allocate,
         .alloc_large = native_allocate,
@@ -205,6 +205,6 @@ void install_jpeg_memory(JpegContext& context) noexcept {
         .max_memory_to_use = 0,
         .max_alloc_chunk = std::numeric_limits<decltype(jpeg_memory_mgr::max_alloc_chunk)>::max(),
     };
-    context.decoder.mem = &context.memory.manager;
+    decoder->mem = &context.memory.manager;
 }
 } // namespace docenhance::io

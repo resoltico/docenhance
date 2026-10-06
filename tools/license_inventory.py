@@ -94,6 +94,14 @@ def copy_licenses(dep: Dependency, receipt: dict[str, Any], source: Path, out: P
 def notice_lines(dep: Dependency) -> list[str]:
     """Return the THIRD_PARTY_NOTICES.md section for one dependency."""
     name = dep["name"]
+    adaptations = (
+        [
+            "Private build adaptations: charged JPEG control and complete Deflate striles.",
+            "",
+        ]
+        if name == "tiff"
+        else []
+    )
     return [
         f"## {name} {dep['version']}",
         "",
@@ -101,6 +109,7 @@ def notice_lines(dep: Dependency) -> list[str]:
         f"Source: {dep.get('repository', dep.get('url'))}",
         f"Original license files: `licenses/{name}/`. No relicensing is asserted.",
         "",
+        *adaptations,
     ]
 
 

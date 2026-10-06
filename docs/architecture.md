@@ -59,7 +59,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_exec` | `de_core` | The schedule: how many workers run a page's independent work items |
 | `de_image` | `de_core` | Checked owning planes, borrowed views and numerical primitives |
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
-| `de_io` | `de_core`, `de_image` | PNG/JPEG codecs, metadata, hashing and exclusive publication |
+| `de_io` | `de_core`, `de_image` | PNG/JPEG/TIFF codecs, metadata, hashing and exclusive publication |
 | `de_bundle` | `de_core`, `de_image`, `de_methods` | The persistent run record: one written form for the facts an execution produced |
 | `de_app` | `de_contract`, `de_core`, `de_image`, `de_methods` | Validated use cases and the explicit processing and verification ports |
 | `de_report` | `de_app`, `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
@@ -204,7 +204,7 @@ The present public CLI does not expose `--threads`; this remains an internal ker
 CMake rejects undeclared direct layer/package links. Every production target registers its files,
 headers and links. Native builds must contain every declared layer. An isolated fuzz build must
 contain the complete transitive closure of its named root, not a manually duplicated source list.
-Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs. Separate PNG and ICC harnesses exercise the raw representation and native color boundary. PNG/JPEG harnesses use the production byte-span
+Both modes compile the same first-party targets. The CLI fuzz closure excludes host and codecs. Separate PNG, TIFF and ICC harnesses exercise the raw representation and native color boundary. PNG/JPEG/TIFF harnesses use the production byte-span
 decoder; only those targets link the codec layer.
 
 Source checks validate manifest shape, duplicate targets, directory ownership, direct includes and
@@ -275,11 +275,11 @@ results require complete matching illumination diagnostics;
 and executable catalog distinguish method families. [Illumination](illumination.md) owns the exact
 mathematics, resource phases, separate design QA and verification obligations.
 
-## Identified PNG and JPEG sources
+## Identified image sources
 
 The continuous host calls the format-neutral source adapter. One bounded immutable encoded snapshot
 is hashed and dispatched by signature, never by extension or decoder retries. `image::RasterMetadata`
-contains shared ICC/orientation/resolution observations with closed PNG/JPEG container declarations;
+contains shared ICC/orientation/resolution observations with closed PNG/JPEG/TIFF container declarations;
 no native codec types escape `io`. Common EXIF extraction retains its bounded IFD0 contract. PNG's
 color/physical precedence and B02/B03 stored samples retain their existing semantics.
 
@@ -289,6 +289,12 @@ precede full-resolution native decoding. Native jumps stay inside owner-free wra
 request's buffers and contexts outlive the frame. JPEG has no separate host, publisher or numerical
 method. New records and responses carry typed source observations with explicit format/wire versions;
 only the current closed bundle format is supported. See [JPEG](jpeg-processing.md).
+
+TIFF uses the same host boundary, with a manifest-owned `DE::tiff` permission. Bounded directory
+and strile admission precedes native decoding. Native payload reservations, per-handle errors,
+shared charged JPEG control and strict Deflate completion belong to this adapter. Source sample
+association and MINISWHITE declarations remain separate from color/profile interpretation;
+orientation is applied once in the existing converter. See [TIFF](tiff-processing.md).
 
 ## Prepared luminance denoising
 

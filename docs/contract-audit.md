@@ -8,7 +8,7 @@ remain useful evidence.
 
 ## Design pass
 
-The record reader already accepts only version 3, requires source and denoising observations,
+The record reader already accepts only version 4, requires source and denoising observations,
 checks closed canonical claims and rejects `conversion.verified: false`. There is no record
 migration engine or older-version dispatch. The format version continues identifying the current
 contract; eliminating its number would not remove compatibility code.
@@ -57,7 +57,7 @@ exception boundary instead of becoming an argument error.
 No platform-version dispatch, native locale adapter or extra dependency is necessary.
 
 Current `--version` and CMake target aliases are deliberate interfaces, not retired-project
-forwarders. OS/compiler support, ICC interpretation, PNG/JPEG admission and algorithmic applicability
+forwarders. OS/compiler support, ICC interpretation, PNG/JPEG/TIFF admission and algorithmic applicability
 are current external/domain requirements. Preserve them. Source compatibility breaks retire the
 removed project APIs directly; no deprecation period, shim or migration is provided.
 
@@ -82,7 +82,7 @@ Use existing generators and schema references rather than a new configuration fr
 D01's identity for both schemas and use its descriptor in the native type and serializer. Require
 bidirectional agreement between implemented method arguments and option applicability. Protection
 belongs to I01 and D01 and remains valid with both stages off. Derive format reporting and schema
-constants from the reviewed CLI matrix; retain actual PNG/JPEG processing/refusal tests as evidence
+constants from the reviewed CLI matrix; retain actual PNG/JPEG/TIFF processing/refusal tests as evidence
 that the declarations are implemented. Remove the unused CLI contract edition instead of giving
 it another reader; reject obsolete/unknown authoring fields rather than ignoring them. Capability
 entries now use contract::InputSupport; native consumers update directly, without an alias.

@@ -246,7 +246,7 @@
       "group": "Denoising arguments",
       "domain": "off; off|nlm",
       "methods": "D01",
-      "description": "Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG after I01. No binary denoising.",
+      "description": "Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG/TIFF after I01. No binary denoising.",
       "binding": "denoise"
     },
     {
@@ -297,6 +297,10 @@
     },
     {
       "format": "jpeg",
+      "binary": false
+    },
+    {
+      "format": "tiff",
       "binary": false
     }
   ]

@@ -6,6 +6,7 @@
 #include "docenhance/image/source.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
+#include "docenhance/io/tiff.hpp"
 #include "jpeg_markers.hpp"
 #include "source_snapshot.hpp"
 
@@ -41,6 +42,12 @@ core::Result<IdentifiedImage> load_grayscale_png(const std::string& input, core:
             core::ErrorCode::not_implemented,
             "JPEG input supports continuous output only; binary processing requires grayscale PNG");
     }
+    if (has_tiff_signature(std::span{data, encoded->size()})) {
+        return core::failure(
+            core::ErrorCode::not_implemented,
+            "TIFF input supports continuous output only; binary processing requires grayscale PNG");
+    }
+
     auto decoded = decode_grayscale_png({data, encoded->size()}, budget, PngLimits(), cancellation);
     if (!decoded) {
         return std::unexpected(decoded.error());

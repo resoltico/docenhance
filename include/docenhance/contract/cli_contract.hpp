@@ -12,11 +12,12 @@
 #include <type_traits>
 #include <variant>
 namespace docenhance::contract {
-inline constexpr unsigned response_schema_version = 3U;
+inline constexpr unsigned response_schema_version = 4U;
 inline constexpr unsigned response_confirmed_limit = 16U;
 inline constexpr auto input_support = std::to_array<InputSupport>({
     {.format = "png", .binary = true},
     {.format = "jpeg", .binary = false},
+    {.format = "tiff", .binary = false},
 });
 // The usage line of every command, as the reviewed contract states it.
 [[nodiscard]] constexpr std::string_view command_usage(Command command) noexcept {
@@ -71,7 +72,7 @@ inline constexpr auto option_catalog = std::to_array<OptionDescriptor>({
     {.name = "--background-quantile", .metavar = "Q", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "0.90; finite [0.75,0.99]", .methods = "I01", .description = "Nearest-rank quantile of all eligible cell samples; protected samples are excluded.", .binding = &Invocation::background_quantile},
     {.name = "--background-smooth", .metavar = "BETA", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "1; finite [0.1,20]", .methods = "I01", .description = "Positive grid-Laplacian weight for fitting the logarithmic background.", .binding = &Invocation::background_smooth},
     {.name = "--protect-mask", .metavar = "PATH", .scope = CommandSet{Command::process}, .group = "Protection arguments", .domain = "Absent", .methods = "I01,D01", .description = "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.", .binding = &Invocation::protect_mask},
-    {.name = "--denoise", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "off; off|nlm", .methods = "D01", .description = "Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG after I01. No binary denoising.", .binding = &Invocation::denoise},
+    {.name = "--denoise", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "off; off|nlm", .methods = "D01", .description = "Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG/TIFF after I01. No binary denoising.", .binding = &Invocation::denoise},
     {.name = "--denoise-blend", .metavar = "A", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "0.5; finite `[0,1]`", .methods = "D01", .description = "NLM only. Blend once; zero preserves entering samples after source/mask validation.", .binding = &Invocation::denoise_blend},
     {.name = "--nlm-h", .metavar = "H", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "3; finite `[0.1,25]`", .methods = "D01", .description = "NLM only. Equivalent 8-bit perceptual strength; native float strength is 257 times float(H). Higher strengths may remove marks.", .binding = &Invocation::nlm_h},
     {.name = "--nlm-patch", .metavar = "PIXELS", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "7; odd integer `[3,15]`", .methods = "D01", .description = "NLM only. Square patch width.", .binding = &Invocation::nlm_patch},

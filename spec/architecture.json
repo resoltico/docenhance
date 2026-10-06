@@ -120,7 +120,11 @@
         "DE::tiff"
       ],
       "headers": [
-        "tiffio.h"
+        "tiffio.h",
+        "docenhance_tiff.h",
+        "tiff.h",
+        "tiffconf.h",
+        "tiffvers.h"
       ]
     },
     "picosha2": {
@@ -208,7 +212,7 @@
     },
     "io": {
       "target": "de_io",
-      "summary": "PNG/JPEG codecs, metadata, hashing and exclusive publication",
+      "summary": "PNG/JPEG/TIFF codecs, metadata, hashing and exclusive publication",
       "uses": [
         "core",
         "image"
@@ -217,7 +221,8 @@
         "picosha2",
         "png",
         "zlib",
-        "jpeg"
+        "jpeg",
+        "tiff"
       ],
       "may_catch": true,
       "allow_headers": [
