@@ -4,44 +4,55 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-07
+
 ### Added
 
-- Explicit C01 percentile levels (`--contrast levels`) and C02 gamma (`--contrast gamma`) after illumination/denoising, with all-eligible quantiles, reported tail clipping, exact flat/identity/protected behavior, shared perceptual blending and color transport. See [contrast](docs/contrast.md).
+- Bounded single-page TIFF/BigTIFF input produces verified preserve/gray PNG bundles through the shared color, alpha, orientation and enhancement pipeline. It admits unsigned 1-bit gray, 8/16-bit gray/RGB, palettes, explicit alpha, strips/tiles and separate planes with the reviewed compression modes. Multipage input, unsupported coding and oversized decode units are refused without downsampling or precision fallback. Encoded input is limited to 128 MiB and 40 million pixels; binary output remains grayscale PNG only. See [TIFF admission](docs/tiff-processing.md).
 
-- Explicit D02 TV-L1 denoising (`--denoise tvl1`) after illumination, using full-field float64 primal-dual updates, exact gradient/adjoint boundaries, output protection and perceptual blending. Bounded resources refuse approximation; iteration caps emit W_TV_ITERATION_LIMIT rather than a false tolerance claim. See [TV-L1](docs/tvl1-denoising.md).
+- Explicit I02 morphological illumination (`--illumination morph`) uses float64 grayscale closing followed by Gaussian smoothing, with REFLECT_101 borders, protected-sample analysis fill and exact output protection. Radius is `auto` or 1..256; automatic illumination remains I01 only. Field, applicability and resource diagnostics are reported. See [I02](docs/morphological-illumination.md).
 
-- Explicit I02 morphological illumination (`--illumination morph`): bounded float64 grayscale closing and Gaussian smoothing, protected analysis fill, shared luminance transport and complete field/resource diagnostics. Radius is `auto` or 1..256; automatic illumination remains I01 only. See [I02 contract](docs/morphological-illumination.md).
+- Explicit D02 TV-L1 denoising (`--denoise tvl1`) follows illumination, using full-field float64 primal-dual updates, exact gradient/adjoint boundaries and perceptual blending. All entering samples remain solver context; protection bypasses output changes exactly. Resource refusal never substitutes a tiled or lower-precision solver. Iteration exhaustion returns a usable iterate with `W_TV_ITERATION_LIMIT`, not a tolerance or convergence claim. See [TV-L1](docs/tvl1-denoising.md).
 
-- Bounded single-page TIFF/BigTIFF input for preserve/gray PNG bundles, including opt-in I01 illumination and D01 denoising. Reviewed compression, unsigned 1/8/16-bit samples, strips/tiles, separate planes, palette, alpha and orientation use the existing verified publication pipeline. Multipage input and unsupported coding are refused. Allocation accounting is not an RSS limit; see [TIFF admission](docs/tiff-processing.md).
+- Explicit C01 percentile levels (`--contrast levels`) and C02 gamma (`--contrast gamma`) follow illumination and denoising before final quantization. Levels measures every eligible perceptual sample using nearest-rank quantiles and reports strict tail clipping; gamma applies f^G with exact endpoints. Both share perceptual blending and color transport, preserve protected samples exactly and report validated flat/identity behavior. Tail clipping can discard weak information. See [contrast](docs/contrast.md).
+
+- The new methods retain immutable models/results for output verification, bounded cancellation checkpoints and preparation-charge diagnostics. The shared 1 GiB charged-buffer budget is not a process-RSS or wall-clock limit; output agreement does not certify document authenticity.
 
 ### Changed
 
-- **Breaking (machine contracts):** command responses and processing records use version 7 with closed TIFF source observations and method-specific I01/I02 illumination and D01/D02 denoising and C01/C02 contrast requests and diagnostics. Update schema consumers and C++ visitors for `image::TiffSource` and `image::TiffDeclarations`, and the illumination, denoising and contrast parameter/model variants; obsolete records are refused without a compatibility reader or migration.
+- **Breaking (machine contracts):** command responses and processing records advance from version 3 to 7, with closed TIFF source observations and method-specific I01/I02 illumination, D01/D02 denoising and C01/C02 contrast requests and diagnostics. Update schema consumers and C++ visitors for `image::TiffSource`, `image::TiffDeclarations` and the enhancement parameter/model/report alternatives. Obsolete records are refused without a compatibility reader or migration.
 
-- **Breaking (C++ values):** decoded/output sample depth and orientation use `image::SampleDepth` and `image::Orientation`. Construct wire values through their validating factories and use explicit bit/code accessors. The obsolete `ErrorCode::unavailable` name is replaced by `not_implemented`; the unused exit-6 enumerator is removed.
-- **Breaking (C++ interfaces):** publication, immutable bundle snapshots and PNG artifact observations have separate headers. Replace `io/bundle.hpp` includes with the relevant `io/publication.hpp`, `io/bundle_snapshot.hpp` or `io/png_artifact.hpp`; filename helpers are in `io/paths.hpp`, native inventory/snapshot bounds in `io/artifact_limits.hpp`
-  and shared artifact byte bounds in `core/limits.hpp`. UTF-8 admission moves to `core/utf8.hpp`;
-  portable artifact paths share `core/bundle_path.hpp`. Use `core::valid_utf8`, `core::valid_path`
-  and `core::bundle_max_file_bytes` at their new owners. Staged-file identity belongs to publication, while `io/digest.hpp` handles in-memory content. Generated method metadata is `methods/reviewed_methods.hpp`; obsolete header names are removed.
+- **Breaking (native build):** TIFF is now a required production dependency, with hash-bound private adaptations for charged JPEG allocation and complete Deflate/checksum decoding. Recreate build trees and private prefixes for the changed recipe; the private prefix is not a general-purpose TIFF SDK. TIFF joins JPEG, PNG, zlib and Little CMS in the instrumented codec fuzz closure.
+
+- **Breaking (C++ values):** decoded/output sample depth and orientation use `image::SampleDepth` and `image::Orientation`. Construct wire values through their validating factories and use explicit bit/code accessors. `ErrorCode::unavailable` is replaced by `not_implemented`; the unused exit-6 enumerator is removed.
+
+- **Breaking (C++ interfaces):** publication, immutable bundle snapshots and PNG artifact observations have separate headers. Replace `io/bundle.hpp` includes with the relevant `io/publication.hpp`, `io/bundle_snapshot.hpp` or `io/png_artifact.hpp`; filename helpers are in `io/paths.hpp`, native inventory/snapshot bounds in `io/artifact_limits.hpp` and shared artifact byte bounds in `core/limits.hpp`. UTF-8 admission moves to `core/utf8.hpp`; portable artifact paths share `core/bundle_path.hpp`. Use `core::valid_utf8`, `core::valid_path` and `core::bundle_max_file_bytes` at their new owners. Staged-file identity belongs to publication, while `io/digest.hpp` handles in-memory content. Generated method metadata is `methods/reviewed_methods.hpp`; obsolete header names are removed.
 
 ### Fixed
 
 - **Breaking (bundle staging):** artifact names now share the reader's portable domain: at most 128 UTF-8 bytes, `/`-separated, with no empty, `.` or `..` components, NUL, backslash or colon. Direct C++ publication callers must use admitted names.
-- **Breaking (C++ execution):** `host::Processor` accepts a run-context source called once per execution, instead of retaining one context across repeated calls. Update constructor callers to supply a context function.
-- Illumination completion requires one contiguous output traversal; duplicate or skipped blocks fail before adding observations. Text help derives implemented methods and input modes from the application capability data.
 
-- **Breaking (JPEG refusal codes):** unsupported continuous-input JPEG coding, precision, sampling, color interpretation and recognized multi-image/HDR extensions now return `E_INPUT`, exit 3, before staging. Scripts must update checks that expected exit 4. JPEG on the binary PNG-only branch still uses `E_NOT_IMPLEMENTED`, exit 4; that code now requires `not_started` in both typed errors and the response schema.
+- **Breaking (C++ execution):** reused `host::Processor` instances obtain a run context once per execution instead of retaining one context across calls. Update constructor callers to supply a context function; the default source generates an identity and timestamp for each execution.
+
+- Illumination completion requires one contiguous output traversal; duplicate or skipped blocks fail before adding observations. Help derives implemented methods and input modes from the application's executable capabilities.
+
+- **Breaking (JPEG refusal codes):** unsupported continuous-input JPEG coding, precision, sampling, color interpretation and recognized multi-image/HDR extensions return `E_INPUT`, exit 3, before staging. Scripts must update checks that expected exit 4. JPEG on the binary PNG-only branch still uses `E_NOT_IMPLEMENTED`, exit 4; that code requires `not_started` in typed errors and the response schema.
+
+- Run-record preflight enforces the 16-level container-depth ceiling before consuming later malformed tokens or building the DOM, bounding duplicate-key bookkeeping. D01 observations exceeding the continuous charged-buffer ceiling are rejected.
+
+- Shared percentile sorting now has bounded cancellation checkpoints without changing nearest-rank quantiles.
+
 - A stop request arriving after all scheduled work completes no longer turns a multi-worker result into cancellation. Skipped work, genuine-error precedence, joins and the publication cutoff retain their contracts.
-- Generated source-license inventories identify their tool creator and actual generation time, and give distinct document contents distinct SPDX namespaces. Regenerate native package metadata before inspection; obsolete build-info metadata is rejected. SPDX metadata remains CC0-1.0, independently of the software licenses.
+
+- Generated source-license inventories identify their tool creator and actual generation time, and give distinct document contents distinct SPDX namespaces. Regenerate native package metadata before inspection; obsolete build-info metadata is rejected. SPDX metadata remains CC0-1.0, independently of software licenses.
 
 ### Internal
 
-- The full composition CLI reference test runs without competing native test processes, retaining its 90-second deadline and complete assertions.
+- Numerical reference checks reject non-finite output and exercise poisoned padding and unwritten destinations. Executable references cover the new methods, their composition, resource refusal and deterministic cancellation; the full composition CLI test runs without competing test processes while retaining its 90-second deadline and assertions. Twenty manifest-declared fuzz targets include TIFF, morphology, TV-L1 and contrast, with retained malformed-input regressions.
 
 - Advisory exclusions remain bound to exact source, feature policy and every advisory field except a validated modification timestamp; timestamp-only OSV updates no longer invalidate an otherwise unchanged review. Vulnerability matches remain visible.
 
-- Numeric reference checks reject non-finite output and exercise poisoned row padding and unwritten destinations; explicit lint suppressions must name exact rules rather than wildcard patterns. Continuous-tone record fuzz seeds reach the raw reader and precision/orientation admission.
-- Architecture checks use one restriction baseline with explicit layer permissions, enforce thread ownership and private-header boundaries through the compiler, validate final CMake links and check the CLI fuzz client's actual public closure before campaign launch. AST ownership follows exact compiler-observed files, and fatal parsing diagnostics cannot masquerade as zero-match success; obsolete per-layer restriction declarations are rejected.
+- Architecture checks use one restriction baseline with explicit layer permissions, enforce thread ownership and private-header boundaries through the compiler, validate final CMake links and check the CLI fuzz client's actual public closure before campaign launch. AST ownership follows exact compiler-observed files; fatal parsing diagnostics cannot masquerade as zero-match success. Obsolete per-layer restriction declarations are rejected, and lint suppressions must name exact rules rather than wildcard patterns.
 
 ## [0.6.0] - 2026-10-04
 
