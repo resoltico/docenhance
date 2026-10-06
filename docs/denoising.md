@@ -11,7 +11,7 @@ D01 is explicit `--denoise nlm`; the default is `off`. Private parameters requir
 `--nlm-search` odd [7,41], default 21, at least patch; `--denoise-blend` finite [0,1],
 default 0.5. Active denoising requires search to fit the smaller oriented dimension. Zero blend
 and entirely protected inputs bypass native execution after parameter, source and mask validation.
-Continuous PNG/JPEG preserve/gray are supported; any denoise option on bw is rejected.
+Continuous PNG/JPEG/TIFF preserve/gray are supported; any denoise option on bw is rejected.
 
 The entering samples are opaque oriented linear sRGB doubles, after the frozen I01 operation.
 For each RGB triplet C, Y = 0.2126 R + 0.7152 G + 0.0722 B and f = sRGB_encode(Y), using
@@ -84,9 +84,9 @@ The existing final precommit cutoff and truthful publication reconciliation rema
 
 ## Records and verification
 
-New production records use version 3, with a closed denoising request and execution report; new
-responses use schema version 3. Only the current record format is accepted; obsolete formats are refused, with no migration.
-Version 3 requires
+New production records use version 4, with a closed denoising request and execution report; new
+responses use schema version 4. Only the current record format is accepted; obsolete formats are refused, with no migration.
+Version 4 requires
 source decoding, full output verification and matching complete stage observations. Binary records
 carry explicit off/disabled D01 only. Writer, complete reader, generated schemas and public response
 share one typed serialization. Method identity is D01 version 1; I01/B02/B03 versions are unchanged.
@@ -106,7 +106,7 @@ Independent scalar tests cover transfer/quantization, signed correction, blend, 
 between-level no-op/protection, extremes and resource arithmetic. Native comparisons cover tile
 seams/exteriors/partial tiles/all patch/search extrema, worker settings and 16-bit patterns.
 Exact-budget/refund, allocation failure, deterministic cancellation, concurrent requests and stage
-prefix failures require tests. Real executable contracts cover PNG/JPEG, gray/color, PNG8/16,
+prefix failures require tests. Real executable contracts cover PNG/JPEG/TIFF, gray/color, PNG/TIFF8/16,
 I01 on/off, orientation/masks, source/mask refusal, option presence, current record refusal and
 schema/reader negative fixtures. Decode-back verification reuses prepared results with no native replay.
 

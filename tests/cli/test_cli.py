@@ -150,7 +150,10 @@ def discovery_cases(exe: Path) -> None:
         ],
         "implemented methods advertised",
     )
-    expect(version["supported_formats"] == ["png", "jpeg"], "PNG and scoped JPEG advertised")
+    expect(
+        version["supported_formats"] == ["png", "jpeg", "tiff"],
+        "reviewed PNG/JPEG/TIFF admission advertised",
+    )
     expect(len(version["dependency_lock_sha256"]) == SHA256_HEX_LENGTH, "lock digest")
     expect(
         call_json(exe, ["methods", "--json"])["methods"]

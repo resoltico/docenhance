@@ -4,7 +4,13 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Added
+
+- Bounded single-page TIFF/BigTIFF input for preserve/gray PNG bundles, including opt-in I01 illumination and D01 denoising. Reviewed compression, unsigned 1/8/16-bit samples, strips/tiles, separate planes, palette, alpha and orientation use the existing verified publication pipeline. Multipage input and unsupported coding are refused. Allocation accounting is not an RSS limit; see [TIFF admission](docs/tiff-processing.md).
+
 ### Changed
+
+- **Breaking (machine contracts):** command responses and processing records use version 4 with closed TIFF source observations. Update schema consumers and C++ visitors for `image::TiffSource` and `image::TiffDeclarations`; obsolete records are refused without a compatibility reader or migration.
 
 - **Breaking (C++ values):** decoded/output sample depth and orientation use `image::SampleDepth` and `image::Orientation`. Construct wire values through their validating factories and use explicit bit/code accessors. The obsolete `ErrorCode::unavailable` name is replaced by `not_implemented`; the unused exit-6 enumerator is removed.
 - **Breaking (C++ interfaces):** publication, immutable bundle snapshots and PNG artifact observations have separate headers. Replace `io/bundle.hpp` includes with the relevant `io/publication.hpp`, `io/bundle_snapshot.hpp` or `io/png_artifact.hpp`; filename helpers are in `io/paths.hpp`, native inventory/snapshot bounds in `io/artifact_limits.hpp`

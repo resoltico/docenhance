@@ -1,6 +1,6 @@
 # Status
 
-The executable admits **static PNG and bounded 8-bit Huffman baseline/progressive JPEG** into **continuous-tone PNG representation** with opt-in **I01 quantile
+The executable admits **static PNG and bounded 8-bit Huffman baseline/progressive JPEG, and bounded single-page TIFF/BigTIFF** into **continuous-tone PNG representation** with opt-in **I01 quantile
 log-surface illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
 It is not a complete restoration suite.
 
@@ -11,6 +11,8 @@ no enhancement filter by default. Static gray, palette, RGB and alpha PNGs suppo
 profile interpretation, linear-light compositing, exact metadata orientation and minimal canonical
 output metadata. Output rows and metadata are independently verified before exclusive publication.
 JPEG admits gray/RGB/YCbCr through the same interpretation/I01 path; `bw` remains grayscale PNG only.
+TIFF admits the reviewed 1/8/16-bit sample, color, alpha and strip/tile domains through the same
+I01/D01 pipeline; see [bounded TIFF admission](tiff-processing.md).
 See [JPEG source admission](jpeg-processing.md) for complete coding, metadata, resource and failure rules.
 I01 can be selected explicitly or through its opt-in automatic predicates, with original-depth
 1/8-bit grayscale protection masks in oriented coordinates. Fitting, linear application and output
@@ -46,11 +48,10 @@ C++23/CMake target boundaries, a verified offline source lock and isolated nativ
 strict warnings and linters; generated method/argument contracts; deterministic scalar primitives;
 checked aligned planes; budget accounting; bounded indexed scheduling; a box-mean primitive;
 reference/property tests and manifest-declared engine-independent fuzz harnesses, including
-raw binary/continuous PNG decoding, raw ICC parsing/transforms, independently generated exact-sample PNG checks and a direct-window Sauvola oracle. See [fuzzing](fuzzing.md).
+raw binary/continuous PNG, JPEG and TIFF decoding, raw ICC parsing/transforms, independently generated exact-sample PNG checks and a direct-window Sauvola oracle. See [fuzzing](fuzzing.md).
 
 Sauvola and the box-mean primitive use the internal scheduler; the public CLI does not expose
-`--threads`, batching or arbitrary recipes. OpenCV core/photo execute D01 behind the bounded denoising adapter. Leptonica and TIFF remain
-development-probe packages without production processing admission.
+`--threads`, batching or arbitrary recipes. OpenCV core/photo execute D01 behind the bounded denoising adapter. Leptonica remains a development-probe package without production processing admission.
 
 ## Verification is commit-specific
 
@@ -59,14 +60,14 @@ not evidence that its CI passed.
 
 Required CI includes Linux x86-64/ARM64, macOS Intel/ARM64 and Windows x86-64 native builds,
 real-executable contracts, structural/tooling checks, fuzzing, and independent ASan/UBSan and
-TSan suites. Native sanitizer coverage is first-party coverage; isolated fuzzing additionally instruments JPEG, PNG, zlib and Little CMS.
+TSan suites. Native sanitizer coverage is first-party coverage; isolated fuzzing additionally instruments JPEG, TIFF, PNG, zlib and Little CMS.
 The macOS deployment target is 14.0; actual execution on every older supported OS, signing,
 notarization, performance/peak-RSS measurement and document-quality benchmarks remain release
 validation work, not capabilities or results claimed by this source tree.
 
 ## Not implemented
 
-Other complete methods, multipage processing, TIFF input,
+Other complete methods, multipage processing,
 dewarping, deskewing, automatic method selection, OCR, batching, presets and streaming/tiling
 for arbitrarily large pages. No neural inference, GPU requirement, network service, GUI,
 database or plugin framework is introduced. Planned numerical definitions remain in the method

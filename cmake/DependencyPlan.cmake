@@ -2,10 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 # The actual serial dependency closure, shared by configuration, verification and importing.
 include_guard(GLOBAL)
-set(DE_SELECTED_DEPENDENCIES zlib jpeg png)
-if(DE_BUILD_TOOLS AND NOT DE_FUZZ_ONLY)
-  list(APPEND DE_SELECTED_DEPENDENCIES tiff)
-endif()
+set(DE_SELECTED_DEPENDENCIES zlib jpeg png tiff)
 list(APPEND DE_SELECTED_DEPENDENCIES opencv)
 if(DE_BUILD_TOOLS AND NOT DE_FUZZ_ONLY)
   list(APPEND DE_SELECTED_DEPENDENCIES leptonica)

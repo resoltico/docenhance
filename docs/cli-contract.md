@@ -18,6 +18,7 @@ P = process.
 
 - `png`: `preserve`, `gray`, `bw`.
 - `jpeg`: `preserve`, `gray`.
+- `tiff`: `preserve`, `gray`.
 
 ## Value grammar
 
@@ -181,7 +182,7 @@ Positive grid-Laplacian weight for fitting the logarithmic background.
 
 **Scope:** P. **Domain/default:** off; off|nlm.
 
-Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG after I01. No binary denoising.
+Opt-in bounded 16-bit luminance NLM-L1 for continuous PNG/JPEG/TIFF after I01. No binary denoising.
 
 **Applicable methods:** D01.
 

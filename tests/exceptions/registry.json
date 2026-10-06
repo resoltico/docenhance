@@ -530,6 +530,33 @@
     },
     "tests/unit/verify.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@113ceb2d": {
       "explanation": "The fixture writes encoded PNG bytes through a narrow-character stream, which is the same view of the same buffer the production reader takes. No object's lifetime or value changes, and the length written comes from the buffer itself."
+    },
+    "tests/fixtures/tiff/generate_tiff_fixtures.py:ruff/E402@0a6f8e5f": {
+      "explanation": "The standalone fixture generator establishes the repository-local independent TIFF writer path before importing it. This import must follow that path initialization when invoked directly from a clean checkout; no installed image library supplies the fixture bytes or expected samples."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@d2025b4b": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@76dc9d36": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@153b864f": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@5a9e1a92": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@a62d6e6a": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@1034fd55": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@16876f15": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
+    },
+    "src/io/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@4842b0ee": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding."
     }
   }
 }

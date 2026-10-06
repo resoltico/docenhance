@@ -119,6 +119,10 @@ enum class JpegColor { gray, rgb, ycbcr };
 struct JpegDeclarations {
     JpegColor color = JpegColor::gray;
 };
+struct TiffDeclarations {
+    bool associated_alpha = false;
+    bool miniswhite = false;
+};
 struct PngDeclarations {
     std::optional<std::uint32_t> gamma;
     std::optional<std::array<std::uint32_t, chromaticity_fields>> chromaticities;
@@ -129,7 +133,7 @@ struct RasterMetadata {
     core::Buffer icc;
     Orientation orientation = Orientation::normal();
     std::optional<Resolution> resolution;
-    std::variant<PngDeclarations, JpegDeclarations> declarations;
+    std::variant<PngDeclarations, JpegDeclarations, TiffDeclarations> declarations;
     [[nodiscard]] PngDeclarations* png() & noexcept {
         return std::get_if<PngDeclarations>(&declarations);
     }

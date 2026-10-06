@@ -40,6 +40,14 @@ cleanup behavior separately from that byte-identity check. See [the resource aud
 Native C++ integrations must consistently use the corrected installed header from the project's
 private prefix; mixing it with stock JSON headers would violate the inline definition contract.
 
+The TIFF build uses a hash-bound private copy of the locked source with one per-handle JPEG
+memory installer before native JPEG header parsing. It retains original upstream notices and
+requires explicit static installation. A second checked adaptation requires complete Deflate
+striles, including checksum trailers; producing the expected pixels alone is insufficient. Build audit checks adapted-source identity, actual
+compilation and the installed installer ABI; native resource-refusal/refund tests separately
+exercise the allocation behavior. TIFF, JPEG, zlib and PNG are all included in the instrumented
+codec fuzz closure. This private TIFF prefix is not a general-purpose TIFF SDK.
+
 ## Runtime boundary
 
 The lock distinguishes `runtime-candidate` dependencies from test-only dependencies. A selected

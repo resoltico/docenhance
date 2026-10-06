@@ -234,6 +234,7 @@ def metadata_outputs(
     record_conversion["properties"]["verified"] = {"const": True}
     record["$defs"].update(
         source_decoding=schema["$defs"]["source_decoding"],
+        tiff_resolution=schema["$defs"]["tiff_resolution"],
         denoising=schema["$defs"]["denoising"],
         denoising_request=schema["$defs"]["denoising_request"],
         denoising_method=schema["$defs"]["denoising_method"],

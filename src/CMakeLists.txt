@@ -33,7 +33,7 @@ de_library(de_exec LAYER exec
   HEADERS "${DE_INCLUDE}/exec/concurrency.hpp" "${DE_INCLUDE}/exec/scheduler.hpp"
   LINKS de_core)
 de_library(de_image LAYER image
-  SOURCES image/numeric.cpp image/plane_rows.cpp image/plane.cpp image/raster.cpp image/continuous.cpp image/linear.cpp image/source.cpp
+  SOURCES image/numeric.cpp image/plane_rows.cpp image/plane.cpp image/raster.cpp image/continuous.cpp image/linear.cpp image/source.cpp image/tiff_source.cpp
   HEADERS "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
           "${DE_INCLUDE}/image/raster.hpp" "${DE_INCLUDE}/image/source.hpp" "${DE_INCLUDE}/image/continuous.hpp" "${DE_INCLUDE}/image/linear.hpp"
   LINKS de_core)
@@ -70,14 +70,14 @@ de_library(de_io LAYER io
   SOURCES io/file_stream.cpp io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_write_image.cpp io/bundle_publish.cpp io/bundle_stage.cpp io/bundle_stage.hpp io/bundle_inspect.cpp io/png_artifact.cpp io/entry_identity.hpp io/entry_identity.cpp io/bundle_native.hpp io/bundle_posix.cpp io/bundle_windows.cpp io/windows_sdk.hpp
           io/publication.cpp io/png_context.hpp io/png_reader.hpp io/native_publication.hpp
           io/png_metadata.cpp io/png_metadata.hpp io/png_chunks.cpp io/png_chunks.hpp io/png_profile.cpp io/exif.cpp io/exif.hpp
-          io/jpeg_context.hpp io/jpeg_context.cpp io/jpeg_memory.cpp io/jpeg_scan.hpp io/jpeg_markers.hpp io/jpeg_scan.cpp io/jpeg_metadata.cpp io/jpeg_decode.cpp io/source.cpp
+          io/tiff_layout.hpp io/tiff_layout.cpp io/tiff_ifd.hpp io/tiff_ifd.cpp io/tiff_context.hpp io/tiff_context.cpp io/tiff_decode.cpp io/tiff_tags.cpp io/tiff_pixels.cpp io/jpeg_context.hpp io/jpeg_context.cpp io/jpeg_memory.cpp io/jpeg_scan.hpp io/jpeg_markers.hpp io/jpeg_scan.cpp io/jpeg_metadata.cpp io/jpeg_decode.cpp io/source.cpp
           io/png_raster.cpp io/source_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
           io/png_inventory.cpp io/png_verify_rows.cpp io/png_verified_rows.cpp
           io/png_protection.cpp io/source_snapshot.hpp io/digest.cpp io/slot_identity.cpp io/file_access.hpp
-  HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp" "${DE_INCLUDE}/io/source.hpp" "${DE_INCLUDE}/io/jpeg.hpp"
+  HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp" "${DE_INCLUDE}/io/source.hpp" "${DE_INCLUDE}/io/jpeg.hpp" "${DE_INCLUDE}/io/tiff.hpp"
           "${DE_INCLUDE}/io/protection_png.hpp" "${DE_INCLUDE}/io/digest.hpp" "${DE_INCLUDE}/io/publication.hpp" "${DE_INCLUDE}/io/bundle_snapshot.hpp"
           "${DE_INCLUDE}/io/png_artifact.hpp" "${DE_INCLUDE}/io/artifact_limits.hpp" "${DE_INCLUDE}/io/paths.hpp"
-  LINKS de_core de_image DE::png DE::jpeg DE::zlib DE::picosha2)
+  LINKS de_core de_image DE::png DE::jpeg DE::tiff DE::zlib DE::picosha2)
 de_library(de_color LAYER color
   SOURCES color/context.cpp color/context.hpp color/profiles.cpp color/interpretation.cpp
           color/converter.cpp color/conversion.hpp color/prepare.cpp color/rows.cpp

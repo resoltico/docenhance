@@ -29,7 +29,8 @@ metadata. Static PNG supports gray/palette/RGB/alpha layouts and 8/16-bit contin
 canonical protection mask when one was supplied. Profile assumptions, alpha flattening, requested depth reduction,
 orientation and verified output descriptors are reported. Bounded 8-bit baseline/progressive
 Huffman JPEG supports preserve/gray through the same pipeline; see [JPEG admission](jpeg-processing.md).
-TIFF, animation, recipes, presets and enhancement methods other than I01/D01 remain unsupported.
+Bounded single-page TIFF/BigTIFF supports preserve/gray; see [TIFF admission](tiff-processing.md).
+Animation, multipage input, recipes, presets and enhancement methods other than I01/D01 remain unsupported.
 
 Only explicit `bw` activates a binarizer (Sauvola by default). B02/B03 retain the separate published
 1/2/4/8-bit grayscale-without-transparency input contract and 8-bit binary output. They do not run
@@ -41,7 +42,7 @@ owned sibling staging and atomically publishes without replacement after encodin
 succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
 `docenhance methods` reports I01, D01, B02 and B03. `methods ID` selects one entry.
-`version --json` reports the complete executable method list and `png`/`jpeg` as input formats.
+`version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
 Help, version and capability discovery do not invoke the image-processing host.
 
 ## Optional illumination and protection

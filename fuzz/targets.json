@@ -152,6 +152,15 @@
         "de_core"
       ],
       "max_len": 2048
+    },
+    "tiff_decode": {
+      "source": "tiff_decode.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_io"
+      ],
+      "max_len": 65536
     }
   }
 }

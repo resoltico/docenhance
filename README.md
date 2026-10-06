@@ -4,12 +4,13 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MPL-2.0-licensed.
 
-> **Capability boundary: PNG/JPEG input to continuous-tone PNG representation, opt-in I01 illumination and D01 denoising, and two binarizers.**
+> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01 illumination and D01 denoising, and two binarizers.**
 > `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
 > and metadata policies. Explicit `--output-mode bw` selects B02/B03 on their narrower stored-gray
 > input domain. All output is published into a new directory. See [PNG processing](docs/png-processing.md)
-> [JPEG admission](docs/jpeg-processing.md), and [typed binarization](docs/binarization.md). TIFF input, batch processing, presets and
+> [JPEG admission](docs/jpeg-processing.md), [bounded single-page TIFF/BigTIFF](docs/tiff-processing.md),
+> and [typed binarization](docs/binarization.md). Batch processing, presets and
 > other restoration methods remain unsupported. I01 surface/auto illumination and protected
 > regions are specified in [illumination](docs/illumination.md); the default remains off.
 

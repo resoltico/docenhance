@@ -33,6 +33,26 @@ nlohmann::ordered_json source_fields(const image::SourceDescription& description
             {"interlaced", png->interlaced},
         };
     }
+    if (const auto* const tiff = std::get_if<image::TiffSource>(&description)) {
+        return {
+            {"format", "tiff"},
+            {"decoder_policy", "bounded-tiff-striles-1"},
+            {"width", tiff->width},
+            {"height", tiff->height},
+            {"precision", tiff->depth},
+            {"samples", tiff->samples},
+            {"photometric", tiff->photometric},
+            {"compression", tiff->compression},
+            {"planar", tiff->planar},
+            {"predictor", tiff->predictor},
+            {"alpha", tiff->alpha},
+            {"bigtiff", tiff->big},
+            {"tiled", tiff->tiled},
+            {"pages", 1},
+            {"orientation", tiff->orientation.code()},
+            {"resolution", resolution(tiff->resolution)},
+        };
+    }
     const auto& jpeg = std::get<image::JpegSource>(description);
     const unsigned components = jpeg.color == image::JpegColor::gray ? 1 : image::jpeg_components;
     nlohmann::ordered_json sampling = nlohmann::ordered_json::array();

@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
 add_executable(de_tests unit/value_contracts.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
+  unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_decode.cpp unit/tiff_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
 target_link_libraries(de_tests PRIVATE de_app de_bundle de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color de_denoise Catch2::Catch2WithMain)
 de_apply_options(de_tests)
@@ -37,6 +37,8 @@ add_test(NAME continuous-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRE
 add_test(NAME interpretation-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_interpretation.py" "$<TARGET_FILE:docenhance>")
 set_tests_properties(interpretation-contract PROPERTIES TIMEOUT 90)
 add_test(NAME bundle-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_bundles.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME tiff-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_tiff.py" "$<TARGET_FILE:docenhance>")
+set_tests_properties(tiff-contract PROPERTIES TIMEOUT 300)
 add_test(NAME jpeg-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME jpeg-pipeline-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_jpeg_pipeline.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME generated-contract COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/generate_spec.py" --check)

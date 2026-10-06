@@ -35,7 +35,7 @@ function(de_dependency_flags name output)
   if(WIN32 AND name STREQUAL "leptonica")
     list(APPEND c_flags /DLEPTONICA_INTERCEPT_ALLOC)
   endif()
-  if(DE_FUZZ_ONLY AND name MATCHES "^(png|zlib|lcms|jpeg|opencv)$")
+  if(DE_FUZZ_ONLY AND name MATCHES "^(png|zlib|lcms|jpeg|tiff|opencv)$")
     set(instrumentation -fsanitize=address,undefined,fuzzer-no-link
       -fno-sanitize-recover=all -fno-omit-frame-pointer)
     list(APPEND c_flags ${instrumentation})

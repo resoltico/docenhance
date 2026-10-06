@@ -86,6 +86,27 @@ core::Result<image::SourceDescription> record_source(const RecordJson& value) {
             .color_type = integer(record_field(value, "color_type"), image::png_rgb_alpha),
             .interlaced = record_boolean(record_field(value, "interlaced")),
         };
+    } else if (format == "tiff") {
+        const auto orientation =
+            image::Orientation::from_code(integer(record_field(value, "orientation"), 8));
+        if (!orientation) {
+            return invalid();
+        }
+        result = image::TiffSource{
+            .width = integer(record_field(value, "width"), UINT32_MAX),
+            .height = integer(record_field(value, "height"), UINT32_MAX),
+            .depth = integer(record_field(value, "precision"), image::word_bits),
+            .samples = integer(record_field(value, "samples"), image::rgba_channels),
+            .photometric = integer(record_field(value, "photometric"), image::tiff_ycbcr),
+            .compression = integer(record_field(value, "compression"), image::tiff_adobe_deflate),
+            .planar = integer(record_field(value, "planar"), 2),
+            .predictor = integer(record_field(value, "predictor"), 2),
+            .alpha = integer(record_field(value, "alpha"), 2),
+            .big = record_boolean(record_field(value, "bigtiff")),
+            .tiled = record_boolean(record_field(value, "tiled")),
+            .orientation = *orientation,
+            .resolution = record_resolution(record_field(value, "resolution")),
+        };
     } else if (format == "jpeg") {
         result = jpeg_source(value);
     }
@@ -166,6 +187,19 @@ bool source_agrees(const DeclaredBundle& declared) {
     }
     if (png != nullptr) {
         return png_agrees(*png, conversion);
+    }
+    if (const auto* const tiff = std::get_if<image::TiffSource>(&source)) {
+        auto resolution = tiff->resolution;
+        if (resolution && tiff->orientation.transposed()) {
+            std::swap(resolution->x, resolution->y);
+        }
+        const bool interpretation =
+            conversion.interpretation == image::Interpretation::assumed_srgb ||
+            conversion.interpretation == image::Interpretation::overridden_srgb ||
+            conversion.interpretation == image::Interpretation::icc;
+        return conversion.source == image::decoded_tiff_shape(*tiff) &&
+               conversion.orientation == tiff->orientation && conversion.resolution == resolution &&
+               interpretation;
     }
     return jpeg_agrees(std::get<image::JpegSource>(source), conversion);
 }

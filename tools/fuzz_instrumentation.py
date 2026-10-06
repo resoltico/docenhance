@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Verify sanitizer and coverage in the actual imported JPEG/PNG/zlib/LCMS archives."""
+"""Verify sanitizer and coverage in the actual imported JPEG/PNG/TIFF/zlib/LCMS archives."""
 
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ def inspect_archives(build: Path) -> dict[str, str]:
     if not isinstance(archives, dict) or set(archives) != {
         "jpeg",
         "png",
+        "tiff",
         "zlib",
         "lcms",
         "opencv_core",
@@ -38,7 +39,7 @@ def inspect_archives(build: Path) -> dict[str, str]:
         "opencv_imgproc",
     }:
         msg = (
-            "The fuzz build must identify exactly its JPEG, PNG, zlib, Little CMS "
+            "The fuzz build must identify exactly its JPEG, PNG, TIFF, zlib, Little CMS "
             "and OpenCV execution archives"
         )
         raise FuzzError(msg)

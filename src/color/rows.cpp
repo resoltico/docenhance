@@ -17,6 +17,7 @@
 #include <expected>
 #include <lcms2.h>
 #include <span>
+#include <variant>
 
 namespace docenhance::color {
 namespace {
@@ -25,6 +26,23 @@ struct RowPart {
     std::uint32_t first{};
     std::uint32_t count{};
 };
+core::Result<double> straight_sample(std::uint16_t stored, std::uint32_t maximum, double opacity,
+                                     const image::TiffDeclarations* const tiff) {
+    if (opacity == 0) {
+        return 0.0;
+    }
+    double value = static_cast<double>(stored) / maximum;
+    if (tiff != nullptr && tiff->associated_alpha) {
+        if (value > opacity) {
+            return core::failure(core::ErrorCode::input, "Associated TIFF color exceeds alpha");
+        }
+        value /= opacity;
+    }
+    if (tiff != nullptr && tiff->miniswhite) {
+        value = 1 - value;
+    }
+    return value;
+}
 core::Result<void> gather(ConversionState& state, RowPart part, image::RowUse use) {
     const auto& source = state.source.get();
     const unsigned channels = image::is_color(source.shape.model) ? image::rgb_channels : 1;
@@ -32,6 +50,7 @@ core::Result<void> gather(ConversionState& state, RowPart part, image::RowUse us
     const auto stride = image::components(source.shape.model) * bytes;
     const auto maximum =
         source.shape.depth == image::SampleDepth::word() ? image::word_max : image::byte_max;
+    const auto* const tiff = std::get_if<image::TiffDeclarations>(&source.metadata.declarations);
     auto const input = state.input.view().row(0);
     auto const alpha = state.alpha.view().row(0);
     for (std::uint32_t i = 0; i < part.count; ++i) {
@@ -46,18 +65,20 @@ core::Result<void> gather(ConversionState& state, RowPart part, image::RowUse us
                 : 1.0;
         if (opacity < 1 && state.parameters.alpha == image::AlphaPolicy::reject) {
             return core::failure(core::ErrorCode::input,
-                                 "PNG contains non-opaque samples under --alpha reject");
+                                 "Source contains non-opaque samples under --alpha reject");
         }
         if (opacity < 1 && use == image::RowUse::output) {
             ++state.report.flattened_pixels;
         }
         alpha.subspan(i, 1).front() = opacity;
         for (unsigned c = 0; c < channels; ++c) {
-            input.subspan((std::size_t{i} * channels) + c, 1).front() =
-                opacity == 0 ? 0.0
-                             : static_cast<double>(image::read_sample(
-                                   pixel.subspan(std::size_t{c} * bytes), source.shape.depth)) /
-                                   maximum;
+            const auto value = straight_sample(
+                image::read_sample(pixel.subspan(std::size_t{c} * bytes), source.shape.depth),
+                maximum, opacity, tiff);
+            if (!value) {
+                return std::unexpected(value.error());
+            }
+            input.subspan((std::size_t{i} * channels) + c, 1).front() = *value;
         }
     }
     return {};

@@ -54,9 +54,12 @@ struct JpegContext {
     jpeg_error_mgr errors{};
     jpeg_source_mgr source{};
     jpeg_progress_mgr progress{};
+    j_decompress_ptr active_decoder = nullptr;
     JpegMemory memory;
     std::reference_wrapper<std::jmp_buf> jump;
     std::span<const std::uint8_t> remaining;
+    bool native_error_handler = false;
+    bool invalid = false;
     bool exhausted = false;
     bool cancelled = false;
     unsigned scan_limit{};
@@ -69,7 +72,8 @@ struct JpegContext {
 [[nodiscard]] JpegContext& jpeg_context(j_common_ptr decoder) noexcept;
 [[noreturn]] void jpeg_failure(j_common_ptr decoder);
 void jpeg_checkpoint(j_common_ptr decoder);
-void install_jpeg_memory(JpegContext& context) noexcept;
+void install_jpeg_memory(JpegContext& context, j_common_ptr decoder) noexcept;
+void install_jpeg_progress(JpegContext& context, j_decompress_ptr decoder) noexcept;
 void install_jpeg_source(JpegContext& context, std::span<const std::uint8_t> bytes) noexcept;
 [[nodiscard]] bool jpeg_header(JpegContext& context, std::span<const std::uint8_t> bytes);
 [[nodiscard]] bool jpeg_pixels(JpegContext& context, image::PlaneView<std::uint8_t> pixels);

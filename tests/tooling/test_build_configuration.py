@@ -262,14 +262,14 @@ find_package(Fixture 1.0 EXACT CONFIG REQUIRED PATHS "{owned.as_posix()}" NO_DEF
         self.assertTrue(marker.is_file())
 
     def test_probe_selection_is_the_recorded_dependency_plan(self) -> None:
-        """Without the probe, compile production codecs but no TIFF/Leptonica."""
+        """Without the probe, compile production TIFF codecs but no Leptonica."""
         self.policy_project()
         result = self.configure(
             "-DCMAKE_BUILD_TYPE=Release", "-DDE_TOOLCHAIN=platform", "-DDE_BUILD_TOOLS=OFF"
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         plan = json.loads((self.root / "build/dependency-plan.json").read_text())
-        self.assertNotIn("tiff", plan)
+        self.assertIn("tiff", plan)
         self.assertNotIn("leptonica", plan)
         self.assertIn("jpeg", plan)
         self.assertIn("opencv", plan)

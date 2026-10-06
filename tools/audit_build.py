@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
 # Independent reference for the reviewed corrected 3.12.0 single header. This proves identity;
 # native allocation-refusal tests separately prove cleanup behavior.
+TIFF_COMPLETE_ZIP_SHA256 = "551b35ed562b1ebbb5e4577afc5fc57d195667b1294b6a31123fac0ec2810275"
+TIFF_CHARGED_JPEG_SHA256 = "c51749f755cf1fe0fcca8bfd02be1dedeaa5c8affceac22c89b43cd6acd741b7"
 JSON_BOUNDED_HEADER_SHA256 = "f504f6fa07b84e3e264a1f7757f15da1502bb539285c90e908c1cabab47b572e"
 
 
@@ -55,8 +57,60 @@ def zlib_stream_failures(binary: Path) -> list[str]:
     )
 
 
+def tiff_recipe_failures(binary: Path) -> list[str]:
+    """The installed per-handle ABI and actual JPEG source must be the reviewed adaptation."""
+    owned = binary / "owned-source/libtiff/tif_jpeg.c"
+    header = binary / "owned-source/libtiff/docenhance_tiff.h"
+    installed = binary.parents[1] / "prefix/include/docenhance_tiff.h"
+    if not owned.is_file() or not header.is_file() or not installed.is_file():
+        return ["TIFF: missing charged JPEG source or installed installer ABI"]
+    failures = []
+    if header.read_bytes() != installed.read_bytes():
+        failures.append("TIFF: installed installer ABI differs from its build input")
+    if hashlib.sha256(owned.read_bytes()).hexdigest() != TIFF_CHARGED_JPEG_SHA256:
+        failures.append("TIFF: JPEG source differs from the reviewed adaptation")
+    commands = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
+    compiled = [
+        Path(entry["file"]).resolve()
+        for entry in commands
+        if Path(entry["file"]).name == "tif_jpeg.c"
+    ]
+    if compiled != [owned.resolve()]:
+        failures.append("TIFF: JPEG compilation does not use exactly the reviewed source")
+    source = owned.read_text(encoding="utf-8")
+    creation = source.find("static int TIFFjpeg_create_decompress(JPEGState *sp)")
+    end = source.find("static int TIFFjpeg_set_defaults", creation)
+    if creation < 0 or end < 0:
+        return [*failures, "TIFF: JPEG bootstrap framing is absent"]
+    bootstrap = source[creation:end]
+    if bootstrap.count("memory->install(memory->context, &sp->cinfo.d)") != 1:
+        failures.append("TIFF: charged JPEG bootstrap is absent or duplicated")
+    return failures
+
+
+def tiff_zip_failures(binary: Path) -> list[str]:
+    """Deflate pixel counts do not replace the strict complete-strile decoder source."""
+    source = binary / "owned-source/libtiff/tif_zip.c"
+    if not source.is_file():
+        return ["TIFF: missing complete Deflate decoder source"]
+    failures = []
+    if hashlib.sha256(source.read_bytes()).hexdigest() != TIFF_COMPLETE_ZIP_SHA256:
+        failures.append("TIFF: Deflate source differs from the reviewed adaptation")
+    commands = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
+    compiled = [
+        Path(entry["file"]).resolve()
+        for entry in commands
+        if Path(entry["file"]).name == "tif_zip.c"
+    ]
+    if compiled != [source.resolve()]:
+        failures.append("TIFF: Deflate compilation does not use exactly the reviewed source")
+    return failures
+
+
 def source_recipe_failures(name: str, binary: Path) -> list[str]:
-    """Inspect the two private upstream adaptations independently of feature cache values."""
+    """Inspect private upstream adaptations independently of feature cache values."""
+    if name == "tiff":
+        return [*tiff_recipe_failures(binary), *tiff_zip_failures(binary)]
     if name == "json":
         return json_header_failures(binary)
     if name == "zlib":

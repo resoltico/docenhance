@@ -9,7 +9,7 @@ stored-grayscale PNG operation; JPEG on that branch returns `E_NOT_IMPLEMENTED`,
 ## One identified source
 
 The file adapter opens the source read-only and acquires one bounded encoded snapshot. Size/read/EOF
-checks, cancellation and hashing concern those same bytes. Signature dispatch selects PNG or JPEG;
+checks, cancellation and hashing concern those same bytes. Signature dispatch selects PNG, JPEG or TIFF;
 extensions do not govern decoding and there is no decoder retry. The PNG-only and protection APIs
 retain their domains. The source is preserved. Acquisition is not a transactional snapshot of an
 arbitrarily concurrently edited file or a hostile-filesystem sandbox.
@@ -18,8 +18,9 @@ a regular file. Name replacement after opening does not redirect acquisition; PO
 uses nonblocking open before fstat. Protection masks use the same acquisition boundary.
 
 `Raster` holds decoded integer samples and shared ICC/orientation/resolution observations.
-Container declarations are a closed PNG/JPEG alternative: PNG color chunks retain their original
-rules, while JPEG retains its component interpretation. The color adapter alone applies ICC and
+Container declarations are a closed PNG/JPEG/TIFF alternative: PNG color chunks retain their original
+rules, JPEG retains its component interpretation, and [TIFF](tiff-processing.md) records sample
+association and MINISWHITE separately. The color adapter alone applies ICC and
 linear-light interpretation. JPEG's native YCbCr-to-RGB expansion is not ICC conversion or
 linearization. Shared EXIF handling reads bounded IFD0 orientation/resolution only; it does not
 traverse GPS, maker notes, thumbnails or later IFDs. PNG pHYs precedence is unchanged.
@@ -121,8 +122,8 @@ charged allocations, peak RSS and runtime are different evidence, never intercha
 
 ## Persistent and response compatibility
 
-New production records use format version 3 and require a closed `source.decoding` PNG/JPEG
-alternative. Response schema version 3 exposes the same mapping as `source_decoding` and reports an
+New production records use format version 4 and require a closed `source.decoding` PNG/JPEG/TIFF
+alternative. Response schema version 4 exposes the same mapping as `source_decoding` and reports an
 explicit input/output-mode matrix. A custom processing port can report unknown source observations
 as null; the native host always supplies them. Numerical method versions are unchanged.
 

@@ -46,6 +46,35 @@ struct JpegSource {
     bool exif_present = false;
     bool resolution_conflict = false;
 };
-using SourceDescription = std::variant<PngSource, JpegSource>;
+inline constexpr unsigned tiff_color_samples = 3;
+inline constexpr unsigned tiff_minisblack = 1;
+inline constexpr unsigned tiff_rgb = 2;
+inline constexpr unsigned tiff_palette = 3;
+inline constexpr unsigned tiff_ycbcr = 6;
+inline constexpr unsigned tiff_ccitt_group3 = 3;
+inline constexpr unsigned tiff_ccitt_group4 = 4;
+inline constexpr unsigned tiff_lzw = 5;
+inline constexpr unsigned tiff_jpeg = 7;
+inline constexpr unsigned tiff_deflate = 8;
+inline constexpr unsigned tiff_packbits = 32773;
+inline constexpr unsigned tiff_adobe_deflate = 32946;
+struct TiffSource {
+    std::uint32_t width{};
+    std::uint32_t height{};
+    unsigned depth = byte_bits;
+    unsigned samples = 1;
+    unsigned photometric = 1;
+    unsigned compression = 1;
+    unsigned planar = 1;
+    unsigned predictor = 1;
+    unsigned alpha{};
+    bool big = false;
+    bool tiled = false;
+    Orientation orientation;
+    std::optional<Resolution> resolution;
+};
+[[nodiscard]] RasterShape decoded_tiff_shape(const TiffSource& source) noexcept;
+[[nodiscard]] bool valid_tiff_source(const TiffSource& source) noexcept;
+using SourceDescription = std::variant<PngSource, JpegSource, TiffSource>;
 [[nodiscard]] bool valid_source_description(const SourceDescription& description) noexcept;
 } // namespace docenhance::image

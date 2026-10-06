@@ -10,7 +10,7 @@ import re
 from datetime import datetime
 from typing import Any
 
-FEATURE_DIGEST = "380ec21e0dc52e6332b23eb749cca027affb958676b2b37d3c2dc6f18d69b8b2"
+FEATURE_DIGEST = "4bad5ddc536b41d080fbf87e535d2bc695ab5f5521580703a6f11f2ddd1e7eb9"
 
 
 def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: bytes) -> bool:

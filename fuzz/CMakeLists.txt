@@ -47,4 +47,4 @@ endfunction()
 include(FuzzTargets)
 de_register_fuzz_targets(ENGINE)
 file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/fuzz-codecs.json"
-  CONTENT "{\"jpeg\":\"$<TARGET_FILE:DE::jpeg>\",\"png\":\"$<TARGET_FILE:DE::png>\",\"zlib\":\"$<TARGET_FILE:DE::zlib>\",\"lcms\":\"$<TARGET_FILE:DE::lcms>\",\"opencv_core\":\"$<TARGET_FILE:opencv_core>\",\"opencv_photo\":\"$<TARGET_FILE:opencv_photo>\",\"opencv_imgproc\":\"$<TARGET_FILE:opencv_imgproc>\"}\n")
+  CONTENT "{\"tiff\":\"$<TARGET_FILE:DE::tiff>\",\"jpeg\":\"$<TARGET_FILE:DE::jpeg>\",\"png\":\"$<TARGET_FILE:DE::png>\",\"zlib\":\"$<TARGET_FILE:DE::zlib>\",\"lcms\":\"$<TARGET_FILE:DE::lcms>\",\"opencv_core\":\"$<TARGET_FILE:opencv_core>\",\"opencv_photo\":\"$<TARGET_FILE:opencv_photo>\",\"opencv_imgproc\":\"$<TARGET_FILE:opencv_imgproc>\"}\n")

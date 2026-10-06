@@ -41,7 +41,15 @@
       "lzma": false,
       "webp": false,
       "zstd": false,
-      "libdeflate": false
+      "libdeflate": false,
+      "DOCENHANCE_TIFF_CHARGED_JPEG": true,
+      "DOCENHANCE_TIFF_JPEG_SHA256": "f6b80b90e7fb8f17448d07ceebb075dc1b8371fba5f84ab3ed00df2730a13c21",
+      "tiff-install": true,
+      "tiff-static": true,
+      "tiff-framework": false,
+      "tiff-deprecated": false,
+      "DOCENHANCE_TIFF_COMPLETE_DEFLATE": true,
+      "DOCENHANCE_TIFF_ZIP_SHA256": "1ca068ada61c583f20dcd969d1acabc2b9c58eea4a4b18964644d34d5452e207"
     },
     "opencv": {
       "BUILD_LIST": "core,flann,geometry,imgproc,photo",

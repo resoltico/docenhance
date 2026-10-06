@@ -10,6 +10,7 @@
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/jpeg.hpp"
+#include "docenhance/io/tiff.hpp"
 #include "jpeg_markers.hpp"
 #include "source_snapshot.hpp"
 
@@ -54,11 +55,22 @@ core::Result<IdentifiedRaster> load_source(const std::string& input, core::Budge
             .description = decoded->source,
         };
     }
+    if (has_tiff_signature(bytes)) {
+        auto decoded = decode_tiff(bytes, budget, policy, cancellation);
+        if (!decoded) {
+            return std::unexpected(decoded.error());
+        }
+        return IdentifiedRaster{
+            .raster = std::move(decoded->raster),
+            .source = std::move(*identity),
+            .description = decoded->source,
+        };
+    }
     constexpr auto png_signature = std::to_array<std::uint8_t>({137, 80, 78, 71, 13, 10, 26, 10});
     if (bytes.size() < png_signature.size() ||
         !std::ranges::equal(png_signature, bytes.first(png_signature.size()))) {
         return core::failure(core::ErrorCode::input,
-                             "Input signature is neither an admitted PNG nor JPEG source");
+                             "Input signature is not an admitted PNG, JPEG or TIFF source");
     }
     auto raster = decode_png_raster(bytes, budget, policy, cancellation);
     if (!raster) {

@@ -39,6 +39,8 @@ For historical counterexamples and design challenges, see the [build integrity a
 [verification detection audit](verification-detection-audit.md). The
 [JPEG resource observations](jpeg-resource-observations.md) record measurements with their source,
 platform and input assumptions; use [JPEG processing](jpeg-processing.md) for enforced bounds.
+[TIFF processing](tiff-processing.md) defines single-page classic/BigTIFF coding, precision,
+metadata, allocation and cancellation admission.
 These records explain decisions and do not replace the current authorities above.
 
 [Typed binarization](binarization.md) specifies B02/B03 parameters, mathematics, memory, execution
