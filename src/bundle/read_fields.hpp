@@ -9,6 +9,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 
 #include <cstdint>
 #include <nlohmann/json.hpp>
@@ -49,4 +50,8 @@ validate_denoising_claims(const RecordJson& document, DeclaredBundle& d, const O
                                                           DeclaredBundle& d,
                                                           const Operation& operation,
                                                           const methods::IlluminationReport& light);
+[[nodiscard]] core::Result<void> validate_sharpen_claims(const RecordJson& document,
+                                                         DeclaredBundle& d,
+                                                         const Operation& operation,
+                                                         const methods::IlluminationReport& light);
 } // namespace docenhance::bundle

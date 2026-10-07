@@ -8,9 +8,11 @@ Notable changes to this project are documented in this file. The format is based
 
 - Explicit C03 floating-point CLAHE (`--contrast clahe`) completes the contrast alternatives after illumination and denoising. It uses 1,024 eligible-sample histogram bins, mass-conserving clipping/redistribution, exact sparse/flat tile identities and interpolation at actual contextual centers. The default grid is 8x8 with at least 16 pixels per tile dimension; the clip multiplier is 2. Protected destinations remain exact, and histogram discretization does not reduce 16-bit output to 8-bit levels. See [contrast](docs/contrast.md).
 
+- Explicit S01 thresholded unsharp masking (`--sharpen unsharp`) follows contrast with float64 Gaussian REFLECT_101 borders and a soft threshold. It preserves protected destinations, reports eligible pre-clamp excursions and clipping, and emits `W_SHARPENING` for positive amount. Output is not evidence of additional detail. See [sharpening](docs/sharpening.md).
+
 ### Changed
 
-- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 8, adding closed C03 grid/clip parameters and required `identity_tiles` observations (zero for other methods). Update schema consumers and contrast visitors; obsolete records are refused without a compatibility reader or migration.
+- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 9, adding closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods) and sharpening excursion/clipping/warning observations. Update schema consumers and contrast visitors; obsolete records are refused without a compatibility reader or migration.
 
 - **Breaking (C++ models):** `methods::ContrastModel` owns its charged immutable CLAHE maps and is move-only. Move prepared models into their lifetime owner and keep them live through output verification.
 
@@ -20,9 +22,11 @@ Notable changes to this project are documented in this file. The format is based
 
 - **Breaking (build admission):** before compiler/dependency setup, checkout-internal build directories must physically reside beneath root `out`; source-root and other source subdirectories are rejected. Truly external builds remain supported. Root artifact exclusions retain checks and committed-source packaging for legitimate nested `out`, `.cache` and `dist` sources.
 
+- **Breaking (lint exception approvals):** registry entries now require preserved-text full SHA256 scope bindings and explicit occurrence counts. Compiler/formatter regions bind through restoration, and effective configuration exclusions are centrally registered as exact rules with reviewed scopes. Old approvals, hidden suppression routes and malformed or duplicated registry records are refused without a fallback. Contributors must review the affected code and rationale before recording a changed binding; a hash does not establish review quality.
+
 ### Internal
 
-- Verification compiles independent reference sources concurrently and runs tooling modules in fresh bounded processes, reconciling every case and rejecting skipped or expected-failure work. CI starts independent execution roles together, uses observed build cores and selects four fuzz workers on suitable hosted runners. Full fixtures, per-target exposure times, failure propagation and final coverage gates remain required. See [quality](docs/quality.md).
+- Verification compiles independent reference sources concurrently and runs tooling modules in fresh bounded processes, reconciling every case and rejecting skipped or expected-failure work. CI starts independent execution roles together, uses observed build cores and selects four fuzz workers on suitable hosted runners. Full fixtures, per-target exposure times, failure propagation and final coverage gates remain required. Actual CMake source/target admission requires effective compiler and lint protection; body size and complexity limits cannot be suppressed. Fixed foreign callback ABIs use a separate parameter-only check. Production files cannot gain a larger limit by being named `test_*`. See [quality](docs/quality.md).
 
 ## [0.7.0] - 2026-10-07
 

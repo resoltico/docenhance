@@ -188,6 +188,15 @@
         "de_methods"
       ],
       "max_len": 2049
+    },
+    "sharpening": {
+      "source": "sharpening.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_methods"
+      ],
+      "max_len": 131
     }
   }
 }

@@ -17,6 +17,10 @@ import tokenize
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+from size_policy import RUFF_CHECKS
+from suppression_lex import blank_cxx_comments, blank_cxx_literals
+from suppression_scopes import format_scope, warning_scope
+
 if TYPE_CHECKING:
     from pathlib import Path
 
@@ -32,12 +36,12 @@ class Suppression:
 
     @property
     def key(self) -> str:
-        """Registry key: path, tool-qualified rule and a digest of the suppressed line.
+        """Registry key: path, tool-qualified rule and SHA256 of the complete bound scope.
 
-        Keyed by content rather than line number, so unrelated edits above a suppression do not
-        invalidate its entry, while changing the suppressed line itself does require review.
+        Preserved content rather than line numbers binds same-line/next-line targets, complete
+        compiler/formatter regions, or configuration scopes. Changed bound bytes require review.
         """
-        digest = hashlib.sha256(" ".join(self.text.split()).encode()).hexdigest()[:8]
+        digest = hashlib.sha256(self.text.encode("utf-8")).hexdigest()
         return f"{self.path}:{self.rule}@{digest}"
 
 
@@ -68,6 +72,10 @@ def _marker(
 
 
 CXX_MARKERS = (
+    _marker(r"\bsafebuffers\b", "compiler", "stack protection opt-out", raw=True),
+    _marker(
+        r"^\s*#\s*pragma\s+warning\s*\(\s*push\s*,", "compiler", "warning-level override", raw=True
+    ),
     _marker(r"\bNOLINT(?:BEGIN|END)\b", "clang-tidy", "range-wide lint suppression"),
     _marker(r"\bNOLINT(?:NEXTLINE)?\b(?:\((?P<rules>[^)]*)\))?", "clang-tidy"),
     _marker(
@@ -76,13 +84,22 @@ CXX_MARKERS = (
         raw=True,
     ),
     _marker(r"^\s*#\s*pragma\s+warning\s*\(\s*(?:disable|suppress)\s*:(?P<rules>[\d\s]+)", "msvc"),
-    _marker(r"^\s*#\s*pragma\s+(?:clang|GCC)\s+system_header", "compiler", "hides every warning"),
+    _marker(
+        r"^\s*#\s*pragma\s+(?:clang|GCC)\s+system_header",
+        "compiler",
+        "hides every warning",
+        raw=True,
+    ),
     _marker(r"\bclang-format\s+(?P<rules>off)\b", "clang-format"),
+    _marker(r"\b(?:_Pragma|__pragma)\s*\(", "compiler", "hidden compiler control", raw=True),
+    _marker(
+        r"\bdisable_sanitizer_instrumentation\b", "sanitizer", "sanitizer instrumentation opt-out"
+    ),
     _marker(r"\[\[\s*gsl::suppress\s*\(\s*\"?(?P<rules>[^\")]+)", "gsl", raw=True),
     _marker(
         r"\bno_sanitize\w*\b(?:\s*\(\s*\"(?P<rules>[^\"]+)\")?",
         "sanitizer",
-        needs_rules=False,
+        forbidden="sanitizer instrumentation opt-out",
         raw=True,
     ),
 )
@@ -95,73 +112,71 @@ PYTHON_MARKERS = (
     _marker(r"#\s*mypy\s*:", "mypy", "inline mypy configuration"),
     _marker(r"#\s*(?:based)?pyright\s*:\s*ignore\b(?:\[(?P<rules>[^\]]*)\])?", "pyright"),
     _marker(r"#\s*pylint\s*:\s*disable\s*=\s*(?P<rules>[\w\-, ]+)", "pylint"),
-    _marker(r"#\s*fmt\s*:\s*(?P<rules>off|skip)\b", "ruff-format"),
-    _marker(r"#\s*isort\s*:\s*(?P<rules>skip|off)\b", "isort"),
+    _marker(r"#\s*fmt\s*:\s*off\b", "ruff-format", "range-wide formatter suppression"),
+    _marker(r"#\s*fmt\s*:\s*(?P<rules>skip)\b", "ruff-format"),
+    _marker(
+        r"#\s*isort\s*:\s*(?:off|skip_file)\b", "isort", "range/file-wide formatter suppression"
+    ),
+    _marker(r"#\s*isort\s*:\s*(?P<rules>skip)\b", "isort"),
     _marker(r"#\s*pragma\s*:\s*no\s*(?P<rules>cover|branch)\b", "coverage"),
 )
 CMAKE_MARKERS = (
-    _marker(r"(?<![\w-])(?P<rules>-Wno-[\w=+-]+)", "compiler"),
-    _marker(r"(?<![\w-])(?P<rules>-w)(?![\w-])", "compiler"),
-    _marker(r"(?<![\w/])(?P<rules>/wd\s*\d+|/w)(?![\w])", "msvc"),
-    _marker(r"\b(?P<rules>SKIP_LINTING)\b", "cmake"),
+    _marker(
+        r"(?<![\w-])(?:-w(?![\w-])|-Wno-(?:error|everything)(?![\w=+-]))",
+        "compiler",
+        "blanket warning opt-out",
+    ),
+    _marker(
+        r"(?<![\w/])/(?:w0\d+|(?:w0|wx-|w)(?![\w-]))", "msvc", "warning level or fatality opt-out"
+    ),
+    _marker(r"(?<![\w-])(?P<rules>-Wno-(?!(?:error|everything)(?![\w=+-]))[\w=+-]+)", "compiler"),
+    _marker(r"(?<![\w/])(?P<rules>/wd\s*\d+)(?![\w])", "msvc"),
     _marker(r"target_include_directories\([^)]*\b(?P<rules>SYSTEM)\b", "cmake"),
 )
 NOLINT_NEXT = re.compile(r"\bNOLINTNEXTLINE\b")
-RAW_STRING_OPEN = re.compile(r'(?<![\w])(?:u8|[uUL])?R"(?P<delimiter>[^()\\\s]{0,16})\(')
 
 
-def _blank(chars: list[str], start: int, end: int) -> None:
-    for index in range(start, end):
-        if chars[index] != "\n":
-            chars[index] = " "
+def marker_active(
+    marker: Marker, match: re.Match[str], text: str, code: tuple[str, str] | None
+) -> bool:
+    """Identify lint comments and compiler controls outside literal/comment contents."""
+    if code is None:
+        return True
+    position = match.start()
+    while position < match.end() and text[position].isspace():
+        position += 1
+    if marker.raw:
+        return code[1][position] == text[position]
+    return marker.tool not in {"clang-tidy", "clang-format"} or code[1][position] != text[position]
 
 
-def _quoted_end(text: str, start: int) -> int:
-    """Index just past the literal opened at start (or the end of its line when unterminated)."""
-    quote, index = text[start], start + 1
-    while index < len(text) and text[index] not in (quote, "\n"):
-        index += 2 if text[index] == "\\" else 1
-    return min(index + 1, len(text))
-
-
-def blank_cxx_literals(text: str) -> str:
-    """Return text with string and character literal contents blanked, keeping comments."""
-    chars, index = list(text), 0
-    while index < len(text):
-        if text.startswith("//", index):
-            newline = text.find("\n", index)
-            index = len(text) if newline < 0 else newline
-        elif text.startswith("/*", index):
-            close = text.find("*/", index + 2)
-            index = len(text) if close < 0 else close + 2
-        elif match := RAW_STRING_OPEN.match(text, index):
-            terminator = ")" + match["delimiter"] + '"'
-            close = text.find(terminator, match.end())
-            end = len(text) if close < 0 else close + len(terminator)
-            _blank(chars, match.end(), end)
-            index = end
-        elif text[index] == '"' or (text[index] == "'" and not text[index - 1 : index].isalnum()):
-            end = _quoted_end(text, index)
-            _blank(chars, index + 1, end - 1)
-            index = end
-        else:
-            index += 1
-    return "".join(chars)
+def forbidden_rule(tool: str, rule: str) -> str | None:
+    """Blanket warnings and configured body/complexity checks cannot be waived."""
+    if tool == "compiler" and rule == "-Weverything":
+        return "blanket warning opt-out cannot be approved"
+    if tool == "clang-tidy" and rule in {
+        "readability-function-size",
+        "readability-function-cognitive-complexity",
+    }:
+        return "function body size limits have no waivers"
+    if tool == "ruff" and rule in RUFF_CHECKS:
+        return "Python size and complexity limits have no waivers"
+    return None
 
 
 def _match_line(
-    path: str, number: int, text: str, markers: tuple[Marker, ...], code: str | None = None
+    path: str,
+    number: int,
+    text: str,
+    markers: tuple[Marker, ...],
+    code: tuple[str, str] | None = None,
 ) -> ScanResult:
-    """Match markers on one line.
-
-    With code (the literal-blanked line), non-raw markers match the code form, and raw markers
-    must start outside any literal.
-    """
+    """Match markers only at effective comment/compiler positions on one line."""
     result = ScanResult([], [])
     for marker in markers:
-        subject = text if code is None or marker.raw else code
+        subject = text if code is None or marker.raw else code[0]
         for match in marker.pattern.finditer(subject):
-            if code is not None and marker.raw and code[match.start()] != text[match.start()]:
+            if not marker_active(marker, match, text, code):
                 continue
             where = f"{path}:{number}"
             if marker.forbidden:
@@ -171,6 +186,9 @@ def _match_line(
                 continue
             rules = [r.strip() for r in re.split(r"[,\s]+", match.groupdict().get("rules") or "")]
             rules = [r for r in rules if r]
+            if any(rule.lower() == "all" for rule in rules):
+                result.errors.append(f"{where}: blanket {marker.tool} suppression is forbidden")
+                continue
             if not rules and marker.needs_rules:
                 result.errors.append(f"{where}: blanket {marker.tool} suppression; name each rule")
                 continue
@@ -179,6 +197,9 @@ def _match_line(
                     result.errors.append(
                         f"{where}: wildcard {marker.tool} suppression; name each exact rule"
                     )
+                    continue
+                if budget_error := forbidden_rule(marker.tool, rule):
+                    result.errors.append(f"{where}: {budget_error}")
                     continue
                 rule_name = f"{marker.tool}/{rule}"
                 result.suppressions.append(Suppression(path, number, rule_name, text))
@@ -196,10 +217,18 @@ def _merge(results: list[ScanResult]) -> ScanResult:
 def scan_cxx(path: str, text: str) -> ScanResult:
     """Scan C++ markers and bind next-line exceptions to the code they actually suppress."""
     lines = text.splitlines()
-    pairs = zip(lines, blank_cxx_literals(text).splitlines(), strict=True)
+    masked = blank_cxx_literals(text)
+    literal_lines = masked.splitlines()
+    code_lines = blank_cxx_comments(masked).splitlines()
+    pairs = zip(lines, literal_lines, strict=True)
     results = []
     for number, (raw, blanked) in enumerate(pairs, 1):
-        result = _match_line(path, number, raw, CXX_MARKERS, blanked)
+        result = _match_line(path, number, raw, CXX_MARKERS, (blanked, code_lines[number - 1]))
+        control = code_lines[number - 1]
+        if "##" in control or control.rstrip().endswith("\\"):
+            result.errors.append(
+                f"{path}:{number}: token-pasted or continued compiler control is not admitted"
+            )
         if NOLINT_NEXT.search(blanked) and result.suppressions:
             if number == len(lines):
                 result.errors.append(f"{path}:{number}: next-line suppression has no target")
@@ -210,6 +239,22 @@ def scan_cxx(path: str, text: str) -> ScanResult:
                     else item
                     for item in result.suppressions
                 ]
+        bounded = []
+        for item in result.suppressions:
+            binding = None
+            bound_item = item
+            if item.rule == "clang-format/off":
+                binding = format_scope(lines, number, literal_lines)
+            elif item.rule.startswith(("msvc/", "compiler/")):
+                binding = warning_scope(lines, number, code_lines)
+            if binding:
+                text_bound, error = binding
+                if error:
+                    result.errors.append(f"{path}:{number}: {error}")
+                    continue
+                bound_item = replace(item, text=text_bound)
+            bounded.append(bound_item)
+        result.suppressions = bounded
         results.append(result)
     return _merge(results)
 

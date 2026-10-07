@@ -7,6 +7,8 @@ if (-not $installation) { throw 'A current Visual Studio C++ toolchain is requir
 $devshell = Join-Path $installation 'Common7\Tools\Launch-VsDevShell.ps1'
 & $devshell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw 'MSVC developer environment was not activated' }
+python -m unittest discover -s tests/tooling -p test_build_coverage.py -v
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 cmake --workflow --preset release
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 python tools/package_smoke.py --build out/release

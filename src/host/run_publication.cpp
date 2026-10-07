@@ -16,6 +16,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 
 #include <expected>
 #include <functional>
@@ -126,6 +127,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     const methods::IlluminationReport none;
     const methods::DenoisingReport disabled{.complete = true};
     const methods::ContrastReport disabled_contrast{.complete = true};
+    const methods::SharpenReport disabled_sharpen{.complete = true};
     bundle::RunRecord record{
         .context = run.context.get(),
         .build = core::build_facts(),
@@ -143,6 +145,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         .illumination = none,
         .denoising = disabled,
         .contrast = disabled_contrast,
+        .sharpening = disabled_sharpen,
     };
     std::visit(
         [&record](const auto& artwork) {
@@ -151,6 +154,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
                 record.illumination = artwork.illumination.get();
                 record.denoising = artwork.denoising.get();
                 record.contrast = artwork.contrast.get();
+                record.sharpening = artwork.sharpening.get();
             }
         },
         run.artwork);

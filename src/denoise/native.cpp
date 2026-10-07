@@ -21,7 +21,7 @@
 namespace docenhance::denoise {
 namespace {
 // This is OpenCV's fixed error callback ABI. It suppresses foreign stream delivery, not exceptions.
-// NOLINTNEXTLINE(readability-function-size)
+// NOLINTNEXTLINE(google-readability-function-size)
 int quiet_error(int /*status*/, const char* /*function*/, const char* /*message*/,
                 const char* /*file*/, int /*line*/, void* /*user*/) noexcept {
     return 0;

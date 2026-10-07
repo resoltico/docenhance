@@ -15,9 +15,9 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 from architecture import ArchitectureError, Manifest
+from architecture_matches import commands, violations
 from deps import ROOT
 
-SUMMARY = re.compile(r"^(\d+) match(?:es)?\.$", re.MULTILINE)
 ERROR_LINE = re.compile(r"^(?:.*: )?(?:fatal )?error: ", re.MULTILINE)
 
 
@@ -102,7 +102,7 @@ def api_violations(
     clang_query: str, build: Path, entry: dict[str, str], rules: list[tuple[str, str]]
 ) -> list[str]:
     """Call, throw and catch rules for one translation unit, on its abstract syntax tree."""
-    commands = [argument for _, matcher in rules for argument in ("-c", f"match {matcher}")]
+    query_commands = commands(rules)
     result = subprocess.run(
         # clang-query parses GCC's compile commands too, and those carry GCC-only warning options.
         # With -Werror an option clang does not know is an error, and a translation unit that fails
@@ -114,7 +114,7 @@ def api_violations(
             str(build),
             "--extra-arg=-Wno-unknown-warning-option",
             entry["file"],
-            *commands,
+            *query_commands,
         ],
         capture_output=True,
         text=True,
@@ -125,16 +125,7 @@ def api_violations(
         # A rule cannot be trusted on a translation unit clang could not parse.
         msg = f"clang-query failed on {entry['file']}: {diagnostics.strip()[:400]}"
         raise ArchitectureError(msg)
-    counts = SUMMARY.findall(result.stdout)
-    if len(counts) != len(rules):
-        msg = f"clang-query answered {len(counts)} of {len(rules)} rules on {entry['file']}"
-        raise ArchitectureError(msg)
-    reports = [block.strip() for block in SUMMARY.split(result.stdout)[:-1:2]]
-    return [
-        f"{entry['file']}: {rule}\n{report}"
-        for (rule, _), count, report in zip(rules, counts, reports, strict=True)
-        if count != "0"
-    ]
+    return violations(entry["file"], rules, result.stdout)
 
 
 def find_clang_query() -> str:

@@ -11,6 +11,7 @@ reads, and where the third-party headers of this build live.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -81,10 +82,11 @@ def package_roots(entry: dict[str, str], build: Path) -> list[str]:
     return [str(path) for path in candidates if any(path.is_relative_to(base) for base in bases)]
 
 
-def included_headers(entry: dict[str, str]) -> list[tuple[str, str]]:
+def included_headers(entry: dict[str, str], *, syntax: bool = True) -> list[tuple[str, str]]:
     """Compiler-spelled and resolved identities of every transitively read header."""
+    mode = ["-fsyntax-only"] if syntax else ["-E", "-o", os.devnull]
     output = run_compiler(
-        [*compiler_arguments(entry), entry["file"], "-H", "-fsyntax-only"],
+        [*compiler_arguments(entry), entry["file"], "-H", *mode],
         entry["directory"],
         f"Cannot read the includes of {entry['file']}",
     )

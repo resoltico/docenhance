@@ -10,6 +10,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -25,7 +26,7 @@ namespace docenhance::bundle {
 // The record describes processing. It is finalized before the commit point, so it cannot assert
 // that publication succeeded; publication state belongs to the command response.
 
-inline constexpr unsigned record_version = 8;
+inline constexpr unsigned record_version = 9;
 inline constexpr const char* record_name = "run.json";
 inline constexpr const char* image_name = "result.png";
 inline constexpr const char* mask_name = "assets/protect-mask.png";
@@ -89,6 +90,7 @@ struct RunRecord {
     methods::IlluminationReport illumination;
     methods::DenoisingReport denoising{};
     methods::ContrastReport contrast{};
+    methods::SharpenReport sharpening{};
 };
 
 // The record as the bytes a bundle carries. Serialization is the last step before the inventory

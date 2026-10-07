@@ -26,7 +26,7 @@ class ObservedMatAllocator final : public cv::MatAllocator {
     explicit ObservedMatAllocator(cv::MatAllocator& upstream, bool refuse_payload = false)
         : upstream_(upstream), refuse_payload_(refuse_payload) {}
     // Fixed public native allocator ABI, including shape, storage and access flags.
-    // NOLINTNEXTLINE(readability-function-size)
+    // NOLINTNEXTLINE(google-readability-function-size)
     cv::UMatData* allocate(int dimensions, const int* sizes, int type, void* data,
                            std::size_t* step, cv::AccessFlag flags,
                            cv::UMatUsageFlags usage) const override {

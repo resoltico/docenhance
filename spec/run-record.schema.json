@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 8
+          "const": 9
         },
         "run": {
           "type": "string",
@@ -97,7 +97,8 @@
         "operation",
         "protection_supplied",
         "denoising",
-        "contrast"
+        "contrast",
+        "sharpening"
       ],
       "additionalProperties": false,
       "properties": {
@@ -256,6 +257,9 @@
         },
         "contrast": {
           "$ref": "#/$defs/contrast_request"
+        },
+        "sharpening": {
+          "$ref": "#/$defs/sharpening_request"
         }
       }
     },
@@ -265,7 +269,8 @@
         "conversion",
         "illumination",
         "denoising",
-        "contrast"
+        "contrast",
+        "sharpening"
       ],
       "additionalProperties": false,
       "properties": {
@@ -287,6 +292,9 @@
         },
         "contrast": {
           "$ref": "#/$defs/contrast"
+        },
+        "sharpening": {
+          "$ref": "#/$defs/sharpening"
         }
       }
     },

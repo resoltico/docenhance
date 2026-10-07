@@ -16,21 +16,12 @@ struct ExtremaPass {
     bool horizontal = true;
     bool dilation = true;
 };
-struct GaussianPass {
-    std::span<const double> weights;
-    double normalization{};
-    bool horizontal = true;
-};
 [[nodiscard]] core::Result<void> extrema_pass(image::PlaneView<const double> input,
                                               image::PlaneView<double> output,
                                               std::span<std::uint64_t> queue, ExtremaPass pass,
                                               const core::Cancellation& cancellation = {});
-[[nodiscard]] core::Result<void> gaussian_pass(image::PlaneView<const double> input,
-                                               image::PlaneView<double> output, GaussianPass pass,
-                                               const core::Cancellation& cancellation = {});
 [[nodiscard]] std::uint32_t morphology_radius(image::Extent extent,
                                               const Morphology& method) noexcept;
-// Checks method-specific partial fields; shared counters and extents have separate checks.
 [[nodiscard]] bool valid_morphology_observations(const IlluminationReport& report);
 class MorphologyModel {
   public:

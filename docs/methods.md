@@ -52,9 +52,9 @@ Method-specific argument references: `--contrast`, `--contrast-blend`, `--clahe-
 
 ## S01 — Thresholded unsharp masking
 
-Status: **not-implemented**.
+Status: **implemented**.
 
-Method-specific argument references: `--sharpen`, `--sharpen-sigma`, `--sharpen-amount`, `--sharpen-threshold`.
+Method-specific argument references: `--sharpen`, `--sharpen-sigma`, `--sharpen-amount`, `--sharpen-threshold`, `--protect-mask`.
 
 ## B01 — Otsu
 

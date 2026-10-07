@@ -96,6 +96,7 @@ def exercise(exe: Path, root: Path) -> None:
     cases: tuple[tuple[str, Path, list[str]], ...] = (
         ("tiff", tiff, []),
         ("clahe", source, ["--contrast", "clahe"]),
+        ("unsharp", source, ["--sharpen", "unsharp"]),
         ("levels", source, ["--contrast", "levels"]),
         ("gamma", source, ["--contrast", "gamma"]),
         ("morph", source, ["--illumination", "morph", "--background-radius", "8"]),

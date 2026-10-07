@@ -1,0 +1,218 @@
+{
+  "record": {
+    "version": 9,
+    "run": "8c3fdef5cc7756e503e2e94a5693e318",
+    "recorded": "2026-10-07T15:38:33Z"
+  },
+  "build": {
+    "application_version": "0.7.0",
+    "platform": "Darwin-arm64",
+    "compiler": "AppleClang 21.0.0.21000334",
+    "dependency_lock_sha256": "9b89a40a76f1463731fd0b18352dd5a481cb6e569692dcad46b075f2d39d94b1"
+  },
+  "source": {
+    "sha256": "af10ccaaecf692c67433a82fb61fdd9b69af549f0f9a8609052af313f464de85",
+    "bytes": 144,
+    "name": "input.png",
+    "decoding": {
+      "format": "png",
+      "decoder_policy": "bounded-png-1",
+      "width": 9,
+      "height": 7,
+      "precision": 16,
+      "color_type": 0,
+      "interlaced": false
+    }
+  },
+  "request": {
+    "operation": {
+      "kind": "continuous",
+      "method": null,
+      "parameters": {
+        "output_mode": "preserve",
+        "depth": "automatic",
+        "alpha": "white",
+        "profile": "embedded"
+      }
+    },
+    "protection_supplied": false,
+    "denoising": {
+      "method": null,
+      "parameters": null
+    },
+    "contrast": {
+      "method": null,
+      "parameters": null
+    },
+    "sharpening": {
+      "method": {
+        "id": "S01",
+        "method_version": 1
+      },
+      "parameters": {
+        "sigma": 0.8,
+        "amount": 0.5,
+        "threshold": 0.0
+      }
+    }
+  },
+  "execution": {
+    "conversion": {
+      "decoded_input": {
+        "width": 9,
+        "height": 7,
+        "channels": 1,
+        "bit_depth": 16
+      },
+      "encoded_output": {
+        "width": 9,
+        "height": 7,
+        "channels": 1,
+        "bit_depth": 16
+      },
+      "profile_decision": "assumed_srgb",
+      "assumed_transfer": true,
+      "assumed_primaries": false,
+      "source_orientation": 1,
+      "resolution": null,
+      "alpha_flattened_pixels": 0,
+      "clipped_components": 0,
+      "depth_reduced": false,
+      "verified": true,
+      "warnings": [
+        "W_PROFILE_ASSUMED"
+      ]
+    },
+    "illumination": {
+      "status": "disabled",
+      "complete": true,
+      "reason": "none",
+      "method": null,
+      "requested": null,
+      "morphology": null,
+      "resolved_cell": null,
+      "eligible_samples": 63,
+      "protected_samples": 0,
+      "cells": 0,
+      "measured_cells": 0,
+      "dark_cells": 0,
+      "background_reference": null,
+      "coverage": null,
+      "solver": null,
+      "measurements": null,
+      "auto_predicates": {
+        "coverage": null,
+        "bright_quantile": null,
+        "median_background": null,
+        "background_variation": null,
+        "paper_fraction": null,
+        "dark_fraction": null
+      },
+      "application": {
+        "evaluated_samples": 0,
+        "changed_samples": 0,
+        "gain_capped_samples": 0,
+        "saturated_samples": 0,
+        "min_gain": 1.0,
+        "max_gain": 1.0,
+        "gain_capped_fraction": null,
+        "saturated_fraction": null
+      }
+    },
+    "denoising": {
+      "method": null,
+      "parameters": null,
+      "status": "disabled",
+      "reason": "none",
+      "complete": true,
+      "analysis_depth": null,
+      "distance": null,
+      "representation": null,
+      "tvl1": null,
+      "warnings": [],
+      "native_h": 0.0,
+      "tile_width": 0,
+      "border": null,
+      "eligible_samples": 63,
+      "protected_samples": 0,
+      "evaluated_samples": 0,
+      "corrected_samples": 0,
+      "changed_samples": 0,
+      "native_calls": 0,
+      "native_reserved_peak": 0,
+      "preparation_charge_peak": 0
+    },
+    "contrast": {
+      "method": null,
+      "parameters": null,
+      "status": "disabled",
+      "reason": "none",
+      "complete": true,
+      "representation": null,
+      "levels": null,
+      "eligible_samples": 63,
+      "protected_samples": 0,
+      "measured_samples": 0,
+      "identity_tiles": 0,
+      "evaluated_samples": 0,
+      "corrected_samples": 0,
+      "changed_samples": 0,
+      "clipped_low_samples": 0,
+      "clipped_high_samples": 0,
+      "clipped_low_fraction": null,
+      "clipped_high_fraction": null,
+      "preparation_charge_peak": 0
+    },
+    "sharpening": {
+      "method": {
+        "id": "S01",
+        "method_version": 1
+      },
+      "parameters": {
+        "sigma": 0.8,
+        "amount": 0.5,
+        "threshold": 0.0
+      },
+      "status": "applied",
+      "reason": "none",
+      "complete": true,
+      "representation": "float64",
+      "pre_clamp": {
+        "low": 0.180646408648933,
+        "high": 0.24138761896989663
+      },
+      "eligible_samples": 63,
+      "protected_samples": 0,
+      "context_samples": 63,
+      "evaluated_samples": 63,
+      "corrected_samples": 62,
+      "changed_samples": 60,
+      "clipped_low_samples": 0,
+      "clipped_high_samples": 0,
+      "clipped_fraction": 0.0,
+      "preparation_charge_peak": 264964,
+      "warnings": [
+        "W_SHARPENING"
+      ]
+    }
+  },
+  "protection": null,
+  "output": {
+    "path": "result.png",
+    "sha256": "7f83755c87d555b82d77a0dee31d7ac9e9185ef2d7027a42c79140497aa7b54d",
+    "bytes": 389,
+    "width": 9,
+    "height": 7,
+    "channels": 1,
+    "bit_depth": 16,
+    "profile_embedded": true,
+    "resolution": null,
+    "verification": {
+      "performed": "decoded_and_compared",
+      "compared": [
+        "integer_samples",
+        "metadata"
+      ]
+    }
+  }
+}

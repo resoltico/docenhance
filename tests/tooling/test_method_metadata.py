@@ -81,7 +81,7 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 8,
+            "schema_version": 9,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
@@ -111,7 +111,7 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 8,
+            "schema_version": 9,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,
@@ -126,6 +126,67 @@ class MethodMetadataTests(unittest.TestCase):
         validator.validate(capabilities)
         capabilities["methods"] *= 2
         self.assertFalse(validator.is_valid(capabilities))
+
+    def test_sharpening_request_schema_requires_closed_parameters(self) -> None:
+        """S01 requests cannot borrow another method's fields or use invalid parameter domains."""
+        schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
+        validator = Draft202012Validator(
+            {"$defs": schema["$defs"], "$ref": "#/$defs/sharpening_request"}
+        )
+        request: dict[str, Any] = {
+            "method": {"id": "S01", "method_version": 1},
+            "parameters": {"sigma": 0.8, "amount": 0.5, "threshold": 1},
+        }
+        validator.validate(request)
+        for change in ({"sigma": 0.29}, {"amount": 2.1}, {"threshold": 20.1}, {"blend": 1}):
+            altered = copy.deepcopy(request)
+            altered["parameters"].update(change)
+            with self.subTest(change=change):
+                self.assertFalse(validator.is_valid(altered))
+        self.assertFalse(validator.is_valid({"method": None, "parameters": request["parameters"]}))
+
+    def test_sharpening_report_schema_requires_amount_based_warning(self) -> None:
+        """Applied and bypassed positive requests warn; zero amount cannot carry that warning."""
+        for filename in ("command-response.schema.json", "run-record.schema.json"):
+            schema = json.loads((ROOT / "schemas" / filename).read_text())
+            validator = Draft202012Validator(
+                {"$defs": schema["$defs"], "$ref": "#/$defs/sharpening"}
+            )
+            report: dict[str, Any] = {
+                "method": {"id": "S01", "method_version": 1},
+                "parameters": {"sigma": 0.8, "amount": 0.5, "threshold": 1},
+                "status": "no_change",
+                "reason": "no_eligible_samples",
+                "complete": True,
+                "representation": "float64",
+                "pre_clamp": None,
+                "clipped_fraction": None,
+                "warnings": ["W_SHARPENING"],
+                "eligible_samples": 0,
+                "protected_samples": 1,
+                "context_samples": 0,
+                "evaluated_samples": 0,
+                "corrected_samples": 0,
+                "changed_samples": 0,
+                "clipped_low_samples": 0,
+                "clipped_high_samples": 0,
+                "preparation_charge_peak": 0,
+            }
+            with self.subTest(filename=filename):
+                validator.validate(report)
+                for warnings in ([], ["W_SHARPENING", "W_SHARPENING"], ["W_CONTRAST"]):
+                    self.assertFalse(validator.is_valid(report | {"warnings": warnings}))
+                zero = copy.deepcopy(report)
+                zero["parameters"]["amount"] = 0
+                zero["reason"] = "zero_amount"
+                zero["warnings"] = []
+                validator.validate(zero)
+                self.assertFalse(validator.is_valid(zero | {"warnings": ["W_SHARPENING"]}))
+                for method in (
+                    {"id": "C03", "method_version": 1},
+                    {"id": "S01", "method_version": 2},
+                ):
+                    self.assertFalse(validator.is_valid(report | {"method": method}))
 
     def test_option_attribution_is_bidirectional(self) -> None:
         """Unknown, duplicated, missing and contradictory method attributions fail."""

@@ -108,7 +108,7 @@ JBLOCKARRAY blocks(j_common_ptr decoder, int pool, JDIMENSION width, JDIMENSION 
     return pointers;
 }
 // Fixed six-argument callback signature in libjpeg's public memory-manager ABI.
-// NOLINTNEXTLINE(readability-function-size)
+// NOLINTNEXTLINE(google-readability-function-size)
 jvirt_barray_ptr virtual_blocks(j_common_ptr decoder, int pool, boolean /*pre_zero*/,
                                 JDIMENSION width, JDIMENSION height, JDIMENSION access) {
     auto& context = jpeg_context(decoder);
@@ -128,7 +128,7 @@ jvirt_barray_ptr virtual_blocks(j_common_ptr decoder, int pool, boolean /*pre_ze
     return &control;
 }
 // Fixed six-argument callback signature in libjpeg's public memory-manager ABI.
-// NOLINTNEXTLINE(readability-function-size)
+// NOLINTNEXTLINE(google-readability-function-size)
 jvirt_sarray_ptr virtual_samples(j_common_ptr decoder, int pool, boolean /*pre_zero*/,
                                  JDIMENSION width, JDIMENSION height, JDIMENSION access) {
     auto& context = jpeg_context(decoder);

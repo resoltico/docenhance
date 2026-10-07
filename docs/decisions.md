@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 8; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 9; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -444,3 +444,13 @@ project setup. Root-only artifact reservation also replaces Ruff's broad default
 which otherwise concealed legitimate nested sources. Real CMake/CPack, negative source controls and
 committed-archive fixtures exercise these boundaries. Changed bound recipes require fresh trees;
 retained products and personal settings are preserved, with no cache migration or old-path reader.
+
+## Unsharp retains one perceptual Gaussian field
+
+S01 follows contrast and reuses the first-party bounded Gaussian primitive in the image layer.
+The separate challenge rejects an additional OpenCV adapter and full RGB blur: existing borders,
+exact constants and a two-field float64 fit provide the required mathematics with fewer moving parts.
+Protected samples remain blur context; destinations and excursion observations follow their own
+eligibility contracts. One frozen blurred field serves encoding and verification, with no extra
+blend or intermediate quantization. Version 9 closes sharpening requests, reports and warnings and
+rejects obsolete records. See [design and independent QA](sharpening.md).

@@ -14,6 +14,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -45,6 +46,7 @@ struct ContinuousArtwork {
     std::reference_wrapper<const methods::IlluminationReport> illumination;
     std::reference_wrapper<const methods::DenoisingReport> denoising;
     std::reference_wrapper<const methods::ContrastReport> contrast;
+    std::reference_wrapper<const methods::SharpenReport> sharpening;
 };
 using Artwork = std::variant<BinaryArtwork, ContinuousArtwork>;
 struct RunPublication {

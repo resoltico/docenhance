@@ -98,11 +98,9 @@ template <typename Sample>
 bool mean_along_row(std::span<const float> source, std::span<float> destination, Window window,
                     const core::Cancellation& cancellation) {
     const auto width = static_cast<std::uint32_t>(source.size());
-    // The one place a sample is reached by a computed index; every index is folded into the plane
-    // first, and the sanitizer presets check that with a hardened standard library.
+    // Fold every sample coordinate into the plane before taking its one-sample view.
     const auto sample = [source, width](std::int64_t at) {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
-        return static_cast<double>(source[fold(at, width)]);
+        return static_cast<double>(source.subspan(fold(at, width), 1).front());
     };
     auto initial = reflected_window_sum(sample, 0, width, window.radius, cancellation);
     if (!initial) {

@@ -54,7 +54,8 @@ def header_violations(
     allowed, packages = manifest.reach(root) | {root}, manifest.package_reach(root)
     roots = package_roots(entry, build)
     present: dict[str, set[str]] = {}
-    for spelled, header in included_headers(entry):
+    # Production syntax is checked by the mandatory AST pass; clients have no such pass.
+    for spelled, header in included_headers(entry, syntax=owner is None):
         reached = layer_of(manifest, header)
         if reached is not None:
             present.setdefault(reached, set()).update((spelled, header))
