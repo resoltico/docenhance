@@ -156,3 +156,7 @@ Its additional execution wave retains the full per-target PR budget and watchdog
 The contrast harness compares interruptible sample ordering and nearest ranks to independent
 sorting and scalar levels/gamma formulas. It extends the manifest to 20 targets, still ten
 concurrent waves at two jobs and 60 seconds per target; the reviewed total allowance is unchanged.
+
+C03 additionally fuzzes charged contextual preparation, floating reconstruction, immutable replay
+and complete observation validation. CLI corpus seeds exercise grid admission and inactive private
+options. Deterministic unit probes enumerate preparation and application cancellation checkpoints.

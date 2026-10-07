@@ -67,6 +67,8 @@ struct Invocation {
     std::optional<std::string> levels_low = std::nullopt;
     std::optional<std::string> levels_high = std::nullopt;
     std::optional<std::string> gamma = std::nullopt;
+    std::optional<std::string> clahe_grid = std::nullopt;
+    std::optional<std::string> clahe_clip = std::nullopt;
     std::optional<std::string> protect_mask = std::nullopt;
     std::optional<std::string> binarize = std::nullopt;
     std::optional<std::string> fixed_threshold = std::nullopt;

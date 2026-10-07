@@ -4,7 +4,7 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MPL-2.0-licensed.
 
-> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01/D02 denoising, C01/C02 contrast, and two binarizers.**
+> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01/D02 denoising, C01/C02/C03 contrast, and two binarizers.**
 > `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
 > and metadata policies. Explicit `--output-mode bw` selects B02/B03 on their narrower stored-gray
@@ -51,7 +51,7 @@ cmake --workflow --preset dev
 CC=gcc CXX=g++ cmake --workflow --preset release
 ```
 
-The executable is written to `out/dev/app/bin/docenhance` (`docenhance.exe` on Windows). Use a Visual Studio C++ developer shell on Windows. The complete [build guide](docs/build.md) covers tool installation, compiler selection, sanitizers, package smoke tests and failure recovery.
+The executable is written to `out/dev/bin/docenhance` (`docenhance.exe` on Windows). Use a Visual Studio C++ developer shell on Windows. The complete [build guide](docs/build.md) covers tool installation, compiler selection, sanitizers, package smoke tests and failure recovery.
 
 ## Quality gates
 
@@ -76,10 +76,10 @@ independent references under libFuzzer and AFL++, with their corpora replayed by
 ## Current CLI
 
 ```sh
-out/dev/app/bin/docenhance --help
-out/dev/app/bin/docenhance version --json
-out/dev/app/bin/docenhance methods --json
-out/dev/app/bin/docenhance process --help --json
+out/dev/bin/docenhance --help
+out/dev/bin/docenhance version --json
+out/dev/bin/docenhance methods --json
+out/dev/bin/docenhance process --help --json
 ```
 
 `methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels and C02 gamma contrast, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its

@@ -16,6 +16,14 @@ core::Result<Levels> Levels::create(LevelsParameters p) {
     }
     return Levels{p};
 }
+core::Result<Clahe> Clahe::create(ClaheParameters p) {
+    if (p.grid_columns < 2 || p.grid_columns > clahe_maximum_grid || p.grid_rows < 2 ||
+        p.grid_rows > clahe_maximum_grid || !std::isfinite(p.clip) || p.clip < 1 ||
+        p.clip > clahe_maximum_clip || !std::isfinite(p.blend) || p.blend < 0 || p.blend > 1) {
+        return core::failure(core::ErrorCode::argument, "Invalid CLAHE grid, clip or blend");
+    }
+    return Clahe{p};
+}
 core::Result<Gamma> Gamma::create(GammaParameters p) {
     if (!std::isfinite(p.gamma) || p.gamma < Gamma::minimum_exponent ||
         p.gamma > Gamma::maximum_exponent || !std::isfinite(p.blend) || p.blend < 0 ||

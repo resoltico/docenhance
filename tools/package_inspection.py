@@ -42,8 +42,9 @@ def differences(actual: dict[str, bytes], expected: dict[str, bytes]) -> list[st
     ]
 
 
-def expected_files(build: Path, executable: str) -> dict[str, bytes]:
+def expected_files(owner: Path, executable: str) -> dict[str, bytes]:
     """Regenerate licenses/SBOM from verified locked sources and use the tested native binary."""
+    build = owner / "app"
     metadata = json.loads((build / "package-metadata/build-info.json").read_bytes())
     if metadata.get("schema_version") != INVENTORY_SCHEMA:
         msg = "Regenerate the current source-license inventory before package inspection"
@@ -59,7 +60,7 @@ def expected_files(build: Path, executable: str) -> dict[str, bytes]:
             metadata["inventory_created"],
         )
         expected = {f"share/docenhance/{name}": data for name, data in contents(directory).items()}
-    expected[f"bin/{executable}"] = (build / "bin" / executable).read_bytes()
+    expected[f"bin/{executable}"] = (owner / "bin" / executable).read_bytes()
     expected["LICENSE"] = (ROOT / "LICENSE").read_bytes()
     for name in (
         "README.md",

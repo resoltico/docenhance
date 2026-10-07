@@ -17,7 +17,7 @@ from test_continuous import transfer_decode, transfer_encode
 
 DATA = Path(__file__).resolve().parents[1] / "fixtures/jpeg"
 SIDE = 64
-RECORD_VERSION = 7
+RECORD_VERSION = 8
 ASSESSMENT_THRESHOLD = 100
 COMPOSITION_TOLERANCE = 3
 OPTIONS = ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]
@@ -223,7 +223,7 @@ def record_validation(exe: Path, root: Path) -> None:
     _, _, output = process(exe, root, source, OPTIONS)
     path = output / "run.json"
     record = json.loads(path.read_text())
-    for version in (1, 2, 3, 4, 5, 6, 8):
+    for version in (1, 2, 3, 4, 5, 6, 7, 9):
         old = json.loads(json.dumps(record))
         old["record"]["version"] = version
         path.write_text(json.dumps(old))

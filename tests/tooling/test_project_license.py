@@ -124,8 +124,8 @@ class InventoryDocumentTests(unittest.TestCase):
         """An old package inventory requires regeneration rather than a compatibility fallback."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            (root / "package-metadata").mkdir()
-            (root / "package-metadata/build-info.json").write_text(
+            (root / "app/package-metadata").mkdir(parents=True)
+            (root / "app/package-metadata/build-info.json").write_text(
                 json.dumps({"schema_version": 1})
             )
             with self.assertRaisesRegex(ValueError, "Regenerate"):

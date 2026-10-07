@@ -18,6 +18,7 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING
 
 import config_gates
+import package_source
 import repo_hygiene
 import suppressions
 from fuzz_manifest import targets as fuzz_targets
@@ -27,10 +28,6 @@ if TYPE_CHECKING:
 
 ROOT = Path(__file__).resolve().parents[1]
 REGISTRY = ROOT / "tests" / "exceptions" / "registry.json"
-# Build products and caches, never first-party sources. Pruned wherever they occur.
-SKIPPED_DIRS = frozenset(
-    {".git", ".cache", "out", "dist", ".venv", "__pycache__", ".mypy_cache", ".ruff_cache"}
-)
 CXX_SUFFIXES = frozenset({".c", ".cc", ".cpp", ".cxx", ".h", ".hh", ".hpp", ".hxx", ".ipp", ".inl"})
 BUILD_SUFFIXES = frozenset({".cmake", ".ps1", ".sh"})
 # Physical lines, blank and comment lines included. No per-file exceptions exist.
@@ -70,7 +67,9 @@ def iter_files(root: Path = ROOT) -> Iterator[Path]:
         dirnames[:] = sorted(
             name
             for name in dirnames
-            if name not in SKIPPED_DIRS and not nested_checkout(Path(directory) / name)
+            if name not in package_source.EXCLUDED
+            and not (Path(directory) == root and name in package_source.CHECKOUT_ARTIFACTS)
+            and not nested_checkout(Path(directory) / name)
         )
         for filename in sorted(filenames):
             yield Path(directory) / filename

@@ -37,6 +37,11 @@ inline constexpr ImplementedMethod gamma_descriptor{
     .method_version = 1U,
     .selector = "gamma",
 };
+inline constexpr ImplementedMethod clahe_descriptor{
+    .id = "C03",
+    .method_version = 1U,
+    .selector = "clahe",
+};
 inline constexpr ImplementedMethod sauvola_descriptor{
     .id = "B02",
     .method_version = 1U,
@@ -54,6 +59,7 @@ inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({
     tvl1_descriptor,
     levels_descriptor,
     gamma_descriptor,
+    clahe_descriptor,
     sauvola_descriptor,
     fixed_descriptor,
 });

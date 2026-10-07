@@ -17,11 +17,11 @@ import tomllib
 from typing import TYPE_CHECKING, Any
 
 import check_reference_suite
+import package_source
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-ARTIFACT_EXCLUDES = frozenset({".cache", "out", "dist"})
 MYPY_FORBIDDEN = frozenset(
     {
         "ignore_errors",
@@ -112,11 +112,14 @@ def ruff_errors(root: Path) -> list[str]:
         errors.append('ruff.toml: lint.select must be exactly ["ALL"]')
     errors.extend(
         f"ruff.toml: {key} is not allowed; only artifact directories are excluded"
-        for key in ("exclude", "force-exclude", "respect-gitignore")
+        for key in ("force-exclude", "respect-gitignore")
         if key in config or key in lint
     )
-    if set(config.get("extend-exclude", [])) != ARTIFACT_EXCLUDES:
-        errors.append(f"ruff.toml: extend-exclude must be exactly {sorted(ARTIFACT_EXCLUDES)}")
+    roots = {f"{name}/**" for name in package_source.CHECKOUT_ARTIFACTS}
+    if set(config.get("extend-exclude", [])) != roots:
+        errors.append(f"ruff.toml: extend-exclude must be exactly {sorted(roots)}")
+    if set(config.get("exclude", [])) != package_source.EXCLUDED:
+        errors.append(f"ruff.toml: exclude must be exactly {sorted(package_source.EXCLUDED)}")
     ignored = [*lint.get("ignore", []), *lint.get("extend-ignore", [])]
     for codes in lint.get("per-file-ignores", {}).values():
         ignored.extend(codes)

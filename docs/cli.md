@@ -30,7 +30,7 @@ canonical protection mask when one was supplied. Profile assumptions, alpha flat
 orientation and verified output descriptors are reported. Bounded 8-bit baseline/progressive
 Huffman JPEG supports preserve/gray through the same pipeline; see [JPEG admission](jpeg-processing.md).
 Bounded single-page TIFF/BigTIFF supports preserve/gray; see [TIFF admission](tiff-processing.md).
-Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02/C01/C02 remain unsupported.
+Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02/C01/C02/C03 remain unsupported.
 
 Only explicit `bw` activates a binarizer (Sauvola by default). B02/B03 retain the separate published
 1/2/4/8-bit grayscale-without-transparency input contract and 8-bit binary output. They do not run
@@ -75,6 +75,7 @@ resource accounting, stopping diagnostics and cancellation.
 ```sh
 docenhance process INPUT.png --out-dir LEVELS --contrast levels
 docenhance process INPUT.png --out-dir GAMMA --contrast gamma --gamma 1.2
+docenhance process INPUT.png --out-dir CLAHE --contrast clahe --clahe-grid 8x8 --clahe-clip 2
 ```
 
 Contrast follows illumination and denoising. It defaults to off; both alternatives require

@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 7
+          "const": 8
         },
         "run": {
           "type": "string",

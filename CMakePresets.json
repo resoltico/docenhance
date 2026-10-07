@@ -217,8 +217,7 @@
       ],
       "output": {
         "verbose": true
-      },
-      "packageDirectory": "${sourceDir}/dist"
+      }
     }
   ],
   "workflowPresets": [

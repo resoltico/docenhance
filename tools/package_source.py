@@ -16,13 +16,11 @@ from project_version import version_from_text
 from source_snapshot import snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
+CHECKOUT_ARTIFACTS = frozenset({"out", ".cache", "dist"})
 EXCLUDED = frozenset(
     {
         ".git",
-        ".cache",
         ".venv",
-        "out",
-        "dist",
         "__pycache__",
         ".pytest_cache",
         ".ruff_cache",
@@ -53,7 +51,8 @@ def source_files(root: Path) -> dict[str, bytes]:
     return {
         name: data
         for name, data in snapshot(root).items()
-        if not any(part in EXCLUDED for part in Path(name).parts)
+        if Path(name).parts[0] not in CHECKOUT_ARTIFACTS
+        and not any(part in EXCLUDED for part in Path(name).parts)
         and Path(name).name not in EXCLUDED_NAMES
         and not name.endswith(".pyc")
     }

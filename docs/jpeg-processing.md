@@ -122,8 +122,8 @@ charged allocations, peak RSS and runtime are different evidence, never intercha
 
 ## Persistent and response compatibility
 
-New production records use format version 7 and require a closed `source.decoding` PNG/JPEG/TIFF
-alternative. Response schema version 7 exposes the same mapping as `source_decoding` and reports an
+New production records use format version 8 and require a closed `source.decoding` PNG/JPEG/TIFF
+alternative. Response schema version 8 exposes the same mapping as `source_decoding` and reports an
 explicit input/output-mode matrix. A custom processing port can report unknown source observations
 as null; the native host always supplies them. Numerical method versions are unchanged.
 
@@ -141,7 +141,7 @@ builds verify C-code ASan/UBSan/coverage symbols in JPEG, PNG, zlib and Little C
 is not thereby claimed to be sanitizer-instrumented.
 
 `python tools/measure_jpeg_resources.py --probe out/release/app/tests/de_jpeg_resources --executable
-out/release/app/bin/docenhance --out .cache/jpeg-resources/results.json` constructs explicit
+out/release/bin/docenhance --out .cache/jpeg-resources/results.json` constructs explicit
 3/12/24 MP coefficient cases and observes fresh processes on macOS/Linux. It separately records real
 post-bootstrap native allocations, conservative decoder charges, total working charges, peak RSS
 and wall time, plus a complete I01 processing run. Synthetic coefficient pages are resource evidence,

@@ -184,7 +184,7 @@ Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and c
 
 1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
 
-**Applicable methods:** I01,I02,D01,D02,C01,C02.
+**Applicable methods:** I01,I02,D01,D02,C01,C02,C03.
 
 ## `--denoise METHOD`
 
@@ -252,11 +252,11 @@ TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iterat
 
 ## `--contrast METHOD`
 
-**Scope:** P. **Domain/default:** off; off|levels|gamma.
+**Scope:** P. **Domain/default:** off; off|levels|gamma|clahe.
 
-Explicit percentile levels or gamma on continuous PNG/JPEG/TIFF after illumination and denoising.
+Explicit levels, gamma or CLAHE on continuous PNG/JPEG/TIFF after illumination and denoising.
 
-**Applicable methods:** C01,C02.
+**Applicable methods:** C01,C02,C03.
 
 ## `--contrast-blend A`
 
@@ -264,7 +264,7 @@ Explicit percentile levels or gamma on continuous PNG/JPEG/TIFF after illuminati
 
 Blend once in perceptual luminance. Zero retains entering samples after source/mask validation.
 
-**Applicable methods:** C01,C02.
+**Applicable methods:** C01,C02,C03.
 
 ## `--levels-low P`
 
@@ -289,3 +289,19 @@ Levels only. Nearest-rank upper percentile, greater than low. A range below 1e-6
 Gamma only. f_new=f^G; above one darkens midtones. Endpoints and gamma one are exact identities.
 
 **Applicable methods:** C02.
+
+## `--clahe-grid CxR`
+
+**Scope:** P. **Domain/default:** 8x8; each integer [2,32].
+
+CLAHE contextual columns and rows. Every tile must be at least 16 pixels in each direction.
+
+**Applicable methods:** C03.
+
+## `--clahe-clip C`
+
+**Scope:** P. **Domain/default:** 2; finite [1,8].
+
+CLAHE pre-redistribution clip multiplier relative to average eligible occupancy.
+
+**Applicable methods:** C03.

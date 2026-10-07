@@ -11,10 +11,18 @@ set(DE_EXISTING_BUILD_CACHE FALSE)
 if(EXISTS "${CMAKE_BINARY_DIR}/CMakeCache.txt")
   set(DE_EXISTING_BUILD_CACHE TRUE)
 endif()
-include("${CMAKE_CURRENT_LIST_DIR}/BuildEnvironment.cmake")
-# CMake's strict project diagnostics also cover modules physically inside its source/build tree.
+# Physical containment prevents source aliases and redirected out paths from blessing source trees.
 file(REAL_PATH "${CMAKE_SOURCE_DIR}" de_source_root)
 file(REAL_PATH "${CMAKE_BINARY_DIR}" de_binary_root)
+set(de_reserved_output "${de_source_root}/out")
+cmake_path(IS_PREFIX de_source_root "${de_binary_root}" NORMALIZE de_build_in_source)
+cmake_path(IS_PREFIX de_reserved_output "${de_binary_root}" NORMALIZE de_build_in_output)
+if(de_build_in_source AND NOT de_build_in_output)
+  message(FATAL_ERROR "Build directories inside the checkout must be beneath its root out directory. Use cmake --preset dev (out/dev), or a truly external build directory")
+endif()
+# An out symlink to a truly external tree is admitted by the same physical containment rule.
+include("${CMAKE_CURRENT_LIST_DIR}/BuildEnvironment.cmake")
+# CMake's strict project diagnostics also cover modules physically inside its source/build tree.
 file(REAL_PATH "${CMAKE_ROOT}" de_cmake_root)
 cmake_path(IS_PREFIX de_source_root "${de_cmake_root}" NORMALIZE de_tool_in_source)
 cmake_path(IS_PREFIX de_binary_root "${de_cmake_root}" NORMALIZE de_tool_in_build)

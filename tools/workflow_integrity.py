@@ -18,12 +18,7 @@ if TYPE_CHECKING:
 
 SOURCE_GATE = "python tools/check_all.py"
 MATRIX_WORKFLOW = "cmake --workflow --preset ${{ matrix.preset }}"
-NATIVE_SMOKE = (
-    "set -euo pipefail\n"
-    "packages=(dist/*.tar.gz)\n"
-    'test "${#packages[@]}" = 1\n'
-    'python tools/package_smoke.py "${packages[0]}" --build out/release/app'
-)
+NATIVE_SMOKE = "python tools/package_smoke.py --build out/release"
 
 
 def required_step(

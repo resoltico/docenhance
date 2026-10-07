@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "contrast_detail.hpp"
 #include "docenhance/core/limits.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/contrast.hpp"
 
@@ -23,7 +25,11 @@ bool parameters(const ContrastParameters& p) {
             if constexpr (std::is_same_v<P, LevelsParameters>) {
                 return Levels::create(v).has_value();
             } else {
-                return Gamma::create(v).has_value();
+                if constexpr (std::is_same_v<P, GammaParameters>) {
+                    return Gamma::create(v).has_value();
+                } else {
+                    return Clahe::create(v).has_value();
+                }
             }
         },
         p);
@@ -49,6 +55,28 @@ ContrastReason noop_reason(const ContrastReport& r) {
     }
     return ContrastReason::none;
 }
+bool valid_measurement(const ContrastReport& r) {
+    if (!r.requested) {
+        return false;
+    }
+    if (std::holds_alternative<LevelsParameters>(*r.requested)) {
+        return r.levels.has_value() && r.measured_samples == r.eligible_samples;
+    }
+    if (const auto* const clahe = std::get_if<ClaheParameters>(&*r.requested)) {
+        auto shape = image::plane_shape(clahe_bins + 1, clahe->grid_columns * clahe->grid_rows,
+                                        sizeof(double));
+        const auto statistics = image::plane_shape(
+            clahe_statistic_channels, clahe->grid_columns * clahe->grid_rows, sizeof(double));
+        if (!shape || !statistics || r.measured_samples != r.eligible_samples ||
+            r.preparation_charge_peak < image::plane_bytes(*shape).value() +
+                                            image::plane_bytes(*statistics).value() +
+                                            (std::uint64_t{image::linear_block_pixels} *
+                                             image::rgb_channels * sizeof(double))) {
+            return false;
+        }
+    }
+    return true;
+}
 } // namespace
 bool valid_contrast_observations(const ContrastReport& r) {
     if (static_cast<unsigned>(r.status) > static_cast<unsigned>(ContrastStatus::failed) ||
@@ -66,10 +94,19 @@ bool valid_contrast_observations(const ContrastReport& r) {
     }
     if (!r.requested) {
         return r.status == ContrastStatus::disabled && r.reason == ContrastReason::none &&
-               !r.levels && r.measured_samples == 0 && r.preparation_charge_peak == 0 &&
-               empty_application(r);
+               !r.levels && r.identity_tiles == 0 && r.measured_samples == 0 &&
+               r.preparation_charge_peak == 0 && empty_application(r);
     }
     if (!parameters(*r.requested) || r.status == ContrastStatus::disabled) {
+        return false;
+    }
+    const auto* const clahe = std::get_if<ClaheParameters>(&*r.requested);
+    if (clahe != nullptr) {
+        return !r.levels && r.identity_tiles <= clahe->grid_columns * clahe->grid_rows &&
+               r.clipped_low_samples == 0 && r.clipped_high_samples == 0 &&
+               (r.evaluated_samples == 0 || r.measured_samples == r.eligible_samples);
+    }
+    if (r.identity_tiles != 0) {
         return false;
     }
     if (std::holds_alternative<GammaParameters>(*r.requested)) {
@@ -116,15 +153,14 @@ bool valid_contrast(const ContrastReport& r, const Contrast& method) {
         const bool measured = reason == ContrastReason::insufficient_dynamic_range;
         return r.status == ContrastStatus::no_change && r.reason == reason &&
                empty_application(r) &&
-               (measured
-                    ? (r.levels.has_value() && r.measured_samples == r.eligible_samples)
-                    : (!r.levels && r.measured_samples == 0 && r.preparation_charge_peak == 0));
+               (measured ? (r.levels.has_value() && r.measured_samples == r.eligible_samples)
+                         : (!r.levels && r.identity_tiles == 0 && r.measured_samples == 0 &&
+                            r.preparation_charge_peak == 0));
     }
     if (r.evaluated_samples != r.eligible_samples) {
         return false;
     }
-    if (std::holds_alternative<LevelsParameters>(*r.requested) &&
-        (!r.levels || r.measured_samples != r.eligible_samples)) {
+    if (!valid_measurement(r)) {
         return false;
     }
     constexpr auto transfer_bytes =

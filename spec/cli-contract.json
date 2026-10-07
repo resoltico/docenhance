@@ -245,7 +245,7 @@
       "scope": "P",
       "group": "Protection arguments",
       "domain": "Absent",
-      "methods": "I01,I02,D01,D02,C01,C02",
+      "methods": "I01,I02,D01,D02,C01,C02,C03",
       "description": "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.",
       "binding": "protect_mask"
     },
@@ -334,10 +334,10 @@
       "metavar": "METHOD",
       "scope": "P",
       "group": "Contrast arguments",
-      "domain": "off; off|levels|gamma",
-      "methods": "C01,C02",
+      "domain": "off; off|levels|gamma|clahe",
+      "methods": "C01,C02,C03",
       "binding": "contrast",
-      "description": "Explicit percentile levels or gamma on continuous PNG/JPEG/TIFF after illumination and denoising."
+      "description": "Explicit levels, gamma or CLAHE on continuous PNG/JPEG/TIFF after illumination and denoising."
     },
     {
       "name": "--contrast-blend",
@@ -345,7 +345,7 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "1; finite `[0,1]`",
-      "methods": "C01,C02",
+      "methods": "C01,C02,C03",
       "binding": "contrast_blend",
       "description": "Blend once in perceptual luminance. Zero retains entering samples after source/mask validation."
     },
@@ -378,6 +378,26 @@
       "methods": "C02",
       "binding": "gamma",
       "description": "Gamma only. f_new=f^G; above one darkens midtones. Endpoints and gamma one are exact identities."
+    },
+    {
+      "name": "--clahe-grid",
+      "binding": "clahe_grid",
+      "metavar": "CxR",
+      "scope": "P",
+      "group": "Contrast arguments",
+      "domain": "8x8; each integer [2,32]",
+      "methods": "C03",
+      "description": "CLAHE contextual columns and rows. Every tile must be at least 16 pixels in each direction."
+    },
+    {
+      "name": "--clahe-clip",
+      "binding": "clahe_clip",
+      "metavar": "C",
+      "scope": "P",
+      "group": "Contrast arguments",
+      "domain": "2; finite [1,8]",
+      "methods": "C03",
+      "description": "CLAHE pre-redistribution clip multiplier relative to average eligible occupancy."
     }
   ],
   "input_support": [

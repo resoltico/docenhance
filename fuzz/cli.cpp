@@ -5,6 +5,7 @@
 // nothing on stderr; errors on stderr in text mode; JSON errors whenever an exact --json option
 // token (before any "--") is present; identical results on repeated runs.
 #include "docenhance/cli/run.hpp"
+#include "docenhance/contract/cli_contract.hpp"
 #include "processor.hpp"
 #include "stub_verifier.hpp"
 #include "support/entry_point.hpp"
@@ -76,7 +77,8 @@ void check_json(const Outcome& outcome) {
     require(outcome.err.empty(), "JSON mode writes nothing to stderr");
     const auto document = nlohmann::json::parse(outcome.out, nullptr, false);
     require(!document.is_discarded() && document.is_object(), "JSON output parses as an object");
-    require(document.value("schema_version", 0) == 7, "JSON output carries schema_version 7");
+    require(document.value("schema_version", 0U) == docenhance::contract::response_schema_version,
+            "JSON output carries the reviewed schema version");
     require(document.value("exit_code", -1) == outcome.code, "JSON exit_code equals the exit code");
     if (outcome.code != exit_success) {
         const auto error = document.find("error");
