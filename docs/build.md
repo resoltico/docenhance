@@ -29,7 +29,8 @@ configuration refuses that layout with an actionable error. Lint-only environmen
 inside the checkout. Activate the build environment before the first configure so CMake selects
 its pinned Python validator; a failed configure may retain a different Python path in its cache.
 
-The explicit installer reads the version pins rather than carrying a second list. It installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
+The explicit installer reads the version pins rather than carrying a second list. Both installation
+modes include pinned Ruff: native tooling tests execute it to prove source-discovery exclusions. It installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
 
 ## Acquisition is a separate phase
 

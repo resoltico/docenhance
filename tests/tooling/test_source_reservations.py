@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
 import sys
@@ -56,10 +57,12 @@ class SourceReservationTests(unittest.TestCase):
                 check=False,
                 timeout=30,
             )
-            self.assertNotEqual(result.returncode, 0)
-            for name in names:
-                self.assertIn(f"{name}/unused.py", result.stdout)
-            self.assertNotIn(str(root / "out/unused.py"), result.stdout)
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            diagnostics = json.loads(result.stdout)
+            self.assertEqual(
+                {Path(item["filename"]).relative_to(root).as_posix() for item in diagnostics},
+                {f"{name}/unused.py" for name in names},
+            )
 
     def test_committed_nested_sources_are_in_the_actual_source_archive(self) -> None:
         """Select immutable Git blobs and inspect delivered tar members and bytes independently."""
