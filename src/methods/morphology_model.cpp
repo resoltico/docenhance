@@ -3,6 +3,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/gaussian.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
@@ -125,7 +126,7 @@ core::Result<image::Plane<double>> prepare_field(MorphologyContext context) {
     const auto weights = kernel->view().row(0);
     const auto normalization = gaussian_weights(weights, detail);
     for (const bool horizontal : {true, false}) {
-        auto pass = gaussian_pass(
+        auto pass = image::gaussian_pass(
             field->view().as_const(), scratch->view(),
             {.weights = weights, .normalization = normalization, .horizontal = horizontal},
             context.cancellation.get());

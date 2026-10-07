@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <variant>
 namespace docenhance::contract {
-inline constexpr unsigned response_schema_version = 8U;
+inline constexpr unsigned response_schema_version = 9U;
 inline constexpr unsigned response_confirmed_limit = 16U;
 inline constexpr auto input_support = std::to_array<InputSupport>({
     {.format = "png", .binary = true},
@@ -72,7 +72,7 @@ inline constexpr auto option_catalog = std::to_array<OptionDescriptor>({
     {.name = "--background-quantile", .metavar = "Q", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "0.90; finite [0.75,0.99]", .methods = "I01", .description = "Nearest-rank quantile of all eligible cell samples; protected samples are excluded.", .binding = &Invocation::background_quantile},
     {.name = "--background-smooth", .metavar = "BETA", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "1; finite [0.1,20]", .methods = "I01", .description = "Positive grid-Laplacian weight for fitting the logarithmic background.", .binding = &Invocation::background_smooth},
     {.name = "--background-radius", .metavar = "RADIUS", .scope = CommandSet{Command::process}, .group = "Illumination arguments", .domain = "auto; auto or integer [1,256]", .methods = "I02", .description = "Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and clamps to [8,128]; Gaussian sigma=max(0.5,radius/2).", .binding = &Invocation::background_radius},
-    {.name = "--protect-mask", .metavar = "PATH", .scope = CommandSet{Command::process}, .group = "Protection arguments", .domain = "Absent", .methods = "I01,I02,D01,D02,C01,C02,C03", .description = "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.", .binding = &Invocation::protect_mask},
+    {.name = "--protect-mask", .metavar = "PATH", .scope = CommandSet{Command::process}, .group = "Protection arguments", .domain = "Absent", .methods = "I01,I02,D01,D02,C01,C02,C03,S01", .description = "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.", .binding = &Invocation::protect_mask},
     {.name = "--denoise", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "off; off|nlm|tvl1", .methods = "D01,D02", .description = "Explicit NLM-L1 or full-field floating-point TV-L1 for continuous PNG/JPEG/TIFF after illumination. No binary denoising.", .binding = &Invocation::denoise},
     {.name = "--denoise-blend", .metavar = "A", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "0.5; finite `[0,1]`", .methods = "D01,D02", .description = "Blend once in perceptual luminance; zero preserves entering samples after source/mask validation.", .binding = &Invocation::denoise_blend},
     {.name = "--nlm-h", .metavar = "H", .scope = CommandSet{Command::process}, .group = "Denoising arguments", .domain = "3; finite `[0.1,25]`", .methods = "D01", .description = "NLM only. Equivalent 8-bit perceptual strength; native float strength is 257 times float(H). Higher strengths may remove marks.", .binding = &Invocation::nlm_h},
@@ -88,6 +88,10 @@ inline constexpr auto option_catalog = std::to_array<OptionDescriptor>({
     {.name = "--gamma", .metavar = "G", .scope = CommandSet{Command::process}, .group = "Contrast arguments", .domain = "1.2; finite `[0.25,4]`", .methods = "C02", .description = "Gamma only. f_new=f^G; above one darkens midtones. Endpoints and gamma one are exact identities.", .binding = &Invocation::gamma},
     {.name = "--clahe-grid", .metavar = "CxR", .scope = CommandSet{Command::process}, .group = "Contrast arguments", .domain = "8x8; each integer [2,32]", .methods = "C03", .description = "CLAHE contextual columns and rows. Every tile must be at least 16 pixels in each direction.", .binding = &Invocation::clahe_grid},
     {.name = "--clahe-clip", .metavar = "C", .scope = CommandSet{Command::process}, .group = "Contrast arguments", .domain = "2; finite [1,8]", .methods = "C03", .description = "CLAHE pre-redistribution clip multiplier relative to average eligible occupancy.", .binding = &Invocation::clahe_clip},
+    {.name = "--sharpen", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Sharpening arguments", .domain = "off; off|unsharp", .methods = "S01", .description = "Explicit thresholded unsharp masking after contrast; never enabled by default.", .binding = &Invocation::sharpen},
+    {.name = "--sharpen-sigma", .metavar = "S", .scope = CommandSet{Command::process}, .group = "Sharpening arguments", .domain = "0.8; finite [0.3,3]", .methods = "S01", .description = "Gaussian standard deviation in pixels; radius ceil(3*sigma), REFLECT_101 borders.", .binding = &Invocation::sharpen_sigma},
+    {.name = "--sharpen-amount", .metavar = "A", .scope = CommandSet{Command::process}, .group = "Sharpening arguments", .domain = "0.5; finite [0,2]", .methods = "S01", .description = "Soft-thresholded high-pass amplification; zero is an algebraic identity.", .binding = &Invocation::sharpen_amount},
+    {.name = "--sharpen-threshold", .metavar = "T", .scope = CommandSet{Command::process}, .group = "Sharpening arguments", .domain = "1.0; finite [0,20]", .methods = "S01", .description = "Soft threshold in equivalent 8-bit perceptual intensity points; divided by 255 internally.", .binding = &Invocation::sharpen_threshold},
 });
 // clang-format on
 static_assert(

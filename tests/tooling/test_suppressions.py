@@ -70,12 +70,22 @@ class CxxSuppressionTests(unittest.TestCase):
     def test_compiler_and_formatter_suppressions(self) -> None:
         """Diagnostic pragmas, MSVC warning pragmas and clang-format off are all recorded."""
         text = (
+            "#pragma GCC diagnostic push\n"
             '#pragma GCC diagnostic ignored "-Wshadow"\n'
+            "void shadow();\n"
+            "#pragma GCC diagnostic pop\n"
+            "#pragma clang diagnostic push\n"
             '#pragma clang diagnostic warning "-Wconversion"\n'
+            "void conversion();\n"
+            "#pragma clang diagnostic pop\n"
+            "#pragma warning(push)\n"
             "#pragma warning(disable: 4996 4244)\n"
+            "void native();\n"
+            "#pragma warning(pop)\n"
             "// clang-format off\n"
+            "int values[] = { 1,2 };\n"
+            "// clang-format on\n"
             "[[gsl::suppress(type.1)]] void f();\n"
-            '__attribute__((no_sanitize("undefined"))) void g();\n'
         )
         self.assertEqual(
             rules(suppressions.scan_cxx("x.cpp", text)),
@@ -86,7 +96,6 @@ class CxxSuppressionTests(unittest.TestCase):
                 "msvc/4244",
                 "clang-format/off",
                 "gsl/type.1",
-                "sanitizer/undefined",
             ],
         )
 
@@ -105,7 +114,7 @@ class PythonSuppressionTests(unittest.TestCase):
             "a = 1  # noqa: E501, S101\n"
             "b: int = c  # type: ignore[assignment]\n"
             "d = 2  # pyright: ignore[reportGeneralTypeIssues]\n"
-            "# fmt: off\n"
+            "f = 4  # fmt: skip\n"
             "e = 3  # pragma: no cover\n"
             "f = 4  # pylint: disable=invalid-name\n"
         )
@@ -116,7 +125,7 @@ class PythonSuppressionTests(unittest.TestCase):
                 "ruff/S101",
                 "mypy/assignment",
                 "pyright/reportGeneralTypeIssues",
-                "ruff-format/off",
+                "ruff-format/skip",
                 "coverage/cover",
                 "pylint/invalid-name",
             ],
@@ -154,12 +163,12 @@ class PythonSuppressionTests(unittest.TestCase):
 
 
 class CMakeSuppressionTests(unittest.TestCase):
-    """Warning-disabling flags and lint-skipping properties in CMake."""
+    """Warning-disabling compiler flags and SYSTEM include declarations."""
 
     def test_flags_and_properties_are_recorded(self) -> None:
-        """-Wno-*, -w, /wd, SKIP_LINTING and SYSTEM includes each need registration."""
+        """Compiler flags and SYSTEM includes need registration; CMake checks lint properties."""
         text = (
-            "target_compile_options(a PRIVATE -Wno-shadow -w /wd4996)\n"
+            "target_compile_options(a PRIVATE -Wno-shadow /wd4996)\n"
             "set_source_files_properties(b.cpp PROPERTIES SKIP_LINTING ON)\n"
             "target_include_directories(a SYSTEM PRIVATE include)\n"
             "target_compile_options(a PRIVATE -Wall -Wextra --warnings-as-errors=* /W4)\n"
@@ -168,11 +177,28 @@ class CMakeSuppressionTests(unittest.TestCase):
             rules(suppressions.scan_cmake("CMakeLists.txt", text)),
             [
                 "compiler/-Wno-shadow",
-                "compiler/-w",
                 "msvc//wd4996",
-                "cmake/SKIP_LINTING",
                 "cmake/SYSTEM",
             ],
+        )
+
+    def test_blanket_warning_switches_are_never_registrable(self) -> None:
+        """Neither source registration nor mixed-case spelling can legalize blanket opt-outs."""
+        for flag in ("-w", "-Wno-error", "-Wno-everything", "/W0", "/WX-", "/w", "/w04996"):
+            with self.subTest(flag=flag):
+                result = suppressions.scan_cmake(
+                    "CMakeLists.txt", f"target_compile_options(a PRIVATE {flag})\n"
+                )
+                self.assertTrue(result.errors)
+                self.assertEqual(result.suppressions, [])
+        allowed = suppressions.scan_cmake(
+            "CMakeLists.txt",
+            "target_compile_options(a PRIVATE -Wno-error=unused-variable -Wno-shadow /wd4996)\n",
+        )
+        self.assertEqual(allowed.errors, [])
+        self.assertEqual(
+            rules(allowed),
+            ["compiler/-Wno-error=unused-variable", "compiler/-Wno-shadow", "msvc//wd4996"],
         )
 
 

@@ -20,6 +20,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 #include "run_publication.hpp"
 
 #include <cstdint>
@@ -87,7 +88,7 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
     };
 }
 void failed_stages(methods::IlluminationReport& report, methods::DenoisingReport& denoising,
-                   methods::ContrastReport& contrast) {
+                   methods::ContrastReport& contrast, methods::SharpenReport& sharpening) {
     if (report.requested && !report.complete) {
         report.status = methods::IlluminationStatus::failed;
         if (report.reason == methods::IlluminationReason::none ||
@@ -98,6 +99,10 @@ void failed_stages(methods::IlluminationReport& report, methods::DenoisingReport
     if (denoising.requested && !denoising.complete) {
         denoising.status = methods::DenoiseStatus::failed;
         denoising.reason = methods::DenoiseReason::processing_failure;
+    }
+    if (sharpening.requested && !sharpening.complete) {
+        sharpening.status = methods::SharpenStatus::failed;
+        sharpening.reason = methods::SharpenReason::processing_failure;
     }
     if (contrast.requested && !contrast.complete) {
         contrast.status = methods::ContrastStatus::failed;
@@ -133,13 +138,19 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
     methods::IlluminationReport report;
     methods::DenoisingReport denoising;
     methods::ContrastReport contrast;
-    auto result =
-        continuous(request, std::get<image::Continuous>(request.operation()),
-                   {.cancellation = cancellation, .context = context},
-                   {.illumination = report, .denoising = denoising, .contrast = contrast});
+    methods::SharpenReport sharpening;
+    auto result = continuous(request, std::get<image::Continuous>(request.operation()),
+                             {.cancellation = cancellation, .context = context},
+                             {
+                                 .illumination = report,
+                                 .denoising = denoising,
+                                 .contrast = contrast,
+                                 .sharpening = sharpening,
+                             });
     if (!result) {
-        failed_stages(report, denoising, contrast);
-        return app::process_failure(std::move(result.error()), report, denoising, contrast);
+        failed_stages(report, denoising, contrast, sharpening);
+        return app::process_failure(std::move(result.error()), report, denoising, contrast,
+                                    sharpening);
     }
     return std::move(*result);
 }

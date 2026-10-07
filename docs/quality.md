@@ -46,6 +46,16 @@ use the runner's observed CPU count bounded by the shared execution policy.
 Native cases run with at most two concurrent processes, separately from build/AST worker counts. Every case, assertion, per-contract
 timeout and complete-result reconciliation remains required. The full composition reference case
 runs in isolation from other test processes, retaining its deadline and internal scheduler checks.
+The CLI and interpretation contracts reserve both native slots: measured overlap exhausted their
+existing 90-second deadlines, while serializing every case exhausted the whole-suite watchdog.
+Other unit and fuzz replay cases retain bounded concurrency; no fixture or deadline is relaxed.
+
+Run heavyweight native and sanitizer test phases one at a time on a shared developer machine.
+Launching several suites multiplies their process bounds and can cause memory compression and
+deadline failures. Hosted jobs retain parallel execution on separate runners; local contention
+does not justify increasing deadlines or omitting cases.
+Set `DE_NATIVE_TEST_JOBS=1` for one native test process on a constrained host; the default is two.
+The supervisor refuses values outside 1..2 and retains complete reconciliation and deadlines.
 
 Full Python tooling coverage remains in each native and sanitizer suite under the reviewed
 whole-suite requirement. Its fixture CMake builds generally use the platform toolchain without
@@ -105,7 +115,7 @@ Every linter is pinned in `deps/tools.json`:
 | clang-tidy 23 | Every first-party C++ target, during the native build | `.clang-tidy` (strict profile), `tests/.clang-tidy` | `cmake --workflow --preset dev` |
 | Compiler warnings | Every first-party target, `-Werror` / `/WX` | `cmake/ProjectOptions.cmake` | the build |
 | clang-format 23 | Every first-party C/C++ file | `.clang-format` | `python tools/check_format.py [--fix]` |
-| Ruff (all rules) | Every Python file | `ruff.toml` | `python -m ruff check` and `python -m ruff format --check` |
+| Ruff (all rules) | Every Python file | `ruff.toml` | `python -m ruff check` and `python -m ruff format --check` (independent of Git ignore patterns) |
 | mypy (strict) | Every Python file | `mypy.ini` | `python -m mypy` |
 | Quality gates | Everything above | `tools/check_gates.py` | `python tools/check_gates.py` |
 
@@ -113,10 +123,15 @@ Install the pinned Python-distributed tools into the external build-tool environ
 
 The gates allow nothing to be grandfathered:
 
-- **File size.** Code files are limited to 300 physical lines (production), 400 (tests and fuzzers) and 200 (build scripts). There is no waiver mechanism: split the file. Function size and complexity are limited by `readability-function-size`/`readability-function-cognitive-complexity` and by Ruff's `C901`/`PLR09xx` rules.
-- **In-source suppressions.** Every `NOLINT(...)`, diagnostic pragma, `clang-format off`, `# noqa: ...`, `# type: ignore[...]`, warning-disabling CMake flag or `SKIP_LINTING` must name its rules and be registered in `tests/exceptions/registry.json` as `"path:tool/rule@<digest>": {"explanation": "..."}`, where the digest covers the complete source line (and both marker and target for `NOLINTNEXTLINE`), so the entry survives edits elsewhere in the file but must be reviewed when that line itself changes. Blanket, file-wide and range-wide forms (`// NOLINT`, `NOLINTBEGIN`/`NOLINTEND`, `# noqa`, `# ruff: noqa`, `# mypy:`) are rejected outright, and registry entries that no longer match a suppression fail as stale.
-- **Configuration suppressions.** Every disabled clang-tidy check and every ignored Ruff code carries its written reason in the configuration file itself. Nested `.clang-tidy` files may only disable checks with reasons; nested Ruff, mypy or clang-format configurations are rejected, as are mypy per-module overrides and escape hatches.
-- **Coverage.** A `.cpp` file that no target compiles, or a target that skips `de_apply_options()`, fails the gates because it would never be linted.
+- **File size.** Code files are limited to 300 physical lines (production), 400 (tests and fuzzers) and 200 (build scripts). There is no waiver mechanism: split the file. Production filenames beginning `test_` still use the production limit. Function size and complexity are limited by `readability-function-size`/`readability-function-cognitive-complexity` and by Ruff's `C901`/`PLR09xx` rules. The original `readability-function-size` check enforces body limits without a suppression mechanism. The separate `google-readability-function-size` check enforces the five-parameter limit; only a genuinely fixed native ABI can require a code-bound parameter exception. Such an exception cannot hide body size violations.
+- **In-source suppressions.** Every supported `NOLINT(...)`, scoped diagnostic pragma, bounded `clang-format off`, `# noqa: ...`, `# type: ignore[...]` and warning-disabling CMake flag must name its rules and be registered in `tests/exceptions/registry.json` as `"path:tool/rule@<sha256>": {"explanation": "...", "occurrences": N}`. The full SHA256 preserves bound source text, including whitespace in literals. Same-line markers bind their source line; `NOLINTNEXTLINE` binds both marker and target line. Compiler warning and formatter regions bind all text through the matching restoration. Identical sites must match their declared occurrence count. Old truncated keys, duplicate JSON keys, malformed entries, extra sites and stale bindings are refused. A content hash and rationale text establish binding and reviewability, not the truth of the explanation or proof of human review. Hidden `_Pragma`/`__pragma` compiler controls, sanitizer instrumentation opt-outs and blanket, file-wide or unbounded range forms (`// NOLINT`, `NOLINTBEGIN`/`NOLINTEND`, `# noqa`, `# ruff: noqa`, `# mypy:`, formatter-off without restoration) are rejected outright, and registry entries that no longer match a suppression fail as stale.
+- **Configuration suppressions.** Every effective named clang-tidy or Ruff configuration exception carries a current reason and a central registry entry bound to the complete configuration and its global or per-file scope. Every actual clang-tidy `CheckOptions` setting also has its own qualified option approval and complete configuration binding, including positive policy settings; adding an option or changing its value cannot reuse approval for disabled checks. Ruff docstring choices are explicit exact-rule exclusions; an implicit convention cannot silently disable additional rules. Unknown lint-option routes, wildcard exception codes and duplicate YAML mappings are refused. Root/nested clang-tidy fields, Ruff inheritance/formatting fields, the mypy profile and semantic clang-format settings have closed admission; secondary flags cannot undo strictness or hide formatter exclusions. The size/complexity checks and their reviewed budgets cannot be disabled, ignored or changed through root or nested configuration. Other nested `.clang-tidy` relaxations need reasons; nested Ruff, mypy or clang-format configurations are rejected, as are mypy per-module overrides and escape hatches.
+- **Coverage.** Complete native workflows compare discovered translation units with the actual compiler database and reject target options that do not retain warnings and clang-tidy. Comments and unreachable CMake branches cannot establish compilation; source-only checks do not claim that evidence.
+
+These measures bound files and individual functions; they do not prove that a class or a group of
+small functions has one coherent responsibility. Cross-file aggregation, excessive delegation
+and domain coupling still need the separate design/challenge review required by `AGENTS.md`.
+A passing gate supports its checked property, not a perfect architecture score.
 
 ## Fuzzing
 

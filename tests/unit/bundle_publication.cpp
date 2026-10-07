@@ -89,6 +89,7 @@ WrittenBundle written_bundle() {
         .illumination = illumination,
         .denoising = {.complete = true},
         .contrast = {.complete = true},
+        .sharpening = {.complete = true},
     };
     auto record = bundle::serialize(facts);
     REQUIRE(record);

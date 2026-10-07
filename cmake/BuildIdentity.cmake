@@ -80,6 +80,7 @@ set(de_recipe_files deps/tools.json deps/lock.json deps/features.json
   cmake/BuildPolicy.cmake cmake/BuildEnvironment.cmake cmake/BuildIdentity.cmake cmake/CompilerPolicy.cmake
   cmake/Options.cmake cmake/Superbuild.cmake cmake/DependencyPlan.cmake cmake/NativeHardening.cmake
   cmake/DependencyPaths.cmake cmake/DependencyFeatures.cmake cmake/Dependencies.cmake cmake/ProjectOptions.cmake
+  cmake/TargetOptions.cmake
   cmake/dependencies/picosha2/CMakeLists.txt cmake/dependencies/json/CMakeLists.txt
   cmake/dependencies/zlib/CMakeLists.txt cmake/dependencies/tiff/CMakeLists.txt
   cmake/dependencies/tiff/docenhance_tiff.h)

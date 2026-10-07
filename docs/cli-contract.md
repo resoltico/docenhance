@@ -184,7 +184,7 @@ Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and c
 
 1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
 
-**Applicable methods:** I01,I02,D01,D02,C01,C02,C03.
+**Applicable methods:** I01,I02,D01,D02,C01,C02,C03,S01.
 
 ## `--denoise METHOD`
 
@@ -305,3 +305,35 @@ CLAHE contextual columns and rows. Every tile must be at least 16 pixels in each
 CLAHE pre-redistribution clip multiplier relative to average eligible occupancy.
 
 **Applicable methods:** C03.
+
+## `--sharpen METHOD`
+
+**Scope:** P. **Domain/default:** off; off|unsharp.
+
+Explicit thresholded unsharp masking after contrast; never enabled by default.
+
+**Applicable methods:** S01.
+
+## `--sharpen-sigma S`
+
+**Scope:** P. **Domain/default:** 0.8; finite [0.3,3].
+
+Gaussian standard deviation in pixels; radius ceil(3*sigma), REFLECT_101 borders.
+
+**Applicable methods:** S01.
+
+## `--sharpen-amount A`
+
+**Scope:** P. **Domain/default:** 0.5; finite [0,2].
+
+Soft-thresholded high-pass amplification; zero is an algebraic identity.
+
+**Applicable methods:** S01.
+
+## `--sharpen-threshold T`
+
+**Scope:** P. **Domain/default:** 1.0; finite [0,20].
+
+Soft threshold in equivalent 8-bit perceptual intensity points; divided by 255 internally.
+
+**Applicable methods:** S01.

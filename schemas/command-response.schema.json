@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 8
+      "const": 9
     },
     "command": {
       "enum": [
@@ -88,7 +88,7 @@
             "$ref": "#/$defs/method"
           },
           "minItems": 1,
-          "maxItems": 9,
+          "maxItems": 10,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -158,7 +158,7 @@
             "$ref": "#/$defs/method"
           },
           "minItems": 1,
-          "maxItems": 9,
+          "maxItems": 10,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -528,6 +528,9 @@
         },
         "contrast": {
           "$ref": "#/$defs/contrast"
+        },
+        "sharpening": {
+          "$ref": "#/$defs/sharpening"
         }
       },
       "required": [
@@ -539,7 +542,8 @@
         "record",
         "source_decoding",
         "denoising",
-        "contrast"
+        "contrast",
+        "sharpening"
       ]
     },
     {
@@ -635,6 +639,9 @@
         },
         "contrast": {
           "$ref": "#/$defs/contrast"
+        },
+        "sharpening": {
+          "$ref": "#/$defs/sharpening"
         }
       },
       "required": [
@@ -1012,6 +1019,16 @@
           "properties": {
             "id": {
               "const": "C03"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
+              "const": "S01"
             },
             "method_version": {
               "const": 1
@@ -3444,6 +3461,452 @@
             "properties": {
               "parameters": {
                 "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/3"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "sharpening_method": {
+      "type": "object",
+      "required": [
+        "id",
+        "method_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "method_version": {
+          "type": "integer"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "id": {
+              "const": "S01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        }
+      ]
+    },
+    "sharpening_request": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/sharpening_method"
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "sigma",
+                "amount",
+                "threshold"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "sigma": {
+                  "type": "number",
+                  "minimum": 0.3,
+                  "maximum": 3
+                },
+                "amount": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "threshold": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 20
+                }
+              }
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "type": "object",
+                "required": [
+                  "sigma",
+                  "amount",
+                  "threshold"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "sigma": {
+                    "type": "number",
+                    "minimum": 0.3,
+                    "maximum": 3
+                  },
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "threshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 20
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "sharpening": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters",
+        "status",
+        "reason",
+        "complete",
+        "representation",
+        "pre_clamp",
+        "clipped_fraction",
+        "warnings",
+        "eligible_samples",
+        "protected_samples",
+        "context_samples",
+        "evaluated_samples",
+        "corrected_samples",
+        "changed_samples",
+        "clipped_low_samples",
+        "clipped_high_samples",
+        "preparation_charge_peak"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/sharpening_method"
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "sigma",
+                "amount",
+                "threshold"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "sigma": {
+                  "type": "number",
+                  "minimum": 0.3,
+                  "maximum": 3
+                },
+                "amount": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "threshold": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 20
+                }
+              }
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "disabled",
+            "no_change",
+            "applied",
+            "failed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "none",
+            "zero_amount",
+            "no_eligible_samples",
+            "no_effect",
+            "processing_failure"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "representation": {
+          "enum": [
+            null,
+            "float64"
+          ]
+        },
+        "pre_clamp": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "low",
+                "high"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "low": {
+                  "type": "number",
+                  "minimum": -2,
+                  "maximum": 3
+                },
+                "high": {
+                  "type": "number",
+                  "minimum": -2,
+                  "maximum": 3
+                }
+              }
+            }
+          ]
+        },
+        "clipped_fraction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "const": "W_SHARPENING"
+          }
+        },
+        "eligible_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "protected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "context_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "evaluated_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "corrected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "changed_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "clipped_low_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "clipped_high_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "preparation_charge_peak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              },
+              "status": {
+                "const": "disabled"
+              },
+              "reason": {
+                "const": "none"
+              },
+              "representation": {
+                "type": "null"
+              },
+              "pre_clamp": {
+                "type": "null"
+              },
+              "clipped_fraction": {
+                "type": "null"
+              },
+              "warnings": {
+                "maxItems": 0
+              },
+              "context_samples": {
+                "const": 0
+              },
+              "evaluated_samples": {
+                "const": 0
+              },
+              "corrected_samples": {
+                "const": 0
+              },
+              "changed_samples": {
+                "const": 0
+              },
+              "clipped_low_samples": {
+                "const": 0
+              },
+              "clipped_high_samples": {
+                "const": 0
+              },
+              "preparation_charge_peak": {
+                "const": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "type": "object",
+                "required": [
+                  "sigma",
+                  "amount",
+                  "threshold"
+                ],
+                "additionalProperties": false,
+                "properties": {
+                  "sigma": {
+                    "type": "number",
+                    "minimum": 0.3,
+                    "maximum": 3
+                  },
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "threshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 20
+                  }
+                }
+              },
+              "representation": {
+                "const": "float64"
+              },
+              "status": {
+                "enum": [
+                  "no_change",
+                  "applied",
+                  "failed"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "parameters": {
+                "type": "object",
+                "properties": {
+                  "amount": {
+                    "exclusiveMinimum": 0
+                  }
+                },
+                "required": [
+                  "amount"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "warnings": {
+                "const": [
+                  "W_SHARPENING"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "warnings": {
+                "maxItems": 0
               }
             }
           }

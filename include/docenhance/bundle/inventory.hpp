@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/sharpening.hpp"
 
 #include <cstddef>
 #include <span>
@@ -49,6 +50,7 @@ struct DeclaredBundle {
     methods::IlluminationReport illumination{};
     methods::DenoisingReport denoising{};
     methods::ContrastReport contrast{};
+    methods::SharpenReport sharpening{};
 };
 
 [[nodiscard]] core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes);

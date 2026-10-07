@@ -159,6 +159,7 @@ std::string written_record(FuzzInput& input) {
         .illumination = illumination,
         .denoising = {.complete = true},
         .contrast = {.complete = true},
+        .sharpening = {.complete = true},
     };
     auto written = bundle::serialize(record);
     require(written.has_value(), "a record this program built always serializes");

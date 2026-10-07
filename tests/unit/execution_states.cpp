@@ -10,6 +10,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 #include "processor.hpp"
 #include "stub_verifier.hpp"
 
@@ -81,6 +82,8 @@ app::PublishedContinuous continuous() {
     value.illumination.eligible_samples = 4;
     value.contrast.complete = true;
     value.contrast.eligible_samples = 4;
+    value.sharpening.complete = true;
+    value.sharpening.eligible_samples = 4;
     value.denoising.complete = true;
     value.denoising.eligible_samples = 4;
     return value;
@@ -293,6 +296,17 @@ TEST_CASE("Invalid command values have no scope bits and cannot reach execution"
     CHECK(error(outcome).code == core::ErrorCode::argument);
     CHECK(outcome.command == contract::Command::root);
     CHECK(processor.calls == 0);
+}
+TEST_CASE("Early continuous input failure retains known state with sharpening off", "[app]") {
+    UnusedVerifier verifier;
+    const methods::SharpenReport unreported;
+    ReturningProcessor processor{app::process_failure(
+        {.code = core::ErrorCode::input, .message = "Input rejected before processing"},
+        std::nullopt, std::nullopt, std::nullopt, unreported)};
+    const auto result = error(app::dispatch(invocation(false), processor, verifier));
+    CHECK(processor.calls() == 1);
+    CHECK(result.code == core::ErrorCode::input);
+    CHECK(result.publication == core::Publication::not_started);
 }
 TEST_CASE("I02 failure observations reject foreign fields and invalid scalar domains",
           "[app][morphology]") {

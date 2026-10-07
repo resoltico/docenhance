@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/image/gaussian.hpp"
+
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/morphology.hpp"
 
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
-namespace docenhance::methods {
+namespace docenhance::image {
 namespace {
 core::Result<double> convolve(image::PlaneView<const double> input, GaussianPass pass,
                               std::uint32_t x, std::uint32_t y) {
@@ -29,7 +29,7 @@ core::Result<double> convolve(image::PlaneView<const double> input, GaussianPass
         const auto value = input.row(static_cast<std::uint32_t>(iy)).subspan(ix, 1).front();
         if (!std::isfinite(value) || value < 0 || value > 1) {
             return core::failure(core::ErrorCode::numerical,
-                                 "I02 Gaussian input is not unit finite luminance");
+                                 "Gaussian input is not unit finite luminance");
         }
         constant = constant && value == center;
         sum += value * pass.weights.subspan(k, 1).front();
@@ -41,23 +41,23 @@ core::Result<double> convolve(image::PlaneView<const double> input, GaussianPass
 core::Result<void> gaussian_pass(image::PlaneView<const double> input,
                                  image::PlaneView<double> output, GaussianPass pass,
                                  const core::Cancellation& cancellation) {
-    constexpr std::size_t coefficient_limit = (3 * Morphology::max_radius) + 1;
+    constexpr std::size_t coefficient_limit = (2 * gaussian_radius_limit) + 1;
     if (input.empty() || input.width() != output.width() || input.height() != output.height() ||
         image::overlaps(input, output) || image::overlaps(pass.weights, output.storage()) ||
         pass.weights.empty() || pass.weights.size() % 2 == 0 ||
         pass.weights.size() > coefficient_limit || !std::isfinite(pass.normalization) ||
         pass.normalization <= 0) {
-        return core::failure(core::ErrorCode::argument, "Invalid I02 Gaussian pass storage");
+        return core::failure(core::ErrorCode::argument, "Invalid Gaussian pass storage");
     }
     double total = 0;
     for (const auto weight : pass.weights) {
         if (!std::isfinite(weight) || weight <= 0) {
-            return core::failure(core::ErrorCode::argument, "Invalid I02 Gaussian coefficient");
+            return core::failure(core::ErrorCode::argument, "Invalid Gaussian coefficient");
         }
         total += weight;
     }
     if (total != pass.normalization) {
-        return core::failure(core::ErrorCode::argument, "I02 Gaussian normalization differs");
+        return core::failure(core::ErrorCode::argument, "Gaussian normalization differs");
     }
     constexpr std::uint32_t checkpoint_interval = 128;
     for (std::uint32_t y = 0; y < input.height(); ++y) {
@@ -75,4 +75,4 @@ core::Result<void> gaussian_pass(image::PlaneView<const double> input,
     }
     return {};
 }
-} // namespace docenhance::methods
+} // namespace docenhance::image

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -138,7 +139,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--ctest", default="ctest")
-    parser.add_argument("--jobs", type=int, default=MAX_TEST_PROCESSES)
+    parser.add_argument(
+        "--jobs",
+        type=int,
+        default=os.environ.get("DE_NATIVE_TEST_JOBS", str(MAX_TEST_PROCESSES)),
+    )
     args = parser.parse_args()
     if not 1 <= args.jobs <= MAX_TEST_PROCESSES:
         parser.error(f"native test jobs must be in [1,{MAX_TEST_PROCESSES}]")

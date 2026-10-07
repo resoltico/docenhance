@@ -163,3 +163,8 @@ and the same watchdog allowances.
 C03 additionally fuzzes charged contextual preparation, floating reconstruction, immutable replay
 and complete observation validation. CLI corpus seeds exercise grid admission and inactive private
 options. Deterministic unit probes enumerate preparation and application cancellation checkpoints.
+
+The S01 sharpening harness adds bounded Gaussian preparation, scalar soft-threshold comparison,
+immutable reconstruction replay and complete report validation. Twenty-one targets retain every
+per-target exposure interval; the campaign plan derives the required wave count and rejects an
+insufficient whole-job budget. CLI seeds cover sharpening admission and inactive private options.

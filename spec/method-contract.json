@@ -127,13 +127,16 @@
       "id": "S01",
       "name": "Thresholded unsharp masking",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--sharpen",
         "--sharpen-sigma",
         "--sharpen-amount",
-        "--sharpen-threshold"
-      ]
+        "--sharpen-threshold",
+        "--protect-mask"
+      ],
+      "family": "sharpening",
+      "selector": "unsharp"
     },
     {
       "id": "B01",

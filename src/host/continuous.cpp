@@ -26,13 +26,14 @@
 #include "docenhance/methods/surface.hpp"
 #include "linear_rows.hpp"
 #include "run_publication.hpp"
+#include "sharpening.hpp"
+#include "stage_reports.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <expected>
 #include <functional>
 #include <optional>
-#include <type_traits>
 #include <utility>
 #include <variant>
 namespace docenhance::host {
@@ -96,36 +97,6 @@ prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
     }
     return model->active() ? std::optional<IlluminationModel>{std::move(*model)} : std::nullopt;
 }
-void initialize_stages(const app::ProcessRequest& request,
-                       methods::IlluminationReport& illumination,
-                       methods::DenoisingReport& denoising, methods::ContrastReport& contrast) {
-    std::visit(
-        [&](const auto& selected) {
-            using M = std::decay_t<decltype(selected)>;
-            if constexpr (!std::is_same_v<M, methods::ContrastOff>) {
-                contrast.status = methods::ContrastStatus::failed;
-                contrast.requested = selected.parameters();
-            }
-        },
-        request.contrast());
-    if (const auto* const method = std::get_if<methods::Surface>(&request.illumination())) {
-        illumination.status = methods::IlluminationStatus::failed;
-        illumination.requested = method->parameters();
-    }
-    if (const auto* const method = std::get_if<methods::Morphology>(&request.illumination())) {
-        illumination.status = methods::IlluminationStatus::failed;
-        illumination.requested = method->parameters();
-    }
-    if (const auto* const method = std::get_if<methods::Tvl1>(&request.denoising())) {
-        denoising.status = methods::DenoiseStatus::failed;
-        denoising.requested = method->parameters();
-    }
-    if (const auto* const method = std::get_if<methods::Nlm>(&request.denoising())) {
-        denoising.status = methods::DenoiseStatus::failed;
-        denoising.requested = method->parameters();
-        denoising.native_h = methods::nlm_native_strength(method->parameters());
-    }
-}
 struct Protection {
     image::Plane<std::uint8_t> mask;
     std::optional<MaskFacts> facts;
@@ -148,11 +119,13 @@ core::Result<Protection> load_protection(const app::ProcessRequest& request,
     }
     return result;
 }
-core::Result<app::PublishedContinuous>
-published_image(PublishedRun published, image::SourceDescription source,
-                const methods::IlluminationReport& illumination,
-                const methods::DenoisingReport& denoising,
-                const methods::ContrastReport& contrast) {
+core::Result<app::PublishedContinuous> published_image(PublishedRun published,
+                                                       image::SourceDescription source,
+                                                       const ContinuousReports& reports) {
+    const auto& illumination = reports.illumination.get();
+    const auto& denoising = reports.denoising.get();
+    const auto& contrast = reports.contrast.get();
+    const auto& sharpening = reports.sharpening.get();
     // The conversion the record states, so the response and the record cannot disagree.
     if (!published.conversion) {
         return std::unexpected(core::Error{
@@ -173,6 +146,7 @@ published_image(PublishedRun published, image::SourceDescription source,
         .source_decoding = source,
         .denoising = denoising,
         .contrast = contrast,
+        .sharpening = sharpening,
     };
 }
 core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source, bool prepared,
@@ -186,6 +160,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
     const auto& illumination = run.reports.illumination.get();
     const auto& denoising = run.reports.denoising.get();
     const auto& contrast = run.reports.contrast.get();
+    const auto& sharpening = run.reports.sharpening.get();
     const auto& operation = std::get<image::Continuous>(request.operation());
     auto block =
         image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1);
@@ -204,6 +179,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
                 .illumination = illumination,
                 .denoising = denoising,
                 .contrast = contrast,
+                .sharpening = sharpening,
             },
         .budget = budget,
         .cancellation = cancellation,
@@ -216,8 +192,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
     if (!published) {
         return std::unexpected(std::move(published.error()));
     }
-    return published_image(std::move(*published), decoded.description, illumination, denoising,
-                           contrast);
+    return published_image(std::move(*published), decoded.description, run.reports);
 }
 } // namespace
 core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& request,
@@ -228,9 +203,8 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     auto& denoising = reports.denoising.get();
     auto& contrast = reports.contrast.get();
     const auto& cancellation = execution.cancellation.get();
-    const auto& context = execution.context.get();
     core::Budget budget{core::continuous_processing_budget};
-    initialize_stages(request, illumination, denoising, contrast);
+    initialize_stages(request, illumination, denoising, contrast, reports.sharpening.get());
     auto decoded =
         io::load_source(request.input(), budget, operation.parameters().profile, cancellation);
     if (!decoded) {
@@ -250,7 +224,7 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
         .budget = budget,
         .cancellation = cancellation,
         .reports = reports,
-        .context = context,
+        .context = execution.context,
     };
     auto prepared = prepare(run, protection->mask.view().as_const());
     if (!prepared) {
@@ -287,12 +261,20 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     }
     ContrastedSource contrasted{contrast_input, *mapping ? &**mapping : nullptr, contrast,
                                 cancellation};
-    if (contrasted.active()) {
-        auto assessed = assess_contrast(contrasted, budget, cancellation, contrast);
-        if (!assessed) {
-            return std::unexpected(assessed.error());
-        }
+    reports.sharpening.get().eligible_samples = contrast.eligible_samples;
+    reports.sharpening.get().protected_samples = contrast.protected_samples;
+    const SharpenInput sharpen_input{
+        .source = contrasted,
+        .mask = protection->mask.view().as_const(),
+        .prepared = contrasted.prepared(),
+    };
+    auto sharpening_model = prepare_sharpening(sharpen_input, request.sharpening(), budget,
+                                               cancellation, reports.sharpening.get());
+    if (!sharpening_model) {
+        return std::unexpected(sharpening_model.error());
     }
-    return publish_frame(contrasted, contrasted.prepared(), run, *protection, *decoded);
+    SharpenedSource sharpened{sharpen_input, *sharpening_model ? &**sharpening_model : nullptr,
+                              reports.sharpening.get(), cancellation};
+    return publish_frame(sharpened, sharpened.prepared(), run, *protection, *decoded);
 }
 } // namespace docenhance::host

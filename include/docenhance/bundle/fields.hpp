@@ -7,6 +7,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -14,6 +15,8 @@
 #include <vector>
 
 namespace docenhance::bundle {
+[[nodiscard]] nlohmann::ordered_json sharpen_fields(const methods::SharpenReport& report);
+[[nodiscard]] nlohmann::ordered_json sharpen_request_fields(const methods::SharpenReport& report);
 [[nodiscard]] nlohmann::ordered_json tvl1_fields(const methods::Tvl1Report& report);
 [[nodiscard]] nlohmann::ordered_json denoising_fields(const methods::DenoisingReport& report);
 [[nodiscard]] nlohmann::ordered_json

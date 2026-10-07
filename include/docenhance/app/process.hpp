@@ -13,6 +13,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/sharpening.hpp"
 
 #include <expected>
 #include <optional>
@@ -30,7 +31,7 @@ class ProcessRequest {
         : input_(std::exchange(other.input_, {})), output_(std::move(other.output_)),
           operation_(other.operation_), illumination_(other.illumination_),
           protection_(std::move(other.protection_)), denoising_(other.denoising_),
-          contrast_(other.contrast_) {}
+          contrast_(other.contrast_), sharpening_(other.sharpening_) {}
     ProcessRequest& operator=(ProcessRequest&& other) noexcept {
         if (this != &other) {
             input_ = std::exchange(other.input_, {});
@@ -40,6 +41,7 @@ class ProcessRequest {
             protection_ = std::move(other.protection_);
             denoising_ = other.denoising_;
             contrast_ = other.contrast_;
+            sharpening_ = other.sharpening_;
         }
         return *this;
     }
@@ -72,6 +74,10 @@ class ProcessRequest {
         return contrast_;
     }
     [[nodiscard]] const methods::Contrast& contrast() const&& = delete;
+    [[nodiscard]] const methods::Sharpening& sharpening() const& noexcept {
+        return sharpening_;
+    }
+    [[nodiscard]] const methods::Sharpening& sharpening() const&& = delete;
     [[nodiscard]] const Operation& operation() const& noexcept {
         return operation_;
     }
@@ -83,12 +89,14 @@ class ProcessRequest {
         methods::Illumination illumination;
         methods::Denoising denoising;
         methods::Contrast contrast;
+        methods::Sharpening sharpening;
     };
     ProcessRequest(std::string input, std::string output, Operation operation,
                    Enhancements enhancements, std::optional<std::string> protection)
         : input_(std::move(input)), output_(std::move(output)), operation_(operation),
           illumination_(enhancements.illumination), protection_(std::move(protection)),
-          denoising_(enhancements.denoising), contrast_(enhancements.contrast) {}
+          denoising_(enhancements.denoising), contrast_(enhancements.contrast),
+          sharpening_(enhancements.sharpening) {}
     std::string input_;
     std::string output_;
     Operation operation_;
@@ -96,6 +104,7 @@ class ProcessRequest {
     std::optional<std::string> protection_;
     methods::Denoising denoising_;
     methods::Contrast contrast_;
+    methods::Sharpening sharpening_;
 };
 [[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
 // A published bundle is identified by the run and record digest, not a persisted publication claim.
@@ -115,6 +124,7 @@ struct PublishedContinuous {
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
     methods::DenoisingReport denoising;
     methods::ContrastReport contrast;
+    methods::SharpenReport sharpening;
 };
 using Published = std::variant<PublishedBinary, PublishedContinuous>;
 struct Processed {
@@ -128,17 +138,20 @@ struct ProcessFailure {
     core::Error error;
     std::optional<methods::DenoisingReport> denoising = std::nullopt;
     std::optional<methods::ContrastReport> contrast = std::nullopt;
+    std::optional<methods::SharpenReport> sharpening = std::nullopt;
     std::optional<methods::IlluminationReport> illumination = std::nullopt;
 };
 using ProcessResult = std::expected<Published, ProcessFailure>;
 [[nodiscard]] inline std::unexpected<ProcessFailure>
 process_failure(core::Error error, std::optional<methods::IlluminationReport> illumination = {},
                 std::optional<methods::DenoisingReport> denoising = {},
-                std::optional<methods::ContrastReport> contrast = {}) {
+                std::optional<methods::ContrastReport> contrast = {},
+                std::optional<methods::SharpenReport> sharpening = {}) {
     return std::unexpected(ProcessFailure{
         .error = std::move(error),
         .denoising = denoising,
         .contrast = contrast,
+        .sharpening = sharpening,
         .illumination = illumination,
     });
 }

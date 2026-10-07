@@ -16,31 +16,17 @@ import re
 import tomllib
 from typing import TYPE_CHECKING, Any
 
+import yaml
+
 import check_reference_suite
 import package_source
+import size_policy
+from workflow_config import workflow
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from pathlib import Path
 
-MYPY_FORBIDDEN = frozenset(
-    {
-        "ignore_errors",
-        "disable_error_code",
-        "ignore_missing_imports",
-        "follow_imports",
-        "follow_untyped_imports",
-        "exclude",
-        "allow_untyped_defs",
-        "allow_untyped_calls",
-        "allow_incomplete_defs",
-        "allow_any_generics",
-        "allow_subclassing_any",
-        "allow_untyped_decorators",
-        "allow_untyped_globals",
-        "implicit_reexport",
-        "implicit_optional",
-    }
-)
 ROOT_ONLY_CONFIGS = (
     "ruff.toml",
     ".ruff.toml",
@@ -93,10 +79,16 @@ def clang_tidy_errors(root: Path, path: Path) -> list[str]:
             errors.append(f"{rel}: nested configurations must inherit the root configuration")
         errors.extend(
             f"{rel}: nested configurations may not set {key}"
-            for key in ("WarningsAsErrors", "CheckOptions", "HeaderFilterRegex", "SystemHeaders")
+            for key in (
+                "WarningsAsErrors",
+                "CheckOptions",
+                "HeaderFilterRegex",
+                "ExcludeHeaderFilterRegex",
+                "SystemHeaders",
+            )
             if re.search(rf"^{key}:", text, re.MULTILINE)
         )
-    return errors
+    return errors + size_policy.clang_tidy_errors(root, path)
 
 
 def ruff_errors(root: Path) -> list[str]:
@@ -112,23 +104,96 @@ def ruff_errors(root: Path) -> list[str]:
         errors.append('ruff.toml: lint.select must be exactly ["ALL"]')
     errors.extend(
         f"ruff.toml: {key} is not allowed; only artifact directories are excluded"
-        for key in ("force-exclude", "respect-gitignore")
+        for key in ("force-exclude",)
         if key in config or key in lint
     )
+    if config.get("respect-gitignore") is not False:
+        errors.append("ruff.toml: respect-gitignore must be false so source discovery is complete")
+    if lint.get("exclude"):
+        errors.append("ruff.toml: lint.exclude cannot hide admitted Python sources")
     roots = {f"{name}/**" for name in package_source.CHECKOUT_ARTIFACTS}
     if set(config.get("extend-exclude", [])) != roots:
         errors.append(f"ruff.toml: extend-exclude must be exactly {sorted(roots)}")
     if set(config.get("exclude", [])) != package_source.EXCLUDED:
         errors.append(f"ruff.toml: exclude must be exactly {sorted(package_source.EXCLUDED)}")
     ignored = [*lint.get("ignore", []), *lint.get("extend-ignore", [])]
-    for codes in lint.get("per-file-ignores", {}).values():
-        ignored.extend(codes)
+    for member in ("per-file-ignores", "extend-per-file-ignores"):
+        for codes in lint.get(member, {}).values():
+            ignored.extend(codes)
     errors.extend(
         f"ruff.toml: ignored {code} needs a same-line reason comment"
         for code in ignored
         if code == "ALL" or not re.search(rf'"{re.escape(code)}",?\s*#\s*\S', text)
     )
+    return errors + size_policy.ruff_errors(config)
+
+
+def mypy_profile_errors(section: Mapping[str, str]) -> list[str]:
+    """Strict cannot be undone through separately stated options or unchecked field additions."""
+    fields = {
+        "python_version",
+        "files",
+        "mypy_path",
+        "strict",
+        "warn_unreachable",
+        "enable_error_code",
+        "extra_checks",
+    }
+    errors = [
+        f"mypy.ini: unreviewed configuration field: {key}" for key in section if key not in fields
+    ]
+    errors.extend(
+        f"mypy.ini: {key} must remain True"
+        for key in ("strict", "warn_unreachable", "extra_checks")
+        if str(section.get(key, "")).lower() != "true"
+    )
+    codes = {
+        "ignore-without-code",
+        "redundant-expr",
+        "truthy-bool",
+        "possibly-undefined",
+        "redundant-self",
+        "unused-awaitable",
+        "explicit-override",
+    }
+    if {code.strip() for code in str(section.get("enable_error_code", "")).split(",")} != codes:
+        errors.append("mypy.ini: the explicit required error-code set must remain enabled")
+    if section.get("mypy_path") != "tools":
+        errors.append("mypy.ini: mypy_path must resolve the admitted tools source directory")
     return errors
+
+
+def clang_format_errors(root: Path, path: Path) -> list[str]:
+    """Admit semantic YAML for the complete reviewed formatter profile, not textual mentions."""
+    rel = path.relative_to(root).as_posix()
+    try:
+        config = workflow(path)
+    except (ValueError, TypeError, yaml.YAMLError) as error:
+        return [f"{rel}: invalid formatting policy: {error}"]
+    profile = {
+        "BasedOnStyle": "LLVM",
+        "Language": "Cpp",
+        "Standard": "c++23",
+        "IndentWidth": "4",
+        "ColumnLimit": "100",
+        "PointerAlignment": "Left",
+        "DerivePointerAlignment": "false",
+        "SortIncludes": "CaseSensitive",
+        "IncludeBlocks": "Regroup",
+        "AllowShortFunctionsOnASingleLine": "Empty",
+        "AllowShortIfStatementsOnASingleLine": "Never",
+        "BreakBeforeBraces": "Attach",
+    }
+    return (
+        []
+        if path.parent == root and config == profile
+        else [
+            (
+                f"{rel}: formatting may not be disabled or overridden; "
+                "use the complete reviewed profile"
+            )
+        ]
+    )
 
 
 def mypy_errors(root: Path, python_files: list[Path]) -> list[str]:
@@ -140,11 +205,7 @@ def mypy_errors(root: Path, python_files: list[Path]) -> list[str]:
     if parser.sections() != ["mypy"]:
         errors.append("mypy.ini: only the [mypy] section is allowed (no per-module overrides)")
     section = parser["mypy"] if parser.has_section("mypy") else {}
-    if str(section.get("strict", "")).strip() != "True":
-        errors.append("mypy.ini: strict = True is required")
-    errors.extend(
-        f"mypy.ini: {key} is not allowed" for key in sorted(MYPY_FORBIDDEN & set(section))
-    )
+    errors.extend(mypy_profile_errors(section))
     targets = [root / t.strip() for t in str(section.get("files", "")).split(",") if t.strip()]
     errors.extend(
         f"{path.relative_to(root).as_posix()} is outside mypy.ini files"
@@ -165,11 +226,7 @@ def nested_config_errors(root: Path, files: list[Path]) -> list[str]:
         ):
             errors.append(f"{rel}: lint configuration must be the root ruff.toml and mypy.ini only")
         if path.name == ".clang-format":
-            text = path.read_text(encoding="utf-8")
-            if nested or re.search(
-                r"^\s*DisableFormat:\s*true", text, re.MULTILINE | re.IGNORECASE
-            ):
-                errors.append(f"{rel}: formatting may not be disabled or overridden")
+            errors.extend(clang_format_errors(root, path))
     return errors
 
 
@@ -217,6 +274,8 @@ def warning_sync_errors(root: Path) -> list[str]:
 def check(root: Path, files: list[Path], python_files: list[Path]) -> list[str]:
     """Run every configuration gate over the repository's files."""
     errors = [*nested_config_errors(root, files), *ruff_errors(root), *preset_errors(root)]
+    if not (root / ".clang-tidy").is_file():
+        errors.append(".clang-tidy is missing")
     for path in files:
         if path.name == ".clang-tidy":
             errors.extend(clang_tidy_errors(root, path))

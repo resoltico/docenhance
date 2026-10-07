@@ -11,6 +11,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "illumination.hpp"
+#include "sharpening.hpp"
 
 #include <algorithm>
 #include <array>
@@ -196,11 +197,19 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     if (!contrast) {
         return std::unexpected(contrast.error());
     }
-    return ProcessRequest{
-        invocation.subject,
-        invocation.output_directory,
-        *method,
-        {.illumination = *illumination, .denoising = *denoising, .contrast = *contrast},
-        invocation.protect_mask};
+    const auto sharpening = prepare_sharpening(invocation);
+    if (!sharpening) {
+        return std::unexpected(sharpening.error());
+    }
+    return ProcessRequest{invocation.subject,
+                          invocation.output_directory,
+                          *method,
+                          {
+                              .illumination = *illumination,
+                              .denoising = *denoising,
+                              .contrast = *contrast,
+                              .sharpening = *sharpening,
+                          },
+                          invocation.protect_mask};
 }
 } // namespace docenhance::app

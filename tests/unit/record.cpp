@@ -81,6 +81,7 @@ bundle::RunRecord binarized_record() {
         .illumination = illumination,
         .denoising = {.complete = true},
         .contrast = {.complete = true},
+        .sharpening = {.complete = true},
     };
 }
 } // namespace
@@ -116,9 +117,9 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
     }
     SECTION("a version this build does not support") {
         auto altered = *written;
-        const auto at = altered.find("\"version\": 8");
+        const auto at = altered.find("\"version\": 9");
         REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 8").size(), "\"version\": 6");
+        altered.replace(at, std::string_view("\"version\": 9").size(), "\"version\": 6");
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);

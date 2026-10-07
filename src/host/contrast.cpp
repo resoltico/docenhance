@@ -34,6 +34,13 @@ prepare_contrast(ContrastInput input, const methods::Contrast& method, core::Bud
     if (!model) {
         return std::unexpected(model.error());
     }
+    ContrastedSource assessed{input, &*model, report, cancellation};
+    if (assessed.active()) {
+        auto result = assess_contrast(assessed, budget, cancellation, report);
+        if (!result) {
+            return std::unexpected(result.error());
+        }
+    }
     return std::optional<methods::ContrastModel>{std::move(*model)};
 }
 core::Result<void> ContrastedSource::read(image::RowRange range, std::span<double> rgb,

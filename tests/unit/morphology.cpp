@@ -6,6 +6,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/gaussian.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
@@ -211,23 +212,23 @@ TEST_CASE("I02 protects its kernel storage and finite input contracts", "[morpho
     CHECK(!methods::extrema_pass(input.view().as_const(), input.view(), queue, {.radius = 1}));
     CHECK(!methods::extrema_pass(input.view().as_const(), output.view(), queue, {.radius = 2}));
     const std::array<double, 3> weights{0.5, 1, 0.5};
-    CHECK(!methods::gaussian_pass(input.view().as_const(), input.view(),
-                                  {.weights = weights, .normalization = 2}));
-    CHECK(!methods::gaussian_pass(input.view().as_const(), output.view(),
-                                  {.weights = weights, .normalization = 1}));
+    CHECK(!image::gaussian_pass(input.view().as_const(), input.view(),
+                                {.weights = weights, .normalization = 2}));
+    CHECK(!image::gaussian_pass(input.view().as_const(), output.view(),
+                                {.weights = weights, .normalization = 1}));
     std::ranges::fill(output.view().row(0), 1.0);
-    CHECK(!methods::gaussian_pass(input.view().as_const(), output.view(),
-                                  {.weights = output.view().row(0), .normalization = 3}));
-    REQUIRE(methods::gaussian_pass(input.view().as_const(), output.view(),
-                                   {.weights = weights, .normalization = 2}));
+    CHECK(!image::gaussian_pass(input.view().as_const(), output.view(),
+                                {.weights = output.view().row(0), .normalization = 3}));
+    REQUIRE(image::gaussian_pass(input.view().as_const(), output.view(),
+                                 {.weights = weights, .normalization = 2}));
     CHECK(output.view().row(0).front() == 0.4);
     input.view().row(0).front() = std::numeric_limits<double>::quiet_NaN();
     const auto extrema =
         methods::extrema_pass(input.view().as_const(), output.view(), queue, {.radius = 1});
     REQUIRE(!extrema);
     CHECK(extrema.error().code == core::ErrorCode::numerical);
-    const auto gaussian = methods::gaussian_pass(input.view().as_const(), output.view(),
-                                                 {.weights = weights, .normalization = 2});
+    const auto gaussian = image::gaussian_pass(input.view().as_const(), output.view(),
+                                               {.weights = weights, .normalization = 2});
     REQUIRE(!gaussian);
     CHECK(gaussian.error().code == core::ErrorCode::numerical);
 }

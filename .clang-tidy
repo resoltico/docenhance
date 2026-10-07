@@ -27,6 +27,7 @@ Checks: >
   google-default-arguments,
   google-explicit-constructor,
   google-global-names-in-headers,
+  google-readability-function-size,
   google-runtime-int,
   google-runtime-operator,
   hicpp-exception-baseclass,
@@ -74,9 +75,17 @@ CheckOptions:
   readability-function-size.LineThreshold: '80'
   readability-function-size.StatementThreshold: '60'
   readability-function-size.BranchThreshold: '15'
-  readability-function-size.ParameterThreshold: '5'
+  readability-function-size.ParameterThreshold: '4294967295'
   readability-function-size.NestingThreshold: '4'
   readability-function-size.VariableThreshold: '20'
+  # Fixed foreign ABI signatures may except parameter counts; body limits have no waivers.
+  # Both names use the same pinned LLVM implementation with independent dimensions.
+  google-readability-function-size.LineThreshold: '4294967295'
+  google-readability-function-size.StatementThreshold: '4294967295'
+  google-readability-function-size.BranchThreshold: '4294967295'
+  google-readability-function-size.ParameterThreshold: '5'
+  google-readability-function-size.NestingThreshold: '4294967295'
+  google-readability-function-size.VariableThreshold: '4294967295'
   # Stricter than the defaults.
   bugprone-easily-swappable-parameters.MinimumLength: '3'
   bugprone-narrowing-conversions.PedanticMode: 'true'

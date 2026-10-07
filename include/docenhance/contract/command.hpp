@@ -62,6 +62,10 @@ struct Invocation {
     std::optional<std::string> tv_lambda = std::nullopt;
     std::optional<std::string> tv_iterations = std::nullopt;
     std::optional<std::string> tv_tolerance = std::nullopt;
+    std::optional<std::string> sharpen = std::nullopt;
+    std::optional<std::string> sharpen_sigma = std::nullopt;
+    std::optional<std::string> sharpen_amount = std::nullopt;
+    std::optional<std::string> sharpen_threshold = std::nullopt;
     std::optional<std::string> contrast = std::nullopt;
     std::optional<std::string> contrast_blend = std::nullopt;
     std::optional<std::string> levels_low = std::nullopt;

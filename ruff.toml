@@ -4,6 +4,8 @@
 # ignores without one. Version pinned in deps/tools.json.
 target-version = "py312"
 line-length = 100
+# Lint admitted source even when an unrelated Git ignore pattern matches it.
+respect-gitignore = false
 # Tool modules import each other by name from tools/; they are the first-party code.
 src = ["tools"]
 # Only build products and caches; tools/check_gates.py keeps this identical to its skip list.
@@ -22,7 +24,17 @@ ignore = [
     "CPY001", # SPDX headers are enforced by tools/check_project.py instead.
     "D203",   # Incompatible with D211 (no blank line before class docstring), which is kept.
     "D213",   # Incompatible with D212 (summary on the first docstring line), which is kept.
-    "S603",   # Every subprocess call uses an argument list and never a shell.
+    "D204",   # Google class docstrings do not require an extra blank line after the summary.
+    "D215",   # Underlined sections belong to NumPy style; Google sections use colon labels.
+    "D400",   # D415 checks sentence punctuation, including question/exclamation endings.
+    "D401",   # Contract/property docstrings may describe facts rather than imperative actions.
+    "D404",   # Google-style contract descriptions may start with a subject such as "This".
+    "D406",   # Google section labels need a colon, enforced by retained D416.
+    "D407",   # Google sections use colon labels, not dashed underlines.
+    "D408",   # Underline placement is not part of the chosen Google section syntax.
+    "D409",   # Underline length is not part of the chosen Google section syntax.
+    "D413",   # Google sections do not require an extra blank line before closing quotes.
+    "S603",   # Developer tools intentionally invoke selected binaries; argv alone is not input trust.
     "T201",   # These are command-line tools; print is their user interface.
 ]
 
@@ -45,9 +57,6 @@ section-order = ["future", "standard-library", "tools-path", "third-party", "fir
 
 [lint.flake8-tidy-imports]
 ban-relative-imports = "all"
-
-[lint.pydocstyle]
-convention = "google"
 
 [lint.mccabe]
 max-complexity = 10

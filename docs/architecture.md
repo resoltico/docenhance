@@ -5,7 +5,7 @@
 The application owns meaning; adapters own effects. The command line parses syntax into
 `contract::Invocation` through generated typed option bindings, retaining raw presence. `de_app` validates it and constructs a private-construction
 `ProcessRequest` containing a validated binary/continuous operation and a separate closed
-illumination/denoising choices. Only that admitted value can cross `app::Processor`, the processing port.
+illumination, denoising, contrast and sharpening choices. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
 production composition root: it supplies the concrete host to the CLI. On Windows it converts
 wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
