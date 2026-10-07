@@ -77,7 +77,7 @@ class BuildCoverageTests(unittest.TestCase):
                 "add_library(DocEnhance::options ALIAS de_project_options)\n"
                 "set(DE_ENABLE_CLANG_TIDY TRUE)\n"
                 'set(DE_CLANG_TIDY_COMMAND "clang-tidy;--warnings-as-errors=*")\n'
-                f'include("{ROOT / "cmake/TargetOptions.cmake"}")\n'
+                f'include("{(ROOT / "cmake/TargetOptions.cmake").as_posix()}")\n'
                 "add_subdirectory(src)\n"
             )
             good = (
