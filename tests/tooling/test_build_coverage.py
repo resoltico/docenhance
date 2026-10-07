@@ -94,6 +94,19 @@ class BuildCoverageTests(unittest.TestCase):
                     good + "set_source_files_properties(a.cpp PROPERTIES SKIP_LINTING TRUE)\n",
                     "SKIP_LINTING",
                 ),
+                (good.replace("STATIC a.cpp", 'STATIC "${CMAKE_CURRENT_SOURCE_DIR}/a.cpp"'), None),
+                (
+                    good.replace("STATIC a.cpp", 'STATIC "${CMAKE_CURRENT_SOURCE_DIR}/a.cpp"')
+                    + 'set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/a.cpp" '
+                    "PROPERTIES SKIP_LINTING TRUE)\n",
+                    "SKIP_LINTING",
+                ),
+                (good.replace("STATIC a.cpp", "STATIC ../src/a.cpp"), None),
+                (
+                    good.replace("STATIC a.cpp", "STATIC ../src/a.cpp")
+                    + "set_source_files_properties(../src/a.cpp PROPERTIES SKIP_LINTING TRUE)\n",
+                    "SKIP_LINTING",
+                ),
             )
             for index, (text, expected) in enumerate(cases):
                 (root / "src/CMakeLists.txt").write_text(text)

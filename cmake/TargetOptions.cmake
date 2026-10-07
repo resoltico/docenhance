@@ -18,7 +18,9 @@ function(de_verify_target_options directory)
     get_target_property(source_directory ${target} SOURCE_DIR)
     get_target_property(sources ${target} SOURCES)
     foreach(source IN LISTS sources)
-      get_filename_component(source_path "${source}" ABSOLUTE BASE_DIR "${source_directory}")
+      # Source-property keys retain CMake directory spelling, including DOS short names.
+      cmake_path(ABSOLUTE_PATH source BASE_DIRECTORY "${source_directory}"
+        NORMALIZE OUTPUT_VARIABLE source_path)
       get_source_file_property(skip "${source_path}" TARGET_DIRECTORY ${target} SKIP_LINTING)
       if(skip)
         message(FATAL_ERROR "${target} source ${source} has effective SKIP_LINTING")

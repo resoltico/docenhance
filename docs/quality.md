@@ -67,7 +67,7 @@ CTest reserves both slots for this nested work. Module timings identify slow fix
 omitting cases. Dependency-free references compile separate translation units with bounded
 `--jobs` workers and link the complete object set once, retaining strict and sanitizer flags.
 
-Windows CI runs the target-admission CMake controls before the long native build, so a platform-specific guard regression fails promptly. The complete native tooling suite still runs afterward.
+Windows CI runs the target-admission CMake controls before the long native build, so a platform-specific guard regression fails promptly. The complete native tooling suite still runs afterward. Source-property lookup preserves CMake's declared directory spelling, including Windows DOS short names; filesystem alias expansion must not disconnect a suppression from its source.
 
 The outer native-suite watchdog allows 30 minutes for the whole graph, including the separately weighted compiler/AST check;
 it is not a processing-latency guarantee.
