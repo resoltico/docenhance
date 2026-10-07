@@ -100,6 +100,9 @@ class BuildCoverageTests(unittest.TestCase):
                 result = subprocess.run(
                     [
                         str(CMAKE),
+                        "--trace-expand",
+                        "--trace-source",
+                        str(ROOT / "cmake/TargetOptions.cmake"),
                         "-S",
                         str(root),
                         "-B",
@@ -111,6 +114,10 @@ class BuildCoverageTests(unittest.TestCase):
                     text=True,
                     check=False,
                 )
-                self.assertEqual(result.returncode == 0, expected is None, result.stderr)
+                self.assertEqual(
+                    result.returncode == 0,
+                    expected is None,
+                    f"case {index}: {text!r}\n{result.stdout}{result.stderr}",
+                )
                 if expected is not None:
                     self.assertIn(expected, result.stderr)
