@@ -9,7 +9,5 @@ $devshell = Join-Path $installation 'Common7\Tools\Launch-VsDevShell.ps1'
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw 'MSVC developer environment was not activated' }
 cmake --workflow --preset release
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-$packages = @(Get-ChildItem dist/*.tar.gz)
-if ($packages.Count -ne 1) { throw 'Expected one native package' }
-python tools/package_smoke.py $packages[0].FullName --build out/release/app
+python tools/package_smoke.py --build out/release
 exit $LASTEXITCODE

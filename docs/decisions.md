@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 7; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 8; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -420,3 +420,27 @@ C02 applies the specified power to perceptual luminance. Both reuse shared blend
 neutral-axis transport, with exact protected output and algebraic identities. Scalar mappings
 are frozen once and reused during verification. Response/record version 7 adds closed typed
 contrast observations and rejects obsolete forms. See [design and separate QA](contrast.md).
+
+## CLAHE freezes contextual maps without a redundant frame
+
+C03 implements the blueprint's eligible-only 1,024-bin floating mapping, exact sparse/flat
+identities, pre-redistribution clipping and actual-center interpolation. Streaming in row-major order
+counts each sample once and avoids a second full-field copy. Charged immutable maps stay
+owned through output verification. The existing perceptual blend and neutral-axis transport remain
+the only reconstruction path. Version 8 closes CLAHE parameters and identity-tile observations;
+obsolete records are rejected. See [design and separate challenge](contrast.md).
+
+## A configuration owns consumable native outputs
+
+The validated superbuild owner supplies executable and native-package destinations. The app child
+still sequences first-party configuration after installed dependencies and owns its compiler database
+and tests. Moving all targets or duplicating product binaries would add responsibility without need.
+Package verification admits the owner and reads generated CPack naming through CMake; shell globs
+and separately reconstructed version/platform names cannot select retained artifacts.
+
+A separate challenge rejected lexical prefix checks (`out-other`), source aliases and an `out` link
+into source. Physical containment admits only root-out or truly external configurations before
+project setup. Root-only artifact reservation also replaces Ruff's broad default build/dist exclusions,
+which otherwise concealed legitimate nested sources. Real CMake/CPack, negative source controls and
+committed-archive fixtures exercise these boundaries. Changed bound recipes require fresh trees;
+retained products and personal settings are preserved, with no cache migration or old-path reader.

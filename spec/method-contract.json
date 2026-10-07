@@ -112,13 +112,16 @@
       "id": "C03",
       "name": "Masked floating-point CLAHE",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--contrast",
         "--contrast-blend",
         "--clahe-grid",
-        "--clahe-clip"
-      ]
+        "--clahe-clip",
+        "--protect-mask"
+      ],
+      "family": "contrast",
+      "selector": "clahe"
     },
     {
       "id": "S01",

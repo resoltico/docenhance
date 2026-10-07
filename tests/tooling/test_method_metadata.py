@@ -81,7 +81,7 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 7,
+            "schema_version": 8,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
@@ -111,7 +111,7 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 7,
+            "schema_version": 8,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,
@@ -161,7 +161,7 @@ class MethodMetadataTests(unittest.TestCase):
         outputs = method_metadata.metadata_outputs(
             ROOT, methods, contract["options"], contract["input_support"]
         )
-        request = {
+        request: dict[str, Any] = {
             "method": {"id": "D01", "method_version": 2},
             "parameters": {"h": 3, "patch": 7, "search": 21, "blend": 0.5},
         }
@@ -179,3 +179,33 @@ class MethodMetadataTests(unittest.TestCase):
             ):
                 with self.subTest(filename=filename, change=change):
                     self.assertFalse(validator.is_valid(request | change))
+
+    def test_clahe_request_is_closed_and_bound_to_its_method(self) -> None:
+        """C03 cannot borrow gamma parameters or accept grid values outside the typed contract."""
+        schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
+        validator = Draft202012Validator(
+            {"$ref": "#/$defs/contrast_request", "$defs": schema["$defs"]}
+        )
+        request: dict[str, Any] = {
+            "method": {"id": "C03", "method_version": 1},
+            "parameters": {"grid_columns": 8, "grid_rows": 8, "clip": 2, "blend": 1},
+        }
+        validator.validate(request)
+        for change in (
+            {"grid_columns": True},
+            {"grid_rows": 1},
+            {"grid_columns": 33},
+            {"grid_rows": 2.5},
+            {"clip": 0.9},
+            {"clip": 8.1},
+            {"blend": -1},
+            {"gamma": 1},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(
+                    validator.is_valid(request | {"parameters": request["parameters"] | change})
+                )
+        self.assertFalse(validator.is_valid(request | {"parameters": {"gamma": 1, "blend": 1}}))
+        self.assertFalse(
+            validator.is_valid(request | {"method": {"id": "C02", "method_version": 1}})
+        )

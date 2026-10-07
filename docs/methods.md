@@ -46,9 +46,9 @@ Method-specific argument references: `--contrast`, `--contrast-blend`, `--gamma`
 
 ## C03 — Masked floating-point CLAHE
 
-Status: **not-implemented**.
+Status: **implemented**.
 
-Method-specific argument references: `--contrast`, `--contrast-blend`, `--clahe-grid`, `--clahe-clip`.
+Method-specific argument references: `--contrast`, `--contrast-blend`, `--clahe-grid`, `--clahe-clip`, `--protect-mask`.
 
 ## S01 — Thresholded unsharp masking
 

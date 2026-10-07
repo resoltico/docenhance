@@ -1,7 +1,7 @@
 # Status
 
 The executable admits **static PNG and bounded 8-bit Huffman baseline/progressive JPEG, and bounded single-page TIFF/BigTIFF** into **continuous-tone PNG representation** with opt-in **I01 quantile
-log-surface illumination** or explicit **I02 morphological illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising** or **D02 floating-point TV-L1**, opt-in **C01 percentile levels / C02 gamma contrast**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
+log-surface illumination** or explicit **I02 morphological illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising** or **D02 floating-point TV-L1**, opt-in **C01 percentile levels / C02 gamma / C03 floating-point CLAHE contrast**, and **B02 Sauvola** and **B03 fixed-threshold binarization**.
 It is not a complete restoration suite.
 
 ## Implemented product paths

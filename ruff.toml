@@ -7,7 +7,9 @@ line-length = 100
 # Tool modules import each other by name from tools/; they are the first-party code.
 src = ["tools"]
 # Only build products and caches; tools/check_gates.py keeps this identical to its skip list.
-extend-exclude = [".cache", "out", "dist"]
+# Replace Ruff's defaults: broad build/dist patterns must not hide nested first-party sources.
+exclude = [".git", ".venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache"]
+extend-exclude = [".cache/**", "out/**", "dist/**"]
 
 [format]
 quote-style = "double"

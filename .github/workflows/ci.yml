@@ -22,15 +22,25 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Give compiler checks and builds the runner's cores
+        shell: python
+        run: |
+          import os
+          import sys
+          sys.path.insert(0, "tools")
+          from parallel import available_jobs
+          cores = available_jobs()
+          print(f"The runner reports {cores} logical cores")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"DE_BUILD_JOBS={cores}\n")
       - run: python tools/install_build_tools.py
       - run: python tools/install_build_tools.py --lint
       - run: python tools/install_llvm.py --compiler
       - run: python tools/check_all.py
-      - run: python tools/check_reference_suite.py --compiler g++
-      - run: python tools/check_reference_suite.py --compiler clang++-23 --sanitize
+      - run: python tools/check_reference_suite.py --compiler g++ --jobs "$DE_BUILD_JOBS"
+      - run: python tools/check_reference_suite.py --compiler clang++-23 --sanitize --jobs "$DE_BUILD_JOBS"
   native:
     name: Native / ${{ matrix.platform }}
-    needs: structural
     strategy:
       fail-fast: false
       matrix:
@@ -100,17 +110,13 @@ jobs:
         if: runner.os != 'Windows'
         shell: bash
         run: |
-          set -euo pipefail
-          packages=(dist/*.tar.gz)
-          test "${#packages[@]}" = 1
-          python tools/package_smoke.py "${packages[0]}" --build out/release/app
+          python tools/package_smoke.py --build out/release
       - name: Build, test and package with MSVC
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./tools/ci_windows.ps1
   fuzz:
     name: Strict fuzzing / ${{ matrix.engine }} (ASan + UBSan)
-    needs: structural
     strategy:
       fail-fast: false
       matrix:
@@ -133,9 +139,20 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Give compiler checks and builds the runner's cores
+        shell: python
+        run: |
+          import os
+          import sys
+          sys.path.insert(0, "tools")
+          from parallel import available_jobs
+          cores = available_jobs()
+          print(f"The runner reports {cores} logical cores")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"DE_BUILD_JOBS={cores}\n")
       - run: python tools/install_build_tools.py
+      - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 4 --job-budget 2400
       - run: python tools/install_llvm.py --fuzzing
-      - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 2 --job-budget 2400
       - name: Build pinned AFL++
         if: matrix.engine == 'afl'
         run: |
@@ -143,11 +160,16 @@ jobs:
           echo core | sudo tee /proc/sys/kernel/core_pattern
       - run: |
           python tools/deps.py fetch
-      - name: Build and fuzz every target (60 s each)
+      # Public Ubuntu runners provide four cores and 16 GB; local campaigns still default to two.
+      - name: Build every target
         env:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
-        run: cmake --workflow --preset ${{ matrix.preset }}
+        run: |
+          cmake --preset ${{ matrix.preset }} -DDE_FUZZ_SECONDS=60 -DDE_FUZZ_JOBS=4
+          cmake --build --preset ${{ matrix.preset }}
+      - name: Fuzz every target (60 s each)
+        run: ctest --preset ${{ matrix.preset }} --output-on-failure
       - name: Retain fuzz evidence
         if: always()
         shell: bash
@@ -164,7 +186,6 @@ jobs:
           retention-days: 7
   sanitize:
     name: Sanitized / ${{ matrix.preset }}
-    needs: structural
     strategy:
       fail-fast: false
       matrix:

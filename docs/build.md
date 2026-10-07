@@ -29,7 +29,8 @@ configuration refuses that layout with an actionable error. Lint-only environmen
 inside the checkout. Activate the build environment before the first configure so CMake selects
 its pinned Python validator; a failed configure may retain a different Python path in its cache.
 
-The explicit installer reads the version pins rather than carrying a second list. It installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
+The explicit installer reads the version pins rather than carrying a second list. Both installation
+modes include pinned Ruff: native tooling tests execute it to prove source-discovery exclusions. It installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
 
 ## Acquisition is a separate phase
 
@@ -60,6 +61,21 @@ cmake --build out/dev --target check-project
 cmake --build out/dev --target check-spec
 cmake --build out/dev --target check-architecture
 ```
+
+Each configuration owns its executable at `out/<configuration>/bin/docenhance` (`docenhance.exe`
+on Windows), dependency products under `deps`, its private installation `prefix`, and bookkeeping
+under `ep`. Native packages and CPack scratch belong to `out/<configuration>/packages`. The app
+child contains first-party CMake state, libraries, tests/probes and its compilation database;
+`app/bin` is not a supported product location. `.cache/deps` contains acquired source inputs;
+`dist` contains source archives and deliberate exports.
+
+Build directories physically inside the checkout must be beneath the reserved root `out` directory.
+Source-root builds, `src/build`, `out-other`, and aliases into those locations fail before compiler
+or dependency setup. Truly external build trees are supported, including a root `out` symlink to
+an external tree. An `out` link into `src` cannot bypass the rule. Physical path handling belongs
+to build ownership; it does not change admitted product filenames or provide a hostile-filesystem
+sandbox. Artifact exclusions reserve root `out`, `.cache` and `dist` precisely; legitimate sources
+under nested names remain checked and included in source distributions.
 
 The workflow expands to configure, build and test. Sources are verified at configure time and before every outer build. Each upstream project has its own binary directory and shares only a **configuration-private** installation prefix. The application is configured afterwards in `out/dev/app/`. IDEs should use the outer preset to prepare dependencies and read `out/dev/app/compile_commands.json` for first-party source navigation.
 
@@ -116,27 +132,35 @@ native protection markers with `readelf` on Linux, `otool`/`nm` on macOS and `du
 Missing inspection tools fail verification. These observations do not prove protection of every
 function, an exploit-free program or execution on every supported OS version.
 
-Do not modify shared presets to accommodate one machine. Create ignored `CMakeUserPresets.json`:
+Prefer the canonical `dev`, `release`, `sanitize`, `tsan`, `fuzz` and `fuzz-afl` workflows with an
+activated supported environment and explicit compiler selection. Redundant aliases and historical
+binary-directory overrides add no isolation. Personal `CMakeUserPresets.json` remains ignored and
+is useful only for a concrete requirement, such as a truly external analysis tree:
 
 ```json
 {
   "version": 12,
   "configurePresets": [
     {
-      "name": "my-clang",
+      "name": "external-analysis",
       "inherits": "dev",
-      "binaryDir": "${sourceDir}/out/my-clang",
-      "cacheVariables": {
-        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
-        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
-        "DE_BUILD_JOBS": "4"
-      }
+      "binaryDir": "${sourceDir}/../docenhance-analysis"
     }
   ]
 }
 ```
 
-Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --test-dir out/my-clang --output-on-failure`. A personal preset selects *where* the analysis compiler lives; it inherits the preset's `DE_TOOLCHAIN` contract and cannot substitute another compiler for it. Never switch compilers, architecture, build type or CRT inside an existing build directory. The x86-64 baseline does not use `-march=native`; ARM64 builds use their corresponding baseline. Cross-compilation is not part of the validated workflow. Native-per-architecture builds are intended.
+Then run `cmake --preset external-analysis`, `cmake --build ../docenhance-analysis`, and
+`ctest --test-dir ../docenhance-analysis --output-on-failure`. Its executable and native packages
+belong to that owner's `bin` and `packages`, and its first-party database remains under `app`.
+Select an explicit verified local clangd database override for such a custom tree; the tracked
+editor setting targets canonical `out/dev/app/compile_commands.json`.
+
+Build identity refuses changed compilers, architecture, build type, CRT or bound recipes. Use fresh
+trees and private prefixes after this layout cutover; neither renaming retained trees nor
+`cmake --fresh` migrates their installed products or identity records. Preserve useful retained
+artifacts and recoverable personal settings before choosing new configurations. The x86-64 baseline
+does not use `-march=native`; ARM64 uses its corresponding baseline. Cross-compilation is unsupported.
 
 ## Optimization options
 
@@ -150,19 +174,27 @@ Then run `cmake --preset my-clang`, `cmake --build out/my-clang`, and `ctest --t
 CC=gcc CXX=g++ cmake --workflow --preset release
 # macOS:
 CC=/usr/bin/clang CXX=/usr/bin/clang++ cmake --workflow --preset release
-python tools/package_smoke.py dist/docenhance-<project-version>-Linux-x86_64.tar.gz --build out/release/app
+python tools/package_smoke.py --build out/release
 ```
 
 On macOS the platform compiler is `/usr/bin/clang` and `/usr/bin/clang++`; on Linux use
 `CC=gcc CXX=g++`. On Windows run the release workflow in the Visual Studio developer shell.
 Do not retain exported analysis compiler choices when configuring a fresh release tree.
-Use the actual platform-specific filename written by CPack. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates the application, its metadata and the reviewed Markdown documentation under
+Native archives, checksums, External-generator JSON and staging are written under the owning
+build's `packages` directory. Both generated CPack configurations agree on this destination;
+a custom preset's binary directory changes the owner, not a separate package-path override.
+The smoke command reads `CPACK_PACKAGE_DIRECTORY` and `CPACK_PACKAGE_FILE_NAME` from current
+generated `CPackConfig.cmake` using CMake, then independently compares and runs the relocated
+payload against the tested owner binary. Older archives and source exports never select the
+current archive. Missing or contradictory metadata/artifacts fail. Positional archive arguments
+and `--build <owner>/app` are rejected. No directory scan or compatibility locator is provided. The release workflow includes tests before packaging. CPack emits a `.tar.gz` and SHA-256 file. Packaging creates the application, its metadata and the reviewed Markdown documentation under
 `share/docenhance/`, including its README and linked contracts. It does not include build sources;
 source-path examples in contributor documentation require the separate source distribution.
 Packaging creates no other application tools; upstream command-line tools, tests, compilers and Python are not included. A separate relocated-package smoke test is mandatory in CI.
 
-The version comes only from the top-level `project(... VERSION ...)` command. Substitute the value
-shown by `docenhance version` for `<project-version>` above; do not maintain it separately in this
+The version comes only from the top-level `project(... VERSION ...)` command. Use its value
+when referring to release artifacts; package verification reads generated naming metadata rather
+than reconstructing a filename. Do not maintain the version separately in this
 document. Do not copy the entire dependency prefix into a release. Static third-party linkage does
 not mean a fully static libc/OS runtime. macOS signing/notarization, Windows signing, minimum-OS
 execution and Linux glibc-baseline checks remain later release gates. CI artifacts are validation

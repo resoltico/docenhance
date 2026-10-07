@@ -53,7 +53,7 @@ numerical failure or false tolerance claim. Failed stages retain bounded partial
 
 Typed denoising alternatives and parameter variants derive the runtime catalog. D01 native fields
 remain specific to NLM; D02 solver fields cannot be mixed with native observations. Closed response
-and record contracts move together to version 7 and refuse obsolete versions. No package or layer
+and record contracts move together to version 8 and refuse obsolete versions. No package or layer
 edge is added: pure TV math belongs to de_methods and the existing host composes execution.
 
 ## Separate challenge and evidence obligations

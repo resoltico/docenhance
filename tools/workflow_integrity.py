@@ -18,12 +18,7 @@ if TYPE_CHECKING:
 
 SOURCE_GATE = "python tools/check_all.py"
 MATRIX_WORKFLOW = "cmake --workflow --preset ${{ matrix.preset }}"
-NATIVE_SMOKE = (
-    "set -euo pipefail\n"
-    "packages=(dist/*.tar.gz)\n"
-    'test "${#packages[@]}" = 1\n'
-    'python tools/package_smoke.py "${packages[0]}" --build out/release/app'
-)
+NATIVE_SMOKE = "python tools/package_smoke.py --build out/release"
 
 
 def required_step(
@@ -51,6 +46,9 @@ def required_job(document: dict[str, Any], name: str) -> dict[str, Any]:
     job: dict[str, Any] = document["jobs"][name]
     if "if" in job or job.get("continue-on-error", "false") != "false" or "defaults" in job:
         msg = f"Required job is conditional, optional or changes execution defaults: {name}"
+        raise ValueError(msg)
+    if "needs" in job:
+        msg = f"Required execution jobs must start independently: {name}"
         raise ValueError(msg)
     return job
 
@@ -100,12 +98,11 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
     job = required_job(document, "campaign" if nightly else "fuzz")
     require_strategy(job, fuzz_matrix(major))
     required_step(job, "python tools/install_build_tools.py")
+    seconds = '"$SECONDS_PER_TARGET"' if nightly else "60"
     command = (
         "cmake --preset ${{ matrix.preset }} "
-        '-DDE_FUZZ_SECONDS="$SECONDS_PER_TARGET" -DDE_FUZZ_JOBS=2\n'
+        f"-DDE_FUZZ_SECONDS={seconds} -DDE_FUZZ_JOBS=4\n"
         "cmake --build --preset ${{ matrix.preset }}"
-        if nightly
-        else MATRIX_WORKFLOW
     )
     step = required_step(job, command)
     if step.get("env") != {"CC": "${{ matrix.cc }}", "CXX": "${{ matrix.cxx }}"}:
@@ -118,15 +115,13 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
         "python tools/install_aflplusplus.py\necho core | sudo tee /proc/sys/kernel/core_pattern",
         "matrix.engine == 'afl'",
     )
-    seconds = '"$SECONDS_PER_TARGET"' if nightly else "60"
     budget = "19800" if nightly else "2400"
     required_step(
         job,
         f"python tools/run_fuzz_campaign.py --plan --seconds {seconds} "
-        f"--jobs 2 --job-budget {budget}",
+        f"--jobs 4 --job-budget {budget}",
     )
-    if nightly:
-        required_step(job, "ctest --preset ${{ matrix.preset }} --output-on-failure")
+    required_step(job, "ctest --preset ${{ matrix.preset }} --output-on-failure")
 
 
 def aggregate_job(document: dict[str, Any]) -> None:
@@ -170,8 +165,11 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
         "python tools/install_build_tools.py",
         "python tools/install_build_tools.py --lint",
         "python tools/install_llvm.py --compiler",
-        "python tools/check_reference_suite.py --compiler g++",
-        f"python tools/check_reference_suite.py --compiler clang++-{major} --sanitize",
+        'python tools/check_reference_suite.py --compiler g++ --jobs "$DE_BUILD_JOBS"',
+        (
+            f"python tools/check_reference_suite.py --compiler clang++-{major} "
+            '--sanitize --jobs "$DE_BUILD_JOBS"'
+        ),
     ):
         required_step(structural, command)
     native = required_job(document, "native")

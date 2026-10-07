@@ -42,6 +42,19 @@ core::Result<methods::Contrast> selected_method(const RecordJson& value) {
             return methods::Contrast{*method};
         }
     }
+    if (id == methods::Clahe::descriptor().id) {
+        auto method = methods::Clahe::create({
+            .grid_columns = static_cast<std::uint32_t>(
+                record_integer(record_field(p, "grid_columns"), methods::clahe_maximum_grid)),
+            .grid_rows = static_cast<std::uint32_t>(
+                record_integer(record_field(p, "grid_rows"), methods::clahe_maximum_grid)),
+            .clip = record_number(record_field(p, "clip")),
+            .blend = record_number(record_field(p, "blend")),
+        });
+        if (method) {
+            return methods::Contrast{*method};
+        }
+    }
     return core::failure(core::ErrorCode::input, "Invalid recorded contrast parameters");
 }
 core::Result<methods::ContrastReport> observations(const RecordJson& v,
@@ -79,6 +92,9 @@ core::Result<methods::ContrastReport> observations(const RecordJson& v,
         }
     }
     r.complete = record_boolean(record_field(v, "complete"));
+    r.identity_tiles = static_cast<std::uint32_t>(
+        record_integer(record_field(v, "identity_tiles"),
+                       std::uint64_t{methods::clahe_maximum_grid} * methods::clahe_maximum_grid));
     const auto& range = record_field(v, "levels");
     if (!range.is_null()) {
         r.levels = methods::LevelsRange{
@@ -125,6 +141,14 @@ core::Result<void> validate_contrast_claims(const RecordJson& document, Declared
     if (RecordJson(contrast_request_fields(*report)) !=
         record_field(record_field(document, "request"), "contrast")) {
         return core::failure(core::ErrorCode::input, "Inconsistent contrast request");
+    }
+    if (report->requested && report->measured_samples != 0) {
+        if (const auto* const clahe = std::get_if<methods::ClaheParameters>(&*report->requested);
+            clahe != nullptr &&
+            (d.output.shape.width / clahe->grid_columns < methods::clahe_minimum_tile ||
+             d.output.shape.height / clahe->grid_rows < methods::clahe_minimum_tile)) {
+            return core::failure(core::ErrorCode::input, "Invalid recorded CLAHE tile extent");
+        }
     }
     const auto pixels = std::uint64_t{d.output.shape.width} * d.output.shape.height;
     const bool binary = std::holds_alternative<methods::Binarization>(operation);

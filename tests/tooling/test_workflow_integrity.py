@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -12,6 +15,8 @@ from typing import override
 
 from tools_path import ROOT
 
+from parallel import available_jobs
+from workflow_config import workflow
 from workflow_integrity import integrity_errors
 
 
@@ -50,6 +55,76 @@ class WorkflowIntegrityTests(unittest.TestCase):
     def test_reviewed_workflows(self) -> None:
         """Current source, platform, compiler, engine and aggregate routes agree."""
         self.assertEqual(integrity_errors(self.root), [])
+
+    def test_required_execution_starts_independently(self) -> None:
+        """A source job produces no inputs for the native, engine or sanitizer executions."""
+        for job in ("native", "fuzz", "sanitize"):
+            with self.subTest(job=job):
+                self.assert_mutation_refused(
+                    ".github/workflows/ci.yml",
+                    f"  {job}:\n",
+                    f"  {job}:\n    needs: structural\n",
+                    "start independently",
+                )
+
+    def test_runner_worker_budget_is_executable(self) -> None:
+        """Each expensive execution exports the real bounded CPU count before using it."""
+        for filename, jobs in (
+            ("ci.yml", ("structural", "native", "fuzz", "sanitize")),
+            ("nightly.yml", ("sanitize", "campaign")),
+        ):
+            document = workflow(ROOT / ".github/workflows" / filename)
+            for name in jobs:
+                with self.subTest(filename=filename, job=name):
+                    steps = document["jobs"][name]["steps"]
+                    budgets = [step for step in steps if "GITHUB_ENV" in step.get("run", "")]
+                    self.assertEqual(len(budgets), 1)
+                    step = budgets[0]
+                    self.assertEqual(step.get("shell"), "python")
+                    self.assertNotIn("if", step)
+                    output = self.root / "environment.txt"
+                    output.unlink(missing_ok=True)
+                    result = subprocess.run(
+                        [sys.executable, "-c", step["run"]],
+                        cwd=ROOT,
+                        env={**os.environ, "GITHUB_ENV": str(output)},
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                        timeout=30,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(output.read_text(), f"DE_BUILD_JOBS={available_jobs()}\n")
+                    workloads = [
+                        i
+                        for i, item in enumerate(steps)
+                        if "cmake --" in item.get("run", "")
+                        or "check_reference_suite.py" in item.get("run", "")
+                    ]
+                    self.assertTrue(workloads)
+                    self.assertLess(steps.index(step), min(workloads))
+
+    def test_fuzz_parallelism_and_complete_execution(self) -> None:
+        """Planning and configuration agree, and all campaigns still execute CTest."""
+        for filename in ("ci.yml", "nightly.yml"):
+            for old, new in (
+                ("--jobs 4 --job-budget", "--jobs 2 --job-budget"),
+                ("-DDE_FUZZ_JOBS=4", "-DDE_FUZZ_JOBS=2"),
+                ("ctest --preset", "echo ctest --preset"),
+            ):
+                with self.subTest(filename=filename, old=old):
+                    self.assert_mutation_refused(
+                        f".github/workflows/{filename}",
+                        old,
+                        new,
+                        "executable step",
+                    )
+            document = workflow(ROOT / ".github/workflows" / filename)
+            job = document["jobs"]["fuzz" if filename == "ci.yml" else "campaign"]
+            commands = [step.get("run", "") for step in job["steps"]]
+            plan = next(i for i, command in enumerate(commands) if "--plan --seconds" in command)
+            install = commands.index("python tools/install_llvm.py --fuzzing")
+            self.assertLess(plan, install)
 
     def test_advisory_observation_cannot_be_disabled(self) -> None:
         """Scheduled monitoring must acquire identities and perform a mandatory query."""

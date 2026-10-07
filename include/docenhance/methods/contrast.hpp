@@ -5,10 +5,12 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
+#include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
 
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -66,9 +68,40 @@ class Gamma {
     explicit Gamma(GammaParameters p) : parameters_(p) {}
     GammaParameters parameters_;
 };
+inline constexpr std::uint32_t clahe_default_grid = 8;
+inline constexpr std::uint32_t clahe_maximum_grid = 32;
+inline constexpr double clahe_maximum_clip = 8;
+inline constexpr std::uint32_t clahe_minimum_tile = 16;
+inline constexpr std::uint32_t clahe_minimum_samples = 16;
+struct ClaheParameters {
+    std::uint32_t grid_columns = clahe_default_grid;
+    std::uint32_t grid_rows = clahe_default_grid;
+    double clip = 2;
+    double blend = contrast_default_blend;
+    bool operator==(const ClaheParameters&) const = default;
+};
+class Clahe {
+  public:
+    [[nodiscard]] static core::Result<Clahe> create(ClaheParameters p = {});
+    [[nodiscard]] ClaheParameters parameters() const noexcept {
+        return parameters_;
+    }
+    [[nodiscard]] static constexpr ImplementedMethod descriptor() noexcept {
+        return clahe_descriptor;
+    }
+
+  private:
+    explicit Clahe(ClaheParameters p) : parameters_(p) {}
+    ClaheParameters parameters_;
+};
+inline constexpr std::uint32_t clahe_bins = 1024;
+struct ClaheMaps {
+    image::Plane<double> knots;
+    std::array<bool, std::size_t{clahe_maximum_grid} * clahe_maximum_grid> identity{};
+};
 struct ContrastOff {};
-using Contrast = std::variant<ContrastOff, Levels, Gamma>;
-using ContrastParameters = std::variant<LevelsParameters, GammaParameters>;
+using Contrast = std::variant<ContrastOff, Levels, Gamma, Clahe>;
+using ContrastParameters = std::variant<LevelsParameters, GammaParameters, ClaheParameters>;
 enum class ContrastStatus { disabled, no_change, applied, failed };
 enum class ContrastReason {
     none,
@@ -93,6 +126,7 @@ struct ContrastReport {
     std::uint64_t eligible_samples = 0;
     std::uint64_t protected_samples = 0;
     std::uint64_t measured_samples = 0;
+    std::uint32_t identity_tiles = 0;
     std::uint64_t evaluated_samples = 0;
     std::uint64_t corrected_samples = 0;
     std::uint64_t changed_samples = 0;
@@ -135,10 +169,13 @@ class ContrastModel {
     ContrastModel(image::Extent extent, Contrast method, std::optional<LevelsRange> levels,
                   bool active, bool measured)
         : extent_(extent), method_(method), levels_(levels), active_(active), measured_(measured) {}
+    [[nodiscard]] core::Result<image::Rgb>
+    map_pixel(const image::Rgb& before, image::RowRange position, ContrastReport& report) const;
     image::Extent extent_;
     Contrast method_;
     std::optional<LevelsRange> levels_;
     bool active_;
     bool measured_;
+    ClaheMaps maps_;
 };
 } // namespace docenhance::methods

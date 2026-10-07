@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "contrast_detail.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
@@ -13,12 +14,14 @@
 #include <expected>
 #include <optional>
 #include <span>
+#include <type_traits>
 #include <variant>
 namespace docenhance::methods {
-namespace {
-core::Result<image::Rgb> map_pixel(const image::Rgb& before, const Contrast& method,
-                                   const std::optional<LevelsRange>& range,
-                                   ContrastReport& report) {
+core::Result<image::Rgb> ContrastModel::map_pixel(const image::Rgb& before,
+                                                  image::RowRange position,
+                                                  ContrastReport& report) const {
+    const auto& method = method_;
+    const auto& range = levels_;
     auto y = image::luminance(before);
     if (!y) {
         return std::unexpected(y.error());
@@ -31,13 +34,29 @@ core::Result<image::Rgb> map_pixel(const image::Rgb& before, const Contrast& met
     if ((levels != nullptr) != range.has_value()) {
         return core::failure(core::ErrorCode::invariant, "Levels mapping has no measured range");
     }
-    auto candidate =
-        range ? levels_candidate(*f, *range) : gamma_candidate(*f, std::get<Gamma>(method));
+    const auto* const clahe = std::get_if<Clahe>(&method);
+    auto candidate = [&] -> core::Result<double> {
+        if (range) {
+            return levels_candidate(*f, *range);
+        }
+        if (clahe != nullptr) {
+            return clahe_candidate(*f, position, extent_, *clahe, maps_);
+        }
+        return gamma_candidate(*f, std::get<Gamma>(method));
+    }();
     if (!candidate) {
         return std::unexpected(candidate.error());
     }
-    const auto blend =
-        levels != nullptr ? levels->parameters().blend : std::get<Gamma>(method).parameters().blend;
+    const auto blend = std::visit(
+        [](const auto& selected) {
+            using M = std::decay_t<decltype(selected)>;
+            if constexpr (std::is_same_v<M, ContrastOff>) {
+                return 0.0;
+            } else {
+                return selected.parameters().blend;
+            }
+        },
+        method);
     auto next = image::blend_perceptual(before, *f, *candidate, blend);
     if (!next) {
         return std::unexpected(next.error());
@@ -51,7 +70,6 @@ core::Result<image::Rgb> map_pixel(const image::Rgb& before, const Contrast& met
     }
     return *next;
 }
-} // namespace
 core::Result<void> ContrastModel::apply(image::RowRange range, std::span<double> rgb,
                                         image::PlaneView<const std::uint8_t> mask,
                                         ContrastReport& report,
@@ -78,7 +96,7 @@ core::Result<void> ContrastModel::apply(image::RowRange range, std::span<double>
             pixel.subspan(1, 1).front(),
             pixel.subspan(2, 1).front(),
         };
-        auto next = map_pixel(before, method_, levels_, report);
+        auto next = map_pixel(before, {.row = range.row, .first = x}, report);
         if (!next) {
             return std::unexpected(next.error());
         }

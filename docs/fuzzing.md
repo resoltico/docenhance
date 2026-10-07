@@ -24,7 +24,9 @@ manifest target is registered exactly once, with the expected runner, identity a
 Disabled or skippable harnesses are rejected. It explicitly passes the worker count to that child
 CTest invocation; outer CTest `--parallel` is not mistaken for child parallelism.
 
-`DE_FUZZ_JOBS` defaults to two and is bounded to one or two. Campaign timeout is computed from the
+`DE_FUZZ_JOBS` defaults to two and admits one through four. Select four only with sufficient
+CPU and memory: four libFuzzer workers can each reach its 2 GiB RSS ceiling, requiring
+headroom beyond 8 GiB for runtimes and the host. AFL++ has no equivalent RSS cap. Campaign timeout is computed from the
 actual target count, full execution waves, per-target watchdog time and reporting allowance. The
 nightly workflow checks the plan against its available campaign budget before starting builds;
 a growing target set cannot silently omit work or overrun a hand-maintained aggregate timeout.
@@ -154,5 +156,10 @@ reference iterations with the production full-field dual/primal passes, and chec
 Its additional execution wave retains the full per-target PR budget and watchdog allowances.
 
 The contrast harness compares interruptible sample ordering and nearest ranks to independent
-sorting and scalar levels/gamma formulas. It extends the manifest to 20 targets, still ten
-concurrent waves at two jobs and 60 seconds per target; the reviewed total allowance is unchanged.
+sorting and scalar levels/gamma formulas. It extends the manifest to 20 targets, ten waves
+at the default two jobs or five at four jobs. Every target retains 60 seconds of engine work
+and the same watchdog allowances.
+
+C03 additionally fuzzes charged contextual preparation, floating reconstruction, immutable replay
+and complete observation validation. CLI corpus seeds exercise grid admission and inactive private
+options. Deterministic unit probes enumerate preparation and application cancellation checkpoints.

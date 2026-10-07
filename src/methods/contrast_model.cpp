@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <expected>
 #include <type_traits>
+#include <utility>
 #include <variant>
 namespace docenhance::methods {
 namespace {
@@ -94,6 +95,15 @@ core::Result<ContrastModel> ContrastModel::prepare(image::LinearSource& source,
             return ContrastModel{source.extent(), method, *range, false, true};
         }
         return ContrastModel{source.extent(), method, *range, true, true};
+    }
+    if (const auto* const clahe = std::get_if<Clahe>(&method)) {
+        auto maps = measure_clahe(source, mask, *clahe, e);
+        if (!maps) {
+            return std::unexpected(maps.error());
+        }
+        ContrastModel model{source.extent(), method, {}, true, true};
+        model.maps_ = std::move(*maps);
+        return model;
     }
     return ContrastModel{source.extent(), method, {}, true, false};
 }

@@ -96,7 +96,7 @@ def malformed_records(exe: Path, directory: Path) -> None:
         expect(not VALIDATOR.is_valid(altered), "closed schema rejects unknown fields")
         path.write_text(json.dumps(altered), encoding="utf-8")
         refused(exe, directory)
-    duplicate = original.replace(b'"version": 7', b'"version": 1, "version": 7', 1)
+    duplicate = original.replace(b'"version": 8', b'"version": 1, "version": 8', 1)
     path.write_bytes(duplicate)
     refused(exe, directory)
     path.write_bytes(original)

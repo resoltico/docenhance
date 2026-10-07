@@ -13,6 +13,7 @@ import re
 import shutil
 import struct
 import subprocess
+import sys
 import tempfile
 import zlib
 from pathlib import Path
@@ -26,6 +27,7 @@ from documentation import local_link_errors
 from hardening_compilation import errors as compilation_errors
 from method_metadata import support_matrix
 from package_inspection import binary_identity, contents, differences, expected_files, imports
+from package_selection import current_package
 from project_version import project_version
 
 
@@ -93,6 +95,11 @@ def exercise(exe: Path, root: Path) -> None:
     tiff.write_bytes((ROOT / "tests/fixtures/tiff/d16-c3-t1-p2-b1-l0.tif").read_bytes())
     cases: tuple[tuple[str, Path, list[str]], ...] = (
         ("tiff", tiff, []),
+        ("clahe", source, ["--contrast", "clahe"]),
+        ("levels", source, ["--contrast", "levels"]),
+        ("gamma", source, ["--contrast", "gamma"]),
+        ("morph", source, ["--illumination", "morph", "--background-radius", "8"]),
+        ("tvl1", source, ["--denoise", "tvl1"]),
         ("fixed", source, ["--output-mode", "bw", "--binarize", "fixed"]),
         ("sauvola", source, ["--output-mode", "bw", "--binarize", "sauvola"]),
         ("illumination", source, ["--illumination", "surface", "--background-cell", "8"]),
@@ -116,8 +123,9 @@ def exercise(exe: Path, root: Path) -> None:
         run_json(exe, "verify", str(output), "--json")
 
 
-def smoke(root: Path, build: Path) -> list[str]:
+def smoke(root: Path, owner: Path) -> list[str]:
     """Reject changed/missing/extra package bytes before running its tested native executable."""
+    build = owner / "app"
     candidates = [*root.rglob("docenhance.exe"), *root.rglob("bin/docenhance")]
     if len(candidates) != 1:
         return ["Package must contain exactly one runtime executable"]
@@ -127,7 +135,7 @@ def smoke(root: Path, build: Path) -> list[str]:
         contents(root),
         {
             f"{package.relative_to(root).as_posix()}/{name}": data
-            for name, data in expected_files(build, exe.name).items()
+            for name, data in expected_files(owner, exe.name).items()
         },
     )
     failures += local_link_errors(package / "share/docenhance")
@@ -167,15 +175,20 @@ def smoke(root: Path, build: Path) -> list[str]:
 def main() -> int:
     """Extract one archive and compare it with the independently tested build."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("archive", type=Path)
     parser.add_argument(
-        "--build", type=Path, required=True, help="Tested application build directory"
+        "--build", type=Path, required=True, help="Tested owning superbuild directory"
     )
     args = parser.parse_args()
-    with tempfile.TemporaryDirectory(prefix="docenhance-package-") as temporary:
-        root = Path(temporary)
-        safe_extract(args.archive, root)
-        failures = smoke(root, args.build.resolve())
+    try:
+        owner = args.build.resolve()
+        archive = current_package(owner)
+        with tempfile.TemporaryDirectory(prefix="docenhance-package-") as temporary:
+            root = Path(temporary)
+            safe_extract(archive, root)
+            failures = smoke(root, owner)
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"Native package inspection failed: {error}", file=sys.stderr)
+        return 1
     print("\n".join(failures) if failures else "PASS: inspected relocated native package")
     return 1 if failures else 0
 

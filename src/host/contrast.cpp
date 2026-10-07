@@ -17,6 +17,7 @@
 #include <expected>
 #include <optional>
 #include <span>
+#include <utility>
 #include <variant>
 namespace docenhance::host {
 core::Result<std::optional<methods::ContrastModel>>
@@ -33,7 +34,7 @@ prepare_contrast(ContrastInput input, const methods::Contrast& method, core::Bud
     if (!model) {
         return std::unexpected(model.error());
     }
-    return std::optional<methods::ContrastModel>{*model};
+    return std::optional<methods::ContrastModel>{std::move(*model)};
 }
 core::Result<void> ContrastedSource::read(image::RowRange range, std::span<double> rgb,
                                           image::RowUse use) {

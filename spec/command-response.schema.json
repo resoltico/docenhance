@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 7
+      "const": 8
     },
     "command": {
       "enum": [
@@ -2642,6 +2642,38 @@
                   "maximum": 1
                 }
               }
+            },
+            {
+              "type": "object",
+              "required": [
+                "grid_columns",
+                "grid_rows",
+                "clip",
+                "blend"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "grid_columns": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 32
+                },
+                "grid_rows": {
+                  "type": "integer",
+                  "minimum": 2,
+                  "maximum": 32
+                },
+                "clip": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 8
+                },
+                "blend": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              }
             }
           ]
         }
@@ -2692,18 +2724,52 @@
                 "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/1"
               }
             }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C02"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
           },
-          "else": {
+          "then": {
             "properties": {
               "parameters": {
-                "oneOf": [
-                  {
-                    "type": "null"
-                  },
-                  {
-                    "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/2"
+                "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/2"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C03"
                   }
+                },
+                "required": [
+                  "id"
                 ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/3"
               }
             }
           }
@@ -2730,7 +2796,8 @@
         "clipped_high_samples",
         "clipped_low_fraction",
         "clipped_high_fraction",
-        "preparation_charge_peak"
+        "preparation_charge_peak",
+        "identity_tiles"
       ],
       "additionalProperties": false,
       "properties": {
@@ -2863,6 +2930,11 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 1073741824
+        },
+        "identity_tiles": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1024
         }
       },
       "allOf": [
@@ -2973,6 +3045,121 @@
               },
               "clipped_high_fraction": {
                 "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C03"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "levels": {
+                "type": "null"
+              },
+              "clipped_low_samples": {
+                "const": 0
+              },
+              "clipped_high_samples": {
+                "const": 0
+              },
+              "clipped_low_fraction": {
+                "type": "null"
+              },
+              "clipped_high_fraction": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "identity_tiles": {
+                "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C01"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/1"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C02"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/2"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "const": "C03"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/3"
               }
             }
           }

@@ -39,7 +39,7 @@ de_library(de_image LAYER image
   LINKS de_core)
 de_library(de_methods LAYER methods
   SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/binarization.cpp methods/sauvola.cpp
-          methods/denoising.cpp methods/contrast.cpp methods/contrast_model.cpp methods/contrast_measure.cpp methods/contrast_apply.cpp methods/contrast_validation.cpp methods/contrast_detail.hpp methods/illumination.cpp methods/surface_detail.hpp methods/surface_grid.cpp
+          methods/denoising.cpp methods/contrast.cpp methods/contrast_model.cpp methods/contrast_measure.cpp methods/clahe_measure.cpp methods/clahe_apply.cpp methods/contrast_apply.cpp methods/contrast_validation.cpp methods/contrast_detail.hpp methods/illumination.cpp methods/surface_detail.hpp methods/surface_grid.cpp
           methods/surface_measure.cpp methods/surface_system.cpp methods/surface_multigrid.cpp methods/surface_solve.cpp
           methods/surface_samples.cpp methods/surface_fit.cpp methods/surface_apply.cpp
           methods/illumination_apply.cpp methods/morphology_extrema.cpp methods/morphology_gaussian.cpp
@@ -107,7 +107,7 @@ if(MINGW)
 endif()
 target_link_libraries(docenhance PRIVATE de_cli de_core de_host)
 de_apply_options(docenhance)
-set_target_properties(docenhance PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin")
+set_target_properties(docenhance PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${DE_BUILD_OWNER}/bin")
 de_register_target(docenhance LAYER entry SOURCES entry/main.cpp entry/signals.cpp entry/signals.hpp LINKS de_cli de_core de_host)
 de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json")
 

@@ -29,6 +29,7 @@
 "tvl1"
 "levels"
 "gamma"
+"clahe"
 "--out-dir"
 "--output-mode"
 "--bit-depth"
@@ -61,3 +62,5 @@
 "--levels-low"
 "--levels-high"
 "--gamma"
+"--clahe-grid"
+"--clahe-clip"

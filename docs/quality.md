@@ -35,12 +35,29 @@ refuse every non-success result. Comments, echoed commands, conditional/optional
 matrix members and duplicate mapping keys are refused. The reviewed workflow inventory is closed;
 new execution contracts must extend the guard and its rejection controls. This establishes wiring,
 not arbitrary script correctness or completed CI. Hosted execution and native evidence remain
-necessary, including Windows' distinct compiler-shell helper. Native cases run with at most two
-concurrent processes, separately from build/AST worker counts. Every case, assertion, per-contract
+necessary, including Windows' distinct compiler-shell helper.
+
+The structural, native, sanitizer and fuzz jobs start independently because they exchange no
+build inputs. The final required gate still waits for all four roles and rejects every failed,
+skipped or cancelled role. This removes a source-check latency barrier; a structural failure can
+therefore consume additional runner work before the final refusal. Compiler checks and builds
+use the runner's observed CPU count bounded by the shared execution policy.
+
+Native cases run with at most two concurrent processes, separately from build/AST worker counts. Every case, assertion, per-contract
 timeout and complete-result reconciliation remains required. The full composition reference case
 runs in isolation from other test processes, retaining its deadline and internal scheduler checks.
-The outer native-suite watchdog
-allows 30 minutes for the whole graph, including the separately weighted compiler/AST check;
+
+Full Python tooling coverage remains in each native and sanitizer suite under the reviewed
+whole-suite requirement. Its fixture CMake builds generally use the platform toolchain without
+product sanitizer instrumentation; running them in both sanitizer modes does not establish
+additional ASan/TSan coverage. Native platform repetitions remain necessary for compiler,
+filesystem and packaging behavior. The strict tooling runner uses two fresh spawned module interpreters and reconciles exact case
+identities with full parent discovery; skipped and expected-failure cases cannot count as passes.
+CTest reserves both slots for this nested work. Module timings identify slow fixtures without
+omitting cases. Dependency-free references compile separate translation units with bounded
+`--jobs` workers and link the complete object set once, retaining strict and sanitizer flags.
+
+The outer native-suite watchdog allows 30 minutes for the whole graph, including the separately weighted compiler/AST check;
 it is not a processing-latency guarantee.
 
 ## Local Linux verification with Docker
@@ -119,6 +136,15 @@ python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli 
 ```
 
 AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with both libFuzzer and AFL++. The nightly workflow runs both engines for 30 minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
+
+The public Ubuntu quality and nightly jobs explicitly select four concurrent fuzz targets.
+[GitHub's runner specification](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
+provides four cores and 16 GB for those runners; four libFuzzer processes each retain the 2 GiB
+RSS/malloc ceilings, leaving room for runtime and operating-system overhead. AFL++ retains its
+ASan-compatible settings and finite harness allocations, without an equivalent RSS-limit claim.
+Local campaigns default to two workers. Each PR target still receives 60 seconds and each nightly
+target 1,800 seconds; planning and CTest use the same selected concurrency and retain complete
+per-target execution evidence. Workload admission precedes compiler installation and the build.
 
 Campaign completeness, bounded parallelism, corpus ownership and retained evidence are specified
 in [fuzzing](fuzzing.md). Each run owns a fresh directory; automatic corpus merging is removed.

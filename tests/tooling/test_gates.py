@@ -198,13 +198,13 @@ class ConfigGateTests(GateTestCase):
         self.assertEqual(len(config_gates.clang_tidy_errors(self.root, nested)), 3)
 
     def test_ruff_ignores_need_reasons_and_select_all(self) -> None:
-        """Ruff must select ALL, exclude only artifacts, and justify every ignore."""
+        """Ruff must select ALL, reserve root artifacts, declare exclusions and justify ignores."""
         text = (
             'extend-exclude = [".cache", "out", "dist", "tools"]\n[lint]\nselect = ["E"]\n'
             'ignore = [\n    "D100", # A reason.\n    "E501",\n]\n'
         )
         write(self.root, "ruff.toml", text)
-        self.assertEqual(len(config_gates.ruff_errors(self.root)), 3)
+        self.assertEqual(len(config_gates.ruff_errors(self.root)), 4)
 
     def test_mypy_escape_hatches(self) -> None:
         """Module overrides, disabled codes, missing strictness and uncovered files fail."""
