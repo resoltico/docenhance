@@ -14,11 +14,15 @@ Notable changes to this project are documented in this file. The format is based
 
 - **Breaking (C++ models):** `methods::ContrastModel` owns its charged immutable CLAHE maps and is move-only. Move prepared models into their lifetime owner and keep them live through output verification.
 
-- **Breaking (build outputs):** the executable moves to `<owning-build>/bin/docenhance` (`.exe` on Windows), and native archives/checksums/CPack staging move to `<owning-build>/packages`. The first-party CMake state and compilation database remain in `app`. Use fresh build trees and private prefixes; retained outputs are not migrated or copied to compatibility locations.
+- **Breaking (build outputs):** the executable moves to `<owning-build>/bin/docenhance` (`.exe` on Windows), and native archives/checksums/CPack staging move to `<owning-build>/packages`. The first-party CMake state and compilation database remain in `app`. Use fresh build trees and private prefixes; retained outputs are not migrated or copied to compatibility locations. The standard developer-tool installer includes pinned Ruff for real source-exclusion verification in native suites.
 
 - **Breaking (package verification):** invoke `python tools/package_smoke.py --build out/release`, or the corresponding owning superbuild. Generated CPack metadata selects the current archive, so retained older archives and source distributions cannot redirect verification. Positional archive arguments and app-child build paths are rejected. Source archives continue to default to `dist`.
 
 - **Breaking (build admission):** before compiler/dependency setup, checkout-internal build directories must physically reside beneath root `out`; source-root and other source subdirectories are rejected. Truly external builds remain supported. Root artifact exclusions retain checks and committed-source packaging for legitimate nested `out`, `.cache` and `dist` sources.
+
+### Internal
+
+- Verification compiles independent reference sources concurrently and runs tooling modules in fresh bounded processes, reconciling every case and rejecting skipped or expected-failure work. CI starts independent execution roles together, uses observed build cores and selects four fuzz workers on suitable hosted runners. Full fixtures, per-target exposure times, failure propagation and final coverage gates remain required. See [quality](docs/quality.md).
 
 ## [0.7.0] - 2026-10-07
 

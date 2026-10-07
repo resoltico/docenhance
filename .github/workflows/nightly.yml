@@ -41,6 +41,17 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Give compiler checks and builds the runner's cores
+        shell: python
+        run: |
+          import os
+          import sys
+          sys.path.insert(0, "tools")
+          from parallel import available_jobs
+          cores = available_jobs()
+          print(f"The runner reports {cores} logical cores")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"DE_BUILD_JOBS={cores}\n")
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
       - run: cmake -P cmake/AcquireDependencies.cmake
@@ -77,15 +88,26 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Give compiler checks and builds the runner's cores
+        shell: python
+        run: |
+          import os
+          import sys
+          sys.path.insert(0, "tools")
+          from parallel import available_jobs
+          cores = available_jobs()
+          print(f"The runner reports {cores} logical cores")
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
+              environment.write(f"DE_BUILD_JOBS={cores}\n")
       - run: python tools/install_build_tools.py
+      - name: Admit the complete workload before installing compilers or building
+        run: python tools/run_fuzz_campaign.py --plan --seconds "$SECONDS_PER_TARGET" --jobs 4 --job-budget 19800
       - run: python tools/install_llvm.py --fuzzing
       - name: Build pinned AFL++
         if: matrix.engine == 'afl'
         run: |
           python tools/install_aflplusplus.py
           echo core | sudo tee /proc/sys/kernel/core_pattern
-      - name: Admit the complete workload before building
-        run: python tools/run_fuzz_campaign.py --plan --seconds "$SECONDS_PER_TARGET" --jobs 2 --job-budget 19800
       - run: |
           python tools/deps.py fetch
       - name: Build fuzzers
@@ -93,7 +115,7 @@ jobs:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
         run: |
-          cmake --preset ${{ matrix.preset }} -DDE_FUZZ_SECONDS="$SECONDS_PER_TARGET" -DDE_FUZZ_JOBS=2
+          cmake --preset ${{ matrix.preset }} -DDE_FUZZ_SECONDS="$SECONDS_PER_TARGET" -DDE_FUZZ_JOBS=4
           cmake --build --preset ${{ matrix.preset }}
       - name: Fuzz every CTest-registered target
         run: ctest --preset ${{ matrix.preset }} --output-on-failure

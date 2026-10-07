@@ -58,6 +58,8 @@ else()
 endif()
 add_test(NAME project-structure COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_project.py")
 add_test(NAME tooling COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_tooling_tests.py")
+# The strict runner owns two isolated module workers, so reserve both child-test slots.
+set_tests_properties(tooling PROPERTIES PROCESSORS 2)
 if(TARGET de_native_probe)
   add_test(NAME dependency-native-link COMMAND de_native_probe)
   # stdout carries the JSON response and nothing else. OpenCV logs there by default, so the probe

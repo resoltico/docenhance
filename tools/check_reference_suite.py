@@ -16,11 +16,13 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
 from architecture import load_manifest
 from deps import ROOT
+from parallel import MAX_JOBS, ordered_map
 from project_version import project_version
 
 # Mirrors DE_STRICT_WARNINGS in cmake/ProjectOptions.cmake; check_project.py keeps them identical.
@@ -97,12 +99,52 @@ def generate_build_facts(directory: Path, compiler: str, minimum: str) -> Path:
     return generated
 
 
+def build_reference(
+    compiler: str,
+    flags: list[str],
+    sources: list[Path],
+    directory: Path,
+    jobs: int,
+) -> Path:
+    """Compile every admitted source once into owned objects, then link the complete set."""
+    includes = [
+        "-I",
+        str(ROOT / "include"),
+        "-I",
+        str(ROOT / "tests/support"),
+        "-I",
+        str(directory / "generated"),
+    ]
+
+    def compile_source(item: tuple[int, Path]) -> Path:
+        index, source = item
+        target = directory / f"reference-{index}.o"
+        subprocess.run(
+            [compiler, *flags, *includes, "-c", str(source), "-o", str(target)], check=True
+        )
+        return target
+
+    objects = ordered_map(compile_source, enumerate(sources), jobs)
+    executable = directory / (
+        "reference-tests.exe" if sys.platform == "win32" else "reference-tests"
+    )
+    subprocess.run(
+        [compiler, *flags, *(str(path) for path in objects), "-o", str(executable)], check=True
+    )
+    return executable
+
+
 def main() -> int:
     """Build and run the reference suites with the strict warning set."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compiler", default="c++")
     parser.add_argument("--sanitize", action="store_true")
+    parser.add_argument(
+        "--jobs", type=int, default=2, help="bounded compilation workers (default: 2)"
+    )
     args = parser.parse_args()
+    if not 1 <= args.jobs <= MAX_JOBS:
+        parser.error(f"reference jobs must be in [1,{MAX_JOBS}]")
     compiler = shutil.which(args.compiler)
     if not compiler:
         parser.error("Compiler not found")
@@ -125,22 +167,10 @@ def main() -> int:
         ]
     with tempfile.TemporaryDirectory(prefix="docenhance-reference-") as temp:
         directory = Path(temp)
-        generated = generate_build_facts(directory, compiler, tools["cmake"]["minimum"])
-        exe = directory / "reference-tests"
-        cmd = [
-            compiler,
-            *flags,
-            "-I",
-            str(ROOT / "include"),
-            "-I",
-            str(ROOT / "tests/support"),
-            "-I",
-            str(generated),
-            *[str(ROOT / s) for s in sources],
-            "-o",
-            str(exe),
-        ]
-        subprocess.run(cmd, check=True)
+        generate_build_facts(directory, compiler, tools["cmake"]["minimum"])
+        exe = build_reference(
+            compiler, flags, [ROOT / source for source in sources], directory, args.jobs
+        )
         subprocess.run([str(exe)], check=True)
     return 0
 

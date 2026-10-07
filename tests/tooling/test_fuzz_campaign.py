@@ -61,9 +61,12 @@ class FuzzManifestTests(unittest.TestCase):
         for value in (0, -1, True, 1801):
             with self.subTest(value=value), self.assertRaises(fuzz_manifest.FuzzError):
                 fuzz_manifest.positive(value, fuzz_manifest.MAX_SECONDS, "seconds")
-        for value in (0, -1, True, 3):
+        for value in (0, -1, True, 5):
             with self.subTest(value=value), self.assertRaises(fuzz_manifest.FuzzError):
                 fuzz_manifest.campaign_timeout(8, 60, value)
+        self.assertEqual(fuzz_manifest.concurrency("4"), 4)
+        self.assertEqual(fuzz_manifest.DEFAULT_JOBS, 2)
+        self.assertEqual(fuzz_manifest.campaign_timeout(20, 60, 4), 1110)
         self.assertGreater(fuzz_manifest.campaign_timeout(8, 1800, 1), 9000)
         self.assertLess(fuzz_manifest.campaign_timeout(8, 1800, 2), 9000)
 
