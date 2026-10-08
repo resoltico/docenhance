@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 9
+          "const": 10
         },
         "run": {
           "type": "string",
@@ -244,6 +244,22 @@
                       }
                     }
                   }
+                },
+                {
+                  "properties": {
+                    "method": {
+                      "properties": {
+                        "id": {
+                          "const": "B01"
+                        }
+                      }
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "maxProperties": 0
+                    }
+                  }
                 }
               ]
             }
@@ -270,7 +286,8 @@
         "illumination",
         "denoising",
         "contrast",
-        "sharpening"
+        "sharpening",
+        "binarization"
       ],
       "additionalProperties": false,
       "properties": {
@@ -295,6 +312,16 @@
         },
         "sharpening": {
           "$ref": "#/$defs/sharpening"
+        },
+        "binarization": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/otsu_observation"
+            }
+          ]
         }
       }
     },
@@ -488,6 +515,16 @@
           "properties": {
             "id": {
               "const": "B03"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
+              "const": "B01"
             },
             "method_version": {
               "const": 1
@@ -1733,6 +1770,42 @@
             },
             "resolution": {
               "$ref": "#/$defs/tiff_resolution"
+            }
+          }
+        }
+      ]
+    },
+    "otsu_observation": {
+      "type": "object",
+      "required": [
+        "threshold_bin",
+        "single_bin_fallback"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "threshold_bin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4094
+        },
+        "single_bin_fallback": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "single_bin_fallback": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "threshold_bin": {
+                "const": 2047
+              }
             }
           }
         }
@@ -3686,6 +3759,56 @@
                   }
                 }
               ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request": {
+            "properties": {
+              "operation": {
+                "properties": {
+                  "kind": {
+                    "const": "binarization"
+                  },
+                  "method": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "const": "B01"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "binarization": {
+                "$ref": "#/$defs/otsu_observation"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "binarization": {
+                "type": "null"
+              }
             }
           }
         }

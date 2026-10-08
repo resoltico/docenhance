@@ -103,6 +103,7 @@ def exercise(exe: Path, root: Path) -> None:
         ("tvl1", source, ["--denoise", "tvl1"]),
         ("fixed", source, ["--output-mode", "bw", "--binarize", "fixed"]),
         ("sauvola", source, ["--output-mode", "bw", "--binarize", "sauvola"]),
+        ("otsu", source, ["--output-mode", "bw", "--binarize", "otsu"]),
         ("illumination", source, ["--illumination", "surface", "--background-cell", "8"]),
         ("denoising", jpeg, ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]),
     )

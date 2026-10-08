@@ -60,7 +60,19 @@ class Sauvola {
     explicit Sauvola(SauvolaParameters parameters) noexcept : parameters_(parameters) {}
     SauvolaParameters parameters_;
 };
-using Binarization = std::variant<Sauvola, FixedThreshold>;
+class Otsu {
+  public:
+    [[nodiscard]] static Otsu create() noexcept {
+        return Otsu{};
+    }
+    [[nodiscard]] static constexpr ImplementedMethod descriptor() noexcept {
+        return otsu_descriptor;
+    }
+
+  private:
+    Otsu() noexcept = default;
+};
+using Binarization = std::variant<Sauvola, FixedThreshold, Otsu>;
 [[nodiscard]] ImplementedMethod describe(const Binarization& method);
 // Charged scratch for the actual number of slots, capped by the image's strip count.
 [[nodiscard]] core::Result<std::size_t> scratch_bytes(const Binarization& method,

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "architecture_cases.hpp"
 #include "docenhance/contract/parse.hpp"
+#include "otsu_cases.hpp"
 #include "pipeline_cases.hpp"
 #include "reference_cases.hpp"
 
@@ -66,4 +67,8 @@ TEST_CASE("The box mean agrees with its definition and with itself") {
 
 TEST_CASE("Ownership, views, execution boundaries and admitted requests", "[architecture]") {
     REQUIRE_NOTHROW(docenhance::tests::architecture_cases());
+}
+
+TEST_CASE("Global Otsu agrees with independent population reference", "[numeric]") {
+    REQUIRE_NOTHROW(docenhance::tests::otsu_cases());
 }

@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 9
+          "const": 10
         },
         "run": {
           "type": "string",
@@ -244,6 +244,22 @@
                       }
                     }
                   }
+                },
+                {
+                  "properties": {
+                    "method": {
+                      "properties": {
+                        "id": {
+                          "const": "B01"
+                        }
+                      }
+                    },
+                    "parameters": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "maxProperties": 0
+                    }
+                  }
                 }
               ]
             }
@@ -270,7 +286,8 @@
         "illumination",
         "denoising",
         "contrast",
-        "sharpening"
+        "sharpening",
+        "binarization"
       ],
       "additionalProperties": false,
       "properties": {
@@ -295,6 +312,16 @@
         },
         "sharpening": {
           "$ref": "#/$defs/sharpening"
+        },
+        "binarization": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/otsu_observation"
+            }
+          ]
         }
       }
     },
@@ -463,7 +490,8 @@
     "resolution": {},
     "illumination": {},
     "illumination_method": {},
-    "source_decoding": {}
+    "source_decoding": {},
+    "otsu_observation": {}
   },
   "allOf": [
     {
@@ -596,6 +624,56 @@
                   }
                 }
               ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "request": {
+            "properties": {
+              "operation": {
+                "properties": {
+                  "kind": {
+                    "const": "binarization"
+                  },
+                  "method": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "const": "B01"
+                      }
+                    },
+                    "required": [
+                      "id"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "binarization": {
+                "$ref": "#/$defs/otsu_observation"
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "execution": {
+            "properties": {
+              "binarization": {
+                "type": "null"
+              }
             }
           }
         }

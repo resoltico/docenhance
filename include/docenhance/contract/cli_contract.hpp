@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <variant>
 namespace docenhance::contract {
-inline constexpr unsigned response_schema_version = 9U;
+inline constexpr unsigned response_schema_version = 10U;
 inline constexpr unsigned response_confirmed_limit = 16U;
 inline constexpr auto input_support = std::to_array<InputSupport>({
     {.format = "png", .binary = true},
@@ -56,7 +56,7 @@ inline constexpr auto option_catalog = std::to_array<OptionDescriptor>({
     {.name = "--bit-depth", .metavar = "DEPTH", .scope = CommandSet{Command::process}, .group = "Output arguments", .domain = "auto; auto|8|16", .methods = "", .description = "Continuous output only. Auto retains 16-bit source precision, otherwise 8. Explicit 16-to-8 reduction is reported; no precision fallback is used for resource limits.", .binding = &Invocation::bit_depth},
     {.name = "--alpha", .metavar = "MODE", .scope = CommandSet{Command::process}, .group = "Output arguments", .domain = "white; white|black|reject", .methods = "", .description = "Continuous output only. Composite straight PNG alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque.", .binding = &Invocation::alpha},
     {.name = "--profile-policy", .metavar = "POLICY", .scope = CommandSet{Command::process}, .group = "Output arguments", .domain = "embedded; embedded|srgb", .methods = "", .description = "Continuous output only. Interpret supported cICP, compatible ICC, sRGB or gAMA/cHRM; otherwise report an sRGB assumption. srgb explicitly overrides color declarations, not integrity or orientation checks. Unsupported HDR/cICP is rejected by embedded policy.", .binding = &Invocation::profile_policy},
-    {.name = "--binarize", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "sauvola for bw; fixed|sauvola", .methods = "B02,B03", .description = "Requires explicit --output-mode bw. B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied.", .binding = &Invocation::binarize},
+    {.name = "--binarize", .metavar = "METHOD", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "sauvola for bw; otsu|fixed|sauvola", .methods = "B01,B02,B03", .description = "Requires explicit --output-mode bw. B01/B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied.", .binding = &Invocation::binarize},
     {.name = "--fixed-threshold", .metavar = "T", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.50; finite `[0,1]`", .methods = "B03", .description = "B03 only. Normalized grayscale threshold; black iff sample/255 <= T. Rejected for Sauvola.", .binding = &Invocation::fixed_threshold},
     {.name = "--sauvola-window", .metavar = "PIXELS", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "31; odd integer `[3,4095]`", .methods = "B02", .description = "B02 only. Centered square window with REFLECT_101 borders; a singleton dimension repeats its sample.", .binding = &Invocation::sauvola_window},
     {.name = "--sauvola-k", .metavar = "K", .scope = CommandSet{Command::process}, .group = "Processing arguments", .domain = "0.2; finite `[0,1]`", .methods = "B02", .description = "B02 only. Weight in T=m*(1+k*(s/(255*R)-1)), using population standard deviation in stored byte units.", .binding = &Invocation::sauvola_k},

@@ -17,7 +17,7 @@ from test_continuous import transfer_decode, transfer_encode
 
 DATA = Path(__file__).resolve().parents[1] / "fixtures/jpeg"
 SIDE = 64
-RECORD_VERSION = 9
+RECORD_VERSION = 10
 ASSESSMENT_THRESHOLD = 100
 COMPOSITION_TOLERANCE = 3
 OPTIONS = ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]

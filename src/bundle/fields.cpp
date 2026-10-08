@@ -7,6 +7,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/otsu.hpp"
 
 #include <array>
 #include <cstddef>
@@ -19,6 +20,16 @@
 #include <variant>
 #include <vector>
 namespace docenhance::bundle {
+nlohmann::ordered_json
+binarization_fields(const std::optional<methods::OtsuObservation>& observation) {
+    if (!observation) {
+        return nullptr;
+    }
+    return {
+        {"threshold_bin", observation->threshold_bin},
+        {"single_bin_fallback", observation->single_bin_fallback},
+    };
+}
 using Json = nlohmann::ordered_json;
 std::string_view status_name(methods::IlluminationStatus status) noexcept {
     switch (status) {

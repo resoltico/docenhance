@@ -50,6 +50,14 @@ core::Result<double> value_or(const std::optional<std::string>& value, double fa
     return value ? contract::parse_finite(*value, low, 1.0) : core::Result<double>{fallback};
 }
 core::Result<methods::Binarization> prepare_method(const contract::Invocation& invocation) {
+    if (invocation.binarize == methods::Otsu::descriptor().selector) {
+        if (invocation.fixed_threshold || invocation.sauvola_window || invocation.sauvola_k ||
+            invocation.sauvola_r) {
+            return core::failure(core::ErrorCode::argument,
+                                 "Otsu accepts no method-specific options");
+        }
+        return methods::Binarization{methods::Otsu::create()};
+    }
     if (invocation.binarize == methods::FixedThreshold::descriptor().selector) {
         if (invocation.sauvola_window || invocation.sauvola_k || invocation.sauvola_r) {
             return core::failure(core::ErrorCode::argument,
@@ -64,7 +72,8 @@ core::Result<methods::Binarization> prepare_method(const contract::Invocation& i
             .transform([](auto value) -> methods::Binarization { return value; });
     }
     if (invocation.binarize.value_or("sauvola") != methods::Sauvola::descriptor().selector) {
-        return core::failure(core::ErrorCode::argument, "--binarize requires fixed or sauvola");
+        return core::failure(core::ErrorCode::argument,
+                             "--binarize requires otsu, fixed or sauvola");
     }
     if (invocation.fixed_threshold) {
         return core::failure(core::ErrorCode::argument,

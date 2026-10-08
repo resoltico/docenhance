@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 9
+      "const": 10
     },
     "command": {
       "enum": [
@@ -88,7 +88,7 @@
             "$ref": "#/$defs/method"
           },
           "minItems": 1,
-          "maxItems": 10,
+          "maxItems": 11,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -158,7 +158,7 @@
             "$ref": "#/$defs/method"
           },
           "minItems": 1,
-          "maxItems": 10,
+          "maxItems": 11,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -261,6 +261,16 @@
               "$ref": "#/$defs/source_decoding"
             }
           ]
+        },
+        "binarization": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/otsu_observation"
+            }
+          ]
         }
       },
       "required": [
@@ -269,11 +279,35 @@
         "output",
         "publication",
         "record",
-        "source_decoding"
+        "source_decoding",
+        "binarization"
       ],
       "allOf": [
         {
           "$ref": "#/$defs/completed_method"
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "const": "B01"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "binarization": {
+                "$ref": "#/$defs/otsu_observation"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "binarization": {
+                "type": "null"
+              }
+            }
+          }
         }
       ]
     },
@@ -1054,6 +1088,16 @@
               "const": 1
             }
           }
+        },
+        {
+          "properties": {
+            "id": {
+              "const": "B01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
         }
       ]
     },
@@ -1077,6 +1121,20 @@
           "properties": {
             "method": {
               "const": "B03"
+            },
+            "method_version": {
+              "const": 1
+            }
+          },
+          "required": [
+            "method",
+            "method_version"
+          ]
+        },
+        {
+          "properties": {
+            "method": {
+              "const": "B01"
             },
             "method_version": {
               "const": 1
@@ -3907,6 +3965,42 @@
             "properties": {
               "warnings": {
                 "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "otsu_observation": {
+      "type": "object",
+      "required": [
+        "threshold_bin",
+        "single_bin_fallback"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "threshold_bin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4094
+        },
+        "single_bin_fallback": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "single_bin_fallback": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "threshold_bin": {
+                "const": 2047
               }
             }
           }

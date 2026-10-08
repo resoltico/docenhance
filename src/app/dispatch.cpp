@@ -78,6 +78,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                              .run = std::move(image->run),
                                              .record = std::move(image->record),
                                              .source_decoding = image->source_decoding,
+                                             .otsu = image->otsu,
                                          });
         }
         auto* const image = std::get_if<PublishedContinuous>(&*result);

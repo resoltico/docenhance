@@ -19,6 +19,7 @@ than authenticity; see [processing bundles](bundles.md).
 docenhance process INPUT.png --out-dir RESULT
 docenhance process INPUT.png --out-dir GRAY --output-mode gray --bit-depth 16
 docenhance process INPUT.png --out-dir BINARY --output-mode bw --binarize sauvola
+docenhance process INPUT.png --out-dir OTSU --output-mode bw --binarize otsu
 docenhance process INPUT.png --out-dir FIXED --output-mode bw --binarize fixed --fixed-threshold 0.5
 ```
 
@@ -32,7 +33,7 @@ Huffman JPEG supports preserve/gray through the same pipeline; see [JPEG admissi
 Bounded single-page TIFF/BigTIFF supports preserve/gray; see [TIFF admission](tiff-processing.md).
 Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02/C01/C02/C03/S01 remain unsupported.
 
-Only explicit `bw` activates a binarizer (Sauvola by default). B02/B03 retain the separate published
+Only explicit `bw` activates a binarizer (Sauvola by default). B01/B02/B03 use the separate published
 1/2/4/8-bit grayscale-without-transparency input contract and 8-bit binary output. They do not run
 through color conversion. Parameters, equality and scale remain in [typed binarization](binarization.md).
 Wrong-method, wrong-operation and explicitly empty values fail admission before input I/O.
@@ -41,7 +42,7 @@ Wrong-method, wrong-operation and explicitly empty values fail admission before 
 owned sibling staging and atomically publishes without replacement after encoding and closing
 succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
-`docenhance methods` reports I01, I02, D01, D02, C01, C02, C03, S01, B02 and B03. `methods ID` selects one entry.
+`docenhance methods` reports I01, I02, D01, D02, C01, C02, C03, S01, B01, B02 and B03. `methods ID` selects one entry.
 `version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
 Help, version and capability discovery do not invoke the image-processing host.
 

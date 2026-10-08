@@ -14,7 +14,6 @@ from grayscale import read_image, write_image
 from test_cli import call_json, expect
 
 ARGUMENT_ERROR = 2
-UNAVAILABLE = 4
 WHITE = 255
 INK_TOP, INK_BOTTOM = 3, 13
 
@@ -145,7 +144,6 @@ def discovery_cases(exe: Path) -> None:
     for identity in ("B02", "B03"):
         response = call_json(exe, ["methods", identity, "--json"])
         expect(response["methods"] == [{"id": identity, "method_version": 1}], "selected method")
-    call_json(exe, ["methods", "B01", "--json"], UNAVAILABLE)
 
 
 def illumination_case(exe: Path, root: Path) -> None:

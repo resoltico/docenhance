@@ -4,10 +4,10 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MPL-2.0-licensed.
 
-> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01/D02 denoising, C01/C02/C03 contrast, S01 sharpening, and two binarizers.**
+> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01/D02 denoising, C01/C02/C03 contrast, S01 sharpening, and three binarizers.**
 > `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
-> and metadata policies. Explicit `--output-mode bw` selects B02/B03 on their narrower stored-gray
+> and metadata policies. Explicit `--output-mode bw` selects B01/B02/B03 on their narrower stored-gray
 > input domain. All output is published into a new directory. See [PNG processing](docs/png-processing.md)
 > [JPEG admission](docs/jpeg-processing.md), [bounded single-page TIFF/BigTIFF](docs/tiff-processing.md),
 > and [typed binarization](docs/binarization.md). Batch processing, presets and
@@ -82,7 +82,7 @@ out/dev/bin/docenhance methods --json
 out/dev/bin/docenhance process --help --json
 ```
 
-`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels and C02 gamma contrast, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
+`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels, C02 gamma and C03 CLAHE contrast, S01 unsharp masking, B01 global Otsu, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout
@@ -137,5 +137,5 @@ docenhance process scan.jpg --out-dir denoised --denoise nlm --nlm-h 3 --denoise
 
 D01 is bounded 16-bit NLM-L1, off by default. Protected pixels retain their entering linear samples;
 protected neighbors remain context. It is not JPEG restoration or a guarantee of mark preservation.
-See [the complete denoising contract](docs/denoising.md). Records and responses use format 3;
+See [the complete denoising contract](docs/denoising.md). Records and responses use format 10;
 obsolete records are rejected without migration.

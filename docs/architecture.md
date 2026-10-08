@@ -123,12 +123,12 @@ the shared publication transaction. Its 1 GiB charged-buffer ceiling does not ch
 128 MiB ceiling. Public raster and policy types contain no native-library objects.
 
 
-B02 and B03 accept one regular PNG file, grayscale without transparency, at 1/2/4/8 bits per sample.
+B01, B02 and B03 accept one regular PNG file, grayscale without transparency, at 1/2/4/8 bits per sample.
 Low-bit-depth input expands to 8-bit stored sample values. Gamma metadata does not change threshold
 semantics. Color, alpha/transparency and 16-bit input are rejected, not silently converted.
 Input is limited to 128 MiB and 40 million pixels; libpng also enforces its dimension and chunk limits.
 Output is a single 8-bit grayscale PNG. B03 keeps `sample / 255 <= threshold`; B02 uses the
-local population statistics and normalized parameters in [typed binarization](binarization.md).
+local population statistics and normalized parameters; B01 uses a frozen 4,096-bin global threshold in [typed binarization](binarization.md).
 
 The codec uses libpng's custom memory callbacks charged to the caller's budget. Error callbacks
 jump only into dedicated C-facing frames with trivial automatic state. All owning C++ objects,

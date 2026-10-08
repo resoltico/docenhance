@@ -56,12 +56,6 @@ Status: **implemented**.
 
 Method-specific argument references: `--sharpen`, `--sharpen-sigma`, `--sharpen-amount`, `--sharpen-threshold`, `--protect-mask`.
 
-## B01 — Otsu
-
-Status: **not-implemented**.
-
-Method-specific argument references: `--binarize`.
-
 ## B02 — Sauvola
 
 Status: **implemented**.
@@ -73,6 +67,12 @@ Method-specific argument references: `--binarize`, `--sauvola-window`, `--sauvol
 Status: **implemented**.
 
 Method-specific argument references: `--binarize`, `--fixed-threshold`.
+
+## B01 — Otsu
+
+Status: **implemented**.
+
+Method-specific argument references: `--binarize`.
 
 ## G01 — Metadata orientation
 

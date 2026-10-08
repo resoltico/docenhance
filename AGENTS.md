@@ -18,7 +18,7 @@ of I/O, process state, allocation expressions, throwing and catching. The CLI ow
 response delivery, never processing rules. `de_app` admits `ProcessRequest`; `de_host` executes it.
 The application contains unreported processing exceptions as unknown publication, not safe retry.
 
-Do not advertise a method or format until its complete contract and tests exist. B02 Sauvola and B03 fixed-threshold
+Do not advertise a method or format until its complete contract and tests exist. B01 global Otsu, B02 Sauvola and B03 fixed-threshold
 grayscale-PNG processing, I01 surface and I02 morphological continuous-tone illumination and D01 bounded 16-bit NLM-L1 / D02 floating-point TV-L1 denoising
 and C01 percentile levels / C02 gamma / C03 floating-point CLAHE contrast and S01 thresholded unsharp masking are implemented; other method entries remain plans. Continuous-tone
 PNG representation is separately implemented; read docs/png-processing.md. It is not a fictional

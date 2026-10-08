@@ -1,0 +1,176 @@
+{
+  "record": {
+    "version": 10,
+    "run": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "recorded": "2026-10-08T00:00:00Z"
+  },
+  "build": {
+    "application_version": "0.7.0",
+    "platform": "Darwin-arm64",
+    "compiler": "AppleClang 21.0.0.21000334",
+    "dependency_lock_sha256": "9b89a40a76f1463731fd0b18352dd5a481cb6e569692dcad46b075f2d39d94b1"
+  },
+  "source": {
+    "sha256": "b242cfcb74487cd0ce1d286a0096396a797f8eb0926c2fc14de0b490f5850663",
+    "bytes": 68,
+    "name": "gray.png",
+    "decoding": {
+      "format": "png",
+      "decoder_policy": "bounded-png-1",
+      "width": 2,
+      "height": 1,
+      "precision": 8,
+      "color_type": 0,
+      "interlaced": false
+    }
+  },
+  "request": {
+    "operation": {
+      "kind": "binarization",
+      "method": {
+        "id": "B01",
+        "method_version": 1
+      },
+      "parameters": {}
+    },
+    "protection_supplied": false,
+    "denoising": {
+      "method": null,
+      "parameters": null
+    },
+    "contrast": {
+      "method": null,
+      "parameters": null
+    },
+    "sharpening": {
+      "method": null,
+      "parameters": null
+    }
+  },
+  "execution": {
+    "conversion": null,
+    "illumination": {
+      "status": "disabled",
+      "complete": false,
+      "reason": "none",
+      "method": null,
+      "requested": null,
+      "morphology": null,
+      "resolved_cell": null,
+      "eligible_samples": 0,
+      "protected_samples": 0,
+      "cells": 0,
+      "measured_cells": 0,
+      "dark_cells": 0,
+      "background_reference": null,
+      "coverage": null,
+      "solver": null,
+      "measurements": null,
+      "auto_predicates": {
+        "coverage": null,
+        "bright_quantile": null,
+        "median_background": null,
+        "background_variation": null,
+        "paper_fraction": null,
+        "dark_fraction": null
+      },
+      "application": {
+        "evaluated_samples": 0,
+        "changed_samples": 0,
+        "gain_capped_samples": 0,
+        "saturated_samples": 0,
+        "min_gain": 1.0,
+        "max_gain": 1.0,
+        "gain_capped_fraction": null,
+        "saturated_fraction": null
+      }
+    },
+    "denoising": {
+      "method": null,
+      "parameters": null,
+      "status": "disabled",
+      "reason": "none",
+      "complete": true,
+      "analysis_depth": null,
+      "distance": null,
+      "representation": null,
+      "tvl1": null,
+      "warnings": [],
+      "native_h": 0.0,
+      "tile_width": 0,
+      "border": null,
+      "eligible_samples": 0,
+      "protected_samples": 0,
+      "evaluated_samples": 0,
+      "corrected_samples": 0,
+      "changed_samples": 0,
+      "native_calls": 0,
+      "native_reserved_peak": 0,
+      "preparation_charge_peak": 0
+    },
+    "contrast": {
+      "method": null,
+      "parameters": null,
+      "status": "disabled",
+      "reason": "none",
+      "complete": true,
+      "representation": null,
+      "levels": null,
+      "eligible_samples": 0,
+      "protected_samples": 0,
+      "measured_samples": 0,
+      "identity_tiles": 0,
+      "evaluated_samples": 0,
+      "corrected_samples": 0,
+      "changed_samples": 0,
+      "clipped_low_samples": 0,
+      "clipped_high_samples": 0,
+      "clipped_low_fraction": null,
+      "clipped_high_fraction": null,
+      "preparation_charge_peak": 0
+    },
+    "sharpening": {
+      "method": null,
+      "parameters": null,
+      "status": "disabled",
+      "reason": "none",
+      "complete": true,
+      "representation": null,
+      "pre_clamp": null,
+      "eligible_samples": 0,
+      "protected_samples": 0,
+      "context_samples": 0,
+      "evaluated_samples": 0,
+      "corrected_samples": 0,
+      "changed_samples": 0,
+      "clipped_low_samples": 0,
+      "clipped_high_samples": 0,
+      "clipped_fraction": null,
+      "preparation_charge_peak": 0,
+      "warnings": []
+    },
+    "binarization": {
+      "threshold_bin": 161,
+      "single_bin_fallback": false
+    }
+  },
+  "protection": null,
+  "output": {
+    "path": "result.png",
+    "sha256": "91d269b5e30ca3b6a6464a81335ce92d9a5dab4d7d1c343547c8a5b822aedb68",
+    "bytes": 68,
+    "width": 2,
+    "height": 1,
+    "channels": 1,
+    "bit_depth": 8,
+    "profile_embedded": false,
+    "resolution": null,
+    "verification": {
+      "performed": "decoded_and_compared",
+      "compared": [
+        "integer_samples",
+        "metadata"
+      ]
+    }
+  }
+}

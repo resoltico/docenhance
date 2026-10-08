@@ -1,6 +1,6 @@
 {
   "record": {
-    "version": 9,
+    "version": 10,
     "run": "8c3fdef5cc7756e503e2e94a5693e318",
     "recorded": "2026-10-07T15:38:33Z"
   },
@@ -194,7 +194,8 @@
       "warnings": [
         "W_SHARPENING"
       ]
-    }
+    },
+    "binarization": null
   },
   "protection": null,
   "output": {

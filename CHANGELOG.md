@@ -6,13 +6,15 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Added
 
+- B01 global Otsu (`--output-mode bw --binarize otsu`) uses a 4,096-bin stored-gray histogram, deterministic smallest-threshold ties, recorded single-bin fallback and exact black/white polarity. It retains the existing 1/2/4/8-bit grayscale PNG without transparency domain, B02/B03 semantics and Sauvola default; continuous inputs and protection masks are not admitted. See [binarization](docs/binarization.md).
+
 - Explicit C03 floating-point CLAHE (`--contrast clahe`) completes the contrast alternatives after illumination and denoising. It uses 1,024 eligible-sample histogram bins, mass-conserving clipping/redistribution, exact sparse/flat tile identities and interpolation at actual contextual centers. The default grid is 8x8 with at least 16 pixels per tile dimension; the clip multiplier is 2. Protected destinations remain exact, and histogram discretization does not reduce 16-bit output to 8-bit levels. See [contrast](docs/contrast.md).
 
 - Explicit S01 thresholded unsharp masking (`--sharpen unsharp`) follows contrast with float64 Gaussian REFLECT_101 borders and a soft threshold. It preserves protected destinations, reports eligible pre-clamp excursions and clipping, and emits `W_SHARPENING` for positive amount. Output is not evidence of additional detail. See [sharpening](docs/sharpening.md).
 
 ### Changed
 
-- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 9, adding closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods) and sharpening excursion/clipping/warning observations. Update schema consumers and contrast visitors; obsolete records are refused without a compatibility reader or migration.
+- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 10, adding closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods), sharpening excursion/clipping/warning observations and required method-specific B01 threshold/fallback observations. Update schema consumers and contrast/binarization visitors; obsolete records are refused without a compatibility reader or migration.
 
 - **Breaking (C++ models):** `methods::ContrastModel` owns its charged immutable CLAHE maps and is move-only. Move prepared models into their lifetime owner and keep them live through output verification.
 

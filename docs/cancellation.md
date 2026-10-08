@@ -67,6 +67,7 @@ already completed computation need not change that computation's result.
 | Component | Safe checkpoints and ownership |
 |---|---|
 | Scheduler | Before worker launch and before executing a claimed task. Exhausted queues do not observe a new stop; fully completed work remains successful. Skipped claimed work returns cancellation. Every started worker joins, including after partial launch failure. |
+| Global Otsu | Before charged histogram acquisition, each 1024-sample histogram/output block and each bounded score scan. The fitted threshold is retained through output verification. |
 | Fixed threshold | Before each bounded block of at most 1024 samples, including wide-row interiors. |
 | Sauvola | Before workspace acquisition, reflected initialization rows, output rows and 1024-sample output blocks. Column initialization/advance is bounded by the existing fixed strip and halo width, not image height. |
 | Box mean | Before intermediate acquisition, at 1024-sample reflected-sum/output intervals and within both separable passes. The no-stop summation order is unchanged. |

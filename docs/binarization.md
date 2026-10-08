@@ -1,15 +1,16 @@
 # Typed binarization
 
-This is the executable contract for **B02 Sauvola, method version 1**, and **B03 fixed threshold,
-method version 1**. It specifies the stored-sample grayscale operation, not a color-managed or
+This is the executable contract for **B01 global Otsu**, **B02 Sauvola** and **B03 fixed threshold**,
+each at **method version 1**. It specifies the stored-sample grayscale operation, not a color-managed or
 complete restoration pipeline. Preserve the original document; binarization discards information.
 
 ## Admission and execution
 
 The CLI retains option presence separately from its spelling. An absent option permits a default;
 an explicitly empty option is invalid. `de_app` constructs `ProcessRequest` only after validating
-paths and creating one closed `methods::Binarization` alternative: `Sauvola` or `FixedThreshold`.
-Both parameter types have private constructors and validated factories. The raw named
+paths and creating one closed `methods::Binarization` alternative: `Otsu`, `Sauvola` or `FixedThreshold`.
+Otsu has no parameters. The other parameter types have private constructors and validated factories.
+The raw named
 `SauvolaParameters` record is factory input, never an admitted execution value.
 
 The execution visitor has an overload for each alternative, with no generic fallback. The runtime
@@ -20,7 +21,7 @@ rejects duplicate identities/selectors, invalid versions and unknown implemented
 The processing port returns the binary `PublishedBinary` alternative, not a method identifier supplied by an adapter.
 The application attaches the identity of the admitted method to `Processed`; only the report layer
 serializes it. A successful process response contains `method`, `method_version`, `output` and
-`publication: completed`. `methods B02` and `methods B03` return just the selected capability.
+`publication: completed`. `methods B01`, `methods B02` and `methods B03` return just the selected capability.
 The schema template is `spec/command-response.schema.json`; method identities come from
 `spec/method-contract.json`. The delivered schema and C++ descriptors are generated together.
 
@@ -28,13 +29,15 @@ The schema template is `spec/command-response.schema.json`; method identities co
 
 | Method | Selector | Options and defaults |
 |---|---|---|
+| B01 | `--output-mode bw --binarize otsu` | No method-specific options |
 | B03 | `--output-mode bw --binarize fixed` | `--fixed-threshold 0.5`, finite in `[0,1]` |
 | B02 | `--output-mode bw --binarize sauvola` | `--sauvola-window 31`, odd integer in `[3,4095]`; `--sauvola-k 0.2`, finite in `[0,1]`; `--sauvola-r 0.5`, finite in `[1/255,1]` |
 
 Window syntax is ASCII digits only. Leading zeros are accepted; signs, whitespace, fractions,
 exponents, overflow and even windows are rejected. Decimal options use the existing finite-decimal
 contract. A B03 invocation rejects every explicitly present Sauvola option, and B02 rejects an
-explicit fixed threshold, even when the supplied value is empty or equal to a default. There are
+explicit fixed threshold, even when the supplied value is empty or equal to a default. Otsu rejects
+all explicitly present fixed/Sauvola options under the same presence rule. There are
 no ignored method-specific options, recipes, compatibility aliases or inference of binary output from private method flags. In explicit `bw` mode, an absent selector uses Sauvola.
 
 `R` uses **normalized grayscale units**. Its default `0.5` is `127.5` in byte units, not the value
@@ -49,6 +52,28 @@ to unsigned 8-bit stored samples. PNG gamma/orientation metadata does not change
 CRC/framing scan refuses animation, nonconsecutive IDAT, duplicate known declarations and bytes
 after IEND before native grayscale decoding. Color,
 alpha and 16-bit input remain rejected. Output is 8-bit grayscale containing only 0 and 255.
+
+For B01, quantize every decoded stored sample `p` to `q = round(4095*p/255)` and
+build a 4,096-bin uint64 histogram. Positive half ties round upward (the byte input mapping has
+no half ties). Every admitted sample participates; there is no eligible mask, geometry padding,
+perceptual conversion or floating input plane. This deliberately retains the current binary domain.
+The blueprint's broader perceptual/mask/geometry pipeline requires a separate domain contract.
+
+For each candidate integer `t` from 0 through 4094 with nonempty populations on both sides,
+compute float64 `w0*w1*(mu0-mu1)^2`, with population fractions `w0`, `w1` and mean bin
+coordinates `mu0`, `mu1`. Find the global maximum `best`, then select the smallest candidate
+whose score differs from it by at most `1e-12*max(1,best)`. Do not update an approximate
+best while walking candidates: that can make a chain of near ties order-dependent. Empty-class
+candidates are excluded. If exactly one bin is occupied, use threshold 2047 and record
+`single_bin_fallback: true`; otherwise record false. Black is exactly `q <= t`, with output
+sample 0; white is exactly 255. Thus flat bytes 0..127 become black and 128..255 become white.
+This is global Otsu; it does not adapt thresholds spatially.
+
+The fitted threshold remains immutable through output verification; no refitting
+or second observation count occurs. Successful B01 responses and records carry `threshold_bin`
+and `single_bin_fallback` in `binarization`. Other binary responses carry null; other execution
+records carry null. A true fallback requires threshold 2047. Response/record format 10 rejects
+obsolete forms and unknown fields.
 
 For B03, an input sample `p` is black exactly when `double(p)/255 <= threshold`. Its existing
 rounding and equality behavior is unchanged.
@@ -87,6 +112,17 @@ The normalized parameter domain, reflection rule, integer statistics and equalit
 are the explicit DocEnhance contract.
 
 ## Memory and scheduling
+
+B01 fits sequentially in fixed row-major order and uses one charged 32,768-byte histogram,
+independent of image dimensions and worker count. It reserves that storage before filling or
+writing output and refunds it after fitting; only the fitted observations remain through verification.
+Histogram counts and moments are
+bounded by the decoder's 40-million-pixel ceiling. Score scans are fixed-size float64 work;
+The histogram is charged to the existing binary 128 MiB budget; score scans do not allocate scratch.
+That charged-buffer budget is not a process-RSS limit. Invalid/overlapping views, insufficient
+budget and cancellation refuse without publishing a partial result.
+
+The following strip scheduling describes B02 only.
 
 Do not build full-page float moment planes or integral-image tables for this operation. The kernel
 partitions output into fixed **4096-column strips**, with clipped source halos of radius `w/2`.
@@ -160,7 +196,15 @@ Full empirical readability/fidelity evaluation remains distinct from mathematica
 
 ## Execution cancellation
 
-The scheduler carries the operation's cancellation capability separately from B02/B03 parameters.
-Both binarizers observe bounded checkpoints; B02 also observes reflected initialization and scratch
+The scheduler carries the operation's cancellation capability separately from B01/B02/B03 parameters.
+All binarizers observe bounded checkpoints; B02 also observes reflected initialization and scratch
 admission. Cancellation can leave a partially written destination, which the host discards without
 publishing. No-stop arithmetic and method versions remain unchanged. See [cancellation](cancellation.md).
+
+B01 design and independent challenge cover empty-bin plateaus, exact byte-to-bin expansion,
+global tolerance selection and one-bin endpoint polarity. The simpler 256-bin alternative was
+rejected because the requested contract explicitly fixes 4,096 bins. Retained observations replace
+refitting during encode/verify; serial fitting avoids worker-dependent reductions. Independent
+kernel and real-executable references cover all byte samples, skewed populations, low-depth PNG
+expansion, exact observations, wrong-method presence and obsolete/inconsistent records. B02/B03
+references remain unchanged. Mathematical agreement is not document quality certification.

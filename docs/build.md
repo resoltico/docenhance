@@ -272,7 +272,7 @@ The strict tooling runner likewise requires every test module and refuses skippe
 Package inspection requires the independently tested application build directory (`--build`). It
 compares the relocated executable byte-for-byte, all specs/schemas and the closed file inventory,
 regenerates upstream notices/licenses/SPDX from verified locked sources, checks complete runtime
-build/capability facts and native OS imports, then exercises B02/B03/I01/D01 and verifies their
+build/capability facts and native OS imports, then exercises B01/B02/B03/I01/D01 and verifies their
 bundles. License regeneration replaces only its configured build's owned `package-metadata`
 directory after successful preparation, removing stale generated files.
 

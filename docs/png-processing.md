@@ -4,7 +4,7 @@ This contract defines PNG input and the shared no-filter continuous-tone represe
 [JPEG admission](jpeg-processing.md) feeds that same color/I01/output path through a separately
 specified container decoder. Its default does not apply an enhancement filter. The separately specified opt-in
 [I01 illumination stage](illumination.md) operates after interpretation and before quantization;
-this representation contract does not define denoising, sharpening, restoration or classification. The separate B02/B03 stored-sample
+this representation contract does not define denoising, sharpening, restoration or classification. The separate B01/B02/B03 stored-sample
 contract remains in [binarization](binarization.md). Preserve original documents: color conversion,
 alpha flattening, grayscale conversion, and requested quantization can discard information.
 
@@ -16,7 +16,7 @@ versus grayscale category, not the original ICC space, file bytes, transparency 
 orientation and representation operations specified here. I01 and [D01 denoising](denoising.md) are separately opt-in; there is no hidden enhancement preset.
 
 `--output-mode bw` explicitly selects the existing binary branch, defaulting to Sauvola when
-`--binarize` is absent. B02/B03 still accept only 1/2/4/8-bit grayscale PNG without transparency,
+`--binarize` is absent. B01/B02/B03 accept only 1/2/4/8-bit grayscale PNG without transparency,
 expand stored samples to eight bits without gamma interpretation, and write endpoint-only eight-bit
 output. Their numerical definitions and method versions are unchanged. The broader continuous-tone
 input capability is not permission to silently reinterpret their samples or accept color/16-bit input.

@@ -14,6 +14,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <cstdint>
@@ -37,6 +38,7 @@ struct MaskFacts {
 struct BinaryArtwork {
     image::PlaneView<const std::uint8_t> samples;
     methods::Binarization method;
+    std::optional<methods::OtsuObservation> otsu = std::nullopt;
 };
 struct ContinuousArtwork {
     std::reference_wrapper<image::RowSource> rows;

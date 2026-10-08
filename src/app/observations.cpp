@@ -18,6 +18,7 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/tvl1.hpp"
 
@@ -224,7 +225,10 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
 }
 } // namespace
 bool valid_published(const PublishedBinary& value, const ProcessRequest& request) {
-    if (!publication(value.output, value.run, value.record, request)) {
+    const auto& method = std::get<methods::Binarization>(request.operation());
+    if (value.otsu.has_value() != std::holds_alternative<methods::Otsu>(method) ||
+        (value.otsu && !methods::valid_otsu(*value.otsu)) ||
+        !publication(value.output, value.run, value.record, request)) {
         return false;
     }
     if (!value.source_decoding) {

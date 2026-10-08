@@ -21,6 +21,10 @@ core::Result<Operation> binary(const RecordJson& value) {
     const auto& parameters = record_field(value, "parameters");
     const auto id = record_text(record_field(method, "id"));
     const auto version = record_integer(record_field(method, "method_version"), UINT32_MAX);
+    if (id == methods::Otsu::descriptor().id &&
+        version == methods::Otsu::descriptor().method_version) {
+        return Operation{methods::Binarization{methods::Otsu::create()}};
+    }
     if (id == methods::FixedThreshold::descriptor().id &&
         version == methods::FixedThreshold::descriptor().method_version) {
         auto admitted =

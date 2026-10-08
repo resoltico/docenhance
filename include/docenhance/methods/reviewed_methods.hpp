@@ -57,6 +57,11 @@ inline constexpr ImplementedMethod fixed_descriptor{
     .method_version = 1U,
     .selector = "fixed",
 };
+inline constexpr ImplementedMethod otsu_descriptor{
+    .id = "B01",
+    .method_version = 1U,
+    .selector = "otsu",
+};
 inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({
     surface_descriptor,
     morph_descriptor,
@@ -68,5 +73,6 @@ inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({
     unsharp_descriptor,
     sauvola_descriptor,
     fixed_descriptor,
+    otsu_descriptor,
 });
 } // namespace docenhance::methods

@@ -236,7 +236,7 @@
       "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>.",
       "occurrences": 1
     },
-    "include/docenhance/contract/cli_contract.hpp:clang-format/off@0d63bf523b04176086277e655f5d0d54761d0dfe7fc067dafd9194326330b6bc": {
+    "include/docenhance/contract/cli_contract.hpp:clang-format/off@47f02af8a007bd43ed9af15daa4bad2e3480c18a887f9e88eef13b1de4595599": {
       "explanation": "Generated table: tools/generate_spec.py emits one option per line with long description literals; clang-format would split the literals and break byte-exact regeneration checks.",
       "occurrences": 1
     },

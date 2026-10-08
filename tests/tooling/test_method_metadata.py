@@ -76,16 +76,38 @@ class MethodMetadataTests(unittest.TestCase):
         self.assertIn('"B02"', header)
         self.assertNotIn('"B01"', header)
 
+    def test_otsu_observations_are_closed_and_shared_with_records(self) -> None:
+        """Both schemas derive one bounded fit shape and reject impossible fallback facts."""
+        response = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
+        record = json.loads((ROOT / "schemas/run-record.schema.json").read_text())
+        self.assertEqual(response["$defs"]["otsu_observation"], record["$defs"]["otsu_observation"])
+        validator = Draft202012Validator(response["$defs"]["otsu_observation"])
+        for threshold, fallback in ((0, False), (4094, False), (2047, True)):
+            validator.validate({"threshold_bin": threshold, "single_bin_fallback": fallback})
+        valid = {"threshold_bin": 2047, "single_bin_fallback": True}
+        for change in (
+            {"threshold_bin": -1},
+            {"threshold_bin": 4095},
+            {"threshold_bin": True},
+            {"threshold_bin": 2046},
+            {"single_bin_fallback": "true"},
+            {"unknown": 0},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(validator.is_valid(valid | change))
+        self.assertFalse(validator.is_valid({"threshold_bin": 2047}))
+
     def test_schema_binds_id_and_version_and_rejects_duplicate_capabilities(self) -> None:
         """The wire schema rejects a success attributed to a different or unknown implementation."""
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 9,
+            "schema_version": 10,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
             "method": "B02",
+            "binarization": None,
             "method_version": 1,
             "output": "result/result.png",
             "publication": "completed",
@@ -99,8 +121,17 @@ class MethodMetadataTests(unittest.TestCase):
         }
         for identity in ("B02", "B03"):
             validator.validate(response | {"method": identity})
+        validator.validate(
+            response
+            | {
+                "method": "B01",
+                "binarization": {"threshold_bin": 2047, "single_bin_fallback": True},
+            }
+        )
         for change in (
             {"method": "B01"},
+            {"binarization": {"threshold_bin": 2047, "single_bin_fallback": True}},
+            {"method": "B00"},
             {"method": "I01"},
             {"method_version": 2},
             {"method_version": True},
@@ -111,7 +142,7 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 9,
+            "schema_version": 10,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,

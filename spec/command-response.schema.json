@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 9
+      "const": 10
     },
     "command": {
       "enum": [
@@ -195,6 +195,16 @@
               "$ref": "#/$defs/source_decoding"
             }
           ]
+        },
+        "binarization": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/otsu_observation"
+            }
+          ]
         }
       },
       "required": [
@@ -203,11 +213,35 @@
         "output",
         "publication",
         "record",
-        "source_decoding"
+        "source_decoding",
+        "binarization"
       ],
       "allOf": [
         {
           "$ref": "#/$defs/completed_method"
+        },
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "const": "B01"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "binarization": {
+                "$ref": "#/$defs/otsu_observation"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "binarization": {
+                "type": "null"
+              }
+            }
+          }
         }
       ]
     },
@@ -3586,6 +3620,42 @@
             "properties": {
               "warnings": {
                 "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "otsu_observation": {
+      "type": "object",
+      "required": [
+        "threshold_bin",
+        "single_bin_fallback"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "threshold_bin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4094
+        },
+        "single_bin_fallback": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "single_bin_fallback": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "threshold_bin": {
+                "const": 2047
               }
             }
           }

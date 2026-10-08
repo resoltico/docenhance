@@ -48,7 +48,7 @@ Cancellation is execution control, with bounded checkpoints in mask counting, tr
 validation, sorting, mapping and reconstruction. Preserve final publication cutoff and error
 precedence. Numeric kernels remain free of I/O, allocation expressions and exception handling.
 
-Typed alternatives own admission and the runtime catalog. Response/record version 9 extends a closed
+Typed alternatives own admission and the runtime catalog. Response/record version 10 includes a closed
 contrast request and stage record, including explicit disabled records. Obsolete forms are rejected;
 update consumers and visitors together. No recipes or arbitrary operation graph are introduced.
 

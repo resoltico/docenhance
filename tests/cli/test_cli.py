@@ -42,7 +42,7 @@ REJECTED_INVOCATIONS = (
     ["process"],
     ["process", "file.png"],
     ["process", "x.png", "--out-dir", "y", "--out-dir", "z"],
-    ["process", "x.png", "--out-dir", "y", "--output-mode", "bw", "--binarize", "otsu"],
+    ["process", "x.png", "--out-dir", "y", "--output-mode", "bw", "--binarize", "unknown"],
     ["--json", "version"],
 )
 
@@ -153,6 +153,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "S01", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
+            {"id": "B01", "method_version": 1},
         ],
         "implemented methods advertised",
     )
@@ -174,6 +175,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "S01", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
+            {"id": "B01", "method_version": 1},
         ],
         "methods list matches implementation",
     )

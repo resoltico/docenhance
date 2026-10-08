@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 // Independent first-party reference test runner; not an alternative application build.
 #include "architecture_cases.hpp"
+#include "otsu_cases.hpp"
 #include "pipeline_cases.hpp"
 #include "reference_cases.hpp"
 #include "sharpening_cases.hpp"
@@ -20,6 +21,7 @@ int main() {
         docenhance::tests::schedule_cases();
         docenhance::tests::box_mean_cases();
         docenhance::tests::sharpening_cases();
+        docenhance::tests::otsu_cases();
         std::cout << "PASS: parser, numerical and capability reference suites\n";
         return 0;
     } catch (const std::exception& error) {

@@ -11,6 +11,7 @@
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/sauvola.hpp"
 #include "require.hpp"
 #include "sauvola_reference.hpp"
@@ -22,6 +23,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <variant>
@@ -48,6 +50,7 @@ contract::Invocation request(const std::string& selector) {
 class SuccessfulProcessor final : public app::Processor {
   public:
     unsigned calls = 0;
+    std::optional<methods::OtsuObservation> otsu = std::nullopt;
     app::ProcessResult process(const app::ProcessRequest& /*request*/,
                                const core::Cancellation& /*cancellation*/) override {
         ++calls;
@@ -59,6 +62,7 @@ class SuccessfulProcessor final : public app::Processor {
                     .sha256 = std::string(64, 'b'),
                     .bytes = 512,
                 },
+            .otsu = otsu,
         };
     }
 };
@@ -267,5 +271,34 @@ TEST_CASE("Sauvola reserves exact bounded scratch before writing", "[sauvola]") 
                            UINT32_MAX, methods::Sauvola::create({.window = 4095}).value(), 64)
                            .value();
     CHECK(worst.bytes <= std::size_t{8} * 1024 * 1024);
+}
+TEST_CASE("Otsu publication observations match the admitted method", "[app][otsu]") {
+    const auto selected_request = request("otsu");
+    const auto valid = methods::OtsuObservation{.threshold_bin = 2047, .single_bin_fallback = true};
+    SuccessfulProcessor control;
+    control.otsu = valid;
+    const auto accepted = app::dispatch(selected_request, control, verifier);
+    REQUIRE(accepted.exit_code() == core::ExitCode::success);
+    CHECK(std::get<app::Processed>(accepted.payload).otsu == valid);
+    for (unsigned change = 0; change < 4; ++change) {
+        std::optional<methods::OtsuObservation> value = valid;
+        auto selected = selected_request;
+        if (change == 0) {
+            value.reset();
+        } else if (change == 1) {
+            value->threshold_bin = 4095;
+        } else if (change == 2) {
+            value->threshold_bin = 2046;
+        } else {
+            selected.binarize = "sauvola";
+        }
+        SuccessfulProcessor processor;
+        processor.otsu = value;
+        const auto refused = app::dispatch(selected, processor, verifier);
+        CHECK(std::get<app::Failure>(refused.payload).error.code ==
+              core::ErrorCode::publication_unknown);
+        CHECK(std::get<app::Failure>(refused.payload).error.publication ==
+              core::Publication::unknown);
+    }
 }
 } // namespace docenhance::tests

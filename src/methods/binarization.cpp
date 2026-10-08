@@ -6,6 +6,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/fixed_threshold.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/sauvola.hpp"
 
 #include <cmath>
@@ -42,6 +43,9 @@ namespace {
 struct Scratch {
     std::uint32_t width;
     unsigned workers;
+    core::Result<std::size_t> operator()(const Otsu& /*method*/) const {
+        return otsu_scratch_bytes;
+    }
     core::Result<std::size_t> operator()(const FixedThreshold& /*method*/) const {
         return 0;
     }
@@ -54,6 +58,10 @@ struct Apply {
     image::PlaneView<const std::uint8_t> source;
     image::PlaneView<std::uint8_t> destination;
     BinarizationContext context;
+    core::Result<void> operator()(const Otsu& /*method*/) const {
+        const auto result = otsu(source, destination, context);
+        return result ? core::Result<void>{} : std::unexpected(result.error());
+    }
     core::Result<void> operator()(const FixedThreshold& method) const {
         return fixed_threshold(source, destination, method.threshold(),
                                context.scheduler.get().cancellation());
