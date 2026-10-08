@@ -17,7 +17,6 @@
 #include <limits>
 #include <new>
 #include <opencv2/core.hpp>
-#include <opencv2/core/base.hpp>
 #include <opencv2/core/exception.hpp>
 #include <utility>
 #include <variant>

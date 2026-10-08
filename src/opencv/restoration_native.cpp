@@ -14,6 +14,10 @@
 #include <expected>
 #include <new>
 #include <opencv2/core.hpp>
+#include <opencv2/core/base.hpp>
+#include <opencv2/core/exception.hpp>
+#include <opencv2/core/hal/interface.h>
+#include <opencv2/core/mat.hpp>
 namespace docenhance::opencv {
 namespace {
 core::Result<void> transform(image::PlaneView<float> input, image::PlaneView<float> output,
