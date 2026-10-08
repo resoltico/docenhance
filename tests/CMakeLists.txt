@@ -157,6 +157,14 @@ de_apply_options(de_restoration_resources)
 add_test(NAME restoration-native-resources COMMAND de_restoration_resources)
 set_tests_properties(restoration-native-resources PROPERTIES TIMEOUT 90)
 
+if(DE_ENABLE_TSAN AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  # These probes replace new/delete for fault injection. ELF's TSan C++ archive defines
+  # the same strong symbols; the primary TSan runtime still observes their malloc/free.
+  foreach(de_allocation_probe de_denoising_resources de_cli_allocation de_resource_limits de_restoration_resources)
+    target_link_options(${de_allocation_probe} PRIVATE -fno-sanitize-link-c++-runtime)
+  endforeach()
+endif()
+
 get_property(de_static_tests DIRECTORY PROPERTY TESTS)
 string(JSON de_native_inventory SET "{}" "static_tests" "[]")
 de_json_array(de_native_inventory "static_tests" "${de_static_tests}")

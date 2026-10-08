@@ -118,6 +118,12 @@ export CC=clang-23 CXX=clang++-23
 cmake --workflow --preset sanitize
 ```
 
+The Linux TSan allocation-failure probes link with `-fno-sanitize-link-c++-runtime` because they
+provide their own replaceable `new`/`delete` fault injectors, which otherwise conflict with the
+ELF TSan C++ archive's strong definitions. Compiler race instrumentation and the primary TSan
+runtime's `malloc`/`free` observation remain enabled; other targets retain their ordinary runtime
+link configuration.
+
 Substitute the major recorded in `deps/tools.json` for `23`. Never change compilers inside an
 existing build directory. A configure that reports `DE_TOOLCHAIN=analysis requires LLVM clang` is
 naming the actual compiler CMake found; install or select the supported major rather than relaxing the
