@@ -30,6 +30,7 @@ from architecture import ArchitectureError, Manifest
 from architecture_api import api_violations, find_clang_query, matchers
 from architecture_boundary import INCLUDE_DIRECTIVE, private_header_error
 from compile_db import (
+    LayerRoots,
     compilation_database,
     compiler_arguments,
     included_headers,
@@ -54,9 +55,10 @@ def header_violations(
     allowed, packages = manifest.reach(root) | {root}, manifest.package_reach(root)
     roots = package_roots(entry, build)
     present: dict[str, set[str]] = {}
+    layers = LayerRoots()
     # Production syntax is checked by the mandatory AST pass; clients have no such pass.
     for spelled, header in included_headers(entry, syntax=owner is None):
-        reached = layer_of(manifest, header)
+        reached = layers.layer_of(manifest, header)
         if reached is not None:
             present.setdefault(reached, set()).update((spelled, header))
             private = private_header_error(owner, Path(header))

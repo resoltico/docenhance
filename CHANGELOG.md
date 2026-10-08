@@ -28,6 +28,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
+- Verification admits each test process's response schema once while validating every actual response, reuses canonical layer roots within each native compiler trace while resolving every observed header freshly, and skips duplicate Otsu reference plateaus without changing their earliest-threshold semantics. Exhaustive oracle equivalence, path ownership controls, all fixtures and required fuzz exposures remain checked. See [quality](docs/quality.md).
+
 - Verification compiles independent reference sources concurrently and runs tooling modules in fresh bounded processes, reconciling every case and rejecting skipped or expected-failure work. CI starts independent execution roles together, uses observed build cores and selects four fuzz workers on suitable hosted runners. Full fixtures, per-target exposure times, failure propagation and final coverage gates remain required. Actual CMake source/target admission requires effective compiler and lint protection; body size and complexity limits cannot be suppressed. Fixed foreign callback ABIs use a separate parameter-only check. Production files cannot gain a larger limit by being named `test_*`. See [quality](docs/quality.md).
 
 ## [0.7.0] - 2026-10-07
