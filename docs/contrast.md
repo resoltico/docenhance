@@ -3,7 +3,7 @@
 ## Design
 
 Contrast is explicitly selected with `--contrast levels` (C01) or `--contrast gamma` (C02) or `--contrast clahe` (C03),
-defaulting to off. It follows the selected illumination and denoising methods and precedes final
+defaulting to off. It follows the selected illumination, denoising and restoration methods and precedes final
 PNG quantization. Continuous PNG/JPEG/TIFF preserve/gray use the current float64 linear-RGB
 working contract; no additional package or layer edge is needed. C03 uses the same pipeline and color transport.
 
@@ -48,7 +48,7 @@ Cancellation is execution control, with bounded checkpoints in mask counting, tr
 validation, sorting, mapping and reconstruction. Preserve final publication cutoff and error
 precedence. Numeric kernels remain free of I/O, allocation expressions and exception handling.
 
-Typed alternatives own admission and the runtime catalog. Response/record version 10 includes a closed
+Typed alternatives own admission and the runtime catalog. Response/record version 11 includes a closed
 contrast request and stage record, including explicit disabled records. Obsolete forms are rejected;
 update consumers and visitors together. No recipes or arbitrary operation graph are introduced.
 

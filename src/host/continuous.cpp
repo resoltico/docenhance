@@ -15,6 +15,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/io/paths.hpp"
 #include "docenhance/io/protection_png.hpp"
@@ -25,6 +26,7 @@
 #include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "linear_rows.hpp"
+#include "restoration.hpp"
 #include "run_publication.hpp"
 #include "sharpening.hpp"
 #include "stage_reports.hpp"
@@ -119,36 +121,6 @@ core::Result<Protection> load_protection(const app::ProcessRequest& request,
     }
     return result;
 }
-core::Result<app::PublishedContinuous> published_image(PublishedRun published,
-                                                       image::SourceDescription source,
-                                                       const ContinuousReports& reports) {
-    const auto& illumination = reports.illumination.get();
-    const auto& denoising = reports.denoising.get();
-    const auto& contrast = reports.contrast.get();
-    const auto& sharpening = reports.sharpening.get();
-    // The conversion the record states, so the response and the record cannot disagree.
-    if (!published.conversion) {
-        return std::unexpected(core::Error{
-            .code = core::ErrorCode::output_verify,
-            .message = "Published continuous record has no conversion observations",
-            .publication = core::Publication::completed,
-        });
-    }
-    auto report = *published.conversion;
-    // Derived from the comparison that ran, not asserted because publication returned.
-    report.verified = published.verification == bundle::Verification::decoded_and_compared;
-    return app::PublishedContinuous{
-        .output = std::move(published.output),
-        .conversion = report,
-        .illumination = illumination,
-        .run = std::move(published.run),
-        .record = std::move(published.record),
-        .source_decoding = source,
-        .denoising = denoising,
-        .contrast = contrast,
-        .sharpening = sharpening,
-    };
-}
 core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source, bool prepared,
                                                      const ContinuousRun& run,
                                                      const Protection& protection,
@@ -180,6 +152,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
                 .denoising = denoising,
                 .contrast = contrast,
                 .sharpening = sharpening,
+                .restoration = run.reports.restoration.get(),
             },
         .budget = budget,
         .cancellation = cancellation,
@@ -192,7 +165,70 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
     if (!published) {
         return std::unexpected(std::move(published.error()));
     }
-    return published_image(std::move(*published), decoded.description, run.reports);
+    return published_continuous(std::move(*published), decoded.description, run.reports);
+}
+core::Result<app::PublishedContinuous> finish_frame(image::LinearSource& source,
+                                                    bool source_prepared, const ContinuousRun& run,
+                                                    const Protection& protection,
+                                                    const io::IdentifiedRaster& decoded) {
+    auto& contrast = run.reports.contrast.get();
+    auto& budget = run.budget.get();
+    const auto& cancellation = run.cancellation.get();
+    contrast.eligible_samples = run.reports.denoising.get().eligible_samples;
+    contrast.protected_samples = run.reports.denoising.get().protected_samples;
+    const ContrastInput contrast_input{
+        .source = source,
+        .mask = protection.mask.view(),
+        .prepared = source_prepared,
+    };
+    auto mapping = prepare_contrast(contrast_input, run.request.get().contrast(), budget,
+                                    cancellation, contrast);
+    if (!mapping) {
+        return std::unexpected(mapping.error());
+    }
+    ContrastedSource contrasted{contrast_input, *mapping ? &**mapping : nullptr, contrast,
+                                cancellation};
+    run.reports.sharpening.get().eligible_samples = contrast.eligible_samples;
+    run.reports.sharpening.get().protected_samples = contrast.protected_samples;
+    const SharpenInput sharpen_input{
+        .source = contrasted,
+        .mask = protection.mask.view(),
+        .prepared = contrasted.prepared(),
+    };
+    auto sharpening_model = prepare_sharpening(sharpen_input, run.request.get().sharpening(),
+                                               budget, cancellation, run.reports.sharpening.get());
+    if (!sharpening_model) {
+        return std::unexpected(sharpening_model.error());
+    }
+    SharpenedSource sharpened{sharpen_input, *sharpening_model ? &**sharpening_model : nullptr,
+                              run.reports.sharpening.get(), cancellation};
+    return publish_frame(sharpened, sharpened.prepared(), run, protection, decoded);
+}
+core::Result<app::PublishedContinuous>
+restore_and_finish(image::LinearSource& source, bool source_prepared, const ContinuousRun& run,
+                   const Protection& protection, const io::IdentifiedRaster& decoded) {
+    auto& budget = run.budget.get();
+    const auto& cancellation = run.cancellation.get();
+    auto& restoration = run.reports.restoration.get();
+    restoration.eligible_samples = run.reports.denoising.get().eligible_samples;
+    restoration.protected_samples = run.reports.denoising.get().protected_samples;
+    const RestoreInput restoration_input{
+        .source = source,
+        .mask = protection.mask.view(),
+        .prepared = source_prepared,
+        .geometry_transformed =
+            run.converter.get().report().orientation != image::Orientation::normal(),
+        .illumination = run.reports.illumination.get(),
+        .denoising = run.reports.denoising.get(),
+    };
+    auto restored_model = prepare_restoration(restoration_input, run.request.get().restoration(),
+                                              budget, cancellation, restoration);
+    if (!restored_model) {
+        return std::unexpected(restored_model.error());
+    }
+    RestoredSource restored{restoration_input, *restored_model ? &**restored_model : nullptr,
+                            restoration, cancellation};
+    return finish_frame(restored, restored.prepared(), run, protection, decoded);
 }
 } // namespace
 core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& request,
@@ -201,10 +237,9 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
                                                   ContinuousReports reports) {
     auto& illumination = reports.illumination.get();
     auto& denoising = reports.denoising.get();
-    auto& contrast = reports.contrast.get();
     const auto& cancellation = execution.cancellation.get();
     core::Budget budget{core::continuous_processing_budget};
-    initialize_stages(request, illumination, denoising, contrast, reports.sharpening.get());
+    initialize_stages(request, reports);
     auto decoded =
         io::load_source(request.input(), budget, operation.parameters().profile, cancellation);
     if (!decoded) {
@@ -247,34 +282,6 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
             return std::unexpected(assessed.error());
         }
     }
-    contrast.eligible_samples = denoising.eligible_samples;
-    contrast.protected_samples = denoising.protected_samples;
-    const ContrastInput contrast_input{
-        .source = final_source,
-        .mask = protection->mask.view().as_const(),
-        .prepared = active_denoising(*planes),
-    };
-    auto mapping =
-        prepare_contrast(contrast_input, request.contrast(), budget, cancellation, contrast);
-    if (!mapping) {
-        return std::unexpected(mapping.error());
-    }
-    ContrastedSource contrasted{contrast_input, *mapping ? &**mapping : nullptr, contrast,
-                                cancellation};
-    reports.sharpening.get().eligible_samples = contrast.eligible_samples;
-    reports.sharpening.get().protected_samples = contrast.protected_samples;
-    const SharpenInput sharpen_input{
-        .source = contrasted,
-        .mask = protection->mask.view().as_const(),
-        .prepared = contrasted.prepared(),
-    };
-    auto sharpening_model = prepare_sharpening(sharpen_input, request.sharpening(), budget,
-                                               cancellation, reports.sharpening.get());
-    if (!sharpening_model) {
-        return std::unexpected(sharpening_model.error());
-    }
-    SharpenedSource sharpened{sharpen_input, *sharpening_model ? &**sharpening_model : nullptr,
-                              reports.sharpening.get(), cancellation};
-    return publish_frame(sharpened, sharpened.prepared(), run, *protection, *decoded);
+    return restore_and_finish(final_source, active_denoising(*planes), run, *protection, *decoded);
 }
 } // namespace docenhance::host

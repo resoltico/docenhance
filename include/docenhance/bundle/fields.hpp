@@ -8,6 +8,7 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <nlohmann/json.hpp>
@@ -19,6 +20,9 @@
 namespace docenhance::bundle {
 [[nodiscard]] nlohmann::ordered_json
 binarization_fields(const std::optional<methods::OtsuObservation>& observation);
+[[nodiscard]] nlohmann::ordered_json restoration_fields(const methods::RestorationReport& report);
+[[nodiscard]] nlohmann::ordered_json
+restoration_request_fields(const methods::RestorationReport& report);
 [[nodiscard]] nlohmann::ordered_json sharpen_fields(const methods::SharpenReport& report);
 [[nodiscard]] nlohmann::ordered_json sharpen_request_fields(const methods::SharpenReport& report);
 [[nodiscard]] nlohmann::ordered_json tvl1_fields(const methods::Tvl1Report& report);

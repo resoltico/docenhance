@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-namespace docenhance::denoise {
+namespace docenhance::opencv {
 // Native-free borrowed views. The caller owns source, destination and tile storage.
 struct NativeCall {
     std::size_t reserved_bytes;
@@ -29,4 +29,4 @@ struct NlmExecution {
 [[nodiscard]] core::Result<void> denoise(image::PlaneView<const std::uint16_t> input,
                                          image::PlaneView<std::uint16_t> output,
                                          NlmExecution execution);
-} // namespace docenhance::denoise
+} // namespace docenhance::opencv

@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 10; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 11; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -464,3 +464,29 @@ score pass chooses the smallest threshold within tolerance of the global maximum
 order-dependent approximate ties. Single-bin fallback and exact endpoint polarity are reported.
 Version 10 closes those observations and rejects obsolete records; B02/B03 mathematics and
 Sauvola default selection remain unchanged. See [binarization](binarization.md).
+
+## Known PSF is explicit inference with one immutable restoration field
+
+R01 follows denoising before contrast. Gaussian, midpoint-bilinear motion and raw grayscale PNG
+coefficients resolve one normalized PSF in oriented processing coordinates. A centered kernel
+origin, global reflected guard and full complex float32 DFT preserve phase; subtracting/restoring
+the padded mean avoids regularizer-induced DC attenuation. Native DFT calls share the bounded
+OpenCV backend with NLM and remain noninterruptible during a call. Admission, resolved geometry,
+conservative native reservation and before/after checkpoints are separate obligations.
+
+A simpler direct spatial inverse would avoid FFT workspace but would implement a different
+regularized model and discard the reviewed frequency equation. A second native FFT package would
+add licensing/configuration and cancellation boundaries without need. The existing pinned OpenCV
+core provides the transform while first-party code owns normalization, phase, filtering and blend.
+The source/model fields remain immutable through verification; protected destinations and one final
+quantization retain existing semantics. Inference warnings remain mandatory even for a zero-blend
+or constant identity; no image agreement verifies the real camera PSF. See [restoration](restoration.md).
+
+The independent native allocation probe exposed a pinned OpenCV CPU factory ownership defect:
+allocation failure during initialization leaked the raw DFT context before its `Ptr` was formed.
+A first-party catch cannot destroy a foreign owner it never received. The minimal dependency recipe
+therefore establishes `Ptr` ownership before initialization in exactly the four FFT factories,
+leaving DCT and all numerical operations unchanged. The original cache stays locked and untouched;
+private copies preserve original upstream notices. Source identity/actual compilation admission
+and real allocation-failure cleanup are checked separately. Reservation accounting alone cannot
+prove native cleanup. No leak suppression or successful-copy fallback is admitted.

@@ -3,12 +3,15 @@
 #include "run_publication.hpp"
 
 #include "bundle_verify.hpp"
+#include "continuous.hpp"
+#include "docenhance/app/process.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/source.hpp"
 #include "docenhance/io/continuous_png.hpp"
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
@@ -16,6 +19,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <expected>
@@ -128,6 +132,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     const methods::DenoisingReport disabled{.complete = true};
     const methods::ContrastReport disabled_contrast{.complete = true};
     const methods::SharpenReport disabled_sharpen{.complete = true};
+    const methods::RestorationReport disabled_restoration{.complete = true};
     bundle::RunRecord record{
         .context = run.context.get(),
         .build = core::build_facts(),
@@ -146,6 +151,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         .denoising = disabled,
         .contrast = disabled_contrast,
         .sharpening = disabled_sharpen,
+        .restoration = disabled_restoration,
     };
     std::visit(
         [&record](const auto& artwork) {
@@ -157,6 +163,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
                 record.denoising = artwork.denoising.get();
                 record.contrast = artwork.contrast.get();
                 record.sharpening = artwork.sharpening.get();
+                record.restoration = artwork.restoration.get();
             }
         },
         run.artwork);
@@ -181,6 +188,37 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
 }
 } // namespace
 
+core::Result<app::PublishedContinuous> published_continuous(PublishedRun published,
+                                                            image::SourceDescription source,
+                                                            const ContinuousReports& reports) {
+    const auto& illumination = reports.illumination.get();
+    const auto& denoising = reports.denoising.get();
+    const auto& contrast = reports.contrast.get();
+    const auto& sharpening = reports.sharpening.get();
+    // The conversion the record states, so the response and the record cannot disagree.
+    if (!published.conversion) {
+        return std::unexpected(core::Error{
+            .code = core::ErrorCode::output_verify,
+            .message = "Published continuous record has no conversion observations",
+            .publication = core::Publication::completed,
+        });
+    }
+    auto report = *published.conversion;
+    // Derived from the comparison that ran, not asserted because publication returned.
+    report.verified = published.verification == bundle::Verification::decoded_and_compared;
+    return app::PublishedContinuous{
+        .output = std::move(published.output),
+        .conversion = report,
+        .illumination = illumination,
+        .run = std::move(published.run),
+        .record = std::move(published.record),
+        .source_decoding = source,
+        .denoising = denoising,
+        .contrast = contrast,
+        .sharpening = sharpening,
+        .restoration = reports.restoration.get(),
+    };
+}
 core::Result<PublishedRun> publish_run(const RunPublication& run) {
     Composition composed{run};
     std::vector<io::BundleFile> files;

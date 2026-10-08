@@ -43,6 +43,10 @@ struct PngReadPolicy {
 [[nodiscard]] core::Result<image::Raster>
 decode_result_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
                          const core::Cancellation& cancellation);
+// Stored-sample auxiliaries share the framing/native decoder without interpretation.
+[[nodiscard]] core::Result<image::Raster>
+decode_stored_png_raster(std::span<const std::uint8_t> bytes, core::Budget& budget,
+                         PngLimits limits, const core::Cancellation& cancellation);
 [[nodiscard]] core::Result<core::Buffer> inflate_profile(std::span<const std::uint8_t> bytes,
                                                          core::Budget& budget);
 } // namespace docenhance::io

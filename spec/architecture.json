@@ -305,7 +305,7 @@
         "image",
         "io",
         "methods",
-        "denoise"
+        "opencv"
       ],
       "external": []
     },
@@ -337,9 +337,9 @@
       "may_catch": true,
       "may_allocate": true
     },
-    "denoise": {
-      "target": "de_denoise",
-      "summary": "Bounded native NLM execution and resource reservation",
+    "opencv": {
+      "target": "de_opencv",
+      "summary": "Bounded CPU OpenCV NLM and Fourier restoration execution",
       "uses": [
         "core",
         "image",

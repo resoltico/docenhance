@@ -146,7 +146,7 @@
     "denoising": {
       "source": "denoising.cpp",
       "links": [
-        "de_denoise",
+        "de_opencv",
         "de_methods",
         "de_image",
         "de_core"
@@ -206,6 +206,16 @@
         "de_methods"
       ],
       "max_len": 171
+    },
+    "restoration": {
+      "source": "restoration.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_methods",
+        "de_opencv"
+      ],
+      "max_len": 3
     }
   }
 }

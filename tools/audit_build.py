@@ -18,6 +18,8 @@ FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
 # native allocation-refusal tests separately prove cleanup behavior.
 TIFF_COMPLETE_ZIP_SHA256 = "551b35ed562b1ebbb5e4577afc5fc57d195667b1294b6a31123fac0ec2810275"
 TIFF_CHARGED_JPEG_SHA256 = "c51749f755cf1fe0fcca8bfd02be1dedeaa5c8affceac22c89b43cd6acd741b7"
+# Identity of the reviewed four-factory DFT RAII correction; native failure probes prove cleanup.
+OPENCV_OWNED_DXT_SHA256 = "674003b28f001700e59ee5f2298898e01adc6db56b8c70c320e37efe2827d1d7"
 JSON_BOUNDED_HEADER_SHA256 = "f504f6fa07b84e3e264a1f7757f15da1502bb539285c90e908c1cabab47b572e"
 
 
@@ -107,6 +109,26 @@ def tiff_zip_failures(binary: Path) -> list[str]:
     return failures
 
 
+def opencv_dft_failures(binary: Path, source_directory: Path, original_digest: str) -> list[str]:
+    """Bind the unchanged locked FFT source and the actual corrected compilation input."""
+    original = source_directory / "modules/core/src" / "dxt.cpp"
+    owned = binary / "owned-source/dxt.cpp"
+    if not original.is_file() or not owned.is_file():
+        return ["OpenCV: missing locked or corrected DFT context source"]
+    failures = []
+    if hashlib.sha256(original.read_bytes()).hexdigest() != original_digest:
+        failures.append("OpenCV: original FFT source differs from its reviewed lock binding")
+    if hashlib.sha256(owned.read_bytes()).hexdigest() != OPENCV_OWNED_DXT_SHA256:
+        failures.append("OpenCV: FFT source differs from the reviewed DFT ownership correction")
+    commands = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
+    compiled = [
+        Path(entry["file"]).resolve() for entry in commands if Path(entry["file"]).name == "dxt.cpp"
+    ]
+    if compiled != [owned.resolve()]:
+        failures.append("OpenCV: FFT compilation does not use exactly the corrected private source")
+    return failures
+
+
 def source_recipe_failures(name: str, binary: Path) -> list[str]:
     """Inspect private upstream adaptations independently of feature cache values."""
     if name == "tiff":
@@ -139,6 +161,13 @@ def feature_failures(
     if name == "opencv":
         modules = set(cache.get("OPENCV_MODULES_BUILD", "").split(";"))
         expected_modules = {"opencv_" + part for part in str(settings["BUILD_LIST"]).split(",")}
+        failures.extend(
+            opencv_dft_failures(
+                binary,
+                Path(cache.get("CMAKE_HOME_DIRECTORY", "")),
+                str(settings["DOCENHANCE_OPENCV_DXT_SHA256"]),
+            )
+        )
         if modules != expected_modules:
             failures.append(f"OpenCV module closure differs: {sorted(modules)}")
     failures.extend(source_recipe_failures(name, binary))

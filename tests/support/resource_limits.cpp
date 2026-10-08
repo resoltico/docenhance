@@ -48,10 +48,9 @@ bool selection() {
            allocation::allocation_attempts.load() == 0 && allocation::peak.load() == 0 &&
            allocation::live.load() == 0;
 }
-bool record_bookkeeping() {
+bool record_bookkeeping_case(std::size_t objects) {
     std::string input = "[";
-    constexpr unsigned objects = 10000;
-    for (unsigned i = 0; i < objects; ++i) {
+    for (std::size_t i = 0; i < objects; ++i) {
         input += i == 0 ? "{}" : ",{}";
     }
     input += ']';
@@ -68,6 +67,12 @@ bool record_bookkeeping() {
     constexpr std::size_t fixture_payload_limit = std::size_t{128} * 1024;
     return rejected && allocation::peak.load() <= fixture_payload_limit &&
            allocation::live.load() == 0;
+}
+bool record_bookkeeping() {
+    // One case follows the admitted event boundary; the original shallow adversary stays tested.
+    constexpr std::size_t shallow_adversary_objects = 10000;
+    return record_bookkeeping_case((docenhance::bundle::record_max_events / 2) + 1) &&
+           record_bookkeeping_case(shallow_adversary_objects);
 }
 bool record_allocation_refusal() {
 #if !DE_ALLOCATION_SANITIZER_OBSERVATION
@@ -134,7 +139,8 @@ bool ledger_refusal() {
     const auto exact = budget.allocate(64);
     return exact && budget.used() == 64 && budget.available() == 0;
 #else
-    // TSan owns the replaceable allocation ABI; native/ASan exercise allocator refusal.
+    // This probe keeps ledger refusal in native/ASan runs; TSan observes the heap ledger.
+    // The separate native restoration probe injects its C++ allocation failures in TSan too.
     return true;
 #endif
 }
@@ -180,7 +186,7 @@ int main() {
         }
         std::cout << "PASS: bounded record bookkeeping and allocation-free maximum selection\n";
 #if DE_ALLOCATION_SANITIZER_OBSERVATION
-        std::cout << "TSan retains allocator ownership; refusal runs in native/ASan modes\n";
+        std::cout << "TSan observes heap storage here; ledger refusal runs in native/ASan modes\n";
 #else
         std::cout << "PASS: ledger-control refusal and exact-budget admission\n";
 #endif

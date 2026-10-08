@@ -3,16 +3,16 @@
 #include "allocation_observer.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/denoise/nlm.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/opencv/nlm.hpp"
+#include "observed_mat_allocator.hpp"
 
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
-#include <functional>
 #include <iostream>
 #include <opencv2/core/exception.hpp>
 #include <opencv2/core/mat.hpp>
@@ -21,49 +21,12 @@
 #include <opencv2/core/utils/logger.hpp>
 namespace {
 namespace allocation = docenhance::tests::allocation_observer;
-class ObservedMatAllocator final : public cv::MatAllocator {
-  public:
-    explicit ObservedMatAllocator(cv::MatAllocator& upstream, bool refuse_payload = false)
-        : upstream_(upstream), refuse_payload_(refuse_payload) {}
-    // Fixed public native allocator ABI, including shape, storage and access flags.
-    // NOLINTNEXTLINE(google-readability-function-size)
-    cv::UMatData* allocate(int dimensions, const int* sizes, int type, void* data,
-                           std::size_t* step, cv::AccessFlag flags,
-                           cv::UMatUsageFlags usage) const override {
-        if (data == nullptr && (refuse_payload_ || allocation::refuse_allocation())) {
-            CV_Error(cv::Error::StsNoMem, "Observed native Mat allocation refusal");
-        }
-        auto* const result =
-            upstream_.get().allocate(dimensions, sizes, type, data, step, flags, usage);
-        if (!DE_ALLOCATION_SANITIZER_OBSERVATION && result != nullptr && data == nullptr &&
-            allocation::observing.load()) {
-            allocation::acquire_bytes(result->size);
-            result->currAllocator = this;
-        }
-        return result;
-    }
-    bool allocate(cv::UMatData* data, cv::AccessFlag flags,
-                  cv::UMatUsageFlags usage) const override {
-        return upstream_.get().allocate(data, flags, usage);
-    }
-    void deallocate(cv::UMatData* data) const override {
-        if (!DE_ALLOCATION_SANITIZER_OBSERVATION && data != nullptr) {
-            allocation::live.fetch_sub(data->size);
-            data->currAllocator = &upstream_.get();
-        }
-        upstream_.get().deallocate(data);
-    }
-
-  private:
-    std::reference_wrapper<cv::MatAllocator> upstream_;
-    bool refuse_payload_;
-};
 } // namespace
 namespace {
 namespace core = docenhance::core;
 namespace image = docenhance::image;
 namespace methods = docenhance::methods;
-namespace denoise = docenhance::denoise;
+namespace denoise = docenhance::opencv;
 struct NativeObservation {
     bool completed;
     double seconds;
@@ -76,7 +39,7 @@ NativeObservation observe_call(docenhance::image::PlaneView<const std::uint16_t>
                                docenhance::core::Budget& budget) {
     allocation::observing.store(true);
     const auto started = std::chrono::steady_clock::now();
-    const auto applied = docenhance::denoise::native_tile(input, output, method, budget);
+    const auto applied = docenhance::opencv::native_tile(input, output, method, budget);
     const auto seconds =
         std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
     allocation::observing.store(false);
@@ -109,9 +72,9 @@ int measure() {
         return 1;
     }
     auto* const original = cv::Mat::getDefaultAllocator();
-    ObservedMatAllocator allocator{*original};
+    docenhance::tests::ObservedMatAllocator allocator{*original};
     {
-        ObservedMatAllocator refused_allocator{*original, true};
+        docenhance::tests::ObservedMatAllocator refused_allocator{*original, true};
         cv::Mat::setDefaultAllocator(&refused_allocator);
         const auto refused =
             denoise::native_tile(input.view().as_const(), output.view(), method, budget);

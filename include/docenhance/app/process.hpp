@@ -14,6 +14,7 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <expected>
@@ -32,7 +33,8 @@ class ProcessRequest {
         : input_(std::exchange(other.input_, {})), output_(std::move(other.output_)),
           operation_(other.operation_), illumination_(other.illumination_),
           protection_(std::move(other.protection_)), denoising_(other.denoising_),
-          contrast_(other.contrast_), sharpening_(other.sharpening_) {}
+          restoration_(std::move(other.restoration_)), contrast_(other.contrast_),
+          sharpening_(other.sharpening_) {}
     ProcessRequest& operator=(ProcessRequest&& other) noexcept {
         if (this != &other) {
             input_ = std::exchange(other.input_, {});
@@ -41,6 +43,7 @@ class ProcessRequest {
             illumination_ = other.illumination_;
             protection_ = std::move(other.protection_);
             denoising_ = other.denoising_;
+            restoration_ = std::move(other.restoration_);
             contrast_ = other.contrast_;
             sharpening_ = other.sharpening_;
         }
@@ -49,7 +52,8 @@ class ProcessRequest {
     ~ProcessRequest() = default;
     [[nodiscard]] bool ready() const noexcept {
         return core::valid_path(input_) && core::valid_path(output_) &&
-               (!protection_ || core::valid_path(*protection_));
+               (!protection_ || core::valid_path(*protection_)) &&
+               methods::valid_restoration_paths(restoration_);
     }
     [[nodiscard]] const std::string& input() const& noexcept {
         return input_;
@@ -71,6 +75,10 @@ class ProcessRequest {
         return denoising_;
     }
     [[nodiscard]] const methods::Denoising& denoising() const&& = delete;
+    [[nodiscard]] const methods::Restoration& restoration() const& noexcept {
+        return restoration_;
+    }
+    [[nodiscard]] const methods::Restoration& restoration() const&& = delete;
     [[nodiscard]] const methods::Contrast& contrast() const& noexcept {
         return contrast_;
     }
@@ -89,6 +97,7 @@ class ProcessRequest {
     struct Enhancements {
         methods::Illumination illumination;
         methods::Denoising denoising;
+        methods::Restoration restoration;
         methods::Contrast contrast;
         methods::Sharpening sharpening;
     };
@@ -96,14 +105,15 @@ class ProcessRequest {
                    Enhancements enhancements, std::optional<std::string> protection)
         : input_(std::move(input)), output_(std::move(output)), operation_(operation),
           illumination_(enhancements.illumination), protection_(std::move(protection)),
-          denoising_(enhancements.denoising), contrast_(enhancements.contrast),
-          sharpening_(enhancements.sharpening) {}
+          denoising_(enhancements.denoising), restoration_(std::move(enhancements.restoration)),
+          contrast_(enhancements.contrast), sharpening_(enhancements.sharpening) {}
     std::string input_;
     std::string output_;
     Operation operation_;
     methods::Illumination illumination_;
     std::optional<std::string> protection_;
     methods::Denoising denoising_;
+    methods::Restoration restoration_;
     methods::Contrast contrast_;
     methods::Sharpening sharpening_;
 };
@@ -127,6 +137,7 @@ struct PublishedContinuous {
     methods::DenoisingReport denoising;
     methods::ContrastReport contrast;
     methods::SharpenReport sharpening;
+    methods::RestorationReport restoration;
 };
 using Published = std::variant<PublishedBinary, PublishedContinuous>;
 struct Processed {
@@ -143,6 +154,7 @@ struct ProcessFailure {
     std::optional<methods::ContrastReport> contrast = std::nullopt;
     std::optional<methods::SharpenReport> sharpening = std::nullopt;
     std::optional<methods::IlluminationReport> illumination = std::nullopt;
+    std::optional<methods::RestorationReport> restoration = std::nullopt;
 };
 using ProcessResult = std::expected<Published, ProcessFailure>;
 [[nodiscard]] inline std::unexpected<ProcessFailure>

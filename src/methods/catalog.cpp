@@ -6,6 +6,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
@@ -13,32 +14,24 @@
 #include <array>
 #include <cstddef>
 #include <span>
+#include <tuple>
 #include <utility>
 #include <variant>
 namespace docenhance::methods {
 namespace {
-template <std::size_t... Lights, std::size_t... Denoisers, std::size_t... Contrasts,
-          std::size_t... Sharpens, std::size_t... Indices>
-constexpr auto executable_catalog(std::index_sequence<Lights...> /*lights*/,
-                                  std::index_sequence<Denoisers...> /*denoisers*/,
-                                  std::index_sequence<Contrasts...> /*contrasts*/,
-                                  std::index_sequence<Sharpens...> /*sharpens*/,
-                                  std::index_sequence<Indices...> /*indices*/) noexcept {
-    return std::array{std::variant_alternative_t<Lights + 1, Illumination>::descriptor()...,
-                      std::variant_alternative_t<Denoisers + 1, Denoising>::descriptor()...,
-                      std::variant_alternative_t<Contrasts + 1, Contrast>::descriptor()...,
-                      std::variant_alternative_t<Sharpens + 1, Sharpening>::descriptor()...,
-                      std::variant_alternative_t<Indices, Binarization>::descriptor()...};
+template <typename Variant, std::size_t First, std::size_t... Indices>
+constexpr auto executable_variants(std::index_sequence<Indices...> /*indices*/) noexcept {
+    return std::array{std::variant_alternative_t<First + Indices, Variant>::descriptor()...};
 }
-constexpr auto illumination_indices =
-    std::make_index_sequence<std::variant_size_v<Illumination> - 1>{};
-constexpr auto binarization_indices = std::make_index_sequence<std::variant_size_v<Binarization>>{};
-constexpr auto denoising_indices = std::make_index_sequence<std::variant_size_v<Denoising> - 1>{};
-constexpr auto contrast_indices = std::make_index_sequence<std::variant_size_v<Contrast> - 1>{};
-constexpr auto sharpening_indices = std::make_index_sequence<std::variant_size_v<Sharpening> - 1>{};
-constexpr auto catalog =
-    executable_catalog(illumination_indices, denoising_indices, contrast_indices,
-                       sharpening_indices, binarization_indices);
+template <typename Variant, std::size_t First = 1> constexpr auto executable_variants() noexcept {
+    return executable_variants<Variant, First>(
+        std::make_index_sequence<std::variant_size_v<Variant> - First>{});
+}
+constexpr auto catalog = std::apply(
+    [](const auto&... descriptors) { return std::array{descriptors...}; },
+    std::tuple_cat(executable_variants<Illumination>(), executable_variants<Denoising>(),
+                   executable_variants<Contrast>(), executable_variants<Sharpening>(),
+                   executable_variants<Restoration>(), executable_variants<Binarization, 0>()));
 static_assert(std::ranges::equal(catalog, reviewed_methods),
               "Reviewed capabilities and executable method types must agree");
 } // namespace

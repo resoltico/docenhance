@@ -4,19 +4,25 @@
 
 #include "docenhance/bundle/inventory.hpp"
 #include "docenhance/core/identity.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/restoration.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace docenhance::tests {
 namespace {
@@ -83,6 +89,7 @@ bundle::RunRecord binarized_record() {
         .denoising = {.complete = true},
         .contrast = {.complete = true},
         .sharpening = {.complete = true},
+        .restoration = {.complete = true},
     };
 }
 } // namespace
@@ -118,9 +125,9 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
     }
     SECTION("a version this build does not support") {
         auto altered = *written;
-        const auto at = altered.find("\"version\": 10");
+        const auto at = altered.find("\"version\": 11");
         REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 10").size(), "\"version\": 9");
+        altered.replace(at, std::string_view("\"version\": 11").size(), "\"version\": 10");
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);
@@ -256,6 +263,117 @@ TEST_CASE("Otsu records retain the frozen fit and reject contradictory observati
             altered.operation = binarized_record().operation;
         }
         const auto invalid = bundle::serialize(altered);
+        REQUIRE(invalid);
+        CHECK(!bundle::read_record(as_bytes(*invalid)));
+    }
+}
+namespace {
+bundle::RunRecord restoration_record() {
+    auto record = binarized_record();
+    record.operation = image::Continuous::create({}).value();
+    record.output.profile_embedded = true;
+    record.conversion = image::ConversionReport{
+        .source = record.output.shape,
+        .output = record.output.shape,
+        .interpretation = image::Interpretation::assumed_srgb,
+        .resolution = std::nullopt,
+        .assumed_transfer = true,
+        .verified = true,
+    };
+    record.illumination.complete = true;
+    record.illumination.eligible_samples = 5000;
+    record.denoising.eligible_samples = 5000;
+    record.contrast.eligible_samples = 5000;
+    record.sharpening.eligible_samples = 5000;
+    const auto method = methods::Wiener::create({.blend = 0}).value();
+    methods::ResolvedPsf psf{.width = 7, .height = 7, .coefficients = {}};
+    psf.coefficients.resize(49);
+    REQUIRE(methods::gaussian_psf({}, psf.coefficients));
+    record.restoration = {
+        .status = methods::RestorationStatus::no_change,
+        .reason = methods::RestorationReason::zero_blend,
+        .complete = true,
+        .requested = method.parameters(),
+        .psf = std::move(psf),
+        .eligible_samples = 5000,
+        .inference_warning = true,
+    };
+    return record;
+}
+} // namespace
+TEST_CASE("Restoration records retain resolved kernels and enforce request agreement",
+          "[bundle][restoration]") {
+    auto record = restoration_record();
+    const auto written = bundle::serialize(record);
+    REQUIRE(written);
+    auto declared = bundle::read_record(as_bytes(*written));
+    REQUIRE(declared);
+    CHECK(declared->restoration == record.restoration);
+    for (unsigned change = 0; change < 8; ++change) {
+        auto altered = record;
+        auto& restoration = altered.restoration;
+        if (!restoration.psf || !restoration.requested) {
+            FAIL("Restoration fixture requires resolved PSF and request parameters");
+            return;
+        }
+        if (change == 0) {
+            restoration.psf.value().coefficients.at(0) += 0.01;
+            restoration.psf.value().coefficients.at(1) -= 0.01;
+        } else if (change == 1) {
+            restoration.psf.value().centroid_x = 0.1;
+        } else if (change == 2) {
+            restoration.inference_warning = false;
+        } else if (change == 3) {
+            restoration.after_transform_warning = true;
+        } else if (change == 4) {
+            restoration.eligible_samples -= 1;
+        } else if (change == 5) {
+            restoration.guard = 32;
+        } else if (change == 6) {
+            restoration.native_calls = 1;
+        } else {
+            restoration.requested.value().psf = methods::MotionPsf{};
+        }
+        const auto invalid = bundle::serialize(altered);
+        REQUIRE(invalid);
+        CHECK(!bundle::read_record(as_bytes(*invalid)));
+    }
+    auto mismatch = *written;
+    const auto execution = mismatch.find("\"execution\"");
+    REQUIRE(execution != std::string::npos);
+    const auto at = mismatch.find("\"k\": 0.01", execution);
+    REQUIRE(at != std::string::npos);
+    mismatch.replace(at, std::string_view("\"k\": 0.01").size(), "\"k\": 0.02");
+    CHECK(!bundle::read_record(as_bytes(mismatch)));
+}
+TEST_CASE("Supplied PSF record verification does not depend on a present external path",
+          "[bundle][restoration]") {
+    auto record = restoration_record();
+    auto& restoration = record.restoration;
+    if (!restoration.requested) {
+        FAIL("Restoration fixture requires request parameters");
+        return;
+    }
+    restoration.requested.value().psf = methods::FilePsf{.path = "missing/kernel.png"};
+    for (const auto side : {std::size_t{3}, core::psf_dimension_max}) {
+        restoration.psf = methods::ResolvedPsf{
+            .width = static_cast<std::uint32_t>(side),
+            .height = static_cast<std::uint32_t>(side),
+            .coefficients = std::vector<double>(side * side, 0),
+            .source_identity =
+                methods::PsfIdentity{
+                    .path = "missing/kernel.png",
+                    .identity = {.sha256 = std::string(sample_digest), .bytes = 1024},
+                },
+        };
+        restoration.psf->coefficients.at((side * side) / 2) = 1;
+        const auto written = bundle::serialize(record);
+        REQUIRE(written);
+        const auto declared = bundle::read_record(as_bytes(*written));
+        REQUIRE(declared);
+        CHECK(declared->restoration.psf == restoration.psf);
+        restoration.psf.value().source_identity.reset();
+        const auto invalid = bundle::serialize(record);
         REQUIRE(invalid);
         CHECK(!bundle::read_record(as_bytes(*invalid)));
     }

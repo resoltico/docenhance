@@ -102,7 +102,7 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 10,
+            "schema_version": 11,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
@@ -142,7 +142,7 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 10,
+            "schema_version": 11,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,
@@ -301,3 +301,39 @@ class MethodMetadataTests(unittest.TestCase):
         self.assertFalse(
             validator.is_valid(request | {"method": {"id": "C02", "method_version": 1}})
         )
+
+    def test_restoration_request_preserves_closed_psf_alternatives(self) -> None:
+        """R01 fields are complete, kind-specific, and mandatory even at zero blend."""
+        schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
+        validator = Draft202012Validator(
+            {"$ref": "#/$defs/restoration_request", "$defs": schema["$defs"]}
+        )
+        base: dict[str, Any] = {
+            "method": {"id": "R01", "method_version": 1},
+            "parameters": {"psf": {"kind": "gaussian", "sigma": 1}, "k": 0.01, "blend": 0},
+        }
+        validator.validate(base)
+        for psf in (
+            {"kind": "motion", "length": 5, "angle": -37},
+            {"kind": "kernel", "path": "raw.png"},
+        ):
+            validator.validate(base | {"parameters": base["parameters"] | {"psf": psf}})
+        for change in (
+            {"psf": {"kind": "gaussian"}},
+            {"psf": {"kind": "gaussian", "sigma": 0.29}},
+            {"psf": {"kind": "motion", "length": 5, "angle": 0, "sigma": 1}},
+            {"psf": {"kind": "kernel", "path": ""}},
+            {"psf": {"kind": "kernel", "path": "a\0b"}},
+            {"k": 0},
+            {"k": 1.01},
+            {"blend": -0.1},
+            {"blind": True},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(
+                    validator.is_valid(base | {"parameters": base["parameters"] | change})
+                )
+        self.assertFalse(validator.is_valid(base | {"method": None}))
+        self.assertFalse(validator.is_valid(base | {"method": {"id": "R01", "method_version": 2}}))
+        record = json.loads((ROOT / "schemas/run-record.schema.json").read_text())
+        self.assertEqual(record["$defs"]["restoration_psf"], schema["$defs"]["restoration_psf"])

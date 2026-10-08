@@ -9,6 +9,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
 #include "illumination.hpp"
+#include "restoration.hpp"
 #include "sharpening.hpp"
 
 #include <nlohmann/json.hpp>
@@ -22,6 +23,7 @@ nlohmann::ordered_json continuous_fields(const app::PublishedContinuous& value) 
         {"operation", "continuous"},
         {"illumination", bundle::illumination_fields(value.illumination)},
         {"denoising", bundle::denoising_fields(value.denoising)},
+        {"restoration", bundle::restoration_fields(value.restoration)},
         {"contrast", bundle::contrast_fields(value.contrast)},
         {"sharpening", bundle::sharpen_fields(value.sharpening)},
         {"output", value.output},
@@ -46,6 +48,7 @@ std::string continuous_text(const app::PublishedContinuous& value) {
     }
     text += illumination_text(value.illumination);
     text += denoising_text(value.denoising);
+    text += restoration_text(value.restoration);
     text += contrast_text(value.contrast);
     text += sharpening_text(value.sharpening);
     return text;

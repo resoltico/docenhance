@@ -90,6 +90,7 @@ WrittenBundle written_bundle() {
         .denoising = {.complete = true},
         .contrast = {.complete = true},
         .sharpening = {.complete = true},
+        .restoration = {.complete = true},
     };
     auto record = bundle::serialize(facts);
     REQUIRE(record);

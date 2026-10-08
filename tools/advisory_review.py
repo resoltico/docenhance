@@ -10,7 +10,11 @@ import re
 from datetime import datetime
 from typing import Any
 
-FEATURE_DIGEST = "4bad5ddc536b41d080fbf87e535d2bc695ab5f5521580703a6f11f2ddd1e7eb9"
+# R01 review: the feature delta adds ownership correction for core/dxt.cpp only.
+# The CPU DFT adapter neither reaches imgcodecs/OpenJPEG nor gzip-file APIs. The
+# stream-only zlib recipe and mandatory OpenCV module/provider exclusions are unchanged.
+# The digest binds that reviewed policy; the native audits still verify its actual build.
+FEATURE_DIGEST = "ba855437766218eceeaf5af0046df64322b5bccc3f37e2df69d2d180a7d30d14"
 
 
 def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: bytes) -> bool:

@@ -21,6 +21,7 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "run_publication.hpp"
 
@@ -106,8 +107,16 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         .otsu = otsu,
     };
 }
-void failed_stages(methods::IlluminationReport& report, methods::DenoisingReport& denoising,
-                   methods::ContrastReport& contrast, methods::SharpenReport& sharpening) {
+void failed_stages(ContinuousReports reports) {
+    auto& report = reports.illumination.get();
+    auto& denoising = reports.denoising.get();
+    auto& contrast = reports.contrast.get();
+    auto& sharpening = reports.sharpening.get();
+    auto& restoration = reports.restoration.get();
+    if (restoration.requested && !restoration.complete) {
+        restoration.status = methods::RestorationStatus::failed;
+        restoration.reason = methods::RestorationReason::processing_failure;
+    }
     if (report.requested && !report.complete) {
         report.status = methods::IlluminationStatus::failed;
         if (report.reason == methods::IlluminationReason::none ||
@@ -158,6 +167,7 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
     methods::DenoisingReport denoising;
     methods::ContrastReport contrast;
     methods::SharpenReport sharpening;
+    methods::RestorationReport restoration;
     auto result = continuous(request, std::get<image::Continuous>(request.operation()),
                              {.cancellation = cancellation, .context = context},
                              {
@@ -165,11 +175,24 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
                                  .denoising = denoising,
                                  .contrast = contrast,
                                  .sharpening = sharpening,
+                                 .restoration = restoration,
                              });
     if (!result) {
-        failed_stages(report, denoising, contrast, sharpening);
-        return app::process_failure(std::move(result.error()), report, denoising, contrast,
-                                    sharpening);
+        failed_stages({
+            .illumination = report,
+            .denoising = denoising,
+            .contrast = contrast,
+            .sharpening = sharpening,
+            .restoration = restoration,
+        });
+        return std::unexpected(app::ProcessFailure{
+            .error = std::move(result.error()),
+            .denoising = denoising,
+            .contrast = contrast,
+            .sharpening = sharpening,
+            .illumination = report,
+            .restoration = std::move(restoration),
+        });
     }
     return std::move(*result);
 }

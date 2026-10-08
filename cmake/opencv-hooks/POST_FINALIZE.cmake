@@ -38,3 +38,5 @@ list(REMOVE_ITEM de_core_sources "${de_matrix_source}")
 list(APPEND de_core_sources "${de_owned}")
 set_property(TARGET opencv_core PROPERTY SOURCES "${de_core_sources}")
 target_include_directories(opencv_core PRIVATE "${CMAKE_SOURCE_DIR}/modules/core/src")
+
+include("${CMAKE_CURRENT_LIST_DIR}/fft-ownership.cmake")

@@ -14,6 +14,7 @@ and entirely protected inputs bypass native execution after parameter, source an
 Continuous PNG/JPEG/TIFF preserve/gray are supported; any denoise option on bw is rejected.
 
 The entering samples are opaque oriented linear sRGB doubles, after the selected frozen illumination operation.
+Denoising precedes optional restoration, contrast and sharpening, then final quantization.
 For each RGB triplet C, Y = 0.2126 R + 0.7152 G + 0.0722 B and f = sRGB_encode(Y), using
 `image::numeric`'s existing transfer definitions. Quantize Q = floor(65535 f + 0.5).
 The locked OpenCV 5.0.0 single-channel CV_16U fastNlMeansDenoising vector-strength overload,
@@ -32,7 +33,7 @@ chromatic denoising, semantic mark recognition, JPEG deblocking or lost-detail r
 
 The host composes interpreted linear source -> immutable illumination view -> prepared D01 view -> one
 shared final quantizer. Numeric method types and correction kernels remain native-free. A narrow
-`de_denoise` adapter owns OpenCV calls, reservations and exception containment, using only core,
+`de_opencv` adapter owns OpenCV calls, reservations and exception containment, using only core,
 image and methods. The host gains that one edge in spec/architecture.json. Native types never
 escape adapter-private files; CLI, application, records and numeric kernels acquire no native effects.
 
@@ -84,11 +85,11 @@ The existing final precommit cutoff and truthful publication reconciliation rema
 
 ## Records and verification
 
-New production records use version 10, with a closed denoising request and execution report; new
-responses use schema version 10. Only the current record format is accepted; obsolete formats are refused, with no migration.
+New production records use version 11, with a closed denoising request and execution report; new
+responses use schema version 11. Only the current record format is accepted; obsolete formats are refused, with no migration.
 The current format requires
 source decoding, full output verification and matching complete stage observations. Binary records
-carry explicit off/disabled D01 only. Writer, complete reader, generated schemas and public response
+carry explicit disabled denoising. Writer, complete reader, generated schemas and public response
 share one typed serialization. Method identity is D01 version 1; I01/B02/B03 versions are unchanged.
 Record native strength, L1, depth16, tile width256, reflection, requested settings, eligible/protected,
 quantized correction and actual working-space changed counts, native calls, reserved native peak and the combined preparation charge peak. These peaks describe
