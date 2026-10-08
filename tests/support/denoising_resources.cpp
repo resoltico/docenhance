@@ -14,7 +14,6 @@
 #include <cstdio>
 #include <exception>
 #include <iostream>
-#include <opencv2/core/exception.hpp>
 #include <opencv2/core/mat.hpp>
 #include <opencv2/core/utility.hpp>
 #include <opencv2/core/utils/logger.defines.hpp>
