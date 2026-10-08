@@ -30,7 +30,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
-- Native R01 resource checks observe actual CPU FFT allocations and inject allocation failures. The private OpenCV recipe establishes ownership before initialization in four DFT factories, containing an upstream partial-initialization leak while retaining the locked original sources and notices. The dependency audit binds the corrected copy to actual compilation.
+- Native R01 resource checks observe actual CPU FFT allocations and inject allocation failures. The private OpenCV recipe establishes ownership before initialization in four DFT factories and uses matching-signature forwarding for all six typed kernels, containing partial-initialization leaks and undefined indirect calls while retaining the locked original sources and notices. The dependency audit binds the corrected copy to actual compilation.
 
 - Verification admits each test process's response schema once while validating every actual response, reuses canonical layer roots within each native compiler trace while resolving every observed header freshly, and skips duplicate Otsu reference plateaus without changing their earliest-threshold semantics. Exhaustive oracle equivalence, path ownership controls, all fixtures and required fuzz exposures remain checked. See [quality](docs/quality.md).
 

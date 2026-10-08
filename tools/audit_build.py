@@ -18,8 +18,8 @@ FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
 # native allocation-refusal tests separately prove cleanup behavior.
 TIFF_COMPLETE_ZIP_SHA256 = "551b35ed562b1ebbb5e4577afc5fc57d195667b1294b6a31123fac0ec2810275"
 TIFF_CHARGED_JPEG_SHA256 = "c51749f755cf1fe0fcca8bfd02be1dedeaa5c8affceac22c89b43cd6acd741b7"
-# Identity of the reviewed four-factory DFT RAII correction; native failure probes prove cleanup.
-OPENCV_OWNED_DXT_SHA256 = "674003b28f001700e59ee5f2298898e01adc6db56b8c70c320e37efe2827d1d7"
+# Identity of reviewed DFT ownership and typed dispatch; native probes establish behavior.
+OPENCV_OWNED_DXT_SHA256 = "0d2828dede76738b8b23f882ac0af3a00653ee3e50bec664027ed750af835c50"
 JSON_BOUNDED_HEADER_SHA256 = "f504f6fa07b84e3e264a1f7757f15da1502bb539285c90e908c1cabab47b572e"
 
 
@@ -119,7 +119,7 @@ def opencv_dft_failures(binary: Path, source_directory: Path, original_digest: s
     if hashlib.sha256(original.read_bytes()).hexdigest() != original_digest:
         failures.append("OpenCV: original FFT source differs from its reviewed lock binding")
     if hashlib.sha256(owned.read_bytes()).hexdigest() != OPENCV_OWNED_DXT_SHA256:
-        failures.append("OpenCV: FFT source differs from the reviewed DFT ownership correction")
+        failures.append("OpenCV: FFT source differs from reviewed ownership and typed dispatch")
     commands = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
     compiled = [
         Path(entry["file"]).resolve() for entry in commands if Path(entry["file"]).name == "dxt.cpp"

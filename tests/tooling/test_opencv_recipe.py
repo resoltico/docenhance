@@ -17,7 +17,7 @@ import audit_build
 
 
 class OpencvRecipeTests(unittest.TestCase):
-    """The private lifetime repair must be the one compiled from unchanged locked input."""
+    """The private corrections must be the ones compiled from unchanged locked input."""
 
     def test_fft_source_identity_and_actual_compilation(self) -> None:
         """Reject absent, stock, altered and duplicated native FFT build inputs."""
@@ -36,7 +36,7 @@ class OpencvRecipeTests(unittest.TestCase):
                 )
 
             self.assertTrue(check())
-            owned.write_bytes(b"reviewed RAII correction")
+            owned.write_bytes(b"reviewed ownership and typed dispatch corrections")
             expected = hashlib.sha256(owned.read_bytes()).hexdigest()
             database = root / "deps/opencv/compile_commands.json"
             database.write_text(json.dumps([{"file": str(owned)}]))
@@ -54,7 +54,8 @@ class OpencvRecipeTests(unittest.TestCase):
                 self.assertTrue(check())
 
     def test_required_fft_source_binding_is_complete(self) -> None:
-        """The declared CPU recipe requires reviewed ownership and a complete original SHA."""
+        """The CPU recipe requires ownership, typed dispatch and a complete source SHA."""
         features = json.loads((ROOT / "deps/features.json").read_text())["dependencies"]["opencv"]
         self.assertTrue(features["DOCENHANCE_OPENCV_OWNED_DFT_CONTEXTS"] is True)
+        self.assertTrue(features["DOCENHANCE_OPENCV_TYPED_DFT_DISPATCH"] is True)
         self.assertRegex(features["DOCENHANCE_OPENCV_DXT_SHA256"], r"^[0-9a-f]{64}$")

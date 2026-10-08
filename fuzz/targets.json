@@ -213,7 +213,8 @@
         "de_core",
         "de_image",
         "de_methods",
-        "de_opencv"
+        "de_opencv",
+        "opencv_core"
       ],
       "max_len": 3
     }

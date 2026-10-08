@@ -59,10 +59,15 @@ class TemporaryDirectory {
 }
 // The UTF-8 spelling that command admission receives for this native path.
 [[nodiscard]] inline std::string utf8_spelling(const std::filesystem::path& path) {
+#ifndef _WIN32
+    // POSIX fixture paths already hold admitted UTF-8 bytes; preserve them directly.
+    return path.native();
+#else
     std::string result;
     for (const char8_t byte : path.u8string()) {
         result.push_back(static_cast<char>(byte));
     }
     return result;
+#endif
 }
 } // namespace docenhance::tests

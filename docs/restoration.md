@@ -93,7 +93,8 @@ with centered-delta and asymmetric phase cases, constants across K, reflected bo
 and clockwise motion coefficients, 16-bit precision, color transport and protection. These are
 numerical conformance evidence, not real-document recovery benchmarks.
 
-The development resource probe warms the CPU backend, then observes native allocations on square,
+The development resource probe warms the CPU backend and the observing thread's C++ exception
+runtime before measurement, then observes native allocations on square,
 rectangular mixed-radix and long singleton-axis canvases. Ordinary replaceable C++ allocation hooks
 cover FFT contexts/AutoBuffer storage and a shared Mat allocator covers native Mat payloads;
 actual charged external plane storage is added conservatively. TSan malloc/free hooks observe
@@ -101,11 +102,25 @@ aligned external and native heap blocks directly, without adding those same exte
 The probe compares this observation to the declared reservation and injects each observed C++
 allocation failure, requiring resource errors, preserved source samples and full refunds. This
 bounded probe is evidence for those shapes and the pinned CPU path, not a universal peak-RSS limit.
+The caught allocation-exception warmup initializes runtime state outside the measured operation;
+on Darwin, LLDB identified first-throw exception TLS as a persistent 16-byte `calloc` allocation
+through `__cxa_get_globals`. No observed allocations are filtered, and every injected failure
+still requires zero retained observed heap bytes and a full charged-buffer refund.
 
-The pinned CPU FFT factories require a checked private RAII correction: each of the four 1D/2D
+The pinned CPU FFT factories require checked private ownership and dispatch corrections: each of the four 1D/2D
 contexts gains an owning `Ptr` before initialization. Stock raw-pointer factories leak a partially
 initialized context when allocation throws. The dependency recipe verifies the exact original
 source SHA and each replacement's single occurrence, retains upstream notices and compiles a
-private copy without changing the locked cache. The dependency audit checks that actual compilation
+private copy without changing the locked cache. Its dispatch table uses correctly typed forwarding
+functions for all six float32/float64 real, packed-inverse and complex kernels. Casting their typed
+function pointers to a generic `void*` data signature produces undefined indirect calls; erasing
+only the data pointers through matching-signature forwarding functions leaves their mathematics
+unchanged. The dependency audit checks that actual compilation
 uses precisely that reviewed copy. Content hashes bind identity; the allocation-failure probe
 separately proves cleanup behavior at the exercised failure positions.
+
+The zero-byte `fuzz/regressions/restoration/native-dispatch-abi` reproducer is intentional: an empty
+harness seed still prepares and executes restoration. Instrumented upstream dependencies exposed
+the function-type mismatch on that first seed. Keep the input empty; appending explanatory bytes
+would alter the retained finding. Native dispatch checks also exercise all six float32/float64
+kernel alternatives against analytic impulse/DC expectations under dependency instrumentation.

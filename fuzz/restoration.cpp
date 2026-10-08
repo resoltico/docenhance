@@ -9,6 +9,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/opencv/restoration.hpp"
 #include "support/entry_point.hpp"
+#include "support/fft_dispatch.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
 
@@ -106,6 +107,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     const auto k = 1e-5 + ((static_cast<double>(input.byte()) / 255) * (1 - 1e-5));
     const auto blend = 0.01 + ((static_cast<double>(input.byte()) / 255) * 0.99);
     const auto mass = static_cast<double>(input.byte()) / 255;
+    docenhance::fuzz::check_fft_dispatch(static_cast<std::size_t>(mass * 255) %
+                                         docenhance::fuzz::dispatch_samples);
     phase_case(k, blend, mass);
     return 0;
 }

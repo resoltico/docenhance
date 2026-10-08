@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <exception>
 #include <iostream>
+#include <new>
 #include <opencv2/core/mat.hpp>
 #include <utility>
 namespace {
@@ -170,12 +171,23 @@ bool measure(image::Extent extent) {
               << ",\"contained_allocation_failures\":" << observation.attempts << "}\n";
     return true;
 }
+void warm_exception_runtime() {
+    // Initialize this thread's exception runtime before measuring injected failures.
+    // Darwin's first __cxa_throw allocates persistent exception TLS through calloc;
+    // LLDB identified that 16-byte block at __cxa_get_globals, not a native FFT leak.
+    try {
+        throw std::bad_alloc{};
+    } catch (const std::bad_alloc&) {
+        return;
+    }
+}
 } // namespace
 int main() {
     try {
         if (!allocation::initialize_hooks()) {
             return 1;
         }
+        warm_exception_runtime();
         constexpr auto cases = std::to_array<image::Extent>({
             {.width = 1, .height = 1},
             {.width = 1, .height = 409},
