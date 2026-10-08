@@ -31,8 +31,8 @@ bool valid_planes(image::PlaneView<const std::uint8_t> source,
 }
 struct Histogram {
     std::span<const std::uint64_t> counts;
-    std::uint64_t total_count;
-    double total_sum;
+    std::uint64_t total_count = 0;
+    double total_sum = 0;
     core::Cancellation cancellation;
 
     template <typename Observe>
