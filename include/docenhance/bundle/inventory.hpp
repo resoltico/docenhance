@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <cstddef>
@@ -51,6 +52,7 @@ struct DeclaredBundle {
     methods::DenoisingReport denoising{};
     methods::ContrastReport contrast{};
     methods::SharpenReport sharpening{};
+    std::optional<methods::OtsuObservation> otsu = std::nullopt;
 };
 
 [[nodiscard]] core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes);

@@ -54,17 +54,19 @@ std::string_view profile_name(image::ProfilePolicy profile) noexcept {
 Json method_identity(methods::ImplementedMethod method) {
     return {{"id", method.id}, {"method_version", method.method_version}};
 }
-Json binarization_fields(const methods::Binarization& method) {
-    Json parameters = std::visit(
-        [](const auto& value) -> Json {
-            using Method = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<Method, methods::Sauvola>) {
-                return {{"window", value.window()}, {"k", value.k()}, {"r", value.r()}};
-            } else {
-                return {{"threshold", value.threshold()}};
-            }
-        },
-        method);
+struct BinarizationParameters {
+    Json operator()(const methods::Sauvola& value) const {
+        return {{"window", value.window()}, {"k", value.k()}, {"r", value.r()}};
+    }
+    Json operator()(const methods::FixedThreshold& value) const {
+        return {{"threshold", value.threshold()}};
+    }
+    Json operator()(const methods::Otsu& /*value*/) const {
+        return Json::object();
+    }
+};
+Json binarization_request_fields(const methods::Binarization& method) {
+    const Json parameters = std::visit(BinarizationParameters{}, method);
     return {
         {"kind", "binarization"},
         {"method", method_identity(methods::describe(method))},
@@ -92,7 +94,7 @@ Json operation_fields(const Operation& operation) {
         [](const auto& value) -> Json {
             using Kind = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<Kind, methods::Binarization>) {
-                return binarization_fields(value);
+                return binarization_request_fields(value);
             } else {
                 return continuous_request_fields(value);
             }
@@ -204,6 +206,7 @@ core::Result<std::string> serialize(const RunRecord& record) {
         document.at("execution").emplace("contrast", contrast_fields(record.contrast));
         document.at("request").emplace("sharpening", sharpen_request_fields(record.sharpening));
         document.at("execution").emplace("sharpening", sharpen_fields(record.sharpening));
+        document.at("execution").emplace("binarization", binarization_fields(record.otsu));
         return document.dump(record_indent, ' ', false, Json::error_handler_t::strict) + "\n";
     } catch (const Json::exception&) {
         return core::failure(core::ErrorCode::invariant,

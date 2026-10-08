@@ -21,15 +21,32 @@ from architecture import ArchitectureError, Manifest
 from deps import ROOT
 
 
+class LayerRoots:
+    """Canonical classification roots for one compiler trace, never cached across checks."""
+
+    def __init__(self, root: Path | None = None) -> None:
+        """Resolve the repository root once for this classification scope."""
+        canonical = (ROOT if root is None else root).resolve()
+        self.bases = (canonical / "include/docenhance", canonical / "src")
+
+    def layer_of(self, manifest: Manifest, path: str) -> str | None:
+        """Resolve each observed path freshly and classify it with native path comparisons."""
+        resolved = Path(path).resolve()
+        for base in self.bases:
+            try:
+                common = os.path.commonpath((resolved, base))
+            except ValueError:  # Different Windows drives have no common root.
+                continue
+            if os.path.normcase(common) == os.path.normcase(str(base)):
+                parts = resolved.parts[len(base.parts) :]
+                candidate = parts[0] if parts else ""
+                return candidate if candidate in manifest.layers else None
+        return None
+
+
 def layer_of(manifest: Manifest, path: str) -> str | None:
     """The layer a first-party path belongs to, or None if it is not first-party."""
-    resolved = Path(path).resolve()
-    for base in (ROOT.resolve() / "include/docenhance", ROOT.resolve() / "src"):
-        if resolved.is_relative_to(base):
-            parts = resolved.relative_to(base).parts
-            candidate = parts[0] if parts else ""
-            return candidate if candidate in manifest.layers else None
-    return None
+    return LayerRoots().layer_of(manifest, path)
 
 
 def compilation_database(manifest: Manifest, build: Path) -> list[dict[str, str]]:

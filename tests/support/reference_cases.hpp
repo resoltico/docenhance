@@ -163,10 +163,10 @@ inline void capabilities_cases() {
             "an empty scope holds nothing");
     require(!contract::command_usage(contract::Command::process).empty(),
             "every command has a usage line");
-    require(methods::implemented_methods().size() == 10 &&
+    require(methods::implemented_methods().size() == 11 &&
                 methods::implemented_methods().front().id == "I01" &&
-                methods::implemented_methods().back().id == "B03",
-            "Only I01, I02, D01, D02, C01, C02, C03, S01, B02 and B03 are advertised");
+                methods::implemented_methods().back().id == "B01",
+            "Only I01, I02, D01, D02, C01, C02, C03, S01, B01, B02 and B03 are advertised");
     const core::Error not_implemented{
         .code = core::ErrorCode::not_implemented,
         .message = "not ready",

@@ -4,11 +4,13 @@
 
 from __future__ import annotations
 
+import ntpath
 import re
 import subprocess
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+from unittest.mock import patch
 
 from tools_path import ROOT
 
@@ -16,6 +18,7 @@ from compiler_probes import compiler_probe
 
 import architecture
 import architecture_api
+import architecture_boundary
 import architecture_build
 import architecture_matches
 import compile_db
@@ -93,6 +96,121 @@ class ArchitectureExecutionTests(unittest.TestCase):
                 architecture_build.header_violations(
                     architecture.load_manifest(), entry, root, "contract", owner=None
                 )
+
+    def test_layer_roots_preserve_native_windows_boundaries(self) -> None:
+        """Native case, separators, drives and UNC shares retain the old Path classification."""
+        manifest = architecture.load_manifest()
+        context = compile_db.LayerRoots(ROOT)
+        for repository, paths in (
+            (
+                "C:/Repo",
+                (
+                    "c:/rEPO/src/image/a.cpp",
+                    "C:/Repo/src/Image/a.cpp",
+                    "D:/Repo/src/image/a.cpp",
+                    "C:/Repo/src-other/image/a.cpp",
+                    "C:/Repo/src",
+                    "C:/Repo/include/docenhance/core/a.hpp",
+                ),
+            ),
+            (
+                "//Server/Share/Repo",
+                (
+                    "//server/share/repo/src/image/a.cpp",
+                    "//server/other/Repo/src/image/a.cpp",
+                    "//Server/Share/Repo-other/src/image/a.cpp",
+                ),
+            ),
+        ):
+            root = PureWindowsPath(repository)
+            bases = (root / "include/docenhance", root / "src")
+            for name in paths:
+                resolved = PureWindowsPath(name)
+                expected = None
+                for base in bases:
+                    if resolved.is_relative_to(base):
+                        parts = resolved.relative_to(base).parts
+                        candidate = parts[0] if parts else ""
+                        expected = candidate if candidate in manifest.layers else None
+                        break
+                with (
+                    patch.object(context, "bases", bases),
+                    patch("compile_db.os.path", ntpath),
+                    patch("compile_db.Path") as path,
+                ):
+                    path.return_value.resolve.return_value = resolved
+                    self.assertEqual(context.layer_of(manifest, name), expected, name)
+
+    def test_trace_classification_retains_fresh_symlink_identity(self) -> None:
+        """One trace context cannot retain an old symlink target or admit a sibling-prefix path."""
+        manifest = architecture.load_manifest()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            image = root / "src/image/a.hpp"
+            core = root / "src/core/a.hpp"
+            outside = root / "src-other/image/a.hpp"
+            for path in (image, core, outside):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("#pragma once\n")
+            context = compile_db.LayerRoots(root)
+            link = root / "observed.hpp"
+            link.symlink_to(image)
+            self.assertEqual(context.layer_of(manifest, str(link)), "image")
+            link.unlink()
+            link.symlink_to(core)
+            self.assertEqual(context.layer_of(manifest, str(link)), "core")
+            link.unlink()
+            link.symlink_to(outside)
+            self.assertIsNone(context.layer_of(manifest, str(link)))
+            self.assertIsNone(context.layer_of(manifest, str(root / "src")))
+
+    def test_trace_errors_and_ownership_equal_original_classifier(self) -> None:
+        """Fresh native compiler traces retain error order, private ownership and path spellings."""
+        manifest = architecture.load_manifest()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            private = root / "src/core/private.hpp"
+            foreign = root / "include/docenhance/host/probe.hpp"
+            for header in (private, foreign):
+                header.parent.mkdir(parents=True, exist_ok=True)
+                header.write_text("#pragma once\n")
+            entry = compiler_probe(
+                root,
+                root / "src/image/probe.cpp",
+                '#include "../core/private.hpp"\n'
+                '#include "../../include/docenhance/host/probe.hpp"\n'
+                '#include "../../include/docenhance/host/probe.hpp"\n',
+            )
+
+            class OriginalRoots:
+                def __init__(self) -> None:
+                    self.root = root
+
+                def layer_of(self, model: architecture.Manifest, path: str) -> str | None:
+                    resolved = Path(path).resolve()
+                    for base in (
+                        self.root.resolve() / "include/docenhance",
+                        self.root.resolve() / "src",
+                    ):
+                        if resolved.is_relative_to(base):
+                            parts = resolved.relative_to(base).parts
+                            candidate = parts[0] if parts else ""
+                            return candidate if candidate in model.layers else None
+                    return None
+
+            with (
+                patch.object(architecture_build, "ROOT", root),
+                patch.object(compile_db, "ROOT", root),
+                patch.object(architecture_boundary, "ROOT", root),
+            ):
+                actual = architecture_build.reach_violations(manifest, entry, root)
+                with patch.object(architecture_build, "LayerRoots", OriginalRoots):
+                    original = architecture_build.reach_violations(manifest, entry, root)
+            self.assertEqual(actual, original)
+            self.assertTrue(any("private production header" in error for error in actual[0]))
+            self.assertTrue(any("reaches host" in error for error in actual[0]))
+            self.assertIn("core", actual[1])
+            self.assertIn("host", actual[1])
 
     def test_missing_or_unattributed_query_results_are_not_success(self) -> None:
         """Missing groups/bindings and altered summary counts fail closed."""

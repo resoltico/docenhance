@@ -67,6 +67,26 @@ CTest reserves both slots for this nested work. Module timings identify slow fix
 omitting cases. Dependency-free references compile separate translation units with bounded
 `--jobs` workers and link the complete object set once, retaining strict and sanitizer flags.
 
+Executable contract tests admit the response schema once per fresh test process and validate every
+new response against it. They do not reuse command results; invalid later payloads, malformed schema
+initialization and exit-status disagreement remain rejection controls. Native include classification
+resolves its layer roots once per compiler trace and resolves every observed header freshly. Native
+compiler preprocessing, AST checks, header probes and ownership diagnostics still run in full.
+
+The independent Otsu reference recomputes class statistics at each occupied-bin plateau start.
+Empty-bin candidates have the same populations and score as that start, so their earliest eligible
+threshold and global relative tolerance are retained. A separate exhaustive 4,095-candidate oracle
+checks dense byte populations, sparse histograms, single-bin fallbacks and near ties. Required fuzz
+campaign durations, input domains, sanitizer settings and complete-target reconciliation are unchanged.
+
+Local interleaved measurements on macOS 27 ARM64 with LLVM 23.1.2 used the same real executable,
+fixtures and assertions. Three fresh-process repetitions gave median Otsu/Sauvola/sharpening suites
+of 4.638/4.001/6.494 seconds before schema reuse and 0.489/0.394/1.269 seconds after. Four full native
+architecture passes with two workers averaged 77.78 seconds before root reuse and 68.18 seconds
+after, with identical diagnostics. A fixed 600-input Otsu replay under ASan/UBSan and libFuzzer
+instrumentation improved median throughput from 164 to 4,999 executions per second. These local
+measurements do not establish other platforms' performance or replace complete workflow execution.
+
 Windows CI runs the target-admission CMake controls before the long native build, so a platform-specific guard regression fails promptly. The complete native tooling suite still runs afterward. Source-property lookup preserves CMake's declared directory spelling, including Windows DOS short names; filesystem alias expansion must not disconnect a suppression from its source.
 
 The outer native-suite watchdog allows 30 minutes for the whole graph, including the separately weighted compiler/AST check;

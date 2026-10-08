@@ -168,3 +168,7 @@ The S01 sharpening harness adds bounded Gaussian preparation, scalar soft-thresh
 immutable reconstruction replay and complete report validation. Twenty-one targets retain every
 per-target exposure interval; the campaign plan derives the required wave count and rejects an
 insufficient whole-job budget. CLI seeds cover sharpening admission and inactive private options.
+
+The `otsu` harness compares fitted B01 observations against independently enumerated byte
+populations for every candidate bin, then checks exact output polarity and scratch refunds.
+Corpus fixtures exercise single-bin fallback, empty-bin tie plateaus and skewed populations.

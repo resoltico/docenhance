@@ -2,7 +2,7 @@
 
 JPEG is an input container, not a new enhancement method. Continuous `preserve`/`gray` processing
 admits the subset below and uses the existing color, oriented protection, opt-in I01, PNG encoding,
-decode-back comparison and bundle publication path. There is no JPEG output. `bw` remains B02/B03's
+decode-back comparison and bundle publication path. There is no JPEG output. `bw` remains B01/B02/B03's
 stored-grayscale PNG operation; JPEG on that branch returns `E_NOT_IMPLEMENTED`, exit 4,
 `not_started`. Color/profile override never changes this operation/format matrix.
 
@@ -122,8 +122,8 @@ charged allocations, peak RSS and runtime are different evidence, never intercha
 
 ## Persistent and response compatibility
 
-New production records use format version 9 and require a closed `source.decoding` PNG/JPEG/TIFF
-alternative. Response schema version 9 exposes the same mapping as `source_decoding` and reports an
+New production records use format version 10 and require a closed `source.decoding` PNG/JPEG/TIFF
+alternative. Response schema version 10 exposes the same mapping as `source_decoding` and reports an
 explicit input/output-mode matrix. A custom processing port can report unknown source observations
 as null; the native host always supplies them. Numerical method versions are unchanged.
 

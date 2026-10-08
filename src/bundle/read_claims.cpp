@@ -8,6 +8,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "read_fields.hpp"
 
 #include <cstdint>
@@ -36,6 +37,11 @@ bool observations_agree(const DeclaredBundle& d) {
     const bool binary = std::holds_alternative<methods::Binarization>(*d.operation);
     if (!valid_shape(o.shape) || image::has_alpha(o.shape.model) ||
         (o.resolution && (o.resolution->x == 0 || o.resolution->y == 0))) {
+        return false;
+    }
+    const bool otsu = binary && std::holds_alternative<methods::Otsu>(
+                                    std::get<methods::Binarization>(*d.operation));
+    if (d.otsu.has_value() != otsu || (d.otsu && !methods::valid_otsu(*d.otsu))) {
         return false;
     }
     if (binary) {
@@ -81,6 +87,17 @@ std::optional<ProtectionFacts> protection(const RecordJson& v) {
         .height = static_cast<std::uint32_t>(record_integer(record_field(v, "height"), UINT32_MAX)),
     };
 }
+void record_binarization(const RecordJson& document, DeclaredBundle& d) {
+    const auto& binarization = record_field(record_field(document, "execution"), "binarization");
+    if (!binarization.is_null()) {
+        const auto threshold = record_integer(record_field(binarization, "threshold_bin"), 4094);
+        d.otsu = methods::OtsuObservation{
+            .threshold_bin = static_cast<std::uint16_t>(threshold),
+            .single_bin_fallback =
+                record_boolean(record_field(binarization, "single_bin_fallback")),
+        };
+    }
+}
 core::Result<void> canonical_claims(const RecordJson& document, const DeclaredBundle& d) {
     if (!d.operation) {
         return invalid();
@@ -104,6 +121,7 @@ core::Result<void> canonical_claims(const RecordJson& document, const DeclaredBu
         .denoising = d.denoising,
         .contrast = d.contrast,
         .sharpening = d.sharpening,
+        .otsu = d.otsu,
     };
     auto canonical = serialize(record);
     if (!canonical) {
@@ -149,6 +167,7 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
     if (!contrast_claims) {
         return contrast_claims;
     }
+    record_binarization(document, d);
     d.operation = *op;
     d.illumination = *light;
     const auto& converted = record_field(record_field(document, "execution"), "conversion");

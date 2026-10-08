@@ -58,11 +58,11 @@ Continuous output only. Interpret supported cICP, compatible ICC, sRGB or gAMA/c
 
 ## `--binarize METHOD`
 
-**Scope:** P. **Domain/default:** sauvola for bw; fixed|sauvola.
+**Scope:** P. **Domain/default:** sauvola for bw; otsu|fixed|sauvola.
 
-Requires explicit --output-mode bw. B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied.
+Requires explicit --output-mode bw. B01/B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied.
 
-**Applicable methods:** B02,B03.
+**Applicable methods:** B01,B02,B03.
 
 ## `--fixed-threshold T`
 

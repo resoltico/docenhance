@@ -20,6 +20,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "run_publication.hpp"
 
@@ -61,14 +62,31 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         return std::unexpected(concurrency.error());
     }
     const exec::Scheduler scheduler{*concurrency, cancellation};
-    const auto applied = methods::binarize(source.view().as_const(), destination->view(), method,
-                                           {.scheduler = scheduler, .budget = budget});
+    std::optional<methods::OtsuObservation> otsu;
+    const auto applied = [&] -> core::Result<void> {
+        if (std::holds_alternative<methods::Otsu>(method)) {
+            auto observed = methods::otsu(source.view().as_const(), destination->view(),
+                                          {.scheduler = scheduler, .budget = budget});
+            if (!observed) {
+                return std::unexpected(observed.error());
+            }
+            otsu = *observed;
+            return {};
+        }
+        return methods::binarize(source.view().as_const(), destination->view(), method,
+                                 {.scheduler = scheduler, .budget = budget});
+    }();
     if (!applied) {
         return std::unexpected(applied.error());
     }
     auto published = publish_run({
         .output_directory = request.output_directory(),
-        .artwork = BinaryArtwork{.samples = destination->view().as_const(), .method = method},
+        .artwork =
+            BinaryArtwork{
+                .samples = destination->view().as_const(),
+                .method = method,
+                .otsu = otsu,
+            },
         .budget = budget,
         .cancellation = cancellation,
         .context = context,
@@ -85,6 +103,7 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         .run = std::move(published->run),
         .record = std::move(published->record),
         .source_decoding = loaded->description,
+        .otsu = otsu,
     };
 }
 void failed_stages(methods::IlluminationReport& report, methods::DenoisingReport& denoising,

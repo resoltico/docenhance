@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import zlib
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +43,7 @@ REJECTED_INVOCATIONS = (
     ["process"],
     ["process", "file.png"],
     ["process", "x.png", "--out-dir", "y", "--out-dir", "z"],
-    ["process", "x.png", "--out-dir", "y", "--output-mode", "bw", "--binarize", "otsu"],
+    ["process", "x.png", "--out-dir", "y", "--output-mode", "bw", "--binarize", "unknown"],
     ["--json", "version"],
 )
 
@@ -74,12 +75,18 @@ def call(exe: Path, args: list[str], code: int = 0) -> str:
     return result.stdout
 
 
+@cache
+def response_validator() -> Draft202012Validator:
+    """Admit this process's schema once; every response still receives fresh validation."""
+    schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
+    Draft202012Validator.check_schema(schema)
+    return Draft202012Validator(schema)
+
+
 def call_json(exe: Path, args: list[str], code: int = 0) -> dict[str, Any]:
     """Run the executable, parse its single JSON object and validate it against the schema."""
     data: dict[str, Any] = json.loads(call(exe, args, code))
-    schema = json.loads(SCHEMA.read_text(encoding="utf-8"))
-    Draft202012Validator.check_schema(schema)
-    Draft202012Validator(schema).validate(data)
+    response_validator().validate(data)
     expect(data["exit_code"] == code, "envelope and process exit codes must agree")
     return data
 
@@ -153,6 +160,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "S01", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
+            {"id": "B01", "method_version": 1},
         ],
         "implemented methods advertised",
     )
@@ -174,6 +182,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "S01", "method_version": 1},
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
+            {"id": "B01", "method_version": 1},
         ],
         "methods list matches implementation",
     )

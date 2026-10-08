@@ -38,7 +38,7 @@ de_library(de_image LAYER image
           "${DE_INCLUDE}/image/raster.hpp" "${DE_INCLUDE}/image/source.hpp" "${DE_INCLUDE}/image/continuous.hpp" "${DE_INCLUDE}/image/linear.hpp"
   LINKS de_core)
 de_library(de_methods LAYER methods
-  SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/binarization.cpp methods/sauvola.cpp
+  SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/otsu.cpp methods/binarization.cpp methods/sauvola.cpp
           methods/denoising.cpp methods/contrast.cpp methods/contrast_model.cpp methods/contrast_measure.cpp methods/clahe_measure.cpp methods/clahe_apply.cpp methods/contrast_apply.cpp methods/contrast_validation.cpp methods/contrast_detail.hpp methods/illumination.cpp methods/surface_detail.hpp methods/surface_grid.cpp
           methods/surface_measure.cpp methods/surface_system.cpp methods/surface_multigrid.cpp methods/surface_solve.cpp
           methods/surface_samples.cpp methods/surface_fit.cpp methods/surface_apply.cpp
@@ -48,7 +48,7 @@ de_library(de_methods LAYER methods
           methods/tvl1_objective.cpp methods/tvl1_model.cpp methods/tvl1_apply.cpp methods/tvl1_validation.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
-          "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
+          "${DE_INCLUDE}/methods/otsu.hpp" "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
           "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/sharpening.hpp" "${DE_INCLUDE}/methods/contrast.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp" "${DE_INCLUDE}/methods/tvl1.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app

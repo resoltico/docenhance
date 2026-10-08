@@ -9,6 +9,7 @@
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/otsu.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
@@ -117,9 +118,9 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
     }
     SECTION("a version this build does not support") {
         auto altered = *written;
-        const auto at = altered.find("\"version\": 9");
+        const auto at = altered.find("\"version\": 10");
         REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 9").size(), "\"version\": 6");
+        altered.replace(at, std::string_view("\"version\": 10").size(), "\"version\": 9");
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);
@@ -232,5 +233,31 @@ TEST_CASE("Record depth is bounded by library container events", "[bundle][resou
     const auto quoted = bundle::read_record(as_bytes(R"({"x":"{}[]\\\""})"));
     REQUIRE(!quoted);
     CHECK(quoted.error().message.contains("identifying header"));
+}
+TEST_CASE("Otsu records retain the frozen fit and reject contradictory observations",
+          "[bundle][otsu]") {
+    auto facts = binarized_record();
+    facts.operation = methods::Binarization{methods::Otsu::create()};
+    facts.otsu = methods::OtsuObservation{.threshold_bin = 2047, .single_bin_fallback = true};
+    const auto written = bundle::serialize(facts);
+    REQUIRE(written);
+    const auto declared = bundle::read_record(as_bytes(*written));
+    REQUIRE(declared);
+    CHECK(declared->otsu == facts.otsu);
+    for (unsigned change = 0; change < 4; ++change) {
+        auto altered = facts;
+        if (change == 0) {
+            altered.otsu.reset();
+        } else if (change == 1) {
+            altered.otsu->threshold_bin = 4095;
+        } else if (change == 2) {
+            altered.otsu->threshold_bin = 2046;
+        } else {
+            altered.operation = binarized_record().operation;
+        }
+        const auto invalid = bundle::serialize(altered);
+        REQUIRE(invalid);
+        CHECK(!bundle::read_record(as_bytes(*invalid)));
+    }
 }
 } // namespace docenhance::tests

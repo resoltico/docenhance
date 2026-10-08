@@ -43,7 +43,7 @@ platform and input assumptions; use [JPEG processing](jpeg-processing.md) for en
 metadata, allocation and cancellation admission.
 These records explain decisions and do not replace the current authorities above.
 
-[Typed binarization](binarization.md) specifies B02/B03 parameters, mathematics, memory, execution
+[Typed binarization](binarization.md) specifies B01/B02/B03 parameters, mathematics, memory, execution
 contracts and the separate design QA.
 
 [PNG processing](png-processing.md) specifies continuous-tone sample, profile, alpha, orientation,

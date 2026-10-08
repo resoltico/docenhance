@@ -33,7 +33,7 @@ refused before the commit point rather than published into a bundle `verify` wou
 
 ## What the record says
 
-`run.json` is a closed, versioned object. Version 3 admits exactly the supported binary or
+`run.json` is a closed, versioned object. Version 10 admits exactly the supported binary or
 continuous operation, with reviewed method versions and validated parameters. Missing or unknown
 fields, duplicate object keys (including escaped equivalents), out-of-range numbers and inconsistent
 observations are refused. Numeric domains are checked before narrowing. Run identities are 32
@@ -214,10 +214,10 @@ original document.
 
 ## Source observations and format compatibility
 
-Current native output uses record version 9. It requires closed source decoding observations,
-denoising and contrast requests and complete execution reports, alongside verified conversion and output facts.
+Current native output uses record version 10. It requires closed source decoding observations,
+denoising, contrast and sharpening requests and complete execution reports, plus B01 threshold/fallback observations, alongside verified conversion and output facts.
 The reader accepts only this format; obsolete versions and unknown fields are refused. No backward
-compatibility reader or migration exists. The command response uses schema version 9.
+compatibility reader or migration exists. The command response uses schema version 10.
 
 D01 observations include typed settings, native float strength, 16-bit/L1 policy, global reflection,
 tile size, eligible/protected/evaluated/corrected/changed pixels, completed native calls and reserved/

@@ -13,6 +13,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <expected>
@@ -114,6 +115,7 @@ struct PublishedBinary {
     std::string run;
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    std::optional<methods::OtsuObservation> otsu = std::nullopt;
 };
 struct PublishedContinuous {
     std::string output;
@@ -133,6 +135,7 @@ struct Processed {
     std::string run;
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    std::optional<methods::OtsuObservation> otsu = std::nullopt;
 };
 struct ProcessFailure {
     core::Error error;

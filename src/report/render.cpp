@@ -221,6 +221,7 @@ Output json_form(const app::Outcome& outcome) {
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 const Json fields = {
+                    {"binarization", bundle::binarization_fields(payload.otsu)},
                     {"method", payload.method.id},
                     {"method_version", payload.method.method_version},
                     {"output", payload.output},

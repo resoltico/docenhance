@@ -256,6 +256,7 @@ def metadata_outputs(
     record_conversion = copy.deepcopy(conversion)
     record_conversion["properties"]["verified"] = {"const": True}
     record["$defs"].update(
+        otsu_observation=schema["$defs"]["otsu_observation"],
         source_decoding=schema["$defs"]["source_decoding"],
         tiff_resolution=schema["$defs"]["tiff_resolution"],
         sharpening=schema["$defs"]["sharpening"],

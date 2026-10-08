@@ -197,6 +197,15 @@
         "de_methods"
       ],
       "max_len": 131
+    },
+    "otsu": {
+      "source": "otsu.cpp",
+      "links": [
+        "de_core",
+        "de_image",
+        "de_methods"
+      ],
+      "max_len": 171
     }
   }
 }

@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 9; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 10; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -454,3 +454,13 @@ Protected samples remain blur context; destinations and excursion observations f
 eligibility contracts. One frozen blurred field serves encoding and verification, with no extra
 blend or intermediate quantization. Version 9 closes sharpening requests, reports and warnings and
 rejects obsolete records. See [design and independent QA](sharpening.md).
+
+## Global Otsu preserves the stored-gray binary boundary
+
+B01 adds a parameter-free validated binary alternative and a charged histogram and retained threshold.
+Quantization uses every decoded stored byte sample, not the blueprint's perceptual plane, eligible
+mask or geometry padding. Extending that domain requires a separate reviewed contract. A second
+score pass chooses the smallest threshold within tolerance of the global maximum, avoiding
+order-dependent approximate ties. Single-bin fallback and exact endpoint polarity are reported.
+Version 10 closes those observations and rejects obsolete records; B02/B03 mathematics and
+Sauvola default selection remain unchanged. See [binarization](binarization.md).

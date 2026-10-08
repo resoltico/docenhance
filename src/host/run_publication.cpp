@@ -150,7 +150,9 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
     std::visit(
         [&record](const auto& artwork) {
             using Kind = std::decay_t<decltype(artwork)>;
-            if constexpr (std::is_same_v<Kind, ContinuousArtwork>) {
+            if constexpr (std::is_same_v<Kind, BinaryArtwork>) {
+                record.otsu = artwork.otsu;
+            } else {
                 record.illumination = artwork.illumination.get();
                 record.denoising = artwork.denoising.get();
                 record.contrast = artwork.contrast.get();
