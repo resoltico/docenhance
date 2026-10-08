@@ -64,13 +64,13 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_app` | `de_contract`, `de_core`, `de_image`, `de_methods` | Validated use cases and the explicit processing and verification ports |
 | `de_report` | `de_app`, `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
 | `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
-| `de_host` | `de_app`, `de_bundle`, `de_color`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods`, `de_denoise` | Executes admitted requests using codecs, kernels and publication |
-| `de_denoise` | `de_core`, `de_image`, `de_methods` | Bounded native NLM execution and resource reservation |
+| `de_host` | `de_app`, `de_bundle`, `de_color`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods`, `de_opencv` | Executes admitted requests using codecs, kernels and publication |
+| `de_opencv` | `de_core`, `de_image`, `de_methods` | Bounded CPU OpenCV NLM and Fourier restoration execution |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 | `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
 
 Only `de_bundle` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
-OpenCV core/photo serve D01 through `de_denoise`; other unused imaging packages remain in the
+OpenCV core/photo serve D01 and R01 through `de_opencv`; other unused imaging packages remain in the
 native probe. The bundle field-mapping interface explicitly exposes nlohmann JSON to the report layer under
 the manifest's `interface_packages` permission; processing and numerical interfaces use project types. The executable-only `entry` layer
 explicitly declares that it has no public header directory; it is not a fake reusable library.
@@ -298,7 +298,7 @@ orientation is applied once in the existing converter. See [TIFF](tiff-processin
 
 ## Prepared luminance denoising
 
-`de_denoise` wraps only the pinned CV_16U/L1 operation, with bounded tile extents, native scratch
+`de_opencv` wraps the pinned CV_16U/L1 NLM and full-complex CPU DFT operations, with bounded tile extents, native scratch
 reservation and contained exceptions. Completed reservation/combined-charge observations are
 returned by the native owner while its lease is live; orchestration does not predict them. `de_methods` owns closed NLM settings, scalar correction and
 resource estimates without native types. The host composes linear interpretation, frozen illumination models,

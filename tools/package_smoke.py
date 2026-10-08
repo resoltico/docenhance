@@ -101,6 +101,7 @@ def exercise(exe: Path, root: Path) -> None:
         ("gamma", source, ["--contrast", "gamma"]),
         ("morph", source, ["--illumination", "morph", "--background-radius", "8"]),
         ("tvl1", source, ["--denoise", "tvl1"]),
+        ("restoration", source, ["--deblur", "wiener", "--psf", "gaussian"]),
         ("fixed", source, ["--output-mode", "bw", "--binarize", "fixed"]),
         ("sauvola", source, ["--output-mode", "bw", "--binarize", "sauvola"]),
         ("otsu", source, ["--output-mode", "bw", "--binarize", "otsu"]),

@@ -1,7 +1,7 @@
 # Status
 
 The executable admits **static PNG and bounded 8-bit Huffman baseline/progressive JPEG, and bounded single-page TIFF/BigTIFF** into **continuous-tone PNG representation** with opt-in **I01 quantile
-log-surface illumination** or explicit **I02 morphological illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising** or **D02 floating-point TV-L1**, opt-in **C01 percentile levels / C02 gamma / C03 floating-point CLAHE contrast**, explicit **S01 thresholded unsharp masking**, and **B01 global Otsu**, **B02 Sauvola** and **B03 fixed-threshold binarization**.
+log-surface illumination** or explicit **I02 morphological illumination** and **D01 bounded 16-bit NLM-L1 luminance denoising** or **D02 floating-point TV-L1**, opt-in **C01 percentile levels / C02 gamma / C03 floating-point CLAHE contrast**, explicit **R01 known-PSF Fourier restoration**, explicit **S01 thresholded unsharp masking**, and **B01 global Otsu**, **B02 Sauvola** and **B03 fixed-threshold binarization**.
 It is not a complete restoration suite.
 
 ## Implemented product paths
@@ -19,7 +19,7 @@ I01 can be selected explicitly or through its opt-in automatic predicates, with 
 verification share explicit resource/cancellation contracts; see [illumination](illumination.md).
 See [PNG processing](png-processing.md) for precise domains, limits and explicit assumptions.
 I02 is explicitly selected with `--illumination morph`; see [morphological illumination](morphological-illumination.md).
-The selected denoiser follows illumination before optional [contrast](contrast.md) and explicit [sharpening](sharpening.md) before final quantization; protection is exact and preparation executes once.
+The selected denoiser follows illumination before optional [restoration](restoration.md), [contrast](contrast.md) and explicit [sharpening](sharpening.md) before final quantization; protection is exact and preparation executes once.
 See [NLM](denoising.md) and [TV-L1](tvl1-denoising.md) for numerical, resource, cancellation and record contracts.
 
 `--output-mode bw` activates B01/B02/B03; default selection is Sauvola. Their existing stored-gray
@@ -52,7 +52,7 @@ reference/property tests and manifest-declared engine-independent fuzz harnesses
 raw binary/continuous PNG, JPEG and TIFF decoding, raw ICC parsing/transforms, independently generated exact-sample PNG checks and a direct-window Sauvola oracle. See [fuzzing](fuzzing.md).
 
 Sauvola and the box-mean primitive use the internal scheduler; the public CLI does not expose
-`--threads`, batching or arbitrary recipes. OpenCV core/photo execute D01 behind the bounded denoising adapter. Leptonica remains a development-probe package without production processing admission.
+`--threads`, batching or arbitrary recipes. OpenCV core/photo execute D01 and core executes R01 behind the bounded OpenCV adapter. Leptonica remains a development-probe package without production processing admission.
 
 ## Verification is commit-specific
 

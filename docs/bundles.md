@@ -85,8 +85,10 @@ two digests, because they answer different questions: `supplied` identifies the 
 `stored` identifies the canonical mask in the bundle — the oriented plane that actually excluded
 samples, which may differ in depth from the file supplied.
 
-Absolute source paths, shell text and usernames are not recorded. A retained file name can still
-carry personal information, so a bundle is not anonymized, and the original document is never
+The image input is identified by its basename rather than its absolute input path; shell text is
+not recorded. R01 supplied-kernel requests and identities retain their admitted PSF path, including
+an absolute path when supplied. Names and paths can carry personal information, so a bundle is
+not anonymized, and the original document is never
 copied into it.
 
 ## Reading a bundle back
@@ -138,7 +140,10 @@ transform. Binary results additionally contain only
 or resolution; nonzero protects. Its dimensions, fixed polarity/frame declarations and protected
 sample count must agree with the oriented output and execution observations.
 
-Record bytes are bounded by 1 MiB, nesting by 16, and parser events by 1024. The first excessive
+Record bytes are bounded by 1 MiB, nesting by 16, and parser events by 17,921. This event budget
+combines 1,024 events for closed source/stage metadata, at most 129 × 129 = 16,641 normalized
+PSF coefficient values, and 256 events for R01's fixed request/report fields, keys, container
+boundaries and warnings. Coefficients are recorded once in execution. The first excessive
 event stops parsing before its bookkeeping or later tokens; discarded JSON does not bypass that
 ceiling. Directory enumeration
 is bounded by 64 entries, each artifact by 256 MiB, and snapshots plus decoding by a separate 1 GiB
@@ -214,10 +219,10 @@ original document.
 
 ## Source observations and format compatibility
 
-Current native output uses record version 10. It requires closed source decoding observations,
-denoising, contrast and sharpening requests and complete execution reports, plus B01 threshold/fallback observations, alongside verified conversion and output facts.
+Current native output uses record version 11. It requires closed source decoding observations,
+denoising, restoration, contrast and sharpening requests and complete execution reports, plus B01 threshold/fallback observations, alongside verified conversion and output facts.
 The reader accepts only this format; obsolete versions and unknown fields are refused. No backward
-compatibility reader or migration exists. The command response uses schema version 10.
+compatibility reader or migration exists. The command response uses schema version 11.
 
 D01 observations include typed settings, native float strength, 16-bit/L1 policy, global reflection,
 tile size, eligible/protected/evaluated/corrected/changed pixels, completed native calls and reserved/

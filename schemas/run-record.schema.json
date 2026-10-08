@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 10
+          "const": 11
         },
         "run": {
           "type": "string",
@@ -98,7 +98,8 @@
         "protection_supplied",
         "denoising",
         "contrast",
-        "sharpening"
+        "sharpening",
+        "restoration"
       ],
       "additionalProperties": false,
       "properties": {
@@ -276,6 +277,9 @@
         },
         "sharpening": {
           "$ref": "#/$defs/sharpening_request"
+        },
+        "restoration": {
+          "$ref": "#/$defs/restoration_request"
         }
       }
     },
@@ -287,7 +291,8 @@
         "denoising",
         "contrast",
         "sharpening",
-        "binarization"
+        "binarization",
+        "restoration"
       ],
       "additionalProperties": false,
       "properties": {
@@ -322,6 +327,9 @@
               "$ref": "#/$defs/otsu_observation"
             }
           ]
+        },
+        "restoration": {
+          "$ref": "#/$defs/restoration"
         }
       }
     },
@@ -1837,6 +1845,539 @@
           }
         }
       ]
+    },
+    "restoration": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters",
+        "status",
+        "reason",
+        "complete",
+        "representation",
+        "psf",
+        "guard",
+        "fft_width",
+        "fft_height",
+        "padded_mean",
+        "raw_fraction",
+        "blended_fraction",
+        "warnings",
+        "eligible_samples",
+        "protected_samples",
+        "context_samples",
+        "evaluated_samples",
+        "corrected_samples",
+        "changed_samples",
+        "raw_low_samples",
+        "raw_high_samples",
+        "blended_low_samples",
+        "blended_high_samples",
+        "preparation_charge_peak",
+        "native_reserved_bytes",
+        "native_calls"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/restoration_method"
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/restoration_parameters"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "disabled",
+            "no_change",
+            "applied",
+            "failed"
+          ]
+        },
+        "reason": {
+          "enum": [
+            "none",
+            "zero_blend",
+            "no_eligible_samples",
+            "no_effect",
+            "processing_failure"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "representation": {
+          "enum": [
+            null,
+            "float32"
+          ]
+        },
+        "psf": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/restoration_psf"
+            }
+          ]
+        },
+        "guard": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 256
+        },
+        "fft_width": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "fft_height": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "padded_mean": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
+        },
+        "raw_fraction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
+        },
+        "blended_fraction": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          ]
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "W_RESTORATION_INFERENCE",
+              "W_PSF_AFTER_TRANSFORM",
+              "W_PSF_OFF_CENTER"
+            ]
+          }
+        },
+        "eligible_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "protected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "context_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "evaluated_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "corrected_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "changed_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "raw_low_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "raw_high_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "blended_low_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "blended_high_samples": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 40000000
+        },
+        "preparation_charge_peak": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824
+        },
+        "native_reserved_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1073741824
+        },
+        "native_calls": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              },
+              "status": {
+                "const": "disabled"
+              },
+              "reason": {
+                "const": "none"
+              },
+              "representation": {
+                "type": "null"
+              },
+              "psf": {
+                "type": "null"
+              },
+              "warnings": {
+                "maxItems": 0
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/restoration_parameters"
+              },
+              "representation": {
+                "const": "float32"
+              },
+              "status": {
+                "enum": [
+                  "no_change",
+                  "applied",
+                  "failed"
+                ]
+              },
+              "warnings": {
+                "contains": {
+                  "const": "W_RESTORATION_INFERENCE"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "restoration_request": {
+      "type": "object",
+      "required": [
+        "method",
+        "parameters"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/restoration_method"
+            }
+          ]
+        },
+        "parameters": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/restoration_parameters"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "method": {
+                "type": "null"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "parameters": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "parameters": {
+                "$ref": "#/$defs/restoration_parameters"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "restoration_method": {
+      "type": "object",
+      "required": [
+        "id",
+        "method_version"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "method_version": {
+          "type": "integer"
+        }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "id": {
+              "const": "R01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        }
+      ]
+    },
+    "restoration_psf": {
+      "type": "object",
+      "required": [
+        "width",
+        "height",
+        "coefficients",
+        "centroid",
+        "source_identity"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "width": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 129,
+          "not": {
+            "multipleOf": 2
+          }
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 129,
+          "not": {
+            "multipleOf": 2
+          }
+        },
+        "coefficients": {
+          "type": "array",
+          "minItems": 9,
+          "maxItems": 16641,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "centroid": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": -64,
+              "maximum": 64
+            },
+            "y": {
+              "type": "number",
+              "minimum": -64,
+              "maximum": 64
+            }
+          }
+        },
+        "source_identity": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "required": [
+                "path",
+                "sha256",
+                "bytes"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1048576
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^\\u0000]+$"
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "restoration_parameters": {
+      "type": "object",
+      "required": [
+        "psf",
+        "k",
+        "blend"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "psf": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "sigma"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "gaussian"
+                },
+                "sigma": {
+                  "type": "number",
+                  "minimum": 0.3,
+                  "maximum": 5
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "length",
+                "angle"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "motion"
+                },
+                "length": {
+                  "type": "number",
+                  "minimum": 1,
+                  "maximum": 31
+                },
+                "angle": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                }
+              }
+            },
+            {
+              "type": "object",
+              "required": [
+                "kind",
+                "path"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "kind": {
+                  "const": "kernel"
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[^\\u0000]+$"
+                }
+              }
+            }
+          ]
+        },
+        "k": {
+          "type": "number",
+          "minimum": 1e-05,
+          "maximum": 1
+        },
+        "blend": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
     },
     "sharpening": {
       "type": "object",

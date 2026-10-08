@@ -58,6 +58,7 @@ def implemented(
             "binarization",
             "illumination",
             "denoising",
+            "restoration",
             "contrast",
             "sharpening",
         }:
@@ -208,33 +209,16 @@ def metadata_outputs(
             if entry["family"] == "illumination"
         ]
     }
-    schema["$defs"]["denoising_method"] = {
-        **schema["$defs"]["method"],
-        "oneOf": [
-            alternative
-            for alternative in schema["$defs"]["method"]["oneOf"]
-            if alternative["properties"]["id"]["const"]
-            in {entry["id"] for entry in active if entry["family"] == "denoising"}
-        ],
-    }
-    schema["$defs"]["contrast_method"] = {
-        **schema["$defs"]["method"],
-        "oneOf": [
-            alternative
-            for alternative in schema["$defs"]["method"]["oneOf"]
-            if alternative["properties"]["id"]["const"]
-            in {entry["id"] for entry in active if entry["family"] == "contrast"}
-        ],
-    }
-    schema["$defs"]["sharpening_method"] = {
-        **schema["$defs"]["method"],
-        "oneOf": [
-            alternative
-            for alternative in schema["$defs"]["method"]["oneOf"]
-            if alternative["properties"]["id"]["const"]
-            in {entry["id"] for entry in active if entry["family"] == "sharpening"}
-        ],
-    }
+    for family in ("denoising", "restoration", "contrast", "sharpening"):
+        admitted = {entry["id"] for entry in active if entry["family"] == family}
+        schema["$defs"][family + "_method"] = {
+            **schema["$defs"]["method"],
+            "oneOf": [
+                alternative
+                for alternative in schema["$defs"]["method"]["oneOf"]
+                if alternative["properties"]["id"]["const"] in admitted
+            ],
+        }
     matrix = support_matrix(support)
     for branch in schema["oneOf"]:
         if "methods" in branch.get("properties", {}):
@@ -259,6 +243,11 @@ def metadata_outputs(
         otsu_observation=schema["$defs"]["otsu_observation"],
         source_decoding=schema["$defs"]["source_decoding"],
         tiff_resolution=schema["$defs"]["tiff_resolution"],
+        restoration=schema["$defs"]["restoration"],
+        restoration_request=schema["$defs"]["restoration_request"],
+        restoration_method=schema["$defs"]["restoration_method"],
+        restoration_psf=schema["$defs"]["restoration_psf"],
+        restoration_parameters=schema["$defs"]["restoration_parameters"],
         sharpening=schema["$defs"]["sharpening"],
         sharpening_request=schema["$defs"]["sharpening_request"],
         sharpening_method=schema["$defs"]["sharpening_method"],

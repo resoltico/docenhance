@@ -18,7 +18,11 @@
 
 namespace docenhance::io {
 core::Result<core::Buffer> read_source_snapshot(const std::string& input, core::Budget& budget,
-                                                const core::Cancellation& cancellation) {
+                                                const core::Cancellation& cancellation,
+                                                std::size_t maximum_bytes) {
+    if (maximum_bytes == 0 || maximum_bytes > image::source_encoded_bytes_max) {
+        return core::failure(core::ErrorCode::argument, "Invalid encoded source byte ceiling");
+    }
     if (cancellation.requested(core::Checkpoint::decode)) {
         return core::cancelled();
     }
@@ -33,7 +37,7 @@ core::Result<core::Buffer> read_source_snapshot(const std::string& input, core::
     if (length < 0 || std::fseek(file.get(), 0, SEEK_SET) != 0) {
         return core::failure(core::ErrorCode::input, "Cannot inspect Source input size");
     }
-    if (std::cmp_greater(length, image::source_encoded_bytes_max)) {
+    if (std::cmp_greater(length, maximum_bytes)) {
         return core::failure(core::ErrorCode::resource, "Source exceeds its encoded input ceiling");
     }
     auto bytes = budget.allocate(static_cast<std::size_t>(length));

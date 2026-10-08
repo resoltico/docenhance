@@ -189,6 +189,18 @@ core::Result<image::Raster> decode_png_raster(std::span<const std::uint8_t> byte
                          {.profile = policy, .limits = limits, .content = PngContent::source},
                          cancellation);
 }
+core::Result<image::Raster> decode_stored_png_raster(std::span<const std::uint8_t> bytes,
+                                                     core::Budget& budget, PngLimits limits,
+                                                     const core::Cancellation& cancellation) {
+    return decode_raster(bytes, budget,
+                         {
+                             .profile = image::ProfilePolicy::srgb,
+                             .limits = limits,
+                             .content = PngContent::source,
+                             .meaning = PngMeaning::stored_samples,
+                         },
+                         cancellation);
+}
 core::Result<image::Raster> decode_result_png_raster(std::span<const std::uint8_t> bytes,
                                                      core::Budget& budget,
                                                      const core::Cancellation& cancellation) {

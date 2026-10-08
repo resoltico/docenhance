@@ -56,7 +56,7 @@ int check_allocation_boundary() {
     std::cout
         << "PASS: persistent allocation refusal stays inside CLI and cannot fabricate delivery\n";
 #else
-    std::cout << "PASS: TSan observes an allocation-free handler; native/ASan own "
+    std::cout << "PASS: TSan observes an allocation-free handler; native/ASan exercise "
                  "persistent-refusal integration\n";
 #endif
     return 0;

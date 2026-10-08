@@ -1,5 +1,5 @@
 {
-  "schema_version": 10,
+  "schema_version": 11,
   "value_grammar": {
     "decimal": "Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale. Conversion overflow, subnormal results and nonzero magnitudes rounded to zero are rejected; signed zero is admitted.",
     "window": "Decimal digits only; odd integer in [3,4095]. No sign, whitespace, fraction or exponent."
@@ -245,7 +245,7 @@
       "scope": "P",
       "group": "Protection arguments",
       "domain": "Absent",
-      "methods": "I01,I02,D01,D02,C01,C02,C03,S01",
+      "methods": "I01,I02,D01,D02,C01,C02,C03,S01,R01",
       "description": "1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.",
       "binding": "protect_mask"
     },
@@ -328,6 +328,86 @@
       "methods": "D02",
       "description": "TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iteration checkpoints, starting at iteration 20.",
       "binding": "tv_tolerance"
+    },
+    {
+      "name": "--deblur",
+      "metavar": "METHOD",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "off; off|wiener",
+      "methods": "R01",
+      "description": "Explicit R01 known-PSF regularized restoration after denoising and before contrast; continuous output only. No PSF estimation or authenticity claim.",
+      "binding": "deblur"
+    },
+    {
+      "name": "--psf",
+      "metavar": "KIND",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "Required for wiener; gaussian|motion|kernel",
+      "methods": "R01",
+      "description": "PSF in the already-oriented processing frame. Kind-specific parameters are rejected for other kinds.",
+      "binding": "psf"
+    },
+    {
+      "name": "--psf-sigma",
+      "metavar": "SIGMA",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "1.0; finite [0.3,5]",
+      "methods": "R01",
+      "description": "Gaussian standard deviation in pixels; radius ceil(3*sigma), float64 normalization.",
+      "binding": "psf_sigma"
+    },
+    {
+      "name": "--psf-length",
+      "metavar": "LENGTH",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "5.0; finite [1,31]",
+      "methods": "R01",
+      "description": "Motion exposure segment length in pixels; equally weighted midpoint samples deposited bilinearly.",
+      "binding": "psf_length"
+    },
+    {
+      "name": "--psf-angle",
+      "metavar": "ANGLE",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "0; finite [-180,180]",
+      "methods": "R01",
+      "description": "Motion direction clockwise from positive x in y-down processing coordinates.",
+      "binding": "psf_angle"
+    },
+    {
+      "name": "--psf-file",
+      "metavar": "PATH",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "Required for kernel; well-formed UTF-8 path",
+      "methods": "R01",
+      "description": "Raw nontransparent grayscale PNG coefficients, unsigned 8/16-bit, odd dimensions 3..129. Ignore profile/gamma and orientation; normalize positive sum and preserve off-center origin. Source is read-only.",
+      "binding": "psf_file"
+    },
+    {
+      "name": "--wiener-k",
+      "metavar": "K",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "0.01; finite [1e-5,1]",
+      "methods": "R01",
+      "description": "Positive regularizer in |H|^2+K, not a measured noise-to-signal ratio.",
+      "binding": "wiener_k"
+    },
+    {
+      "name": "--deblur-blend",
+      "metavar": "A",
+      "scope": "P",
+      "group": "Restoration arguments",
+      "domain": "0.5; finite [0,1]",
+      "methods": "R01",
+      "description": "Blend original linear luminance with the mean-preserving restored candidate before clamping. Zero still validates the complete PSF and options.",
+      "binding": "deblur_blend"
     },
     {
       "name": "--contrast",

@@ -172,3 +172,11 @@ insufficient whole-job budget. CLI seeds cover sharpening admission and inactive
 The `otsu` harness compares fitted B01 observations against independently enumerated byte
 populations for every candidate bin, then checks exact output polarity and scratch refunds.
 Corpus fixtures exercise single-bin fallback, empty-bin tie plateaus and skewed populations.
+
+R01 restoration fuzzing executes the native full-complex FFT on a tiny globally reflected canvas.
+A periodic analytic cosine is an eigenfunction of the admitted reflected padding: an asymmetric
+normalized PSF has a closed complex Fourier coefficient, so phase, conjugation, DC restoration and
+blend are checked independently without importing the production transform or a second FFT engine.
+Immutable replay must reproduce exact transported rows without another native call, and destroying
+the prepared context must refund charged payloads. The kernel is supplied as test coefficients;
+the harness performs no source-file I/O.

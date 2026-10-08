@@ -15,7 +15,7 @@ processing and validation ledgers; combining them would change the admitted reso
 | I01 preparation | At most 65,536 grid cells, 500 solver iterations, 17 hierarchy levels, a 512-square cell-selection buffer and 1,048,576 lattice samples. Measurement, solve and lattice transient buffers occupy separate phases; retained model/source/mask still coexist with them. |
 | D01 preparation | Two aligned uint16 page planes coexist with source, profile, mask/model and two bounded tile planes. Each sequential native call reserves audited scratch before execution; the maximum 310-square tile forces one native stripe without changing process thread policy. |
 | Publication | Processing owners remain live through encoding and decoded comparison. Complete bundle validation adds its own 1 GiB ledger, including record/result/mask encoded snapshots; decoded result and mask planes are sequential. Reconciliation can repeat validation but cannot repeat numerical processing. |
-| Metadata/control | Record bytes <=1 MiB, depth <=16, parser events <=1024; native allocation registries and directory inventories are finite. Standard containers, diagnostic strings, ledger control, C streams, allocator bookkeeping, native control and OS stacks are not a process-RSS budget. |
+| Metadata/control | Record bytes <=1 MiB, depth <=16, parser events <=17,921; native allocation registries and directory inventories are finite. Standard containers, diagnostic strings, ledger control, C streams, allocator bookkeeping, native control and OS stacks are not a process-RSS budget. |
 
 The accounting uses checked aligned sizes, subtraction-before-addition admission and shared ledger
 lifetime. Exact-budget, one-byte-short, concurrent refund, extreme extent and native allocation
@@ -36,14 +36,26 @@ Two concrete remedies belong at existing owners:
 
 The locked JSON parser calls object_start for discarded objects but skips their object_end callback.
 An independent 30,001-byte shallow array of 10,000 empty objects reached 10,514 callbacks and retained
-9,488 key scopes despite the 1,024-event bound. The fix must terminate before bookkeeping for the
+9,488 key scopes despite the earlier 1,024-event bound. The fix must terminate before bookkeeping for the
 first excessive event. Test exact and excess boundaries, duplicate keys, escaped strings and a
 malformed unread suffix; independently observe parser allocation payload rather than timing it.
 The existing architecture forbids explicit project throws; SAX refusal honors that rule. Keep
 byte/depth admission before SAX and preserve decoded escaped-key duplicate detection. The shallow
-fixture observed 643,168 bytes before remediation; the final SAX path measured 3,104 bytes and
+fixture observed 643,168 bytes before remediation; at that earlier bound the SAX path measured 3,104 bytes and
 returned every observed payload on refusal. Remove the fuzz harness's 4 KiB truncation so
 the retained reproducer reaches this boundary in full; campaign mutation sizes remain explicit.
+
+R01's supplied 129 × 129 kernel contributes 16,641 scalar SAX events. The current event ceiling
+therefore adds those values and a 256-event fixed restoration metadata allowance to the existing
+1,024-event allowance for the other closed record fields: 17,921 events. The coefficient array
+appears only once in execution; the closed restoration request/report schema has at most 128
+other key/value/container/warning events, within its 256-event allowance. Request parameters and
+PSF identity remain bounded metadata.
+Exact/excess scalar boundaries, the first excessive shallow-object boundary, and the original
+10,000-object adversary stay executable tests. The resource probe retains its 128 KiB observed
+payload ceiling and full-refund requirement. Maximum-kernel record round trips and real staged
+publication establish that this admitted method domain fits; the 1 MiB byte and depth-16 limits,
+duplicate-key rejection and canonical closed-record validation remain unchanged.
 
 On local LLVM 23 libc++, a median-pivot adversarial permutation at the 90th percentile required
 3,176,052 / 12,649,846 / 50,475,330 / 201,639,789 comparisons for 4,096 / 8,192 / 16,384 / 32,768

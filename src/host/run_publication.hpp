@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "docenhance/app/process.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/color/converter.hpp"
 #include "docenhance/core/cancellation.hpp"
@@ -15,6 +16,7 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <cstdint>
@@ -49,6 +51,7 @@ struct ContinuousArtwork {
     std::reference_wrapper<const methods::DenoisingReport> denoising;
     std::reference_wrapper<const methods::ContrastReport> contrast;
     std::reference_wrapper<const methods::SharpenReport> sharpening;
+    std::reference_wrapper<const methods::RestorationReport> restoration;
 };
 using Artwork = std::variant<BinaryArtwork, ContinuousArtwork>;
 struct RunPublication {
@@ -72,5 +75,9 @@ struct PublishedRun {
     std::optional<image::ConversionReport> conversion;
 };
 
+struct ContinuousReports;
+[[nodiscard]] core::Result<app::PublishedContinuous>
+published_continuous(PublishedRun published, image::SourceDescription source,
+                     const ContinuousReports& reports);
 [[nodiscard]] core::Result<PublishedRun> publish_run(const RunPublication& run);
 } // namespace docenhance::host

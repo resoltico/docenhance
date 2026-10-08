@@ -206,6 +206,9 @@ core::Result<std::string> serialize(const RunRecord& record) {
         document.at("execution").emplace("contrast", contrast_fields(record.contrast));
         document.at("request").emplace("sharpening", sharpen_request_fields(record.sharpening));
         document.at("execution").emplace("sharpening", sharpen_fields(record.sharpening));
+        document.at("request").emplace("restoration",
+                                       restoration_request_fields(record.restoration));
+        document.at("execution").emplace("restoration", restoration_fields(record.restoration));
         document.at("execution").emplace("binarization", binarization_fields(record.otsu));
         return document.dump(record_indent, ' ', false, Json::error_handler_t::strict) + "\n";
     } catch (const Json::exception&) {

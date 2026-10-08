@@ -19,8 +19,11 @@
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/tvl1.hpp"
+#include "restoration.hpp"
+#include "sharpening.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -89,19 +92,6 @@ bool contrast_request(const methods::ContrastReport& r, const ProcessRequest& re
             }
         },
         request.contrast());
-}
-bool partial_sharpen(const methods::SharpenReport& r, const ProcessRequest& request) {
-    const auto* const method = std::get_if<methods::Unsharp>(&request.sharpening());
-    if (method != nullptr ? (!r.requested || *r.requested != method->parameters())
-                          : r.requested.has_value()) {
-        return false;
-    }
-    if (!methods::valid_sharpen_observations(r)) {
-        return false;
-    }
-    return r.complete ? methods::valid_sharpen(r, request.sharpening())
-                      : (!r.requested || (r.status == methods::SharpenStatus::failed &&
-                                          r.reason == methods::SharpenReason::processing_failure));
 }
 bool partial_contrast(const methods::ContrastReport& r, const ProcessRequest& request) {
     if (!contrast_request(r, request) || !methods::valid_contrast_observations(r)) {
@@ -254,6 +244,12 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
                                          {.width = c.output.width, .height = c.output.height}) ||
         value.denoising.eligible_samples != light.eligible_samples ||
         value.denoising.protected_samples != light.protected_samples ||
+        !methods::valid_restoration(value.restoration, request.restoration()) ||
+        !methods::valid_restoration_extent(value.restoration,
+                                           {.width = c.output.width, .height = c.output.height}) ||
+        value.restoration.eligible_samples != light.eligible_samples ||
+        value.restoration.protected_samples != light.protected_samples ||
+        !restoration_prefix(value.restoration, c.orientation, light, value.denoising) ||
         !methods::valid_contrast(value.contrast, request.contrast()) ||
         value.contrast.eligible_samples != light.eligible_samples ||
         value.contrast.protected_samples != light.protected_samples ||
@@ -268,14 +264,16 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
 }
 bool valid_failure(const ProcessFailure& value, const ProcessRequest& request) {
     if (std::holds_alternative<methods::Binarization>(request.operation()) &&
-        (value.illumination || value.denoising || value.contrast || value.sharpening)) {
+        (value.illumination || value.denoising || value.contrast || value.sharpening ||
+         value.restoration)) {
         return false;
     }
     return value.error.valid_publication() &&
            (!value.illumination || partial_illumination(*value.illumination, request)) &&
            (!value.denoising || partial_denoising(*value.denoising, request)) &&
            (!value.contrast || partial_contrast(*value.contrast, request)) &&
-           (!value.sharpening || partial_sharpen(*value.sharpening, request));
+           (!value.sharpening || partial_sharpen(*value.sharpening, request)) &&
+           (!value.restoration || partial_restoration(*value.restoration, request));
 }
 bool valid_verified(const Verified& value, const VerifyRequest& request) {
     if (value.directory != request.directory() ||

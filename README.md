@@ -4,7 +4,7 @@
 
 A C++ command-line project for improving the readability of contemporary and historical document images: handwriting, print, and mixed pages. Original code is MPL-2.0-licensed.
 
-> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01/D02 denoising, C01/C02/C03 contrast, S01 sharpening, and three binarizers.**
+> **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01/D02 denoising, C01/C02/C03 contrast, S01 sharpening, R01 known-PSF restoration, and three binarizers.**
 > `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
 > and metadata policies. Explicit `--output-mode bw` selects B01/B02/B03 on their narrower stored-gray
@@ -82,7 +82,7 @@ out/dev/bin/docenhance methods --json
 out/dev/bin/docenhance process --help --json
 ```
 
-`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels, C02 gamma and C03 CLAHE contrast, S01 unsharp masking, B01 global Otsu, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
+`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels, C02 gamma and C03 CLAHE contrast, S01 unsharp masking, R01 known-PSF restoration, B01 global Otsu, B02 Sauvola and B03 fixed-threshold binarization; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout
@@ -137,5 +137,15 @@ docenhance process scan.jpg --out-dir denoised --denoise nlm --nlm-h 3 --denoise
 
 D01 is bounded 16-bit NLM-L1, off by default. Protected pixels retain their entering linear samples;
 protected neighbors remain context. It is not JPEG restoration or a guarantee of mark preservation.
-See [the complete denoising contract](docs/denoising.md). Records and responses use format 10;
+See [the complete denoising contract](docs/denoising.md). Records and responses use format 11;
 obsolete records are rejected without migration.
+
+Explicit known-PSF restoration follows denoising before contrast:
+
+```sh
+docenhance process scan.png --out-dir restored --deblur wiener --psf gaussian --psf-sigma 1 --wiener-k 0.01 --deblur-blend 0.5 --json
+```
+
+Gaussian, motion and supplied grayscale PNG kernels model blur in the already-oriented frame.
+R01 never estimates or verifies the real PSF and always reports `W_RESTORATION_INFERENCE`.
+See [restoration](docs/restoration.md) for phase, mean, resources and cancellation limits.

@@ -2,19 +2,28 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "stage_reports.hpp"
 
+#include "continuous.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <type_traits>
 #include <variant>
 namespace docenhance::host {
-void initialize_stages(const app::ProcessRequest& request,
-                       methods::IlluminationReport& illumination,
-                       methods::DenoisingReport& denoising, methods::ContrastReport& contrast,
-                       methods::SharpenReport& sharpening) {
+void initialize_stages(const app::ProcessRequest& request, ContinuousReports reports) {
+    auto& illumination = reports.illumination.get();
+    auto& denoising = reports.denoising.get();
+    auto& contrast = reports.contrast.get();
+    auto& sharpening = reports.sharpening.get();
+    auto& restoration = reports.restoration.get();
+    if (const auto* const method = std::get_if<methods::Wiener>(&request.restoration())) {
+        restoration.status = methods::RestorationStatus::failed;
+        restoration.requested = method->parameters();
+        restoration.inference_warning = true;
+    }
     std::visit(
         [&](const auto& selected) {
             using M = std::decay_t<decltype(selected)>;

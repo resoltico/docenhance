@@ -21,7 +21,7 @@ WORD_MAX = 65535
 CODE_TOLERANCE = 4
 MINIMUM_LEVELS_RANGE = 1e-6
 RANK_TOLERANCE = 1e-12
-RECORD_VERSION = 10
+RECORD_VERSION = 11
 
 
 def map_levels(values: list[float], low: float, high: float) -> tuple[list[float], float, float]:

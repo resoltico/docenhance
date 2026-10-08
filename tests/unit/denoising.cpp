@@ -5,9 +5,9 @@
 #include "cancellation_probe.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
-#include "docenhance/denoise/nlm.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/opencv/nlm.hpp"
 
 #include <algorithm>
 #include <array>
@@ -80,12 +80,12 @@ TEST_CASE("NLM global halos agree exactly with whole native output at seams and 
         for (const auto s : std::array{methods::nlm_default_search, methods::nlm_max_search}) {
             const auto options = method(p, s);
             methods::DenoisingReport report;
-            REQUIRE(denoise::denoise(input.view().as_const(), tiled.view(),
-                                     {.method = options,
-                                      .budget = budget,
-                                      .cancellation = cancellation,
-                                      .report = report}));
-            REQUIRE(denoise::native_tile(input.view().as_const(), whole.view(), options, budget));
+            REQUIRE(opencv::denoise(input.view().as_const(), tiled.view(),
+                                    {.method = options,
+                                     .budget = budget,
+                                     .cancellation = cancellation,
+                                     .report = report}));
+            REQUIRE(opencv::native_tile(input.view().as_const(), whole.view(), options, budget));
             for (std::uint32_t y = 0; y < seam_height; ++y) {
                 REQUIRE(std::ranges::equal(tiled.view().row(y), whole.view().row(y)));
             }
@@ -106,25 +106,25 @@ TEST_CASE("Native refusal and deterministic cancellation release all temporary s
         methods::nlm_native_scratch({.width = side, .height = side}, options).value();
     core::Budget exact_budget{scratch};
     const auto completed =
-        denoise::native_tile(input.view().as_const(), output.view(), options, exact_budget);
+        opencv::native_tile(input.view().as_const(), output.view(), options, exact_budget);
     REQUIRE(completed);
     REQUIRE(completed->reserved_bytes == scratch);
     REQUIRE(completed->charged_bytes == scratch);
     REQUIRE(exact_budget.used() == 0);
     core::Budget short_budget{scratch - 1};
-    REQUIRE(!(denoise::native_tile(input.view().as_const(), output.view(), options, short_budget)));
+    REQUIRE(!(opencv::native_tile(input.view().as_const(), output.view(), options, short_budget)));
     REQUIRE(short_budget.used() == 0);
     const CheckpointStop stopped{core::Checkpoint::processing, 1};
     methods::DenoisingReport report;
     const auto stopped_cancellation = stopped.cancellation();
-    REQUIRE(!(denoise::denoise(input.view().as_const(), output.view(),
-                               {.method = options,
-                                .budget = budget,
-                                .cancellation = stopped_cancellation,
-                                .report = report})));
+    REQUIRE(!(opencv::denoise(input.view().as_const(), output.view(),
+                              {.method = options,
+                               .budget = budget,
+                               .cancellation = stopped_cancellation,
+                               .report = report})));
     REQUIRE(report.native_calls == 0);
     REQUIRE(budget.used() == live);
-    REQUIRE(!(denoise::native_tile(input.view().as_const(), input.view(), options, budget)));
+    REQUIRE(!(opencv::native_tile(input.view().as_const(), input.view(), options, budget)));
 }
 
 TEST_CASE("Concurrent native NLM calls own independent scratch and preserve shared input") {
@@ -138,9 +138,9 @@ TEST_CASE("Concurrent native NLM calls own independent scratch and preserve shar
     const auto options = method();
     const auto live = budget.used();
     auto worker = std::async(std::launch::async, [&] {
-        return denoise::native_tile(input.view().as_const(), first.view(), options, budget);
+        return opencv::native_tile(input.view().as_const(), first.view(), options, budget);
     });
-    REQUIRE(denoise::native_tile(input.view().as_const(), second.view(), options, budget));
+    REQUIRE(opencv::native_tile(input.view().as_const(), second.view(), options, budget));
     REQUIRE(worker.get());
     REQUIRE(budget.used() == live);
     for (std::uint32_t y = 0; y < side; ++y) {
@@ -162,7 +162,7 @@ TEST_CASE("Cancellation after native completion reports completed calls and refu
     const auto cancellation = stop.cancellation();
     methods::DenoisingReport report;
     const auto live = budget.used();
-    REQUIRE(!denoise::denoise(
+    REQUIRE(!opencv::denoise(
         input.view().as_const(), output.view(),
         {.method = options, .budget = budget, .cancellation = cancellation, .report = report}));
     REQUIRE(report.native_calls == 1);

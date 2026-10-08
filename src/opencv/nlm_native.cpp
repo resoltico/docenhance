@@ -1,10 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "diagnostics.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/denoise/nlm.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/opencv/nlm.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -13,29 +14,9 @@
 #include <opencv2/core/exception.hpp>
 #include <opencv2/core/hal/interface.h>
 #include <opencv2/core/mat.hpp>
-#include <opencv2/core/utility.hpp>
-#include <opencv2/core/utils/logger.defines.hpp>
-#include <opencv2/core/utils/logger.hpp>
 #include <opencv2/photo.hpp>
 #include <vector>
-namespace docenhance::denoise {
-namespace {
-// This is OpenCV's fixed error callback ABI. It suppresses foreign stream delivery, not exceptions.
-// NOLINTNEXTLINE(google-readability-function-size)
-int quiet_error(int /*status*/, const char* /*function*/, const char* /*message*/,
-                const char* /*file*/, int /*line*/, void* /*user*/) noexcept {
-    return 0;
-}
-void configure_diagnostics() {
-    // Set once before any production native work. No thread policy or per-request global setter.
-    static const bool configured = [] {
-        cv::utils::logging::setLogLevel(cv::utils::logging::LOG_LEVEL_SILENT);
-        cv::redirectError(quiet_error);
-        return true;
-    }();
-    static_cast<void>(configured);
-}
-} // namespace
+namespace docenhance::opencv {
 core::Result<NativeCall> native_tile(image::PlaneView<const std::uint16_t> input,
                                      image::PlaneView<std::uint16_t> output,
                                      const methods::Nlm& method, core::Budget& budget) {
@@ -90,4 +71,4 @@ core::Result<NativeCall> native_tile(image::PlaneView<const std::uint16_t> input
         return core::failure(core::ErrorCode::invariant, "Unexpected native NLM failure");
     }
 }
-} // namespace docenhance::denoise
+} // namespace docenhance::opencv

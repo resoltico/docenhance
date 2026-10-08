@@ -58,12 +58,12 @@ class RestrictionPolicyTests(unittest.TestCase):
                 )
 
     def test_native_adapter_inherits_all_baseline_restrictions(self) -> None:
-        """Denoising cannot allocate C blocks, escape process control or own new threads."""
+        """CPU adapters cannot allocate C blocks, escape process control or own new threads."""
         manifest = architecture.load_manifest()
         for call in ("calloc", "realloc", "aligned_alloc", "strdup", "popen", "exit"):
-            self.assertIn(call, manifest.forbidden("denoise", "calls"))
+            self.assertIn(call, manifest.forbidden("opencv", "calls"))
         for header in ("latch", "semaphore", "stop_token"):
-            self.assertIn(header, manifest.forbidden("denoise", "headers"))
+            self.assertIn(header, manifest.forbidden("opencv", "headers"))
         self.assertNotIn("stop_token", manifest.forbidden("core", "headers"))
         self.assertNotIn("thread", manifest.forbidden("exec", "headers"))
         self.assertNotIn("filesystem", manifest.forbidden("io", "headers"))

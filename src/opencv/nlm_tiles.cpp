@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/denoise/nlm.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/opencv/nlm.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <expected>
 #include <functional>
 #include <limits>
-namespace docenhance::denoise {
+namespace docenhance::opencv {
 namespace {
 // Advancing by the remaining region reaches UINT32_MAX exactly without wrapping past it.
 constexpr std::uint32_t tile_length(std::uint32_t first, std::uint32_t extent) noexcept {
@@ -143,4 +143,4 @@ core::Result<void> denoise(image::PlaneView<const std::uint16_t> input,
     }
     return {};
 }
-} // namespace docenhance::denoise
+} // namespace docenhance::opencv

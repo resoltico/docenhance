@@ -26,12 +26,6 @@ Status: **implemented**.
 
 Method-specific argument references: `--denoise`, `--denoise-blend`, `--tv-lambda`, `--tv-iterations`, `--tv-tolerance`, `--protect-mask`.
 
-## R01 — Known-PSF regularized Fourier restoration
-
-Status: **not-implemented**.
-
-Method-specific argument references: `--deblur`, `--psf`, `--wiener-k`, `--deblur-blend`.
-
 ## C01 — Percentile levels
 
 Status: **implemented**.
@@ -55,6 +49,12 @@ Method-specific argument references: `--contrast`, `--contrast-blend`, `--clahe-
 Status: **implemented**.
 
 Method-specific argument references: `--sharpen`, `--sharpen-sigma`, `--sharpen-amount`, `--sharpen-threshold`, `--protect-mask`.
+
+## R01 — Known-PSF regularized Fourier restoration
+
+Status: **implemented**.
+
+Method-specific argument references: `--deblur`, `--psf`, `--psf-sigma`, `--psf-length`, `--psf-angle`, `--psf-file`, `--wiener-k`, `--deblur-blend`, `--protect-mask`.
 
 ## B02 — Sauvola
 

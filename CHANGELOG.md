@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Added
 
+- Explicit R01 known-PSF Fourier restoration (`--deblur wiener`) follows denoising before contrast. Gaussian, clockwise bilinear motion and raw grayscale 8/16-bit PNG kernels use reflected padding, a centered FFT origin and padded-mean preservation. Protected destinations remain exact. Resource limits refuse the requested operation, and native transforms can delay cancellation. `W_RESTORATION_INFERENCE` states that the supplied PSF is an unverified model; restoration is not evidence of recovered source detail. See [restoration](docs/restoration.md).
+
 - B01 global Otsu (`--output-mode bw --binarize otsu`) uses a 4,096-bin stored-gray histogram, deterministic smallest-threshold ties, recorded single-bin fallback and exact black/white polarity. It retains the existing 1/2/4/8-bit grayscale PNG without transparency domain, B02/B03 semantics and Sauvola default; continuous inputs and protection masks are not admitted. See [binarization](docs/binarization.md).
 
 - Explicit C03 floating-point CLAHE (`--contrast clahe`) completes the contrast alternatives after illumination and denoising. It uses 1,024 eligible-sample histogram bins, mass-conserving clipping/redistribution, exact sparse/flat tile identities and interpolation at actual contextual centers. The default grid is 8x8 with at least 16 pixels per tile dimension; the clip multiplier is 2. Protected destinations remain exact, and histogram discretization does not reduce 16-bit output to 8-bit levels. See [contrast](docs/contrast.md).
@@ -14,7 +16,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
-- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 10, adding closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods), sharpening excursion/clipping/warning observations and required method-specific B01 threshold/fallback observations. Update schema consumers and contrast/binarization visitors; obsolete records are refused without a compatibility reader or migration.
+- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 11, adding closed R01 PSF/regularizer/blend requests, normalized kernel identity/phase/padding/resource observations and retained supplied-PSF path spelling, inference warnings, closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods), sharpening excursion/clipping/warning observations and required method-specific B01 threshold/fallback observations. Update schema consumers and contrast/binarization visitors; obsolete records are refused without a compatibility reader or migration.
 
 - **Breaking (C++ models):** `methods::ContrastModel` owns its charged immutable CLAHE maps and is move-only. Move prepared models into their lifetime owner and keep them live through output verification.
 
@@ -27,6 +29,8 @@ Notable changes to this project are documented in this file. The format is based
 - **Breaking (lint exception approvals):** registry entries now require preserved-text full SHA256 scope bindings and explicit occurrence counts. Compiler/formatter regions bind through restoration, and effective configuration exclusions are centrally registered as exact rules with reviewed scopes. Old approvals, hidden suppression routes and malformed or duplicated registry records are refused without a fallback. Contributors must review the affected code and rationale before recording a changed binding; a hash does not establish review quality.
 
 ### Internal
+
+- Native R01 resource checks observe actual CPU FFT allocations and inject allocation failures. The private OpenCV recipe establishes ownership before initialization in four DFT factories and uses matching-signature forwarding for all six typed kernels, containing partial-initialization leaks and undefined indirect calls while retaining the locked original sources and notices. The dependency audit binds the corrected copy to actual compilation.
 
 - Verification admits each test process's response schema once while validating every actual response, reuses canonical layer roots within each native compiler trace while resolving every observed header freshly, and skips duplicate Otsu reference plateaus without changing their earliest-threshold semantics. Exhaustive oracle equivalence, path ownership controls, all fixtures and required fuzz exposures remain checked. See [quality](docs/quality.md).
 

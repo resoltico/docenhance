@@ -68,18 +68,6 @@
       "family": "denoising"
     },
     {
-      "id": "R01",
-      "name": "Known-PSF regularized Fourier restoration",
-      "method_version": 1,
-      "status": "not-implemented",
-      "arguments": [
-        "--deblur",
-        "--psf",
-        "--wiener-k",
-        "--deblur-blend"
-      ]
-    },
-    {
       "id": "C01",
       "name": "Percentile levels",
       "method_version": 1,
@@ -137,6 +125,25 @@
       ],
       "family": "sharpening",
       "selector": "unsharp"
+    },
+    {
+      "id": "R01",
+      "name": "Known-PSF regularized Fourier restoration",
+      "method_version": 1,
+      "status": "implemented",
+      "arguments": [
+        "--deblur",
+        "--psf",
+        "--psf-sigma",
+        "--psf-length",
+        "--psf-angle",
+        "--psf-file",
+        "--wiener-k",
+        "--deblur-blend",
+        "--protect-mask"
+      ],
+      "selector": "wiener",
+      "family": "restoration"
     },
     {
       "id": "B02",

@@ -62,6 +62,14 @@ struct Invocation {
     std::optional<std::string> tv_lambda = std::nullopt;
     std::optional<std::string> tv_iterations = std::nullopt;
     std::optional<std::string> tv_tolerance = std::nullopt;
+    std::optional<std::string> deblur = std::nullopt;
+    std::optional<std::string> psf = std::nullopt;
+    std::optional<std::string> psf_sigma = std::nullopt;
+    std::optional<std::string> psf_length = std::nullopt;
+    std::optional<std::string> psf_angle = std::nullopt;
+    std::optional<std::string> psf_file = std::nullopt;
+    std::optional<std::string> wiener_k = std::nullopt;
+    std::optional<std::string> deblur_blend = std::nullopt;
     std::optional<std::string> sharpen = std::nullopt;
     std::optional<std::string> sharpen_sigma = std::nullopt;
     std::optional<std::string> sharpen_amount = std::nullopt;

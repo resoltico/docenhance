@@ -69,6 +69,7 @@ def malformed_records(exe: Path, directory: Path) -> None:
         refused(exe, directory)
     for route, value in (
         (("record", "version"), 4294967297),
+        (("record", "version"), 10),
         (("record", "run"), "wrong"),
         (("record", "recorded"), "2026-02-30T00:00:00Z"),
         (("request", "operation", "parameters", "threshold"), -1),
@@ -96,7 +97,7 @@ def malformed_records(exe: Path, directory: Path) -> None:
         expect(not VALIDATOR.is_valid(altered), "closed schema rejects unknown fields")
         path.write_text(json.dumps(altered), encoding="utf-8")
         refused(exe, directory)
-    duplicate = original.replace(b'"version": 10', b'"version": 1, "version": 10', 1)
+    duplicate = original.replace(b'"version": 11', b'"version": 1, "version": 11', 1)
     path.write_bytes(duplicate)
     refused(exe, directory)
     path.write_bytes(original)

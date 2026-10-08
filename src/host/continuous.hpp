@@ -9,6 +9,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <functional>
@@ -18,6 +19,7 @@ struct ContinuousReports {
     std::reference_wrapper<methods::DenoisingReport> denoising;
     std::reference_wrapper<methods::ContrastReport> contrast;
     std::reference_wrapper<methods::SharpenReport> sharpening;
+    std::reference_wrapper<methods::RestorationReport> restoration;
 };
 struct ContinuousExecution {
     std::reference_wrapper<const core::Cancellation> cancellation;

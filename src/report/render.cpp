@@ -14,6 +14,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "illumination.hpp"
+#include "restoration.hpp"
 #include "sharpening.hpp"
 
 #include <nlohmann/json.hpp>
@@ -135,6 +136,7 @@ std::string help_text(const app::Outcome& outcome, const app::Help& help) {
 std::string failure_stages(const app::ProcessFailure& payload) {
     return (payload.illumination ? illumination_text(*payload.illumination) : "") +
            (payload.denoising ? denoising_text(*payload.denoising) : "") +
+           (payload.restoration ? restoration_text(*payload.restoration) : "") +
            (payload.contrast ? contrast_text(*payload.contrast) : "") +
            (payload.sharpening ? sharpening_text(*payload.sharpening) : "");
 }
@@ -144,6 +146,9 @@ Json failure_fields(const app::ProcessFailure& payload) {
         {"message", diagnostic(payload.error)},
     };
     Json fields = {{"error", error}, {"publication", publication_name(payload.error.publication)}};
+    if (payload.restoration) {
+        fields.emplace("restoration", bundle::restoration_fields(*payload.restoration));
+    }
     if (payload.sharpening) {
         fields.emplace("sharpening", bundle::sharpen_fields(*payload.sharpening));
     }

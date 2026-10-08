@@ -14,6 +14,12 @@ The private libtiff build modifies `tif_jpeg.c` for per-handle charged JPEG cont
 `tif_zip.c` to require completed Deflate striles, including checksum trailers. Original libtiff source notices remain intact; the adapter
 header and build recipe are project-owned. Native packages retain libtiff's original license.
 
+The private OpenCV build compiles checked private copies of `matrix.cpp` for Mat allocation order
+and `dxt.cpp` for immediate ownership of the four DFT factory contexts before initialization
+and matching-signature dispatch into its six typed numerical kernels.
+The locked upstream cache remains unchanged; the copies retain their complete upstream source
+notices and licenses. The build hooks are project-owned and do not relicense these upstream files.
+
 ## OpenCV NLM source notice
 
 The native NLM source retains this upstream notice in addition to OpenCV's repository license.

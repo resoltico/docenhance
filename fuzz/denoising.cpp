@@ -4,9 +4,9 @@
 
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
-#include "docenhance/denoise/nlm.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/opencv/nlm.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
@@ -20,7 +20,7 @@ void check(std::span<const std::uint8_t> bytes) {
     namespace core = docenhance::core;
     namespace image = docenhance::image;
     namespace methods = docenhance::methods;
-    namespace denoise = docenhance::denoise;
+    namespace native = docenhance::opencv;
     using docenhance::fuzz::require;
     docenhance::fuzz::FuzzInput input{bytes};
     constexpr std::uint32_t size_choices = 8;
@@ -43,14 +43,14 @@ void check(std::span<const std::uint8_t> bytes) {
     methods::DenoisingReport report;
     const core::Cancellation cancellation;
     require(
-        denoise::denoise(
+        native::denoise(
             source.view().as_const(), destination.view(),
             {.method = method, .budget = budget, .cancellation = cancellation, .report = report})
             .has_value(),
         "native denoising succeeds within its admitted bound");
-    require(denoise::native_tile(source.view().as_const(), reference.view(), method, budget)
-                .has_value(),
-            "native denoising succeeds within its admitted bound");
+    require(
+        native::native_tile(source.view().as_const(), reference.view(), method, budget).has_value(),
+        "native denoising succeeds within its admitted bound");
     for (std::uint32_t y = 0; y < side; ++y) {
         require(std::ranges::equal(destination.view().row(y), reference.view().row(y)),
                 "global tile halo matches native output");

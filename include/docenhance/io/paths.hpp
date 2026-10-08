@@ -4,9 +4,9 @@
 #include <string>
 
 namespace docenhance::io {
-// The name a record keeps for a file: the final component, without the directories that led to
-// it. An absolute path is never recorded, and a name can still carry personal information, so a
-// bundle is not described as anonymized.
+// This helper returns only the final component, without its containing directories. Source
+// names use it; explicit request paths such as a supplied PSF retain their admitted spelling.
+// Names and paths can carry personal information, so bundles are not described as anonymized.
 [[nodiscard]] std::string file_name(const std::string& path);
 
 } // namespace docenhance::io

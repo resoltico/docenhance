@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 10
+          "const": 11
         },
         "run": {
           "type": "string",
@@ -98,7 +98,8 @@
         "protection_supplied",
         "denoising",
         "contrast",
-        "sharpening"
+        "sharpening",
+        "restoration"
       ],
       "additionalProperties": false,
       "properties": {
@@ -276,6 +277,9 @@
         },
         "sharpening": {
           "$ref": "#/$defs/sharpening_request"
+        },
+        "restoration": {
+          "$ref": "#/$defs/restoration_request"
         }
       }
     },
@@ -287,7 +291,8 @@
         "denoising",
         "contrast",
         "sharpening",
-        "binarization"
+        "binarization",
+        "restoration"
       ],
       "additionalProperties": false,
       "properties": {
@@ -322,6 +327,9 @@
               "$ref": "#/$defs/otsu_observation"
             }
           ]
+        },
+        "restoration": {
+          "$ref": "#/$defs/restoration"
         }
       }
     },

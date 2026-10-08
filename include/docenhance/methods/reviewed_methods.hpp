@@ -47,6 +47,11 @@ inline constexpr ImplementedMethod unsharp_descriptor{
     .method_version = 1U,
     .selector = "unsharp",
 };
+inline constexpr ImplementedMethod wiener_descriptor{
+    .id = "R01",
+    .method_version = 1U,
+    .selector = "wiener",
+};
 inline constexpr ImplementedMethod sauvola_descriptor{
     .id = "B02",
     .method_version = 1U,
@@ -71,6 +76,7 @@ inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({
     gamma_descriptor,
     clahe_descriptor,
     unsharp_descriptor,
+    wiener_descriptor,
     sauvola_descriptor,
     fixed_descriptor,
     otsu_descriptor,

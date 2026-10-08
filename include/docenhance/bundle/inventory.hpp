@@ -3,10 +3,12 @@
 #pragma once
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <cstddef>
@@ -25,7 +27,14 @@ namespace docenhance::bundle {
 // stack, not with an error.
 inline constexpr std::size_t record_max_bytes = std::size_t{1} * 1024 * 1024;
 inline constexpr std::size_t record_max_depth = 16;
-inline constexpr std::size_t record_max_events = 1024;
+// Existing closed stage/source metadata fits the fixed allowance. R01 adds at most one
+// scalar event per normalized coefficient and 256 events for its fixed request/report fields,
+// keys, container boundaries and warnings; the coefficients occur only once in execution.
+inline constexpr std::size_t record_metadata_event_allowance = 1024;
+inline constexpr std::size_t restoration_metadata_event_allowance = 256;
+inline constexpr std::size_t record_max_events =
+    record_metadata_event_allowance + (core::psf_dimension_max * core::psf_dimension_max) +
+    restoration_metadata_event_allowance;
 inline constexpr std::size_t record_max_artifacts = 16;
 
 // What a record declares this bundle contains. The inventory is closed: a file that is present
@@ -52,6 +61,7 @@ struct DeclaredBundle {
     methods::DenoisingReport denoising{};
     methods::ContrastReport contrast{};
     methods::SharpenReport sharpening{};
+    methods::RestorationReport restoration{};
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
 };
 

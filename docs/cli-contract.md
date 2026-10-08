@@ -184,7 +184,7 @@ Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and c
 
 1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
 
-**Applicable methods:** I01,I02,D01,D02,C01,C02,C03,S01.
+**Applicable methods:** I01,I02,D01,D02,C01,C02,C03,S01,R01.
 
 ## `--denoise METHOD`
 
@@ -249,6 +249,70 @@ TV-L1 only. Iteration cap; exhaustion retains a usable iterate and emits W_TV_IT
 TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iteration checkpoints, starting at iteration 20.
 
 **Applicable methods:** D02.
+
+## `--deblur METHOD`
+
+**Scope:** P. **Domain/default:** off; off|wiener.
+
+Explicit R01 known-PSF regularized restoration after denoising and before contrast; continuous output only. No PSF estimation or authenticity claim.
+
+**Applicable methods:** R01.
+
+## `--psf KIND`
+
+**Scope:** P. **Domain/default:** Required for wiener; gaussian|motion|kernel.
+
+PSF in the already-oriented processing frame. Kind-specific parameters are rejected for other kinds.
+
+**Applicable methods:** R01.
+
+## `--psf-sigma SIGMA`
+
+**Scope:** P. **Domain/default:** 1.0; finite [0.3,5].
+
+Gaussian standard deviation in pixels; radius ceil(3*sigma), float64 normalization.
+
+**Applicable methods:** R01.
+
+## `--psf-length LENGTH`
+
+**Scope:** P. **Domain/default:** 5.0; finite [1,31].
+
+Motion exposure segment length in pixels; equally weighted midpoint samples deposited bilinearly.
+
+**Applicable methods:** R01.
+
+## `--psf-angle ANGLE`
+
+**Scope:** P. **Domain/default:** 0; finite [-180,180].
+
+Motion direction clockwise from positive x in y-down processing coordinates.
+
+**Applicable methods:** R01.
+
+## `--psf-file PATH`
+
+**Scope:** P. **Domain/default:** Required for kernel; well-formed UTF-8 path.
+
+Raw nontransparent grayscale PNG coefficients, unsigned 8/16-bit, odd dimensions 3..129. Ignore profile/gamma and orientation; normalize positive sum and preserve off-center origin. Source is read-only.
+
+**Applicable methods:** R01.
+
+## `--wiener-k K`
+
+**Scope:** P. **Domain/default:** 0.01; finite [1e-5,1].
+
+Positive regularizer in |H|^2+K, not a measured noise-to-signal ratio.
+
+**Applicable methods:** R01.
+
+## `--deblur-blend A`
+
+**Scope:** P. **Domain/default:** 0.5; finite [0,1].
+
+Blend original linear luminance with the mean-preserving restored candidate before clamping. Zero still validates the complete PSF and options.
+
+**Applicable methods:** R01.
 
 ## `--contrast METHOD`
 

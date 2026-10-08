@@ -84,6 +84,8 @@ app::PublishedContinuous continuous() {
     value.contrast.eligible_samples = 4;
     value.sharpening.complete = true;
     value.sharpening.eligible_samples = 4;
+    value.restoration.complete = true;
+    value.restoration.eligible_samples = 4;
     value.denoising.complete = true;
     value.denoising.eligible_samples = 4;
     return value;

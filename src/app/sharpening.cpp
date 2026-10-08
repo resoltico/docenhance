@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "sharpening.hpp"
 
+#include "docenhance/app/process.hpp"
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/parse.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <expected>
+#include <variant>
 namespace docenhance::app {
 core::Result<methods::Sharpening> prepare_sharpening(const contract::Invocation& i) {
     const bool parameters = i.sharpen_sigma || i.sharpen_amount || i.sharpen_threshold;
@@ -48,5 +50,18 @@ core::Result<methods::Sharpening> prepare_sharpening(const contract::Invocation&
     }
     return methods::Unsharp::create({.sigma = *sigma, .amount = *amount, .threshold = *threshold})
         .transform([](auto value) -> methods::Sharpening { return value; });
+}
+bool partial_sharpen(const methods::SharpenReport& r, const ProcessRequest& request) {
+    const auto* const method = std::get_if<methods::Unsharp>(&request.sharpening());
+    if (method != nullptr ? (!r.requested || *r.requested != method->parameters())
+                          : r.requested.has_value()) {
+        return false;
+    }
+    if (!methods::valid_sharpen_observations(r)) {
+        return false;
+    }
+    return r.complete ? methods::valid_sharpen(r, request.sharpening())
+                      : (!r.requested || (r.status == methods::SharpenStatus::failed &&
+                                          r.reason == methods::SharpenReason::processing_failure));
 }
 } // namespace docenhance::app

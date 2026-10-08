@@ -1,0 +1,72 @@
+# SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+# SPDX-License-Identifier: MPL-2.0
+# Keep the locked source untouched; a private upstream copy retains its original notices.
+if(NOT DOCENHANCE_OPENCV_OWNED_DFT_CONTEXTS)
+  message(FATAL_ERROR "R01 requires the reviewed DFT context ownership correction")
+endif()
+if(NOT DOCENHANCE_OPENCV_TYPED_DFT_DISPATCH)
+  message(FATAL_ERROR "R01 requires type-safe dispatch for the six CPU DFT kernels")
+endif()
+set(de_dxt_directory "${CMAKE_SOURCE_DIR}/modules/core/src")
+set(de_dxt_source "${de_dxt_directory}/dxt.cpp")
+file(SHA256 "${de_dxt_source}" de_dxt_digest)
+if(NOT de_dxt_digest STREQUAL DOCENHANCE_OPENCV_DXT_SHA256)
+  message(FATAL_ERROR "Review DFT context ownership against the new locked OpenCV source")
+endif()
+file(READ "${de_dxt_source}" de_dxt)
+function(de_fft_replace before after)
+  string(FIND "${de_dxt}" "${before}" de_first)
+  if(de_first EQUAL -1)
+    message(FATAL_ERROR "The reviewed DFT ownership sequence is absent")
+  endif()
+  string(LENGTH "${before}" de_length)
+  math(EXPR de_after_first "${de_first} + ${de_length}")
+  string(SUBSTRING "${de_dxt}" ${de_after_first} -1 de_tail)
+  string(FIND "${de_tail}" "${before}" de_second)
+  if(NOT de_second EQUAL -1)
+    message(FATAL_ERROR "The reviewed DFT ownership sequence occurs more than once")
+  endif()
+  string(REPLACE "${before}" "${after}" de_corrected "${de_dxt}")
+  set(de_dxt "${de_corrected}" PARENT_SCOPE)
+endfunction()
+foreach(de_class ReplacementDFT1D OcvDftBasicImpl ReplacementDFT2D OcvDftImpl)
+  de_fft_replace("${de_class} *impl = new ${de_class}();"
+                 "Ptr<${de_class}> impl = makePtr<${de_class}>();")
+endforeach()
+foreach(de_dimension 1D 2D)
+  de_fft_replace("return Ptr<DFT${de_dimension}>(impl);\n        }\n        delete impl;"
+                 "return Ptr<DFT${de_dimension}>(impl);\n        }")
+endforeach()
+# DFTFunc erases data pointer types, not function types. Call matching thunks instead
+# of casting six incompatible function signatures; the numerical kernels remain unchanged.
+de_fft_replace([=[static void CCSIDFT_64f(const OcvDftOptions & c, const double* src, double* dst)
+{
+    CCSIDFT(c, src, dst);
+}]=]
+               [=[static void CCSIDFT_64f(const OcvDftOptions & c, const double* src, double* dst)
+{
+    CCSIDFT(c, src, dst);
+}
+
+template<typename Sample, void (*Function)(const OcvDftOptions&, const Sample*, Sample*)>
+static void DFT_dispatch(const OcvDftOptions& c, const void* src, void* dst)
+{
+    Function(c, static_cast<const Sample*>(src), static_cast<Sample*>(dst));
+}]=])
+de_fft_replace("(DFTFunc)DFT_32f" "DFT_dispatch<Complexf, DFT_32f>")
+de_fft_replace("(DFTFunc)RealDFT_32f" "DFT_dispatch<float, RealDFT_32f>")
+de_fft_replace("(DFTFunc)CCSIDFT_32f" "DFT_dispatch<float, CCSIDFT_32f>")
+de_fft_replace("(DFTFunc)DFT_64f" "DFT_dispatch<Complexd, DFT_64f>")
+de_fft_replace("(DFTFunc)RealDFT_64f" "DFT_dispatch<double, RealDFT_64f>")
+de_fft_replace("(DFTFunc)CCSIDFT_64f" "DFT_dispatch<double, CCSIDFT_64f>")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/owned-source")
+set(de_owned_dxt "${CMAKE_BINARY_DIR}/owned-source/dxt.cpp")
+file(CONFIGURE OUTPUT "${de_owned_dxt}" CONTENT "${de_dxt}" @ONLY NEWLINE_STYLE LF)
+get_target_property(de_dxt_sources opencv_core SOURCES)
+list(FIND de_dxt_sources "${de_dxt_source}" de_dxt_index)
+if(de_dxt_index EQUAL -1)
+  message(FATAL_ERROR "The reviewed native DFT source registration is absent")
+endif()
+list(REMOVE_ITEM de_dxt_sources "${de_dxt_source}")
+list(APPEND de_dxt_sources "${de_owned_dxt}")
+set_property(TARGET opencv_core PROPERTY SOURCES "${de_dxt_sources}")

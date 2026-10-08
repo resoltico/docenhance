@@ -11,6 +11,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "illumination.hpp"
+#include "restoration.hpp"
 #include "sharpening.hpp"
 
 #include <algorithm>
@@ -202,6 +203,10 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     if (!denoising) {
         return std::unexpected(denoising.error());
     }
+    auto restoration = prepare_restoration(invocation);
+    if (!restoration) {
+        return std::unexpected(restoration.error());
+    }
     const auto contrast = prepare_contrast(invocation);
     if (!contrast) {
         return std::unexpected(contrast.error());
@@ -216,6 +221,7 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
                           {
                               .illumination = *illumination,
                               .denoising = *denoising,
+                              .restoration = std::move(*restoration),
                               .contrast = *contrast,
                               .sharpening = *sharpening,
                           },

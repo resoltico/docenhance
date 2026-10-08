@@ -50,6 +50,9 @@ validate_denoising_claims(const RecordJson& document, DeclaredBundle& d, const O
                                                           DeclaredBundle& d,
                                                           const Operation& operation,
                                                           const methods::IlluminationReport& light);
+[[nodiscard]] core::Result<void>
+validate_restoration_claims(const RecordJson& document, DeclaredBundle& d,
+                            const Operation& operation, const methods::IlluminationReport& light);
 [[nodiscard]] core::Result<void> validate_sharpen_claims(const RecordJson& document,
                                                          DeclaredBundle& d,
                                                          const Operation& operation,

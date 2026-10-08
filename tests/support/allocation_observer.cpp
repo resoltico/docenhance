@@ -8,11 +8,9 @@
 #include <cstddef>
 #include <cstdlib>
 #include <mutex>
+#include <new>
 #include <span>
 #include <thread>
-#if !DE_ALLOCATION_SANITIZER_OBSERVATION
-#include <new>
-#endif
 #ifdef __has_feature
 #if __has_feature(address_sanitizer)
 #include <dlfcn.h>
@@ -154,6 +152,25 @@ void release_bytes(void* const pointer) noexcept {
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
     std::free(pointer);
 }
+#else
+void* allocate_bytes(std::size_t bytes) {
+    if (refuse_allocation()) {
+        throw std::bad_alloc{};
+    }
+    // Sanitizer malloc/free hooks own observation and registration in this mode. The paired
+    // replaceable C++ ABI injects failure before malloc; it must not register the same block twice.
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
+    auto* const pointer = std::malloc(bytes == 0 ? 1 : bytes);
+    if (pointer == nullptr) {
+        throw std::bad_alloc{};
+    }
+    return pointer;
+}
+void release_bytes(void* const pointer) noexcept {
+    // Sanitizer free hooks remove the observed block; no second manual ledger refund occurs.
+    // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
+    std::free(pointer);
+}
 #endif
 } // namespace
 #if DE_ALLOCATION_SANITIZER_OBSERVATION
@@ -231,7 +248,6 @@ bool initialize_hooks() noexcept {
 #endif
 }
 } // namespace docenhance::tests::allocation_observer
-#if !DE_ALLOCATION_SANITIZER_OBSERVATION
 // Compiler-specific standard-library declarations choose different parameter names.
 // NOLINTNEXTLINE(readability-inconsistent-declaration-parameter-name)
 void* operator new(std::size_t bytes) {
@@ -282,4 +298,3 @@ void operator delete(void* const pointer, std::size_t /*size*/) noexcept {
 void operator delete[](void* const pointer, std::size_t /*size*/) noexcept {
     docenhance::tests::allocation_observer::release_bytes(pointer);
 }
-#endif

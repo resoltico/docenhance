@@ -6,13 +6,13 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/denoise/nlm.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/tvl1.hpp"
+#include "docenhance/opencv/nlm.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -190,7 +190,7 @@ core::Result<DenoisingPlanes> prepare_denoising(DenoisingInput source_input,
     if (!quantized) {
         return std::unexpected(quantized.error());
     }
-    auto run = denoise::denoise(
+    auto run = opencv::denoise(
         planes.input.view().as_const(), planes.output.view(),
         {.method = *method, .budget = budget, .cancellation = cancellation, .report = report});
     if (!run) {
