@@ -14,7 +14,6 @@
 #include <opencv2/core/exception.hpp>
 #include <opencv2/core/hal/interface.h>
 #include <opencv2/core/mat.hpp>
-#include <opencv2/core/utility.hpp>
 #include <opencv2/photo.hpp>
 #include <vector>
 namespace docenhance::opencv {
