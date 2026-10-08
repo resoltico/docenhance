@@ -111,7 +111,8 @@ The pinned CPU FFT factories require checked private ownership and dispatch corr
 contexts gains an owning `Ptr` before initialization. Stock raw-pointer factories leak a partially
 initialized context when allocation throws. The dependency recipe verifies the exact original
 source SHA and each replacement's single occurrence, retains upstream notices and compiles a
-private copy without changing the locked cache. Its dispatch table uses correctly typed forwarding
+private copy with canonical LF bytes on every platform without changing the locked cache.
+The audit compares raw bytes; alternative newline encodings are refused. Its dispatch table uses correctly typed forwarding
 functions for all six float32/float64 real, packed-inverse and complex kernels. Casting their typed
 function pointers to a generic `void*` data signature produces undefined indirect calls; erasing
 only the data pointers through matching-signature forwarding functions leaves their mathematics
