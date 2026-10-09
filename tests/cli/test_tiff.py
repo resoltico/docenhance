@@ -19,7 +19,7 @@ from test_cli import call_json, expect
 from test_jpeg import oriented_fixture
 from tiff_fixtures import Field, TiffFixture, container
 
-WIRE_VERSION = 11
+WIRE_VERSION = 12
 BYTE_DEPTH = 8
 WORD_DEPTH = 16
 FLATTENED_PIXELS = 3

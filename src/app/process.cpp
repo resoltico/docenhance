@@ -9,6 +9,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "illumination.hpp"
 #include "restoration.hpp"
@@ -109,6 +110,23 @@ core::Result<Value> choice(const std::optional<std::string>& raw,
     }
     return core::failure(core::ErrorCode::argument, "Invalid or empty output policy value");
 }
+core::Result<image::QuarterTurn> prepare_rotation(const contract::Invocation& invocation) {
+    const auto value = invocation.rotate.value_or("0");
+    for (const auto degrees : {
+             0U,
+             image::QuarterTurn::quarter_degrees,
+             image::QuarterTurn::half_degrees,
+             image::QuarterTurn::three_quarter_degrees,
+         }) {
+        if (value == std::to_string(degrees)) {
+            const auto rotation = image::QuarterTurn::from_degrees(degrees);
+            if (rotation) {
+                return *rotation;
+            }
+        }
+    }
+    return core::failure(core::ErrorCode::argument, "--rotate requires 0, 90, 180 or 270");
+}
 core::Result<image::Continuous> prepare_tone(const contract::Invocation& invocation) {
     using image::AlphaPolicy;
     using image::OutputDepth;
@@ -191,6 +209,10 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     if (!core::valid_utf8(invocation.subject) || !core::valid_utf8(invocation.output_directory)) {
         return core::failure(core::ErrorCode::argument, "Paths must be well-formed UTF-8");
     }
+    const auto rotation = prepare_rotation(invocation);
+    if (!rotation) {
+        return std::unexpected(rotation.error());
+    }
     auto method = prepare_operation(invocation);
     if (!method) {
         return std::unexpected(method.error());
@@ -224,6 +246,7 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
                               .restoration = std::move(*restoration),
                               .contrast = *contrast,
                               .sharpening = *sharpening,
+                              .rotation = {.rotation = *rotation},
                           },
                           invocation.protect_mask};
 }

@@ -9,7 +9,8 @@ It is not a complete restoration suite.
 `process INPUT --out-dir DIRECTORY` defaults to preserve-mode continuous-tone PNG conversion, with
 no enhancement filter by default. Static gray, palette, RGB and alpha PNGs support 8/16-bit precision, bounded
 profile interpretation, linear-light compositing, exact metadata orientation and minimal canonical
-output metadata. Output rows and metadata are independently verified before exclusive publication.
+output metadata. Explicit G02 `--rotate 0|90|180|270` follows G01 metadata orientation
+with exact clockwise sample and protection permutations; see [geometry](geometry.md). Output rows and metadata are independently verified before exclusive publication.
 JPEG admits gray/RGB/YCbCr through the same interpretation/I01 path; `bw` remains grayscale PNG only.
 TIFF admits the reviewed 1/8/16-bit sample, color, alpha and strip/tile domains through the same
 illumination/denoising pipeline; see [bounded TIFF admission](tiff-processing.md).
@@ -23,8 +24,8 @@ The selected denoiser follows illumination before optional [restoration](restora
 See [NLM](denoising.md) and [TV-L1](tvl1-denoising.md) for numerical, resource, cancellation and record contracts.
 
 `--output-mode bw` activates B01/B02/B03; default selection is Sauvola. Their existing stored-gray
-sample semantics and 1/2/4/8-bit nontransparent PNG input domain are unchanged, and broader input
-support is not implied for that branch. See [typed binarization](binarization.md).
+sample semantics (including ignored metadata orientation) and 1/2/4/8-bit nontransparent PNG input domain are unchanged, and broader input
+support is not implied for that branch. Explicit G02 rotates stored samples before thresholding. See [typed binarization](binarization.md).
 
 The application validates a typed request; the production host owns execution; the CLI and report
 layers own transport and presentation. Buffer lifetime, borrowed views, scheduler failure handling,
@@ -68,7 +69,7 @@ validation work, not capabilities or results claimed by this source tree.
 
 ## Not implemented
 
-Other complete methods, multipage processing,
+Other complete methods, multipage processing, perspective rectification,
 dewarping, deskewing, automatic method selection, OCR, batching, presets and streaming/tiling
 for arbitrarily large pages. No neural inference, GPU requirement, network service, GUI,
 database or plugin framework is introduced. Planned numerical definitions remain in the method

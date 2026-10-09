@@ -54,9 +54,22 @@ bool observations_agree(const DeclaredBundle& d) {
         return false;
     }
     const auto& c = *d.conversion;
-    return c.output == o.shape && c.resolution == o.resolution && r.protected_samples <= pixels &&
-           r.eligible_samples == pixels - r.protected_samples &&
+    return c.rotation == d.rotation && c.output == o.shape && c.resolution == o.resolution &&
+           r.protected_samples <= pixels && r.eligible_samples == pixels - r.protected_samples &&
            image::valid_conversion(c, std::get<image::Continuous>(*d.operation));
+}
+bool protection_agrees(const DeclaredBundle& d) {
+    if (!d.protection) {
+        return true;
+    }
+    const auto& p = *d.protection;
+    if (!d.conversion) {
+        return false;
+    }
+    const auto oriented = image::oriented_shape(d.conversion->source, d.conversion->orientation);
+    return p.stored.name == mask_name &&
+           core::valid_hexadecimal(p.original.sha256, core::sha256_hex_length) &&
+           p.original.bytes != 0 && p.width == oriented.width && p.height == oriented.height;
 }
 core::Result<OutputFacts> output(const RecordJson& v) {
     auto shape = record_shape(v);
@@ -123,6 +136,7 @@ core::Result<void> canonical_claims(const RecordJson& document, const DeclaredBu
         .sharpening = d.sharpening,
         .restoration = d.restoration,
         .otsu = d.otsu,
+        .rotation = d.rotation,
     };
     auto canonical = serialize(record);
     if (!canonical) {
@@ -145,12 +159,15 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
         return invalid();
     }
     const auto& request = record_field(document, "request");
+    const auto rotation = image::QuarterTurn::from_degrees(static_cast<unsigned>(
+        record_integer(record_field(request, "rotation_degrees"), UINT32_MAX)));
     auto op = record_operation(record_field(request, "operation"));
     auto light =
         record_illumination(record_field(record_field(document, "execution"), "illumination"));
-    if (!op || !light) {
+    if (!op || !light || !rotation) {
         return invalid();
     }
+    d.rotation = *rotation;
     auto out = output(record_field(document, "output"));
     if (!out) {
         return std::unexpected(std::move(out.error()));
@@ -201,14 +218,7 @@ core::Result<void> validate_record_claims(const RecordJson& document, DeclaredBu
         !core::valid_hexadecimal(d.run, core::run_identity_hex_length) ||
         !core::valid_instant(d.recorded) || supplied != d.protection.has_value() ||
         d.output.artifact.name != image_name || !observations_agree(d) || !illumination_agrees(d) ||
-        !source_agrees(d)) {
-        return invalid();
-    }
-    if (d.protection &&
-        (d.protection->stored.name != mask_name ||
-         !core::valid_hexadecimal(d.protection->original.sha256, core::sha256_hex_length) ||
-         d.protection->original.bytes == 0 || d.protection->width != d.output.shape.width ||
-         d.protection->height != d.output.shape.height)) {
+        !source_agrees(d) || !protection_agrees(d)) {
         return invalid();
     }
     return canonical_claims(document, d);

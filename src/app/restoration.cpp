@@ -7,6 +7,7 @@
 #include "docenhance/contract/parse.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
@@ -115,11 +116,12 @@ bool partial_restoration(const methods::RestorationReport& r, const ProcessReque
                                    r.reason == methods::RestorationReason::processing_failure));
 }
 bool restoration_prefix(const methods::RestorationReport& r, image::Orientation orientation,
+                        image::QuarterTurn rotation,
                         const methods::IlluminationReport& illumination,
                         const methods::DenoisingReport& denoising) {
     return r.after_transform_warning ==
            (r.requested.has_value() &&
-            (orientation != image::Orientation::normal() || illumination.changed_samples != 0 ||
-             denoising.changed_samples != 0));
+            (orientation != image::Orientation::normal() || rotation.degrees() != 0 ||
+             illumination.changed_samples != 0 || denoising.changed_samples != 0));
 }
 } // namespace docenhance::app

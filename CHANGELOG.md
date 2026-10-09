@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Added
 
+- G02 `--rotate 0|90|180|270` applies exact clockwise quarter-turns after continuous G01 metadata orientation, with identical protection-mask permutations and physical X/Y density swapping for 90/270 degrees. Stored-gray binary processing admits explicit turns before thresholding while retaining its ignored-metadata-orientation policy. Existing continuous metadata orientation is documented separately from explicit rotation. Masks remain supplied/stored in metadata-oriented frame B; PSFs and pixel windows use the post-geometry frame. Perspective, deskew and dewarping remain unsupported. See [geometry](docs/geometry.md).
+
 - Explicit R01 known-PSF Fourier restoration (`--deblur wiener`) follows denoising before contrast. Gaussian, clockwise bilinear motion and raw grayscale 8/16-bit PNG kernels use reflected padding, a centered FFT origin and padded-mean preservation. Protected destinations remain exact. Resource limits refuse the requested operation, and native transforms can delay cancellation. `W_RESTORATION_INFERENCE` states that the supplied PSF is an unverified model; restoration is not evidence of recovered source detail. See [restoration](docs/restoration.md).
 
 - B01 global Otsu (`--output-mode bw --binarize otsu`) uses a 4,096-bin stored-gray histogram, deterministic smallest-threshold ties, recorded single-bin fallback and exact black/white polarity. It retains the existing 1/2/4/8-bit grayscale PNG without transparency domain, B02/B03 semantics and Sauvola default; continuous inputs and protection masks are not admitted. See [binarization](docs/binarization.md).
@@ -16,7 +18,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
-- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 11, adding closed R01 PSF/regularizer/blend requests, normalized kernel identity/phase/padding/resource observations and retained supplied-PSF path spelling, inference warnings, closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods), sharpening excursion/clipping/warning observations and required method-specific B01 threshold/fallback observations. Update schema consumers and contrast/binarization visitors; obsolete records are refused without a compatibility reader or migration.
+- **Breaking (machine contracts):** command responses and processing records advance from version 7 to 12, adding required G02 rotation requests and conversion/binary rotation observations, closed R01 PSF/regularizer/blend requests, normalized kernel identity/phase/padding/resource observations and retained supplied-PSF path spelling, inference warnings, closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods), sharpening excursion/clipping/warning observations and required method-specific B01 threshold/fallback observations. Update schema consumers and geometry/contrast/binarization visitors; obsolete records are refused without a compatibility reader or migration.
 
 - **Breaking (C++ models):** `methods::ContrastModel` owns its charged immutable CLAHE maps and is move-only. Move prepared models into their lifetime owner and keep them live through output verification.
 

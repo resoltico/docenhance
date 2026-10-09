@@ -9,6 +9,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
@@ -63,6 +64,7 @@ struct RunPublication {
     core::ContentIdentity source;
     std::string source_name;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    image::QuarterTurn rotation = image::QuarterTurn::identity();
 };
 
 // What was published, and what the response needs to identify it.

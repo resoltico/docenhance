@@ -82,7 +82,7 @@ Method-specific argument references: See geometry/common options in the target c
 
 ## G02 — Exact quarter-turn
 
-Status: **not-implemented**.
+Status: **implemented**.
 
 Method-specific argument references: `--rotate`.
 

@@ -227,6 +227,7 @@ Output json_form(const app::Outcome& outcome) {
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 const Json fields = {
                     {"binarization", bundle::binarization_fields(payload.otsu)},
+                    {"rotation_degrees", payload.rotation.degrees()},
                     {"method", payload.method.id},
                     {"method_version", payload.method.method_version},
                     {"output", payload.output},

@@ -32,6 +32,14 @@ P = process.
 
 Paths must be well-formed UTF-8 and are never normalized or repaired. Relative effects bind to the operation's initial working directory; reported spelling is retained. Windows drive-relative publication paths are rejected. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced.
 
+## `--rotate DEGREES`
+
+**Scope:** P. **Domain/default:** 0; 0|90|180|270.
+
+Exact clockwise quarter-turn after metadata orientation on continuous output; binary PNG keeps its stored-sample metadata policy. Accept only the literal values 0, 90, 180 or 270. Protection masks match metadata-oriented, pre-rotation dimensions and rotate identically. Odd quarter-turns swap X/Y resolution without interpolation or added margins.
+
+**Applicable methods:** G02.
+
 ## `--output-mode MODE`
 
 **Scope:** P. **Domain/default:** preserve; preserve|gray|bw.
@@ -150,7 +158,7 @@ Linear-light target. Source uses the fitted background nearest-rank 90th percent
 
 **Scope:** P. **Domain/default:** auto; auto or integer [8,512].
 
-Cell edge in oriented pixels. Auto is round(min(width,height)/24), clamped to [16,256]. Resource refusal never changes this value.
+Cell edge in post-geometry processing pixels. Auto is round(min(width,height)/24), clamped to [16,256]. Resource refusal never changes this value.
 
 **Applicable methods:** I01.
 
@@ -174,7 +182,7 @@ Positive grid-Laplacian weight for fitting the logarithmic background.
 
 **Scope:** P. **Domain/default:** auto; auto or integer [1,256].
 
-Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and clamps to [8,128]; Gaussian sigma=max(0.5,radius/2).
+Square closing radius in post-geometry processing pixels. Auto rounds min(width,height)/50 and clamps to [8,128]; Gaussian sigma=max(0.5,radius/2).
 
 **Applicable methods:** I02.
 
@@ -182,7 +190,7 @@ Square closing radius in oriented pixels. Auto rounds min(width,height)/50 and c
 
 **Scope:** P. **Domain/default:** Absent.
 
-1-bit or 8-bit grayscale PNG mask matching oriented source dimensions. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. The mask is validated even when illumination and denoising are disabled.
+1-bit or 8-bit grayscale PNG mask matching metadata-oriented source dimensions before --rotate. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. Rotate identically with the source. The mask is validated even with all photometric stages disabled.
 
 **Applicable methods:** I01,I02,D01,D02,C01,C02,C03,S01,R01.
 
@@ -222,7 +230,7 @@ NLM only. Square patch width.
 
 **Scope:** P. **Domain/default:** 21; odd integer `[7,41]`.
 
-NLM only. Search at least patch; active processing requires fit in smaller oriented dimension.
+NLM only. Search at least patch; active processing requires fit in smaller post-geometry processing dimension.
 
 **Applicable methods:** D01.
 
@@ -262,7 +270,7 @@ Explicit R01 known-PSF regularized restoration after denoising and before contra
 
 **Scope:** P. **Domain/default:** Required for wiener; gaussian|motion|kernel.
 
-PSF in the already-oriented processing frame. Kind-specific parameters are rejected for other kinds.
+PSF in the post-rotation processing frame. Kind-specific parameters are rejected for other kinds.
 
 **Applicable methods:** R01.
 

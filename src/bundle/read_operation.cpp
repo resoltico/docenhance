@@ -3,6 +3,7 @@
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
@@ -109,6 +110,11 @@ core::Result<image::ConversionReport> record_conversion(const RecordJson& value)
             auto output = record_shape(record_field(value, "encoded_output"));
             const auto orientation = image::Orientation::from_code(static_cast<unsigned>(
                 record_integer(record_field(value, "source_orientation"), UINT32_MAX)));
+            const auto rotation = image::QuarterTurn::from_degrees(static_cast<unsigned>(
+                record_integer(record_field(value, "rotation_degrees"), UINT32_MAX)));
+            if (!rotation) {
+                return core::failure(core::ErrorCode::input, "Unsupported recorded rotation");
+            }
             if (!source) {
                 return std::unexpected(std::move(source.error()));
             }
@@ -123,6 +129,7 @@ core::Result<image::ConversionReport> record_conversion(const RecordJson& value)
                 .output = *output,
                 .interpretation = interpretation,
                 .orientation = *orientation,
+                .rotation = *rotation,
                 .resolution = record_resolution(record_field(value, "resolution")),
                 .flattened_pixels =
                     record_integer(record_field(value, "alpha_flattened_pixels"), UINT64_MAX),

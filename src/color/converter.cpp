@@ -8,6 +8,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/raster.hpp"
 
@@ -20,10 +21,9 @@
 namespace docenhance::color {
 Converter::Converter(std::unique_ptr<ConversionState> state) : state_(std::move(state)) {}
 Converter::~Converter() = default;
-core::Result<std::unique_ptr<Converter>> Converter::create(const image::Raster& source,
-                                                           image::Continuous operation,
-                                                           core::Budget& budget,
-                                                           const core::Cancellation& cancellation) {
+core::Result<std::unique_ptr<Converter>>
+Converter::create(const image::Raster& source, image::Continuous operation, core::Budget& budget,
+                  const core::Cancellation& cancellation, image::QuarterTurn rotation) {
     auto bytes = image::raster_row_bytes(source.shape);
     if (!bytes || source.pixels.empty() || source.pixels.width() != *bytes ||
         source.pixels.height() != source.shape.height) {
@@ -34,6 +34,7 @@ core::Result<std::unique_ptr<Converter>> Converter::create(const image::Raster& 
         return core::cancelled();
     }
     auto state = std::make_unique<ConversionState>(source, operation, budget, cancellation);
+    state->report.rotation = rotation;
     if (!state->context.good()) {
         return std::unexpected(state->context.error("Cannot create bounded color context"));
     }

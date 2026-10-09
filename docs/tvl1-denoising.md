@@ -2,7 +2,7 @@
 
 D02 is an explicit alternative selected by `--denoise tvl1`; denoising defaults to off.
 It follows the selected immutable illumination operation, before optional restoration, contrast and sharpening and final quantization.
-Use the existing oriented linear-RGB converter and sRGB perceptual luminance f=E(Y).
+Use the existing post-geometry linear-RGB converter in frame F (currently C) and sRGB perceptual luminance f=E(Y).
 The current double-precision working contract supersedes the blueprint's float32 frame proposal:
 input, primal, extrapolated primal and two dual planes use float64, with float64 reductions.
 There is no integer analysis plane or eight-bit bottleneck.
@@ -53,7 +53,7 @@ numerical failure or false tolerance claim. Failed stages retain bounded partial
 
 Typed denoising alternatives and parameter variants derive the runtime catalog. D01 native fields
 remain specific to NLM; D02 solver fields cannot be mixed with native observations. Closed response
-and record contracts use version 11 and refuse obsolete versions. No package or layer
+and record contracts use version 12 and refuse obsolete versions. No package or layer
 edge is added: pure TV math belongs to de_methods and the existing host composes execution.
 
 ## Separate challenge and evidence obligations

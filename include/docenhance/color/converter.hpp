@@ -5,6 +5,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/raster.hpp"
 
@@ -20,10 +21,11 @@ class Converter final : public image::RowSource, public image::LinearSource {
   public:
     [[nodiscard]] static core::Result<std::unique_ptr<Converter>>
     create(const image::Raster& source, image::Continuous operation, core::Budget& budget,
-           const core::Cancellation& cancellation = {});
+           const core::Cancellation& cancellation = {}, image::QuarterTurn rotation = {});
     static core::Result<std::unique_ptr<Converter>> create(const image::Raster&&, image::Continuous,
                                                            core::Budget&,
-                                                           const core::Cancellation& = {}) = delete;
+                                                           const core::Cancellation& = {},
+                                                           image::QuarterTurn = {}) = delete;
     Converter(const Converter&) = delete;
     Converter& operator=(const Converter&) = delete;
     Converter(Converter&&) = delete;

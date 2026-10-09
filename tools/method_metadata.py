@@ -61,6 +61,7 @@ def implemented(
             "restoration",
             "contrast",
             "sharpening",
+            "geometry",
         }:
             msg = f"{identity}: implemented methods require an executable family"
             raise ValueError(msg)

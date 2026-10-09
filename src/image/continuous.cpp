@@ -3,6 +3,7 @@
 #include "docenhance/image/continuous.hpp"
 
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 
@@ -78,7 +79,7 @@ bool valid_conversion(const ConversionReport& report, const Continuous& operatio
          (p.profile == ProfilePolicy::srgb))) {
         return false;
     }
-    const auto oriented = oriented_shape(c.source, c.orientation);
+    const auto oriented = rotated_shape(oriented_shape(c.source, c.orientation), c.rotation);
     auto depth = c.source.depth;
     if (p.depth == OutputDepth::byte) {
         depth = SampleDepth::byte();

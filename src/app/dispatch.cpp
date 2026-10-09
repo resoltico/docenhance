@@ -79,6 +79,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                                              .record = std::move(image->record),
                                              .source_decoding = image->source_decoding,
                                              .otsu = image->otsu,
+                                             .rotation = image->rotation,
                                          });
         }
         auto* const image = std::get_if<PublishedContinuous>(&*result);

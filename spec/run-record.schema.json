@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 11
+          "const": 12
         },
         "run": {
           "type": "string",
@@ -99,7 +99,8 @@
         "denoising",
         "contrast",
         "sharpening",
-        "restoration"
+        "restoration",
+        "rotation_degrees"
       ],
       "additionalProperties": false,
       "properties": {
@@ -280,6 +281,14 @@
         },
         "restoration": {
           "$ref": "#/$defs/restoration_request"
+        },
+        "rotation_degrees": {
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ]
         }
       }
     },

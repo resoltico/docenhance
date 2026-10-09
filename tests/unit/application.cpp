@@ -49,7 +49,7 @@ TEST_CASE("Application owns capability discovery", "[app]") {
     const auto outcome = app::dispatch(version, processor, verifier);
     const auto* payload = std::get_if<app::Version>(&outcome.payload);
     REQUIRE(payload != nullptr);
-    CHECK(payload->capabilities.methods.size() == 12);
+    CHECK(payload->capabilities.methods.size() == 13);
     CHECK(std::string{payload->capabilities.methods.front().id} == "I01");
     CHECK(payload->capabilities.input_support.size() == 3);
     CHECK(std::string{payload->capabilities.input_support.front().format} == "png");
@@ -80,6 +80,29 @@ TEST_CASE("Otsu admission rejects every explicit method-specific option", "[app]
             }
             CHECK(!app::prepare_process(changed));
         }
+    }
+}
+TEST_CASE("Quarter-turn admission accepts only its explicit degree spellings", "[app][geometry]") {
+    contract::Invocation value;
+    value.command = contract::Command::process;
+    value.subject = "input.png";
+    value.output_directory = "output";
+    REQUIRE(app::prepare_process(value));
+    CHECK(app::prepare_process(value)->rotation().degrees() == 0);
+    for (const auto degrees : {0U, 90U, 180U, 270U}) {
+        value.rotate = std::to_string(degrees);
+        const auto admitted = app::prepare_process(value);
+        REQUIRE(admitted);
+        CHECK(admitted->rotation().degrees() == degrees);
+        value.output_mode = "bw";
+        REQUIRE(app::prepare_process(value));
+        CHECK(app::prepare_process(value)->rotation().degrees() == degrees);
+        value.output_mode.reset();
+    }
+    for (const auto* const spelling :
+         {"", "00", "090", "90.0", "9e1", "+90", "-90", "360", " 90", "90 "}) {
+        value.rotate = spelling;
+        CHECK(!app::prepare_process(value));
     }
 }
 } // namespace docenhance::tests

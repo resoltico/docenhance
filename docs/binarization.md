@@ -48,7 +48,9 @@ based on the magnitude of an argument is performed.
 ## Samples and mathematical definition
 
 Input is the same grayscale PNG subset as B03: 1/2/4/8-bit samples without transparency, expanded
-to unsigned 8-bit stored samples. PNG gamma/orientation metadata does not change the stored threshold samples. The shared bounded
+to unsigned 8-bit stored samples. PNG gamma/orientation metadata does not change the stored threshold samples. Explicit G02
+`--rotate` permutes those samples before thresholding, without applying metadata orientation; see
+[geometry](geometry.md). The shared bounded
 CRC/framing scan refuses animation, nonconsecutive IDAT, duplicate known declarations and bytes
 after IEND before native grayscale decoding. Color,
 alpha and 16-bit input remain rejected. Output is 8-bit grayscale containing only 0 and 255.
@@ -72,7 +74,7 @@ This is global Otsu; it does not adapt thresholds spatially.
 The fitted threshold remains immutable through output verification; no refitting
 or second observation count occurs. Successful B01 responses and records carry `threshold_bin`
 and `single_bin_fallback` in `binarization`. Other binary responses carry null; other execution
-records carry null. A true fallback requires threshold 2047. Response/record format 11 rejects
+records carry null. A true fallback requires threshold 2047. Response/record format 12 rejects
 obsolete forms and unknown fields.
 
 For B03, an input sample `p` is black exactly when `double(p)/255 <= threshold`. Its existing

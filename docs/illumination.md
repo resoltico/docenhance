@@ -45,19 +45,20 @@ raw option strings do not control pixel execution. `IlluminationOff` is a separa
 ## Working samples and protection
 
 Interpret source color, apply exact metadata orientation and composite transparency under the
-existing PNG policy, then expose finite linear-light RGB through `image::LinearSource`. I01 operates
+existing PNG policy, apply exact G02 rotation, then expose finite linear-light RGB through `image::LinearSource`. I01 operates
 on relative linear luminance `Y = 0.2126 R + 0.7152 G + 0.0722 B`. Final grayscale conversion,
 sRGB encoding and integer quantization occur afterward. `image::quantize_linear` is shared by
 filtered and no-filter output, avoiding an intermediate integer-output round trip.
 
-The protection mask is in the **already-oriented source coordinate frame**, with identical width
+The protection mask is in the **metadata-oriented source coordinate frame B**, with identical width
 and height. It must be static original-depth 1/8-bit grayscale PNG; 8-bit gray-alpha or grayscale
 `tRNS` is accepted only if every decoded alpha value is opaque. Palette, RGB, 2/4/16-bit samples,
 nonopaque transparency and non-normal mask orientation are rejected. The original IHDR depth is
 checked before expansion. Semantic mask color profiles are ignored, not used to change its values;
 container framing, CRCs and bounded metadata still use the production PNG validation path.
 Nonzero means protected. Decode to a charged byte mask, retaining neither arbitrary metadata nor
-an independently rotated mask. A supplied mask is validated even with `off` or an algebraic no-op.
+an independently oriented mask. G02 gathers the mask identically into C for processing;
+the canonical bundle asset stays in B. See [geometry](geometry.md) for all frames. A supplied mask is validated even with `off` or an algebraic no-op.
 
 Protected samples are excluded from fitting and applicability statistics. Application bypasses
 them exactly at the linear photometric boundary. This does not promise unchanged source bytes,

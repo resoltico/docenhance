@@ -3,6 +3,7 @@
 #pragma once
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/restoration.hpp"
@@ -13,7 +14,7 @@ prepare_restoration(const contract::Invocation& invocation);
 [[nodiscard]] bool partial_restoration(const methods::RestorationReport& report,
                                        const ProcessRequest& request);
 [[nodiscard]] bool restoration_prefix(const methods::RestorationReport& report,
-                                      image::Orientation orientation,
+                                      image::Orientation orientation, image::QuarterTurn rotation,
                                       const methods::IlluminationReport& illumination,
                                       const methods::DenoisingReport& denoising);
 } // namespace docenhance::app

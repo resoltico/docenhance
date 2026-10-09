@@ -6,6 +6,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
@@ -117,7 +118,8 @@ core::Result<void> allocate_rows(ConversionState& state, core::Budget& budget) {
 core::Result<void> prepare_conversion(ConversionState& state, core::Budget& budget) {
     const auto& source = state.source.get();
     state.report.source = source.shape;
-    state.report.output = image::oriented_shape(source.shape, source.metadata.orientation);
+    state.report.output = image::rotated_shape(
+        image::oriented_shape(source.shape, source.metadata.orientation), state.report.rotation);
     const bool gray =
         state.parameters.mode == image::ToneMode::gray || !image::is_color(source.shape.model);
     state.report.output.model = gray ? image::SampleModel::gray : image::SampleModel::rgb;
@@ -129,7 +131,8 @@ core::Result<void> prepare_conversion(ConversionState& state, core::Budget& budg
     state.report.depth_reduced = state.report.output.depth < source.shape.depth;
     state.report.orientation = source.metadata.orientation;
     state.report.resolution = source.metadata.resolution;
-    if (state.report.resolution && source.metadata.orientation.transposed()) {
+    if (state.report.resolution &&
+        (source.metadata.orientation.transposed() != state.report.rotation.swaps_axes())) {
         std::swap(state.report.resolution->x, state.report.resolution->y);
     }
     auto interpretation = prepare_transform(state);

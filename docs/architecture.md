@@ -335,3 +335,14 @@ rendering remains separately fallible.
 
 The [architecture boundary review](architecture-boundaries-audit.md) assesses source/build evidence,
 method change coupling, private headers, restriction authority and the I/O interface separation.
+
+## Exact geometry before photometric execution
+
+G01 metadata orientation and G02 explicit quarter-turns use checked integer coordinate mappings
+in the image layer. Continuous color rows compose inverse G02/G01 gathers against the retained
+decoded source, without interpolation or an additional full color plane. The host admits masks
+in metadata-oriented frame B, transforms them identically into C for computation, and retains B
+for canonical bundle assets. Binary execution rotates its stored samples without applying metadata
+orientation or changing threshold units. Request/record validation reconciles A/B/C extents and
+output dimensions; physical resolution follows transpose parity. See [geometry](geometry.md)
+for processing frame F and the unsupported G03–G05 boundaries.

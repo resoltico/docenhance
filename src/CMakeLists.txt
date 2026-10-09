@@ -33,8 +33,8 @@ de_library(de_exec LAYER exec
   HEADERS "${DE_INCLUDE}/exec/concurrency.hpp" "${DE_INCLUDE}/exec/scheduler.hpp"
   LINKS de_core)
 de_library(de_image LAYER image
-  SOURCES image/gaussian.cpp image/numeric.cpp image/ordered_samples.cpp image/perceptual.cpp image/plane_rows.cpp image/plane.cpp image/raster.cpp image/continuous.cpp image/linear.cpp image/source.cpp image/tiff_source.cpp
-  HEADERS "${DE_INCLUDE}/image/gaussian.hpp" "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
+  SOURCES image/geometry.cpp image/gaussian.cpp image/numeric.cpp image/ordered_samples.cpp image/perceptual.cpp image/plane_rows.cpp image/plane.cpp image/raster.cpp image/continuous.cpp image/linear.cpp image/source.cpp image/tiff_source.cpp
+  HEADERS "${DE_INCLUDE}/image/geometry.hpp" "${DE_INCLUDE}/image/gaussian.hpp" "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
           "${DE_INCLUDE}/image/raster.hpp" "${DE_INCLUDE}/image/source.hpp" "${DE_INCLUDE}/image/continuous.hpp" "${DE_INCLUDE}/image/linear.hpp"
   LINKS de_core)
 de_library(de_methods LAYER methods
@@ -98,7 +98,7 @@ if(DE_FUZZ_ONLY)
   return()
 endif()
 de_library(de_host LAYER host
-  SOURCES host/run_publication.cpp host/run_publication.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/stage_reports.cpp host/stage_reports.hpp host/continuous.cpp host/continuous.hpp
+  SOURCES host/protection.cpp host/protection.hpp host/run_publication.cpp host/run_publication.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/stage_reports.cpp host/stage_reports.hpp host/continuous.cpp host/continuous.hpp
           host/restoration.cpp host/restoration.hpp host/linear_rows.cpp host/linear_rows.hpp host/denoising.cpp host/sharpening.cpp host/sharpening.hpp host/contrast.cpp host/contrast.hpp host/denoising.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
   LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color de_opencv)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)

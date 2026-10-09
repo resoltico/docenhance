@@ -28,7 +28,7 @@ namespace docenhance::bundle {
 // The record describes processing. It is finalized before the commit point, so it cannot assert
 // that publication succeeded; publication state belongs to the command response.
 
-inline constexpr unsigned record_version = 11;
+inline constexpr unsigned record_version = 12;
 inline constexpr const char* record_name = "run.json";
 inline constexpr const char* image_name = "result.png";
 inline constexpr const char* mask_name = "assets/protect-mask.png";
@@ -54,7 +54,7 @@ struct SourceFacts {
 // White protects: the convention the protection decoder applies, recorded so a later reader does
 // not have to guess which samples were excluded.
 enum class MaskPolarity : std::uint8_t { white_protects };
-// Masks are stated in the source's own orientation, after any recorded rotation was applied.
+// Stored masks are in metadata-oriented source coordinates, before explicit G02 rotation.
 enum class MaskFrame : std::uint8_t { oriented_source };
 struct ProtectionFacts {
     core::ContentIdentity original; // the mask file as it was supplied
@@ -95,6 +95,7 @@ struct RunRecord {
     methods::SharpenReport sharpening{};
     methods::RestorationReport restoration{};
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
+    image::QuarterTurn rotation = image::QuarterTurn::identity();
 };
 
 // The record as the bytes a bundle carries. Serialization is the last step before the inventory

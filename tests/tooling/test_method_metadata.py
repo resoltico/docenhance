@@ -102,12 +102,13 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 11,
+            "schema_version": 12,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
             "method": "B02",
             "binarization": None,
+            "rotation_degrees": 0,
             "method_version": 1,
             "output": "result/result.png",
             "publication": "completed",
@@ -142,7 +143,7 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 11,
+            "schema_version": 12,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,

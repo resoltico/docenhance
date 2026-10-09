@@ -5,6 +5,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/raster.hpp"
@@ -54,8 +55,10 @@ core::Result<void> gather(ConversionState& state, RowPart part, image::RowUse us
     auto const input = state.input.view().row(0);
     auto const alpha = state.alpha.view().row(0);
     for (std::uint32_t i = 0; i < part.count; ++i) {
-        const auto p = image::source_coordinate(source.shape, source.metadata.orientation,
-                                                {.x = part.first + i, .y = part.y});
+        const auto oriented = image::oriented_shape(source.shape, source.metadata.orientation);
+        const auto b = image::rotation_source_coordinate(oriented, state.report.rotation,
+                                                         {.x = part.first + i, .y = part.y});
+        const auto p = image::source_coordinate(source.shape, source.metadata.orientation, b);
         const auto pixel = source.pixels.view().row(p.y).subspan(std::size_t{p.x} * stride, stride);
         const double opacity =
             image::has_alpha(source.shape.model)

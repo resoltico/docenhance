@@ -8,7 +8,7 @@ remain useful evidence.
 
 ## Design pass
 
-The record reader already accepts only version 11, requires source and denoising observations,
+The record reader accepts only version 12, requires source and denoising observations,
 checks closed canonical claims and rejects `conversion.verified: false`. There is no record
 migration engine or older-version dispatch. The format version continues identifying the current
 contract; eliminating its number would not remove compatibility code.
