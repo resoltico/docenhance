@@ -13,10 +13,13 @@ de_apply_options(de_reference_tests)
 add_test(NAME reference-suite COMMAND de_reference_tests)
 # Every fuzz harness also runs in every build, on every compiler and under the sanitize preset,
 # over its seed corpus and recorded regressions; no fuzzing engine is involved.
+add_library(de_fuzz_replay_driver OBJECT "${PROJECT_SOURCE_DIR}/fuzz/support/replay_main.cpp")
+target_include_directories(de_fuzz_replay_driver PRIVATE "${PROJECT_SOURCE_DIR}/fuzz")
+de_apply_options(de_fuzz_replay_driver)
 function(de_fuzz_replay name)
   cmake_parse_arguments(PARSE_ARGV 1 arg "" "SOURCE" "LINKS")
   add_executable(de_fuzz_replay_${name} "${arg_SOURCE}"
-    "${PROJECT_SOURCE_DIR}/fuzz/support/replay_main.cpp")
+    "$<TARGET_OBJECTS:de_fuzz_replay_driver>")
   target_include_directories(de_fuzz_replay_${name} PRIVATE "${PROJECT_SOURCE_DIR}/fuzz"
     "${CMAKE_CURRENT_SOURCE_DIR}/support")
   target_link_libraries(de_fuzz_replay_${name} PRIVATE ${arg_LINKS})
