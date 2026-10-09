@@ -25,6 +25,19 @@ without links or duplicate names.
 The cache is local working state, not source control and not a second authority. See the [build
 guide](build.md#acquisition-is-a-separate-phase) for concurrency and recovery rules.
 
+Quality-gate and nightly CI restore only the `archives`, `sources` and `receipts` directories
+inside `.cache/deps` with an exact OS-specific key bound to the source lock and
+acquisition/verification implementation. There are no prefix-match restore keys.
+Acquisition still runs unconditionally: restored Git release objects, archive digests and complete
+source inventories must pass the ordinary checks before use. A miss is saved only after that
+step succeeds. Changed existing sources or missing receipts fail instead of being silently
+repaired; absent sources follow the ordinary locked acquisition path.
+Source bytes are architecture-independent; OS separation preserves filesystem behavior without
+pretending to identify a native compiler configuration. No build tree, installed prefix, object,
+application binary or prior test result is restored. Native and fuzz jobs build fresh configurations
+and retain source, feature, compilation, sanitizer, test and package checks. See the
+[CI performance evidence and cache design](ci-performance.md).
+
 The private zlib build retains its in-memory compression/decompression core and excludes the
 unused gzip-file translation units. Its upstream recipe identity is reviewed before adaptation;
 the native audit checks actual compiler work to reject reintroduction. Upstream source bytes and

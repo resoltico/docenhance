@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import shutil
 import subprocess
 import sys
@@ -130,6 +131,80 @@ class EvidenceTests(unittest.TestCase):
                     check=False,
                 )
                 self.assertEqual(result.returncode, expected, result.stderr)
+
+    def test_tooling_workers_preserve_callers_git_repository(self) -> None:
+        """Real fixture Git writes stay owned; an unsafe worker redirects them to a sentinel."""
+        runner = ROOT / "tools/run_tooling_tests.py"
+        cleanup = (
+            "    for name in tuple(os.environ):\n"
+            '        if name.startswith("GIT_"):\n'
+            "            del os.environ[name]\n"
+        )
+        source = runner.read_text()
+        self.assertEqual(source.count(cleanup), 1)
+        for isolated in (True, False):
+            with self.subTest(isolated=isolated), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                sentinel = root / "sentinel"
+                deps.run("git", "init", str(sentinel))
+                (sentinel / "preserve.txt").write_text("caller bytes\n")
+                deps.run("git", "add", ".", cwd=sentinel)
+                metadata = sentinel / ".git"
+                before = {
+                    p.relative_to(metadata): p.read_bytes()
+                    for p in metadata.rglob("*")
+                    if p.is_file()
+                }
+                directory = root / "fixtures"
+                directory.mkdir()
+                intended = root / "intended"
+                (directory / "test_probe.py").write_text(
+                    "import subprocess, unittest\nfrom pathlib import Path\n"
+                    "class Probe(unittest.TestCase):\n def test_owned_repository(self):\n"
+                    f"  target = Path({str(intended)!r})\n"
+                    "  subprocess.run(['git', 'init', str(target)], "
+                    "check=True, capture_output=True)\n"
+                    "  subprocess.run(['git', '-C', str(target), 'config', 'fixture.marker', "
+                    "'owned'], check=True, capture_output=True)\n"
+                    "  self.assertTrue((target / '.git/config').is_file())\n"
+                    "  self.assertIn('marker = owned', (target / '.git/config').read_text())\n"
+                )
+                selected = runner
+                if not isolated:
+                    selected = root / "unsafe_runner.py"
+                    selected.write_text(source.replace(cleanup, "", 1))
+                result = subprocess.run(
+                    [sys.executable, str(selected), "--directory", str(directory), "--jobs", "1"],
+                    env={
+                        **os.environ,
+                        "GIT_DIR": str(metadata),
+                        "GIT_WORK_TREE": str(sentinel),
+                        "GIT_INDEX_FILE": str(metadata / "index"),
+                        "GIT_CONFIG_COUNT": "1",
+                        "GIT_CONFIG_KEY_0": "fixture.inherited",
+                        "GIT_CONFIG_VALUE_0": "hostile",
+                    },
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=30,
+                )
+                after = {
+                    p.relative_to(metadata): p.read_bytes()
+                    for p in metadata.rglob("*")
+                    if p.is_file()
+                }
+                if isolated:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn("1 cases in 1 modules; workers=1", result.stdout)
+                    self.assertEqual(after, before)
+                    self.assertTrue((intended / ".git/config").is_file())
+                    self.assertIn("marker = owned", (intended / ".git/config").read_text())
+                else:
+                    self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertNotEqual(after, before)
+                    self.assertIn("marker = owned", (metadata / "config").read_text())
+                    self.assertFalse((intended / ".git").exists())
 
 
 class DeliveredBytesTests(unittest.TestCase):

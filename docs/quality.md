@@ -63,6 +63,8 @@ product sanitizer instrumentation; running them in both sanitizer modes does not
 additional ASan/TSan coverage. Native platform repetitions remain necessary for compiler,
 filesystem and packaging behavior. The strict tooling runner uses two fresh spawned module interpreters and reconciles exact case
 identities with full parent discovery; skipped and expected-failure cases cannot count as passes.
+Workers clear inherited `GIT_*` variables before discovery so temporary Git fixtures retain their
+own repository identity under hooks; parent state and deliberate fixture overrides are preserved.
 CTest reserves both slots for this nested work. Module timings identify slow fixtures without
 omitting cases. Dependency-free references compile separate translation units with bounded
 `--jobs` workers and link the complete object set once, retaining strict and sanitizer flags.

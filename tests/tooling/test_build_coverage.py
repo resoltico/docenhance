@@ -65,7 +65,7 @@ class BuildCoverageTests(unittest.TestCase):
             self.assertTrue(check_build_coverage.source_coverage_errors(root, build))
 
     def test_final_target_properties_reject_comments_and_late_overrides(self) -> None:
-        """Both root and nested compile targets need actual options and the exact linter."""
+        """Static and object targets need actual options and the exact linter."""
         self.assertIsNotNone(CMAKE, "CMake is required for compiler-coverage controls")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -85,7 +85,7 @@ class BuildCoverageTests(unittest.TestCase):
                 "target_link_libraries(a PRIVATE DocEnhance::options)\n"
                 'set_property(TARGET a PROPERTY CXX_CLANG_TIDY "${DE_CLANG_TIDY_COMMAND}")\n'
             )
-            cases = (
+            cases: tuple[tuple[str, str | None], ...] = (
                 (good, None),
                 ("add_library(a STATIC a.cpp)\n# de_apply_options(a)\n", "actual"),
                 (good + 'set_property(TARGET a PROPERTY CXX_CLANG_TIDY "")\n', "effective"),
@@ -108,6 +108,7 @@ class BuildCoverageTests(unittest.TestCase):
                     "SKIP_LINTING",
                 ),
             )
+            cases += tuple((text.replace("STATIC", "OBJECT"), expected) for text, expected in cases)
             for index, (text, expected) in enumerate(cases):
                 (root / "src/CMakeLists.txt").write_text(text)
                 result = subprocess.run(

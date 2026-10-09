@@ -56,6 +56,82 @@ class WorkflowIntegrityTests(unittest.TestCase):
         """Current source, platform, compiler, engine and aggregate routes agree."""
         self.assertEqual(integrity_errors(self.root), [])
 
+    def test_source_cache_identity_and_payload(self) -> None:
+        """Restores cannot include binaries, writer claims or fallback identities."""
+        for name in ("ci.yml", "nightly.yml"):
+            for old, new in (
+                (".cache/deps/archives", ".cache/deps"),
+                (".cache/deps/sources", "out/release/prefix"),
+                (".cache/deps/receipts", ".cache/deps/acquisition.active"),
+                ("'tools/dep_verify.py', ", ""),
+                ("deps-source-${{ runner.os }}", "deps-source-shared"),
+                (
+                    "          key: deps-source-",
+                    "          restore-keys: deps-source-\n          key: deps-source-",
+                ),
+            ):
+                with self.subTest(name=name, old=old):
+                    self.assert_mutation_refused(
+                        f".github/workflows/{name}", old, new, "Dependency source cache"
+                    )
+
+    def test_alternate_cache_actions_are_refused(self) -> None:
+        """Combined cache actions cannot restore binaries or save automatic partial state."""
+        for action in ("actions/cache/restore", "actions/cache", "Actions/Cache"):
+            for name in ("ci.yml", "nightly.yml"):
+                with self.subTest(action=action, name=name):
+                    self.assert_mutation_refused(
+                        f".github/workflows/{name}",
+                        "      - name: Restore locked dependency sources",
+                        (
+                            f"      - uses: {action}@55cc8345863c7cc4c66a329aec7e433d2d1c52a9\n"
+                            "        with:\n          path: out/release/prefix\n"
+                            "          key: alternate\n"
+                            "      - name: Restore locked dependency sources"
+                        ),
+                        "Dependency source cache",
+                    )
+
+    def test_source_cache_cannot_bypass_verification(self) -> None:
+        """Cache hits still acquire; failed or unfinished acquisition cannot be saved."""
+        for name in ("ci.yml", "nightly.yml"):
+            for old, new in (
+                (
+                    "      - run: cmake -P cmake/AcquireDependencies.cmake",
+                    (
+                        "      - if: steps.dependency-source-cache.outputs.cache-hit != 'true'\n"
+                        "        run: cmake -P cmake/AcquireDependencies.cmake"
+                    ),
+                ),
+                (
+                    "if: steps.dependency-source-cache.outputs.cache-hit != 'true'",
+                    "if: always()",
+                ),
+                (
+                    "      - name: Restore locked dependency sources",
+                    "      - if: false\n        name: Restore locked dependency sources",
+                ),
+            ):
+                with self.subTest(name=name, old=old):
+                    diagnostic = "executable step" if "- run:" in old else "Dependency source cache"
+                    self.assert_mutation_refused(f".github/workflows/{name}", old, new, diagnostic)
+            path = self.root / ".github/workflows" / name
+            original = path.read_text()
+            acquisition = "      - run: cmake -P cmake/AcquireDependencies.cmake\n"
+            self.assertIn(acquisition, original)
+            changed = original.replace(acquisition, "", 1)
+            # Move acquisition after the save: its success can no longer authorize saved bytes.
+            save = changed.index(
+                "      - name: Save verified dependency sources", original.index(acquisition)
+            )
+            following = changed.index("      - ", save + len("      - "))
+            changed = changed[:following] + acquisition + changed[following:]
+            path.write_text(changed)
+            try:
+                self.assertTrue(any("bracket" in error for error in integrity_errors(self.root)))
+            finally:
+                path.write_text(original)
+
     def test_required_execution_starts_independently(self) -> None:
         """A source job produces no inputs for the native, engine or sanitizer executions."""
         for job in ("native", "fuzz", "sanitize"):

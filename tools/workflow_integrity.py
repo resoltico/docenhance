@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from ci_contract import JOB_TITLES, NATIVE_RUNNERS, SANITIZERS, require_workflow_coverage
+from workflow_cache import source_cache
 from workflow_config import python_errors, workflow
 
 if TYPE_CHECKING:
@@ -86,7 +87,7 @@ def sanitizer_job(document: dict[str, Any], major: str) -> None:
     require_strategy(job, {"preset": list(SANITIZERS)})
     required_step(job, "python tools/install_build_tools.py")
     required_step(job, "python tools/install_llvm.py --fuzzing")
-    required_step(job, "cmake -P cmake/AcquireDependencies.cmake")
+    source_cache(job, required_step(job, "cmake -P cmake/AcquireDependencies.cmake"))
     step = required_step(job, MATRIX_WORKFLOW)
     if step.get("env") != {"CC": f"clang-{major}", "CXX": f"clang++-{major}"}:
         msg = "Sanitizer build step does not select the pinned compiler"
@@ -108,7 +109,7 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
     if step.get("env") != {"CC": "${{ matrix.cc }}", "CXX": "${{ matrix.cxx }}"}:
         msg = "Fuzz build step does not select its reviewed engine compiler"
         raise ValueError(msg)
-    required_step(job, "python tools/deps.py fetch")
+    source_cache(job, required_step(job, "python tools/deps.py fetch"))
     required_step(job, "python tools/install_llvm.py --fuzzing")
     required_step(
         job,
@@ -179,7 +180,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     )
     required_step(native, "python tools/install_build_tools.py")
     required_step(native, "python tools/install_llvm.py")
-    required_step(native, "cmake -P cmake/AcquireDependencies.cmake")
+    source_cache(native, required_step(native, "cmake -P cmake/AcquireDependencies.cmake"))
     required_step(native, "cmake --workflow --preset release", "runner.os != 'Windows'")
     required_step(native, "./tools/ci_windows.ps1", "runner.os == 'Windows'")
     required_step(native, NATIVE_SMOKE, "runner.os != 'Windows'")
@@ -256,7 +257,7 @@ def integrity_errors(root: Path) -> list[str]:
                 quality_workflow(document, major)
             elif path.name == "nightly.yml":
                 advisories = required_job(document, "advisories")
-                required_step(advisories, "python tools/deps.py fetch")
+                source_cache(advisories, required_step(advisories, "python tools/deps.py fetch"))
                 required_step(advisories, "python tools/check_advisories.py")
                 sanitizer_job(document, major)
                 fuzz_job(document, major, nightly=True)

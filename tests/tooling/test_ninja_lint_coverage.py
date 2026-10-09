@@ -54,15 +54,20 @@ class NinjaLintTests(unittest.TestCase):
         return build
 
     def test_genexpr_skip_is_caught_by_actual_compiler_rule(self) -> None:
-        """A source in the ordinary CMake database can still have no linter execution."""
+        """A consumed object in the CMake database can still have no linter execution."""
         declarations = (
-            'add_library(a STATIC "$<$<BOOL:TRUE>:src/a.cpp>")\n'
+            'add_library(a OBJECT "$<$<BOOL:TRUE>:src/a.cpp>")\n'
             "target_link_libraries(a PRIVATE DocEnhance::options)\n"
             'set_property(TARGET a PROPERTY CXX_CLANG_TIDY "${DE_CLANG_TIDY_COMMAND}")\n'
+            "add_executable(consumer $<TARGET_OBJECTS:a>)\n"
+            "target_link_libraries(consumer PRIVATE DocEnhance::options)\n"
+            'set_property(TARGET consumer PROPERTY CXX_CLANG_TIDY "${DE_CLANG_TIDY_COMMAND}")\n'
         )
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             build = self.configure(root, declarations)
+            entries = json.loads((build / "compile_commands.json").read_text())
+            self.assertEqual(len(entries), 1)
             self.assertEqual(check_build_coverage.coverage_errors(root, build), [])
             cache = read_cache(build / "CMakeCache.txt")
             entry = next(

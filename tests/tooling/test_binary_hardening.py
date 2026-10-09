@@ -89,7 +89,7 @@ class BinaryHardeningTests(unittest.TestCase):
         self.assertTrue(markers("Windows", "Guard\nCF Instrumented\nFID table present", ""))
 
     def test_real_native_flags_and_binary(self) -> None:
-        """The production CMake interface compiles and links an actual protected executable."""
+        """Shared objects retain compiler protections in an actual protected executable."""
         cmake = shutil.which("cmake")
         self.assertIsNotNone(cmake)
         with tempfile.TemporaryDirectory(prefix="hardening-control-") as temporary:
@@ -107,7 +107,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(DE_CXX_STANDARD 23)
 include("{ROOT.as_posix()}/cmake/ProjectOptions.cmake")
-add_executable(probe main.cpp)
+add_library(driver OBJECT main.cpp)
+de_apply_options(driver)
+add_executable(probe $<TARGET_OBJECTS:driver>)
 de_apply_options(probe)
 """)
             build = source / "build"

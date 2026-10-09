@@ -89,7 +89,25 @@ jobs:
         with:
           path: ~/.cache/docenhance/llvm
           key: llvm-source-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
+      - name: Restore locked dependency sources
+        id: dependency-source-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - run: cmake -P cmake/AcquireDependencies.cmake
+      - name: Save verified dependency sources
+        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       # A hosted runner has cores the default of two workers leaves idle. Each job states how many
       # it has, and that one count bounds every external build and the architecture check.
       - name: Give the native builds the runner's cores
@@ -158,8 +176,26 @@ jobs:
         run: |
           python tools/install_aflplusplus.py
           echo core | sudo tee /proc/sys/kernel/core_pattern
+      - name: Restore locked dependency sources
+        id: dependency-source-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - run: |
           python tools/deps.py fetch
+      - name: Save verified dependency sources
+        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       # Public Ubuntu runners provide four cores and 16 GB; local campaigns still default to two.
       - name: Build every target
         env:
@@ -202,7 +238,25 @@ jobs:
           python-version: '3.12'
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
+      - name: Restore locked dependency sources
+        id: dependency-source-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - run: cmake -P cmake/AcquireDependencies.cmake
+      - name: Save verified dependency sources
+        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - name: Give the sanitized builds the runner's cores
         shell: python
         run: |

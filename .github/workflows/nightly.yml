@@ -24,7 +24,25 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Restore locked dependency sources
+        id: dependency-source-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - run: python tools/deps.py fetch
+      - name: Save verified dependency sources
+        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - run: python tools/check_advisories.py
   sanitize:
     name: Sanitized / ${{ matrix.preset }}
@@ -54,7 +72,25 @@ jobs:
               environment.write(f"DE_BUILD_JOBS={cores}\n")
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py --fuzzing
+      - name: Restore locked dependency sources
+        id: dependency-source-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - run: cmake -P cmake/AcquireDependencies.cmake
+      - name: Save verified dependency sources
+        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - name: Build and test every suite with the selected sanitizer
         env:
           CC: clang-23
@@ -108,8 +144,26 @@ jobs:
         run: |
           python tools/install_aflplusplus.py
           echo core | sudo tee /proc/sys/kernel/core_pattern
+      - name: Restore locked dependency sources
+        id: dependency-source-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - run: |
           python tools/deps.py fetch
+      - name: Save verified dependency sources
+        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/deps/archives
+            .cache/deps/sources
+            .cache/deps/receipts
+          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
       - name: Build fuzzers
         env:
           CC: ${{ matrix.cc }}
