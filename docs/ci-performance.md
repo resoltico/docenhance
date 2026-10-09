@@ -97,3 +97,12 @@ Verify the generated compiler/lint rule, requested sanitizer instrumentation and
 in all 23 executables, then retain complete replay discovery and fresh results. A smaller source
 count or successful linking alone cannot prove those properties. Full native suites, sanitizer
 controls and both independent engine campaigns remain unchanged.
+
+### Tooling fixture Git ownership
+
+Fresh tooling workers remove inherited `GIT_*` variables before module discovery, so hook-exported
+repository identities cannot redirect temporary-repository Git writes into the caller's checkout.
+The parent environment is unchanged, and fixtures can still supply deliberate Git overrides after
+discovery. A real sentinel-repository regression checks metadata preservation and correct fixture
+ownership; removing worker cleanup redirects the writes and makes the control fail. Process
+isolation therefore includes inherited repository identity as well as interpreter state.

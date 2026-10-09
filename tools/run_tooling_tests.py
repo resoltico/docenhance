@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import io
 import multiprocessing
+import os
 import sys
 import time
 import unittest
@@ -34,6 +35,10 @@ def cases(suite: unittest.TestSuite) -> Iterator[unittest.TestCase]:
 
 def module_run(item: tuple[Path, str]) -> tuple[list[str], bool, str, float]:
     """A spawned worker discovers and runs one module with independent interpreter state."""
+    # Git hooks export repository identities; fixtures must own their temporary repositories.
+    for name in tuple(os.environ):
+        if name.startswith("GIT_"):
+            del os.environ[name]
     directory, name = item
     started = time.monotonic()
     output = io.StringIO()
