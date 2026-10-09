@@ -165,8 +165,11 @@ if(DE_ENABLE_TSAN AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   endforeach()
 endif()
 
-add_test(NAME geometry-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry.py" "$<TARGET_FILE:docenhance>")
-set_tests_properties(geometry-contract PROPERTIES TIMEOUT 180)
+add_test(NAME geometry-byte-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_byte.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME geometry-word-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_word.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME geometry-protection-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_protection.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME geometry-source-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_sources.py" "$<TARGET_FILE:docenhance>")
+set_tests_properties(geometry-byte-contract geometry-word-contract geometry-protection-contract geometry-source-contract PROPERTIES TIMEOUT 180)
 
 get_property(de_static_tests DIRECTORY PROPERTY TESTS)
 string(JSON de_native_inventory SET "{}" "static_tests" "[]")

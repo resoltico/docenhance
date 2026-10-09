@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
 """Exact G02 permutations through real codecs, protection and bundle verification."""
@@ -9,10 +8,7 @@ import copy
 import dataclasses
 import json
 import struct
-import sys
-import tempfile
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from clahe_reference import clahe
 from continuous_fixtures import RGB, Fixture, chunks, decode_output, exif
@@ -22,6 +18,10 @@ from test_jpeg import DATA as JPEG_DATA
 from test_jpeg import marker, oriented_fixture, prepend
 from tiff_fixtures import TiffFixture
 
+if TYPE_CHECKING:
+    from pathlib import Path
+
+BYTE_DEPTH = 8
 TURNS = (0, 90, 180, 270)
 FIRST_TRANSPOSED = 5
 ELIGIBLE_SAMPLES = 4
@@ -68,54 +68,52 @@ def process(
     return decode_output((directory / "result.png").read_bytes()), response, directory
 
 
-def orientation_composition(exe: Path, root: Path) -> Path:
+def orientation_composition(exe: Path, root: Path, depth: int) -> Path:
     """Asymmetric samples discriminate all eight metadata orientations and four turns."""
     retained = root
-    for depth in (8, 16):
-        maximum = (1 << depth) - 1
-        for color in (0, RGB):
-            pixels = tuple(
-                (v,) if color == 0 else (v, maximum - v, v // 2)
-                for v in (0, maximum // 7, maximum // 3, maximum // 2, maximum - 1, maximum)
+    maximum = (1 << depth) - 1
+    for color in (0, RGB):
+        pixels = tuple(
+            (v,) if color == 0 else (v, maximum - v, v // 2)
+            for v in (0, maximum // 7, maximum // 3, maximum // 2, maximum - 1, maximum)
+        )
+        plain = Fixture(3, 2, pixels, color=color, depth=depth)
+        baseline, _, _ = process(exe, root, plain, [])
+        expect(baseline == plain, "all no-filter sRGB sample codes preserved exactly")
+        for orientation in range(1, 9):
+            source = dataclasses.replace(
+                plain,
+                metadata=(
+                    (b"eXIf", exif(orientation)),
+                    (b"pHYs", struct.pack(">IIB", 1000, 2000, 1)),
+                ),
             )
-            plain = Fixture(3, 2, pixels, color=color, depth=depth)
-            baseline, _, _ = process(exe, root, plain, [])
-            expect(baseline == plain, "all no-filter sRGB sample codes preserved exactly")
-            for orientation in range(1, 9):
-                source = dataclasses.replace(
-                    plain,
-                    metadata=(
-                        (b"eXIf", exif(orientation)),
-                        (b"pHYs", struct.pack(">IIB", 1000, 2000, 1)),
-                    ),
+            oriented = oriented_fixture(baseline, orientation)
+            for degrees in TURNS:
+                actual, response, retained = process(exe, root, source, ["--rotate", str(degrees)])
+                expect(
+                    actual == rotated(oriented, degrees),
+                    f"exact {depth}-bit {color} G01={orientation} G02={degrees}",
                 )
-                oriented = oriented_fixture(baseline, orientation)
-                for degrees in TURNS:
-                    actual, response, retained = process(
-                        exe, root, source, ["--rotate", str(degrees)]
-                    )
-                    expect(
-                        actual == rotated(oriented, degrees),
-                        f"exact {depth}-bit {color} G01={orientation} G02={degrees}",
-                    )
-                    swaps = (orientation >= FIRST_TRANSPOSED) != (degrees in (90, 270))
-                    resolution = (2000, 1000) if swaps else (1000, 2000)
-                    expect(
-                        response["conversion"]["resolution"]
-                        == {"x_ppm": resolution[0], "y_ppm": resolution[1]},
-                        "composed physical axes",
-                    )
-                    metadata = chunks((retained / "result.png").read_bytes())
-                    expect(
-                        struct.unpack(">IIB", metadata[b"pHYs"][0]) == (*resolution, 1),
-                        "output physical axes match report",
-                    )
-                    expect(b"eXIf" not in metadata, "output has no second metadata orientation")
-    for width, height in ((1, 5), (5, 1), (1, 1)):
-        source = Fixture(width, height, tuple((i * 31,) for i in range(width * height)))
-        for degrees in TURNS:
-            output, _, _ = process(exe, root, source, ["--rotate", str(degrees)])
-            expect(output == rotated(source, degrees), "singleton-axis permutation")
+                swaps = (orientation >= FIRST_TRANSPOSED) != (degrees in (90, 270))
+                resolution = (2000, 1000) if swaps else (1000, 2000)
+                expect(
+                    response["conversion"]["resolution"]
+                    == {"x_ppm": resolution[0], "y_ppm": resolution[1]},
+                    "composed physical axes",
+                )
+                metadata = chunks((retained / "result.png").read_bytes())
+                expect(
+                    struct.unpack(">IIB", metadata[b"pHYs"][0]) == (*resolution, 1),
+                    "output physical axes match report",
+                )
+                expect(b"eXIf" not in metadata, "output has no second metadata orientation")
+    if depth == BYTE_DEPTH:
+        for width, height in ((1, 5), (5, 1), (1, 1)):
+            source = Fixture(width, height, tuple((i * 31,) for i in range(width * height)))
+            for degrees in TURNS:
+                output, _, _ = process(exe, root, source, ["--rotate", str(degrees)])
+                expect(output == rotated(source, degrees), "singleton-axis permutation")
     return retained
 
 
@@ -373,22 +371,3 @@ def malformed_records(exe: Path, directory: Path) -> None:
     call_json(exe, ["verify", str(directory), "--json"], 3)
     path.write_bytes(original)
     call_json(exe, ["verify", str(directory), "--json"])
-
-
-def main() -> None:
-    """Execute independent references against the production binary."""
-    exe = Path(sys.argv[1]).resolve()
-    with tempfile.TemporaryDirectory(prefix="docenhance-geometry-") as temporary:
-        root = Path(temporary)
-        retained = orientation_composition(exe, root)
-        malformed_records(exe, retained)
-        protection_frame(exe, root)
-        binary_samples(exe, root)
-        source_codecs(exe, root)
-        processing_frame(exe, root)
-        strict_options(exe, root)
-    print("PASS: G02/G01 composition, precision, protection, resolution, binary and admission")
-
-
-if __name__ == "__main__":
-    main()
