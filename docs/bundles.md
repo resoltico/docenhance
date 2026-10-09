@@ -33,7 +33,7 @@ refused before the commit point rather than published into a bundle `verify` wou
 
 ## What the record says
 
-`run.json` is a closed, versioned object. Version 10 admits exactly the supported binary or
+`run.json` is a closed, versioned object. Version 12 admits exactly the supported binary or
 continuous operation, with reviewed method versions and validated parameters. Missing or unknown
 fields, duplicate object keys (including escaped equivalents), out-of-range numbers and inconsistent
 observations are refused. Numeric domains are checked before narrowing. Run identities are 32
@@ -82,8 +82,8 @@ either output.
 A source digest identifies the immutable snapshot the decoder consumed, not a later reading of the
 same path. The output digest is taken from the written file after it was verified. A mask carries
 two digests, because they answer different questions: `supplied` identifies the file as given, and
-`stored` identifies the canonical mask in the bundle — the oriented plane that actually excluded
-samples, which may differ in depth from the file supplied.
+`stored` identifies the canonical mask in the bundle — the admitted B-frame plane, which may differ in depth from the file supplied. G02 transforms
+this plane identically into C for processing; its canonical asset is not turned. See [geometry](geometry.md).
 
 The image input is identified by its basename rather than its absolute input path; shell text is
 not recorded. R01 supplied-kernel requests and identities retain their admitted PSF path, including
@@ -138,7 +138,8 @@ canonical profile bytes are checked using the writer's profile definition, witho
 transform. Binary results additionally contain only
 0/255 samples. The stored mask is an 8-bit gray PNG containing only 0/1 samples, without a profile
 or resolution; nonzero protects. Its dimensions, fixed polarity/frame declarations and protected
-sample count must agree with the oriented output and execution observations.
+sample count must agree with B-frame geometry and execution observations. A 90/270-degree
+turn transposes output dimensions independently of the stored mask dimensions.
 
 Record bytes are bounded by 1 MiB, nesting by 16, and parser events by 17,921. This event budget
 combines 1,024 events for closed source/stage metadata, at most 129 × 129 = 16,641 normalized
@@ -219,10 +220,10 @@ original document.
 
 ## Source observations and format compatibility
 
-Current native output uses record version 11. It requires closed source decoding observations,
+Current native output uses record version 12. It requires closed source decoding observations,
 denoising, restoration, contrast and sharpening requests and complete execution reports, plus B01 threshold/fallback observations, alongside verified conversion and output facts.
 The reader accepts only this format; obsolete versions and unknown fields are refused. No backward
-compatibility reader or migration exists. The command response uses schema version 11.
+compatibility reader or migration exists. The command response uses schema version 12.
 
 D01 observations include typed settings, native float strength, 16-bit/L1 policy, global reflection,
 tile size, eligible/protected/evaluated/corrected/changed pixels, completed native calls and reserved/

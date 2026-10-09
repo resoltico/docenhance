@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 11
+      "const": 12
     },
     "command": {
       "enum": [
@@ -205,6 +205,14 @@
               "$ref": "#/$defs/otsu_observation"
             }
           ]
+        },
+        "rotation_degrees": {
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ]
         }
       },
       "required": [
@@ -214,7 +222,8 @@
         "publication",
         "record",
         "source_decoding",
-        "binarization"
+        "binarization",
+        "rotation_degrees"
       ],
       "allOf": [
         {
@@ -277,7 +286,8 @@
             "clipped_components",
             "depth_reduced",
             "verified",
-            "warnings"
+            "warnings",
+            "rotation_degrees"
           ],
           "additionalProperties": false,
           "properties": {
@@ -429,6 +439,14 @@
                   "W_DEPTH_REDUCED"
                 ]
               }
+            },
+            "rotation_degrees": {
+              "enum": [
+                0,
+                90,
+                180,
+                270
+              ]
             }
           }
         },

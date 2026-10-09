@@ -143,7 +143,7 @@ bool png_agrees(const image::PngSource& png, const image::ConversionReport& conv
 bool jpeg_agrees(const image::JpegSource& jpeg, const image::ConversionReport& conversion) {
     const auto decoded = conversion.source;
     auto resolution = jpeg.exif_resolution ? jpeg.exif_resolution : jpeg.jfif_resolution;
-    if (resolution && conversion.orientation.transposed()) {
+    if (resolution && (conversion.orientation.transposed() != conversion.rotation.swaps_axes())) {
         std::swap(resolution->x, resolution->y);
     }
     const bool interpretation =
@@ -175,8 +175,10 @@ bool source_agrees(const DeclaredBundle& declared) {
     const auto* const png = std::get_if<image::PngSource>(&source);
     if (std::holds_alternative<methods::Binarization>(*declared.operation)) {
         return png != nullptr && png->color_type == 0 && png->depth <= image::byte_bits &&
-               png->width == declared.output.shape.width &&
-               png->height == declared.output.shape.height;
+               (declared.rotation.swaps_axes() ? png->height : png->width) ==
+                   declared.output.shape.width &&
+               (declared.rotation.swaps_axes() ? png->width : png->height) ==
+                   declared.output.shape.height;
     }
     if (!declared.conversion) {
         return false;
@@ -190,7 +192,7 @@ bool source_agrees(const DeclaredBundle& declared) {
     }
     if (const auto* const tiff = std::get_if<image::TiffSource>(&source)) {
         auto resolution = tiff->resolution;
-        if (resolution && tiff->orientation.transposed()) {
+        if (resolution && (tiff->orientation.transposed() != conversion.rotation.swaps_axes())) {
             std::swap(resolution->x, resolution->y);
         }
         const bool interpretation =

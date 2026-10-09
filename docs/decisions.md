@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 11; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 12; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -490,3 +490,16 @@ leaving DCT and all numerical operations unchanged. The original cache stays loc
 private copies preserve original upstream notices. Source identity/actual compilation admission
 and real allocation-failure cleanup are checked separately. Reservation accounting alone cannot
 prove native cleanup. No leak suppression or successful-copy fallback is admitted.
+
+## Exact turns preserve named coordinate boundaries
+
+G02 composes clockwise integer permutations after continuous G01 orientation. A lazy inverse
+gather avoids a second full color raster and interpolation; a generic warp engine is unnecessary
+for exact permutations. Binary G02 retains stored-gray metadata-ignore semantics and permutes
+samples before thresholding. Masks are supplied and stored in B, then transformed identically
+into C for computation; PSFs and photometric windows refer to F, currently C.
+
+The separate challenge checks asymmetric/mirrored composition, non-square mask dimensions and
+unequal density pairs: two transpositions cancel, and a B-frame asset cannot be checked against
+C dimensions. G03–G05 stay unsupported until their complete resampling, footprint, bounds and
+analysis contracts exist. See [geometry](geometry.md).

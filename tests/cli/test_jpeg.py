@@ -24,8 +24,8 @@ from continuous_fixtures import (
 )
 from test_cli import call_json, expect
 
-WIRE_VERSION = 11
-RECORD_VERSION = 11
+WIRE_VERSION = 12
+RECORD_VERSION = 12
 WORD_DEPTH = 16
 FIRST_TRANSPOSED = 5
 DATA = Path(__file__).resolve().parents[1] / "fixtures/jpeg"

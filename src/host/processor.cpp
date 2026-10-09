@@ -13,6 +13,7 @@
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/paths.hpp"
 #include "docenhance/io/png.hpp"
@@ -32,6 +33,25 @@
 #include <variant>
 namespace docenhance::host {
 namespace {
+core::Result<void> rotate_binary(image::Plane<std::uint8_t>& source, image::QuarterTurn rotation,
+                                 core::Budget& budget, const core::Cancellation& cancellation) {
+    if (rotation.degrees() == 0) {
+        return {};
+    }
+    const auto shape =
+        image::rotated_shape({.width = source.width(), .height = source.height()}, rotation);
+    auto rotated = image::Plane<std::uint8_t>::allocate(budget, shape.width, shape.height);
+    if (!rotated) {
+        return std::unexpected(rotated.error());
+    }
+    auto applied =
+        image::rotate_plane(source.view().as_const(), rotated->view(), rotation, cancellation);
+    if (!applied) {
+        return applied;
+    }
+    source = std::move(*rotated);
+    return {};
+}
 core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
                                           const methods::Binarization& method,
                                           const core::Cancellation& cancellation,
@@ -45,6 +65,10 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         return std::unexpected(loaded.error());
     }
     auto& source = loaded->image;
+    auto rotated = rotate_binary(source, request.rotation(), budget, cancellation);
+    if (!rotated) {
+        return std::unexpected(rotated.error());
+    }
     if (cancellation.requested(core::Checkpoint::allocation)) {
         return core::cancelled();
     }
@@ -94,6 +118,7 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         .source = loaded->source,
         .source_name = io::file_name(request.input()),
         .source_decoding = loaded->description,
+        .rotation = request.rotation(),
 
     });
     if (!published) {
@@ -105,6 +130,7 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         .record = std::move(published->record),
         .source_decoding = loaded->description,
         .otsu = otsu,
+        .rotation = request.rotation(),
     };
 }
 void failed_stages(ContinuousReports reports) {

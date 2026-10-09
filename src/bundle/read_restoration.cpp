@@ -182,7 +182,8 @@ core::Result<void> validate_restoration_claims(const RecordJson& document, Decla
             r.after_transform_warning !=
                 (r.requested.has_value() &&
                  (converted->orientation != image::Orientation::normal() ||
-                  light.changed_samples != 0 || d.denoising.changed_samples != 0))) {
+                  converted->rotation.degrees() != 0 || light.changed_samples != 0 ||
+                  d.denoising.changed_samples != 0))) {
             return core::failure(core::ErrorCode::input,
                                  "Inconsistent restoration extent or preceding transformations");
         }

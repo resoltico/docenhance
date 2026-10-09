@@ -18,7 +18,6 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/io/paths.hpp"
-#include "docenhance/io/protection_png.hpp"
 #include "docenhance/io/source.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
@@ -26,6 +25,7 @@
 #include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "linear_rows.hpp"
+#include "protection.hpp"
 #include "restoration.hpp"
 #include "run_publication.hpp"
 #include "sharpening.hpp"
@@ -99,28 +99,6 @@ prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
     }
     return model->active() ? std::optional<IlluminationModel>{std::move(*model)} : std::nullopt;
 }
-struct Protection {
-    image::Plane<std::uint8_t> mask;
-    std::optional<MaskFacts> facts;
-};
-core::Result<Protection> load_protection(const app::ProcessRequest& request,
-                                         const color::Converter& converter, core::Budget& budget,
-                                         const core::Cancellation& cancellation) {
-    Protection result;
-    if (request.protection()) {
-        auto loaded = io::load_protection_png(*request.protection(), converter.extent(), budget,
-                                              cancellation);
-        if (!loaded) {
-            return std::unexpected(loaded.error());
-        }
-        result.mask = std::move(loaded->mask);
-        result.facts = MaskFacts{
-            .supplied = std::move(loaded->source),
-            .canonical = result.mask.view().as_const(),
-        };
-    }
-    return result;
-}
 core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source, bool prepared,
                                                      const ContinuousRun& run,
                                                      const Protection& protection,
@@ -160,6 +138,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
         .source = decoded.source,
         .source_name = io::file_name(request.input()),
         .source_decoding = decoded.description,
+        .rotation = request.rotation(),
 
     });
     if (!published) {
@@ -217,7 +196,8 @@ restore_and_finish(image::LinearSource& source, bool source_prepared, const Cont
         .mask = protection.mask.view(),
         .prepared = source_prepared,
         .geometry_transformed =
-            run.converter.get().report().orientation != image::Orientation::normal(),
+            run.converter.get().report().orientation != image::Orientation::normal() ||
+            run.request.get().rotation().degrees() != 0,
         .illumination = run.reports.illumination.get(),
         .denoising = run.reports.denoising.get(),
     };
@@ -245,7 +225,8 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     if (!decoded) {
         return std::unexpected(decoded.error());
     }
-    auto converter = color::Converter::create(decoded->raster, operation, budget, cancellation);
+    auto converter = color::Converter::create(decoded->raster, operation, budget, cancellation,
+                                              request.rotation());
     if (!converter) {
         return std::unexpected(converter.error());
     }

@@ -124,7 +124,8 @@ or second orientation pass occurs. Missing orientation means normal. Malformed s
 fails. Selected EXIF resolution fields must form a positive pair and fit the supported physical range,
 even when pHYs takes precedence. Unitless values remain nonphysical. pHYs physical resolution
 takes precedence over valid EXIF resolution, and transposed orientations
-swap X/Y densities. No resolution is invented. Unitless pHYs aspect information is not promoted to DPI.
+swap X/Y densities. G02 90/270-degree rotation swaps the oriented densities once more;
+see [geometry](geometry.md) for exact mappings and mask coordinates. No resolution is invented. Unitless pHYs aspect information is not promoted to DPI.
 
 Output retains only a deterministic output ICC profile and valid physical resolution. Original text,
 EXIF, timestamps, GPS and unknown metadata are not copied. RGB uses a generated standard sRGB

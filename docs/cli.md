@@ -18,6 +18,7 @@ than authenticity; see [processing bundles](bundles.md).
 ```sh
 docenhance process INPUT.png --out-dir RESULT
 docenhance process INPUT.png --out-dir GRAY --output-mode gray --bit-depth 16
+docenhance process INPUT.png --out-dir TURNED --rotate 90
 docenhance process INPUT.png --out-dir BINARY --output-mode bw --binarize sauvola
 docenhance process INPUT.png --out-dir OTSU --output-mode bw --binarize otsu
 docenhance process INPUT.png --out-dir FIXED --output-mode bw --binarize fixed --fixed-threshold 0.5
@@ -31,18 +32,19 @@ canonical protection mask when one was supplied. Profile assumptions, alpha flat
 orientation and verified output descriptors are reported. Bounded 8-bit baseline/progressive
 Huffman JPEG supports preserve/gray through the same pipeline; see [JPEG admission](jpeg-processing.md).
 Bounded single-page TIFF/BigTIFF supports preserve/gray; see [TIFF admission](tiff-processing.md).
-Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02/C01/C02/C03/S01 remain unsupported.
+Animation, multipage input, recipes, presets and enhancement methods other than I01/I02/D01/D02/R01/C01/C02/C03/S01/G02 remain unsupported.
 
 Only explicit `bw` activates a binarizer (Sauvola by default). B01/B02/B03 use the separate published
 1/2/4/8-bit grayscale-without-transparency input contract and 8-bit binary output. They do not run
-through color conversion. Parameters, equality and scale remain in [typed binarization](binarization.md).
+through color conversion. Explicit quarter-turns precede thresholding; metadata orientation remains
+ignored on this branch. Parameters, equality and scale remain in [typed binarization](binarization.md).
 Wrong-method, wrong-operation and explicitly empty values fail admission before input I/O.
 
 `RESULT` must not exist and its parent must already be a directory. The writer creates exclusively
 owned sibling staging and atomically publishes without replacement after encoding and closing
 succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
-`docenhance methods` reports I01, I02, D01, D02, C01, C02, C03, S01, B01, B02 and B03. `methods ID` selects one entry.
+`docenhance methods` reports I01, I02, D01, D02, C01, C02, C03, S01, R01, B01, B02, B03 and G02. `methods ID` selects one entry.
 `version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
 Help, version and capability discovery do not invoke the image-processing host.
 
@@ -134,3 +136,8 @@ before execution do no input/output work. The last precommit checkpoint is a cut
 cannot turn successful publication into cancellation. Unknown publication or cleanup retains exit 7;
 response delivery can still fail with exit 5. Repeated handled interrupts do not force termination.
 See [cancellation](cancellation.md) for precise outcomes, signal safety and blocking-I/O limits.
+
+Explicit `--rotate 0|90|180|270` is clockwise after continuous metadata orientation, or directly
+on stored-gray binary samples. Masks are supplied before the user turn in frame B and transformed
+identically for processing. See [geometry](geometry.md) for coordinate frames, physical resolution
+and unsupported perspective/deskew/dewarp boundaries.

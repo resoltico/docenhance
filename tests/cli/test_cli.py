@@ -162,6 +162,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
             {"id": "B01", "method_version": 1},
+            {"id": "G02", "method_version": 1},
         ],
         "implemented methods advertised",
     )
@@ -185,6 +186,7 @@ def discovery_cases(exe: Path) -> None:
             {"id": "B02", "method_version": 1},
             {"id": "B03", "method_version": 1},
             {"id": "B01", "method_version": 1},
+            {"id": "G02", "method_version": 1},
         ],
         "methods list matches implementation",
     )

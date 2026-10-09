@@ -85,16 +85,20 @@ def gray_fixture(width: int, height: int) -> bytes:
     )
 
 
+QUARTER_TURN_DEGREES = 90
+
+
 def exercise(exe: Path, root: Path) -> None:
     """Run all advertised methods after relocation and validate responses, records and bundles."""
     source = root / "source.png"
-    source.write_bytes(gray_fixture(128, 128))
+    source.write_bytes(gray_fixture(160, 128))
     jpeg = root / "source.jpg"
     jpeg.write_bytes((ROOT / "tests/fixtures/jpeg/ycbcr-2x2-progressive.jpg").read_bytes())
     tiff = root / "source.tiff"
     tiff.write_bytes((ROOT / "tests/fixtures/tiff/d16-c3-t1-p2-b1-l0.tif").read_bytes())
     cases: tuple[tuple[str, Path, list[str]], ...] = (
         ("tiff", tiff, []),
+        ("quarter_turn", source, ["--rotate", str(QUARTER_TURN_DEGREES)]),
         ("clahe", source, ["--contrast", "clahe"]),
         ("unsharp", source, ["--sharpen", "unsharp"]),
         ("levels", source, ["--contrast", "levels"]),
@@ -122,7 +126,17 @@ def exercise(exe: Path, root: Path) -> None:
         if name == "denoising" and response["denoising"]["native_calls"] != 1:
             msg = "Relocated executable did not execute and reuse native D01"
             raise ValueError(msg)
-        record_schema.validate(json.loads((output / "run.json").read_bytes()))
+        record = json.loads((output / "run.json").read_bytes())
+        record_schema.validate(record)
+        if name == "quarter_turn":
+            dimensions = struct.unpack(">II", (output / "result.png").read_bytes()[16:24])
+            if (
+                dimensions != (128, 160)
+                or response["conversion"]["rotation_degrees"] != QUARTER_TURN_DEGREES
+                or record["request"]["rotation_degrees"] != QUARTER_TURN_DEGREES
+            ):
+                msg = "Relocated executable did not perform and record asymmetric G02 rotation"
+                raise ValueError(msg)
         run_json(exe, "verify", str(output), "--json")
 
 

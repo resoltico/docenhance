@@ -5,6 +5,7 @@
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/geometry.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
@@ -31,7 +32,8 @@ constexpr auto catalog = std::apply(
     [](const auto&... descriptors) { return std::array{descriptors...}; },
     std::tuple_cat(executable_variants<Illumination>(), executable_variants<Denoising>(),
                    executable_variants<Contrast>(), executable_variants<Sharpening>(),
-                   executable_variants<Restoration>(), executable_variants<Binarization, 0>()));
+                   executable_variants<Restoration>(), executable_variants<Binarization, 0>(),
+                   std::tuple{ExactQuarterTurn::descriptor()}));
 static_assert(std::ranges::equal(catalog, reviewed_methods),
               "Reviewed capabilities and executable method types must agree");
 } // namespace

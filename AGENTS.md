@@ -20,7 +20,7 @@ The application contains unreported processing exceptions as unknown publication
 
 Do not advertise a method or format until its complete contract and tests exist. B01 global Otsu, B02 Sauvola and B03 fixed-threshold
 grayscale-PNG processing, I01 surface and I02 morphological continuous-tone illumination and D01 bounded 16-bit NLM-L1 / D02 floating-point TV-L1 denoising
-and R01 known-PSF Fourier restoration
+and R01 known-PSF Fourier restoration, G02 exact quarter-turns
 and C01 percentile levels / C02 gamma / C03 floating-point CLAHE contrast and S01 thresholded unsharp masking are implemented; other method entries remain plans. Continuous-tone
 PNG representation is separately implemented; read docs/png-processing.md. It is not a fictional
 enhancement method. Keep binary sample meaning separate from color/profile interpretation. Never use no-op/copy
@@ -62,8 +62,7 @@ cutoff, real-error precedence, worker joins and truthful publication states. Add
 inside new long-running loops and test them without timing sleeps. Read `docs/cancellation.md` before
 changing interrupts, scheduling, codecs or publication; never call `request_stop` from an OS handler.
 
-For illumination read `docs/illumination.md` and `docs/morphological-illumination.md`. Keep the operation opt-in and its mask in already-oriented
-coordinates. Fit once on eligible linear samples, verify the true solver residual and reuse the same
+For illumination read `docs/illumination.md` and `docs/morphological-illumination.md`. Keep the operation opt-in and its mask in metadata-oriented frame B at admission and rotated frame C during computation. Fit once on eligible linear samples, verify the true solver residual and reuse the same
 immutable model during output verification. Do not change binary semantics, refit on verification,
 double-count observations, downsample on resource refusal or call numerical failure an automatic skip.
 
@@ -180,3 +179,8 @@ For sharpening read `docs/sharpening.md`. Fit its float64 REFLECT_101 Gaussian c
 For restoration read `docs/restoration.md`. Preserve the explicit centered kernel origin, global
 REFLECT_101 padding, padded mean and full complex float32 transform contract; validate PSFs even
 for zero blend. Keep native transform cancellation limits truthful and restore protected destinations.
+
+For geometry read `docs/geometry.md`. Keep masks in metadata-oriented frame B at admission and
+in canonical assets; gather them identically into rotated frame C for processing. Compose inverse
+G02/G01 without interpolation or a second full color raster; swap physical X/Y densities per
+transpose parity. Preserve the binary branch's ignored metadata orientation and stored-sample meaning.

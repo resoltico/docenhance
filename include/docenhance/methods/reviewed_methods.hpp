@@ -67,6 +67,11 @@ inline constexpr ImplementedMethod otsu_descriptor{
     .method_version = 1U,
     .selector = "otsu",
 };
+inline constexpr ImplementedMethod quarter_turn_descriptor{
+    .id = "G02",
+    .method_version = 1U,
+    .selector = "quarter_turn",
+};
 inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({
     surface_descriptor,
     morph_descriptor,
@@ -80,5 +85,6 @@ inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({
     sauvola_descriptor,
     fixed_descriptor,
     otsu_descriptor,
+    quarter_turn_descriptor,
 });
 } // namespace docenhance::methods

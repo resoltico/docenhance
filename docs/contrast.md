@@ -10,7 +10,8 @@ working contract; no additional package or layer edge is needed. C03 uses the sa
 For entering RGB, use perceptual luminance f=E(0.2126 R+0.7152 G+0.0722 B). All alternatives
 blend g=(1-a)f+a*f_c, decode g to linear target luminance and use the existing neutral-axis
 transport. Equal candidates or equal blended values retain entering RGB exactly. Protected
-samples bypass output transport exactly, in already-oriented coordinates.
+samples bypass output transport exactly, in processing frame F (currently rotated frame C); supplied masks remain in B
+at admission. See [geometry](geometry.md).
 
 Levels uses every unprotected sample, without a histogram, lattice or downsampling. Percentiles
 are nearest rank: sorted index max(0,ceil(p*n)-1), including p=0 and p=1. Defaults are low=0.5
@@ -48,7 +49,7 @@ Cancellation is execution control, with bounded checkpoints in mask counting, tr
 validation, sorting, mapping and reconstruction. Preserve final publication cutoff and error
 precedence. Numeric kernels remain free of I/O, allocation expressions and exception handling.
 
-Typed alternatives own admission and the runtime catalog. Response/record version 11 includes a closed
+Typed alternatives own admission and the runtime catalog. Response/record version 12 includes a closed
 contrast request and stage record, including explicit disabled records. Obsolete forms are rejected;
 update consumers and visitors together. No recipes or arbitrary operation graph are introduced.
 

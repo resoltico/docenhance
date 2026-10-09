@@ -3,12 +3,13 @@
 R01 is explicitly selected with `--deblur wiener --psf gaussian|motion|kernel`.
 It runs on linear luminance after illumination and denoising, before contrast and sharpening.
 It uses the existing continuous PNG/JPEG/TIFF domain; binary input/output admission is unchanged.
-The PSF describes blur in the already-oriented processing frame. No recipe, automatic selection,
-blind PSF estimation, geometry operation or broader binary pipeline is introduced.
+The PSF describes blur in the post-geometry processing frame F (currently rotated frame C). No recipe, automatic selection,
+blind PSF estimation or broader binary photometric pipeline is introduced. See [geometry](geometry.md)
+for coordinate and exact-rotation rules.
 
 The model is `Y ≈ h*u + n` for a user-specified spatially invariant PSF. The application does
 not estimate or verify the camera PSF. `W_RESTORATION_INFERENCE` accompanies every reported enabled R01
-stage, including identities. Failures before stage observations exist can omit the restoration report. `W_PSF_AFTER_TRANSFORM` reports an applied non-normal orientation or a preceding illumination/
+stage, including identities. Failures before stage observations exist can omit the restoration report. `W_PSF_AFTER_TRANSFORM` reports an applied non-normal orientation, nonzero user quarter-turn or a preceding illumination/
 denoising stage that actually changed samples. Enhanced strokes are inferred candidates, not
 proof of original detail, document meaning or authenticity. The positive `K` in the denominator
 is a chosen regularizer, **not a measured noise-to-signal ratio**.
@@ -83,7 +84,7 @@ observed before and after each call, but a running native transform is not inter
 or maximum cancellation latency is promised. Native errors retain precedence over a concurrent
 stop request. The existing final precommit cutoff and truthful publication states remain in force.
 
-Responses and run records use format 11. Closed requests and observations include the PSF,
+Responses and run records use format 12. Closed requests and observations include the PSF,
 regularizer/blend, normalized coefficients, centroid, padding/FFT geometry, eligible/context
 counts, raw/blended excursions, charged preparation peak and explicit warnings. Only complete
 current records are accepted; older records have no reader or migration.

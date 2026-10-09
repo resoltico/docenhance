@@ -82,7 +82,8 @@ EXIF permits JFIF fallback; malformed selected metadata does not. JPEG EXIF reso
 form a positive pair; shared TIFF unit defaults retain their defined interpretation. Physical values
 are rounded once to positive uint32 pixels per meter. Orientation 1..8 is applied exactly once in
 the existing gather operation, which swaps physical axes when transposed. Protection is supplied in
-these already-oriented coordinates. Original metadata is stripped from output except the supported
+these metadata-oriented B coordinates. Explicit G02 follows G01, transforms protection identically
+and swaps the selected physical axes again for 90/270 degrees; see [geometry](geometry.md). Original metadata is stripped from output except the supported
 canonical PNG ICC profile and selected physical resolution.
 
 ## Native ownership, resources and cancellation
@@ -122,8 +123,8 @@ charged allocations, peak RSS and runtime are different evidence, never intercha
 
 ## Persistent and response compatibility
 
-New production records use format version 11 and require a closed `source.decoding` PNG/JPEG/TIFF
-alternative. Response schema version 11 exposes the same mapping as `source_decoding` and reports an
+New production records use format version 12 and require a closed `source.decoding` PNG/JPEG/TIFF
+alternative. Response schema version 12 exposes the same mapping as `source_decoding` and reports an
 explicit input/output-mode matrix. A custom processing port can report unknown source observations
 as null; the native host always supplies them. Numerical method versions are unchanged.
 

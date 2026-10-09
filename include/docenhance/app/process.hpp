@@ -7,11 +7,13 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/geometry.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/restoration.hpp"
@@ -34,7 +36,7 @@ class ProcessRequest {
           operation_(other.operation_), illumination_(other.illumination_),
           protection_(std::move(other.protection_)), denoising_(other.denoising_),
           restoration_(std::move(other.restoration_)), contrast_(other.contrast_),
-          sharpening_(other.sharpening_) {}
+          sharpening_(other.sharpening_), rotation_(other.rotation_) {}
     ProcessRequest& operator=(ProcessRequest&& other) noexcept {
         if (this != &other) {
             input_ = std::exchange(other.input_, {});
@@ -46,6 +48,7 @@ class ProcessRequest {
             restoration_ = std::move(other.restoration_);
             contrast_ = other.contrast_;
             sharpening_ = other.sharpening_;
+            rotation_ = other.rotation_;
         }
         return *this;
     }
@@ -87,6 +90,9 @@ class ProcessRequest {
         return sharpening_;
     }
     [[nodiscard]] const methods::Sharpening& sharpening() const&& = delete;
+    [[nodiscard]] image::QuarterTurn rotation() const noexcept {
+        return rotation_.rotation;
+    }
     [[nodiscard]] const Operation& operation() const& noexcept {
         return operation_;
     }
@@ -94,19 +100,21 @@ class ProcessRequest {
 
   private:
     friend core::Result<ProcessRequest> prepare_process(const contract::Invocation& /*invocation*/);
-    struct Enhancements {
+    struct ProcessingOptions {
         methods::Illumination illumination;
         methods::Denoising denoising;
         methods::Restoration restoration;
         methods::Contrast contrast;
         methods::Sharpening sharpening;
+        methods::ExactQuarterTurn rotation;
     };
     ProcessRequest(std::string input, std::string output, Operation operation,
-                   Enhancements enhancements, std::optional<std::string> protection)
+                   ProcessingOptions options, std::optional<std::string> protection)
         : input_(std::move(input)), output_(std::move(output)), operation_(operation),
-          illumination_(enhancements.illumination), protection_(std::move(protection)),
-          denoising_(enhancements.denoising), restoration_(std::move(enhancements.restoration)),
-          contrast_(enhancements.contrast), sharpening_(enhancements.sharpening) {}
+          illumination_(options.illumination), protection_(std::move(protection)),
+          denoising_(options.denoising), restoration_(std::move(options.restoration)),
+          contrast_(options.contrast), sharpening_(options.sharpening),
+          rotation_(options.rotation) {}
     std::string input_;
     std::string output_;
     Operation operation_;
@@ -116,6 +124,7 @@ class ProcessRequest {
     methods::Restoration restoration_;
     methods::Contrast contrast_;
     methods::Sharpening sharpening_;
+    methods::ExactQuarterTurn rotation_;
 };
 [[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
 // A published bundle is identified by the run and record digest, not a persisted publication claim.
@@ -126,6 +135,7 @@ struct PublishedBinary {
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
+    image::QuarterTurn rotation = image::QuarterTurn::identity();
 };
 struct PublishedContinuous {
     std::string output;
@@ -147,6 +157,7 @@ struct Processed {
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
+    image::QuarterTurn rotation = image::QuarterTurn::identity();
 };
 struct ProcessFailure {
     core::Error error;

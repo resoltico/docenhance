@@ -181,6 +181,7 @@ core::Result<std::string> serialize(const RunRecord& record) {
                 "request",
                 {
                     {"operation", operation_fields(record.operation)},
+                    {"rotation_degrees", record.rotation.degrees()},
                     {"protection_supplied", record.protection_supplied},
                 },
             },

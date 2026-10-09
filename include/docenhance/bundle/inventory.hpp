@@ -63,6 +63,7 @@ struct DeclaredBundle {
     methods::SharpenReport sharpening{};
     methods::RestorationReport restoration{};
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
+    image::QuarterTurn rotation = image::QuarterTurn::identity();
 };
 
 [[nodiscard]] core::Result<DeclaredBundle> read_record(std::span<const std::byte> bytes);

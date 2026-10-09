@@ -152,6 +152,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         .contrast = disabled_contrast,
         .sharpening = disabled_sharpen,
         .restoration = disabled_restoration,
+        .rotation = run.rotation,
     };
     std::visit(
         [&record](const auto& artwork) {

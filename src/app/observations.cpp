@@ -216,7 +216,8 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
 } // namespace
 bool valid_published(const PublishedBinary& value, const ProcessRequest& request) {
     const auto& method = std::get<methods::Binarization>(request.operation());
-    if (value.otsu.has_value() != std::holds_alternative<methods::Otsu>(method) ||
+    if (value.rotation != request.rotation() ||
+        value.otsu.has_value() != std::holds_alternative<methods::Otsu>(method) ||
         (value.otsu && !methods::valid_otsu(*value.otsu)) ||
         !publication(value.output, value.run, value.record, request)) {
         return false;
@@ -232,7 +233,8 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
     const auto& c = value.conversion;
     const auto& light = value.illumination;
     const auto pixels = std::uint64_t{c.output.width} * c.output.height;
-    if (!publication(value.output, value.run, value.record, request) ||
+    if (c.rotation != request.rotation() ||
+        !publication(value.output, value.run, value.record, request) ||
         !image::valid_conversion(c, std::get<image::Continuous>(request.operation())) ||
         !light.complete || !illumination_request(light, request) ||
         !methods::valid_illumination(light, {.width = c.output.width, .height = c.output.height},
@@ -249,7 +251,7 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
                                            {.width = c.output.width, .height = c.output.height}) ||
         value.restoration.eligible_samples != light.eligible_samples ||
         value.restoration.protected_samples != light.protected_samples ||
-        !restoration_prefix(value.restoration, c.orientation, light, value.denoising) ||
+        !restoration_prefix(value.restoration, c.orientation, c.rotation, light, value.denoising) ||
         !methods::valid_contrast(value.contrast, request.contrast()) ||
         value.contrast.eligible_samples != light.eligible_samples ||
         value.contrast.protected_samples != light.protected_samples ||

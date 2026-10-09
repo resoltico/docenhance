@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-add_executable(de_tests unit/value_contracts.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
+add_executable(de_tests unit/value_contracts.cpp unit/geometry.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
   unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_decode.cpp unit/tiff_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/psf_png.cpp unit/restoration_contract.cpp unit/restoration_states.cpp unit/restoration_admission.cpp unit/otsu.cpp unit/otsu_reference.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/morphology.cpp unit/tvl1.cpp unit/contrast.cpp unit/clahe.cpp unit/sharpening.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
 target_link_libraries(de_tests PRIVATE de_app de_bundle de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color de_opencv Catch2::Catch2WithMain)
@@ -167,6 +167,12 @@ if(DE_ENABLE_TSAN AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_options(${de_allocation_probe} PRIVATE -fno-sanitize-link-c++-runtime)
   endforeach()
 endif()
+
+add_test(NAME geometry-byte-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_byte.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME geometry-word-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_word.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME geometry-protection-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_protection.py" "$<TARGET_FILE:docenhance>")
+add_test(NAME geometry-source-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_geometry_sources.py" "$<TARGET_FILE:docenhance>")
+set_tests_properties(geometry-byte-contract geometry-word-contract geometry-protection-contract geometry-source-contract PROPERTIES TIMEOUT 180)
 
 get_property(de_static_tests DIRECTORY PROPERTY TESTS)
 string(JSON de_native_inventory SET "{}" "static_tests" "[]")

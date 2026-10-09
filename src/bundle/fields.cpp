@@ -235,6 +235,7 @@ nlohmann::ordered_json conversion_fields(const image::ConversionReport& report) 
         {"assumed_transfer", report.assumed_transfer},
         {"assumed_primaries", report.assumed_primaries},
         {"source_orientation", report.orientation.code()},
+        {"rotation_degrees", report.rotation.degrees()},
         {"resolution", resolution},
         {"alpha_flattened_pixels", report.flattened_pixels},
         {"clipped_components", report.clipped_components},

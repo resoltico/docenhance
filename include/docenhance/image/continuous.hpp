@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 
@@ -39,6 +40,7 @@ struct ConversionReport {
     RasterShape output;
     Interpretation interpretation = Interpretation::assumed_srgb;
     Orientation orientation = Orientation::normal();
+    QuarterTurn rotation = QuarterTurn::identity();
     std::optional<Resolution> resolution;
     std::uint64_t flattened_pixels{};
     std::uint64_t clipped_components{};

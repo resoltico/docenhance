@@ -193,10 +193,12 @@
       "id": "G02",
       "name": "Exact quarter-turn",
       "method_version": 1,
-      "status": "not-implemented",
+      "status": "implemented",
       "arguments": [
         "--rotate"
-      ]
+      ],
+      "selector": "quarter_turn",
+      "family": "geometry"
     },
     {
       "id": "G03",

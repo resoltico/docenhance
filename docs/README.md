@@ -51,3 +51,7 @@ resource and verified-publication contracts, separately from binary method mathe
 
 [Illumination](illumination.md) specifies I01 fitting/application, original-depth protection masks,
 opt-in applicability, typed diagnostics, resources and independent preservation tests.
+
+[Geometry](geometry.md) specifies G01 metadata orientation, G02 exact clockwise quarter-turns,
+B-frame mask admission/assets, C/F processing coordinates and physical-resolution handling.
+Perspective, deskew and dewarping remain future contracts.

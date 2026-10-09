@@ -19,6 +19,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 namespace docenhance::tests {
 inline void parser_cases() {
@@ -149,7 +150,7 @@ inline void numerical_cases() {
     require(!image::reflect101(0, 0).has_value(), "empty reflection rejected");
 }
 inline void capabilities_cases() {
-    require(contract::option_catalog.size() == 49, "compiled target contract size");
+    require(contract::option_catalog.size() == 50, "compiled target contract size");
     // The reviewed scope of an option is typed, so no layer has to interpret a scope string.
     const auto& out_dir = contract::option_catalog.front();
     require(out_dir.name == "--out-dir", "the catalog keeps the reviewed order");
@@ -157,16 +158,32 @@ inline void capabilities_cases() {
     require(!out_dir.scope.contains(contract::Command::methods),
             "--out-dir is not a methods option");
     require(!out_dir.scope.contains(contract::Command::root), "--out-dir is not a root option");
+    require(std::ranges::count(contract::option_catalog, "--rotate",
+                               &contract::OptionDescriptor::name) == 1,
+            "rotation option is declared once");
+    require(std::ranges::any_of(
+                contract::option_catalog,
+                [](const contract::OptionDescriptor& option) {
+                    const auto* const binding =
+                        std::get_if<decltype(&contract::Invocation::rotate)>(&option.binding);
+                    return option.name == "--rotate" &&
+                           option.scope.contains(contract::Command::process) &&
+                           !option.scope.contains(contract::Command::methods) &&
+                           !option.scope.contains(contract::Command::root) && binding != nullptr &&
+                           *binding == &contract::Invocation::rotate;
+                }),
+            "rotation is process-only and binds its typed value member");
     require(contract::CommandSet::all().contains(contract::Command::version),
             "every command is in all");
     require(!contract::CommandSet{}.contains(contract::Command::root),
             "an empty scope holds nothing");
     require(!contract::command_usage(contract::Command::process).empty(),
             "every command has a usage line");
-    require(methods::implemented_methods().size() == 12 &&
-                methods::implemented_methods().front().id == "I01" &&
-                methods::implemented_methods().back().id == "B01",
-            "Only I01, I02, D01, D02, C01, C02, C03, S01, R01, B01, B02 and B03 are advertised");
+    require(
+        methods::implemented_methods().size() == 13 &&
+            methods::implemented_methods().front().id == "I01" &&
+            methods::implemented_methods().back().id == "G02",
+        "The compiled capability list includes the completed photometric, binary and G02 methods");
     const core::Error not_implemented{
         .code = core::ErrorCode::not_implemented,
         .message = "not ready",

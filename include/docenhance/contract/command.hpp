@@ -42,6 +42,7 @@ struct Invocation {
     bool root_version = false;
     std::string subject;
     std::string output_directory;
+    std::optional<std::string> rotate = std::nullopt;
     std::optional<std::string> output_mode = std::nullopt;
     std::optional<std::string> bit_depth = std::nullopt;
     std::optional<std::string> alpha = std::nullopt;

@@ -9,11 +9,11 @@ are outside this operation; no fallback method is substituted.
 D01 is explicit `--denoise nlm`; the default is `off`. Private parameters require `nlm`:
 `--nlm-h` finite [0.1,25], default 3; `--nlm-patch` odd [3,15], default 7;
 `--nlm-search` odd [7,41], default 21, at least patch; `--denoise-blend` finite [0,1],
-default 0.5. Active denoising requires search to fit the smaller oriented dimension. Zero blend
+default 0.5. Active denoising requires search to fit the smaller post-geometry dimension. Zero blend
 and entirely protected inputs bypass native execution after parameter, source and mask validation.
 Continuous PNG/JPEG/TIFF preserve/gray are supported; any denoise option on bw is rejected.
 
-The entering samples are opaque oriented linear sRGB doubles, after the selected frozen illumination operation.
+The entering samples are opaque post-geometry linear sRGB doubles in frame F (currently C), after the selected frozen illumination operation.
 Denoising precedes optional restoration, contrast and sharpening, then final quantization.
 For each RGB triplet C, Y = 0.2126 R + 0.7152 G + 0.0722 B and f = sRGB_encode(Y), using
 `image::numeric`'s existing transfer definitions. Quantize Q = floor(65535 f + 0.5).
@@ -85,8 +85,8 @@ The existing final precommit cutoff and truthful publication reconciliation rema
 
 ## Records and verification
 
-New production records use version 11, with a closed denoising request and execution report; new
-responses use schema version 11. Only the current record format is accepted; obsolete formats are refused, with no migration.
+New production records use version 12, with a closed denoising request and execution report; new
+responses use schema version 12. Only the current record format is accepted; obsolete formats are refused, with no migration.
 The current format requires
 source decoding, full output verification and matching complete stage observations. Binary records
 carry explicit disabled denoising. Writer, complete reader, generated schemas and public response

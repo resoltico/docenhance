@@ -42,7 +42,7 @@ stride/fallback, background quantiles/range, resolved target, retained bytes and
 No-op reports do not claim field preparation; failed stages retain partial diagnostics. Method-owned
 validation rejects foreign I01 fields, impossible geometry and invalid scalar/resource domains at
 the application boundary; incomplete background reductions may retain unfinished ranges. Closed
-response and record contracts use version 11; obsolete forms have no reader/migration.
+response and record contracts use version 12; obsolete forms have no reader/migration.
 Method versions retain I01=1 and introduce I02=1.
 
 ## Chosen implementation and resource contract
