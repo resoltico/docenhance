@@ -158,17 +158,22 @@ inline void capabilities_cases() {
     require(!out_dir.scope.contains(contract::Command::methods),
             "--out-dir is not a methods option");
     require(!out_dir.scope.contains(contract::Command::root), "--out-dir is not a root option");
-    const auto* const rotation =
-        std::ranges::find(contract::option_catalog, "--rotate", &contract::OptionDescriptor::name);
-    require(rotation != contract::option_catalog.end(), "rotation option is declared");
-    require(rotation->scope.contains(contract::Command::process) &&
-                !rotation->scope.contains(contract::Command::methods) &&
-                !rotation->scope.contains(contract::Command::root),
-            "rotation is a process option only");
-    const auto* const binding =
-        std::get_if<std::optional<std::string> contract::Invocation::*>(&rotation->binding);
-    require(binding != nullptr && *binding == &contract::Invocation::rotate,
-            "rotation binds its typed value member, not a flag or unrelated option");
+    require(std::ranges::count(contract::option_catalog, "--rotate",
+                               &contract::OptionDescriptor::name) == 1,
+            "rotation option is declared once");
+    require(std::ranges::any_of(
+                contract::option_catalog,
+                [](const contract::OptionDescriptor& option) {
+                    const auto* const binding =
+                        std::get_if<std::optional<std::string> contract::Invocation::*>(
+                            &option.binding);
+                    return option.name == "--rotate" &&
+                           option.scope.contains(contract::Command::process) &&
+                           !option.scope.contains(contract::Command::methods) &&
+                           !option.scope.contains(contract::Command::root) && binding != nullptr &&
+                           *binding == &contract::Invocation::rotate;
+                }),
+            "rotation is process-only and binds its typed value member");
     require(contract::CommandSet::all().contains(contract::Command::version),
             "every command is in all");
     require(!contract::CommandSet{}.contains(contract::Command::root),
