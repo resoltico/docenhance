@@ -165,8 +165,7 @@ inline void capabilities_cases() {
                 contract::option_catalog,
                 [](const contract::OptionDescriptor& option) {
                     const auto* const binding =
-                        std::get_if<std::optional<std::string> contract::Invocation::*>(
-                            &option.binding);
+                        std::get_if<decltype(&contract::Invocation::rotate)>(&option.binding);
                     return option.name == "--rotate" &&
                            option.scope.contains(contract::Command::process) &&
                            !option.scope.contains(contract::Command::methods) &&
