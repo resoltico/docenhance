@@ -18,10 +18,9 @@ namespace docenhance::fuzz {
     constexpr std::size_t width_offset = 16;
     constexpr std::size_t height_offset = 20;
     constexpr std::uint8_t signature_high = 137;
-    constexpr std::uint8_t signature_control = 26;
-    constexpr std::array<std::uint8_t, signature_size> signature{
-        signature_high, 'P', 'N', 'G', '\r', '\n', signature_control, '\n',
-    };
+    constexpr std::uint8_t png_control = 26;
+    using Signature = std::array<std::uint8_t, signature_size>;
+    constexpr Signature signature{signature_high, 'P', 'N', 'G', '\r', '\n', png_control, '\n'};
     constexpr std::array<std::uint8_t, integer_size> ihdr{'I', 'H', 'D', 'R'};
     if (bytes.size() < header_minimum || bytes.size() > encoded_ceiling ||
         !std::ranges::equal(bytes.first(signature_size), signature) ||

@@ -28,6 +28,7 @@
 
 namespace docenhance::app {
 namespace {
+using contract::Invocation;
 core::Error context(const contract::Invocation& invocation, core::Error error,
                     std::string_view group) {
     if (error.code != core::ErrorCode::argument || error.message.contains("domain/default:")) {
@@ -40,7 +41,7 @@ core::Error context(const contract::Invocation& invocation, core::Error error,
             continue;
         }
         const auto* const member =
-            std::get_if<std::optional<std::string> contract::Invocation::*>(&option.binding);
+            std::get_if<std::optional<std::string> Invocation::*>(&option.binding);
         if (member == nullptr) {
             continue;
         }
