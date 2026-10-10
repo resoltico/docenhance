@@ -55,6 +55,8 @@ def main() -> int:
         return 1
     passed = report["passed"] is True
     print(f"{'PASS' if passed else 'FAIL'}: {args.target}; evidence: {directory}")
+    if not passed and report.get("error"):
+        print(report["error"], file=sys.stderr)
     return 0 if passed else 1
 
 

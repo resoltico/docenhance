@@ -44,7 +44,26 @@ std::string continuous_text(const app::PublishedContinuous& value) {
             std::to_string(image::components(report.output.model)) + " channels; interpretation: " +
             std::string(image::interpretation_name(report.interpretation)) + "\n";
     for (const auto warning : bundle::conversion_warnings(report)) {
-        text += std::string(warning) + "\n";
+        text += std::string(warning) + ": ";
+        if (warning == "W_PROFILE_ASSUMED") {
+            text += "Color interpretation assumes sRGB where declarations are absent; transfer=";
+            text += report.assumed_transfer ? "assumed" : "declared";
+            text += "; primaries=";
+            text += report.assumed_primaries ? "assumed" : "declared";
+            text += ". Check that these assumptions suit the source.\n";
+        } else if (warning == "W_PROFILE_OVERRIDDEN") {
+            text += "The selected sRGB policy overrides color declarations; "
+                    "colors may change.\n";
+        } else if (warning == "W_ALPHA_FLATTENED") {
+            text += std::to_string(report.flattened_pixels) + " non-opaque pixels composited over ";
+            text += value.alpha == image::AlphaPolicy::black ? "black" : "white";
+            text += " in linear light. Output is opaque; original alpha cannot be recovered.\n";
+        } else if (warning == "W_DEPTH_REDUCED") {
+            text += std::to_string(report.source.depth.bits()) +
+                    "-bit decoded samples reduced to " +
+                    std::to_string(report.output.depth.bits()) +
+                    " bits by request; discarded precision cannot be recovered.\n";
+        }
     }
     text += illumination_text(value.illumination);
     text += denoising_text(value.denoising);

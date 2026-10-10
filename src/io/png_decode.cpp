@@ -108,8 +108,11 @@ core::Result<image::Plane<std::uint8_t>> decode_png(PngContext& context, PngInpu
     }
     const auto width = png_get_image_width(context.png, context.info);
     const auto height = png_get_image_height(context.png, context.info);
+    if (width == 0 || height == 0) {
+        return core::failure(core::ErrorCode::input, "PNG dimensions must be nonzero");
+    }
     const auto pixels = static_cast<std::uint64_t>(width) * height;
-    if (pixels == 0 || pixels > limits.pixels) {
+    if (pixels > limits.pixels) {
         return core::failure(core::ErrorCode::resource,
                              "PNG dimensions exceed the processing pixel limit");
     }

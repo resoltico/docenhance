@@ -16,6 +16,7 @@ from pathlib import Path
 
 from test_cli import call_json, chunk, expect, read_gray_png, write_gray_png
 
+EXIT_INPUT = 3
 SIGNATURE = b"\x89PNG\r\n\x1a\n"
 
 
@@ -95,6 +96,42 @@ def rejected_inputs(exe: Path, root: Path) -> None:
         expect(source.read_bytes() == data, "input bytes were preserved")
 
 
+def dimension_refusals(exe: Path, root: Path) -> None:
+    """CRC-valid malformed shapes are input errors; positive excess remains a resource refusal."""
+    for width, height, code, message in (
+        (0, 1, 3, "nonzero"),
+        (2, 0, 3, "nonzero"),
+        (0, 50000000, 3, "nonzero"),
+        (8000, 5001, 4, "pixel ceiling"),
+    ):
+        data = (
+            SIGNATURE
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(b"\0\0"))
+            + chunk(b"IEND", b"")
+        )
+        source = root / f"shape-{width}-{height}.png"
+        source.write_bytes(data)
+        for mode in ("preserve", "bw"):
+            output = root / f"shape-{width}-{height}-{mode}"
+            before = set(root.iterdir())
+            response = call_json(
+                exe,
+                ["process", str(source), "--out-dir", str(output), "--output-mode", mode, "--json"],
+                code,
+            )
+            expect(
+                response["error"]["code"] == ("E_INPUT" if code == EXIT_INPUT else "E_RESOURCE"),
+                "malformed dimension and valid excessive resource are distinct",
+            )
+            expect(message in response["error"]["message"], "dimension diagnostic explains cause")
+            expect(response["publication"] == "not_started", "shape refused before execution")
+            expect(
+                set(root.iterdir()) == before and source.read_bytes() == data,
+                "shape refusal preserves bytes and creates no stage/output",
+            )
+
+
 def exclusive_outputs(exe: Path, root: Path) -> None:
     """Existing destinations, staging occupants and competing publishers retain their ownership."""
     source = root / "publication.png"
@@ -147,6 +184,7 @@ def main() -> int:
         root = Path(directory)
         accepted_samples(exe, root)
         rejected_inputs(exe, root)
+        dimension_refusals(exe, root)
         exclusive_outputs(exe, root)
     print("PASS: PNG and publication regressions")
     return 0

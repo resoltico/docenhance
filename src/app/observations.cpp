@@ -3,9 +3,6 @@
 #include "observations.hpp"
 
 #include "docenhance/app/process.hpp"
-#include "docenhance/app/verify.hpp"
-#include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/core/bundle_path.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
@@ -26,7 +23,6 @@
 #include "sharpening.hpp"
 
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -233,7 +229,8 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
     const auto& c = value.conversion;
     const auto& light = value.illumination;
     const auto pixels = std::uint64_t{c.output.width} * c.output.height;
-    if (c.rotation != request.rotation() ||
+    if (value.alpha != std::get<image::Continuous>(request.operation()).parameters().alpha ||
+        c.rotation != request.rotation() ||
         !publication(value.output, value.run, value.record, request) ||
         !image::valid_conversion(c, std::get<image::Continuous>(request.operation())) ||
         !light.complete || !illumination_request(light, request) ||
@@ -276,25 +273,5 @@ bool valid_failure(const ProcessFailure& value, const ProcessRequest& request) {
            (!value.contrast || partial_contrast(*value.contrast, request)) &&
            (!value.sharpening || partial_sharpen(*value.sharpening, request)) &&
            (!value.restoration || partial_restoration(*value.restoration, request));
-}
-bool valid_verified(const Verified& value, const VerifyRequest& request) {
-    if (value.directory != request.directory() ||
-        !core::valid_hexadecimal(value.run, core::run_identity_hex_length) ||
-        !core::valid_instant(value.recorded) || value.confirmed.empty() ||
-        value.confirmed.size() > contract::response_confirmed_limit) {
-        return false;
-    }
-    for (std::size_t i = 0; i < value.confirmed.size(); ++i) {
-        const auto& entry = value.confirmed.at(i);
-        if (!core::valid_bundle_path(entry.name) || !identity(entry.identity)) {
-            return false;
-        }
-        for (std::size_t prior = 0; prior < i; ++prior) {
-            if (value.confirmed.at(prior).name == entry.name) {
-                return false;
-            }
-        }
-    }
-    return true;
 }
 } // namespace docenhance::app

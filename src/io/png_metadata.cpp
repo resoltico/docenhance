@@ -52,8 +52,11 @@ core::Result<void> header(ScanState& state, const PngChunk& chunk) {
     state.header = true;
     state.scan.shape.width = png_integer(chunk.data);
     state.scan.shape.height = png_integer(chunk.data.subspan(png_integer_bytes));
+    if (state.scan.shape.width == 0 || state.scan.shape.height == 0) {
+        return core::failure(core::ErrorCode::input, "PNG dimensions must be nonzero");
+    }
     const auto pixels = std::uint64_t{state.scan.shape.width} * state.scan.shape.height;
-    if (pixels == 0 || pixels > state.pixel_limit) {
+    if (pixels > state.pixel_limit) {
         return core::failure(core::ErrorCode::resource, "PNG exceeds the admitted pixel ceiling");
     }
     return {};

@@ -28,7 +28,9 @@ std::string denoising_text(const methods::DenoisingReport& report) {
                     decimal(*tv.objective_end) + "\n";
         }
         if (tv.stop == methods::Tvl1Stop::iteration_limit) {
-            text += "TV-L1 stopping: iteration_limit\nW_TV_ITERATION_LIMIT\n";
+            text += "TV-L1 stopping: iteration_limit\nW_TV_ITERATION_LIMIT: Iteration cap reached; "
+                    "a usable iterate was retained.\nStopping tolerance was not met; this is not a "
+                    "convergence claim.\n";
         }
         if (tv.stop == methods::Tvl1Stop::tolerance_met) {
             text += "TV-L1 stopping: tolerance_met\n";

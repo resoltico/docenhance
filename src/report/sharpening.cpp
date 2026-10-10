@@ -17,7 +17,11 @@ std::string sharpening_text(const methods::SharpenReport& r) {
                 std::to_string(r.pre_clamp->high) + "\n";
     }
     if (r.requested->amount != 0) {
-        text += "W_SHARPENING\n";
+        text += "W_SHARPENING: Requested amount=" + std::to_string(r.requested->amount) +
+                " can alter faint marks or introduce halos. Inspect the output; eligible "
+                "pre-clamp excursions below zero=" +
+                std::to_string(r.clipped_low_samples) +
+                "; above one=" + std::to_string(r.clipped_high_samples) + "\n";
     }
     return text;
 }

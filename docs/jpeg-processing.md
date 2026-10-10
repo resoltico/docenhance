@@ -1,8 +1,9 @@
 # JPEG source admission and interpretation
 
 JPEG is an input container, not a new enhancement method. Continuous `preserve`/`gray` processing
-admits the subset below and uses the existing color, oriented protection, opt-in I01, PNG encoding,
-decode-back comparison and bundle publication path. There is no JPEG output. `bw` remains B01/B02/B03's
+admits the subset below and uses the existing color, oriented protection and
+[continuous processing pipeline](cli.md#implemented-operations), followed by PNG encoding,
+decode-back comparison and bundle publication. Enhancement remains opt-in. There is no JPEG output. `bw` remains B01/B02/B03's
 stored-grayscale PNG operation; JPEG on that branch returns `E_NOT_IMPLEMENTED`, exit 4,
 `not_started`. Color/profile override never changes this operation/format matrix.
 

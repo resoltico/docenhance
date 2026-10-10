@@ -19,10 +19,10 @@
 #include <utility>
 namespace docenhance::methods {
 core::Result<Morphology> Morphology::create(MorphologyParameters p) {
-    constexpr double target_min = 0.1;
     if (!std::isfinite(p.strength) || p.strength < 0 || p.strength > 1 ||
         !std::isfinite(p.max_gain) || p.max_gain < 1 || p.max_gain > illumination_gain_limit ||
-        (p.target && (!std::isfinite(*p.target) || *p.target < target_min || *p.target > 1)) ||
+        (p.target &&
+         (!std::isfinite(*p.target) || *p.target < illumination_min_target || *p.target > 1)) ||
         (p.radius && (*p.radius < min_radius || *p.radius > max_radius))) {
         return core::failure(core::ErrorCode::argument, "Invalid I02 morphological parameters");
     }

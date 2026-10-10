@@ -13,7 +13,7 @@ output metadata. Explicit G02 `--rotate 0|90|180|270` follows G01 metadata orien
 with exact clockwise sample and protection permutations; see [geometry](geometry.md). Output rows and metadata are independently verified before exclusive publication.
 JPEG admits gray/RGB/YCbCr through the same interpretation/I01 path; `bw` remains grayscale PNG only.
 TIFF admits the reviewed 1/8/16-bit sample, color, alpha and strip/tile domains through the same
-illumination/denoising pipeline; see [bounded TIFF admission](tiff-processing.md).
+continuous pipeline of geometry, illumination, denoising, restoration, contrast and sharpening; see [bounded TIFF admission](tiff-processing.md).
 See [JPEG source admission](jpeg-processing.md) for complete coding, metadata, resource and failure rules.
 I01 can be selected explicitly or through its opt-in automatic predicates, with original-depth
 1/8-bit grayscale protection masks in oriented coordinates. Fitting, linear application and output

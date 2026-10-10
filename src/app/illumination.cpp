@@ -8,45 +8,41 @@
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/methods/illumination.hpp"
 
-#include <algorithm>
-#include <charconv>
 #include <cstdint>
 #include <expected>
-#include <memory>
 #include <optional>
 #include <string>
-#include <system_error>
+#include <string_view>
 
 namespace docenhance::app {
 namespace {
 core::Result<std::optional<std::uint32_t>> integer_value(const std::optional<std::string>& raw,
-                                                         const std::string& name) {
+                                                         std::string_view name, std::uint32_t low,
+                                                         std::uint32_t high) {
     if (!raw || *raw == "auto") {
         return std::nullopt;
     }
-    if (raw->empty() || !std::ranges::all_of(*raw, [](char c) { return c >= '0' && c <= '9'; })) {
-        return core::failure(core::ErrorCode::argument, name + " requires auto or digits");
-    }
-    std::uint32_t value{};
-    const auto result =
-        std::from_chars(std::to_address(raw->begin()), std::to_address(raw->end()), value);
-    if (result.ec != std::errc{} || result.ptr != std::to_address(raw->end())) {
-        return core::failure(core::ErrorCode::argument, name + " exceeds its integer range");
-    }
-    return value;
+    return contract::parse_integer_option(name, *raw, low, high).transform([](auto value) {
+        return std::optional<std::uint32_t>{value};
+    });
 }
-core::Result<double> numeric(const std::optional<std::string>& raw, double fallback) {
-    // The typed factory owns option-specific domains; parsing owns finite decimal spelling.
-    constexpr double parameter_limit = 20;
-    return raw ? contract::parse_finite(*raw, 0, parameter_limit) : core::Result<double>{fallback};
+core::Result<double> numeric(const std::optional<std::string>& raw, std::string_view name,
+                             double fallback, double low, double high) {
+    return raw ? contract::parse_decimal_option(name, *raw, low, high)
+               : core::Result<double>{fallback};
 }
 core::Result<methods::Surface> surface(const contract::Invocation& v) {
     const methods::SurfaceParameters defaults;
-    const auto strength = numeric(v.background_strength, defaults.strength);
-    const auto gain = numeric(v.background_max_gain, defaults.max_gain);
-    const auto quantile = numeric(v.background_quantile, defaults.quantile);
-    const auto smooth = numeric(v.background_smooth, defaults.smooth);
-    const auto cell = integer_value(v.background_cell, "--background-cell");
+    const auto strength =
+        numeric(v.background_strength, "--background-strength", defaults.strength, 0, 1);
+    const auto gain = numeric(v.background_max_gain, "--background-max-gain", defaults.max_gain, 1,
+                              methods::illumination_gain_limit);
+    const auto quantile = numeric(v.background_quantile, "--background-quantile", defaults.quantile,
+                                  methods::surface_min_quantile, methods::surface_max_quantile);
+    const auto smooth = numeric(v.background_smooth, "--background-smooth", defaults.smooth,
+                                methods::surface_min_smooth, methods::surface_max_smooth);
+    const auto cell = integer_value(v.background_cell, "--background-cell",
+                                    methods::Surface::min_cell, methods::Surface::max_cell);
     if (!strength) {
         return std::unexpected(strength.error());
     }
@@ -64,7 +60,8 @@ core::Result<methods::Surface> surface(const contract::Invocation& v) {
     }
     std::optional<double> target;
     if (v.background_target && *v.background_target != "source") {
-        const auto parsed = numeric(v.background_target, 0);
+        const auto parsed = numeric(v.background_target, "--background-target", 0,
+                                    methods::illumination_min_target, 1);
         if (!parsed) {
             return std::unexpected(parsed.error());
         }
@@ -83,9 +80,13 @@ core::Result<methods::Surface> surface(const contract::Invocation& v) {
 }
 core::Result<methods::Morphology> morphology(const contract::Invocation& v) {
     const methods::MorphologyParameters defaults;
-    const auto strength = numeric(v.background_strength, defaults.strength);
-    const auto gain = numeric(v.background_max_gain, defaults.max_gain);
-    const auto radius = integer_value(v.background_radius, "--background-radius");
+    const auto strength =
+        numeric(v.background_strength, "--background-strength", defaults.strength, 0, 1);
+    const auto gain = numeric(v.background_max_gain, "--background-max-gain", defaults.max_gain, 1,
+                              methods::illumination_gain_limit);
+    const auto radius =
+        integer_value(v.background_radius, "--background-radius", methods::Morphology::min_radius,
+                      methods::Morphology::max_radius);
     if (!strength) {
         return std::unexpected(strength.error());
     }
@@ -97,7 +98,8 @@ core::Result<methods::Morphology> morphology(const contract::Invocation& v) {
     }
     std::optional<double> target;
     if (v.background_target && *v.background_target != "source") {
-        const auto parsed = numeric(v.background_target, 0);
+        const auto parsed = numeric(v.background_target, "--background-target", 0,
+                                    methods::illumination_min_target, 1);
         if (!parsed) {
             return std::unexpected(parsed.error());
         }

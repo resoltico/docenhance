@@ -13,6 +13,7 @@
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
+#include "help.hpp"
 #include "illumination.hpp"
 #include "restoration.hpp"
 #include "sharpening.hpp"
@@ -40,6 +41,28 @@ std::string_view publication_name(core::Publication publication) noexcept {
         return "unknown";
     }
     return "unknown";
+}
+
+std::string publication_text(core::Publication publication) {
+    std::string text = "Publication: " + std::string(publication_name(publication)) + "\n";
+    switch (publication) {
+    case core::Publication::not_started:
+        text += "Publication did not start; correct the reported problem before retrying.\n";
+        break;
+    case core::Publication::not_published:
+        text += "No result was published; correct the reported problem before retrying.\n";
+        break;
+    case core::Publication::completed:
+        text += "A result was published; inspect the destination and use 'docenhance verify "
+                "DIRECTORY' before taking further action. Do not retry blindly.\n";
+        break;
+    case core::Publication::unknown:
+        text += "Effects are unconfirmed; inspect the destination and staging entries before "
+                "taking further action. Do not retry blindly.\n";
+        break;
+    }
+    text += "An incomplete response or delivery failure does not prove absence of effects.\n";
+    return text;
 }
 
 // Common fields first, then the payload's own fields in their given order.
@@ -98,40 +121,6 @@ Json option_fields(contract::Command command) {
         });
     }
     return options;
-}
-std::string help_text(const app::Outcome& outcome, const app::Help& help) {
-    std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
-                       std::string(contract::command_usage(outcome.command)) + "\n\n";
-    text += "Implemented methods:";
-    for (const auto& method : help.capabilities.methods) {
-        text += " " + std::string(method.id) + " (" + std::string(method.selector) + ")";
-    }
-    text += "\nInput formats and output modes:\n";
-    for (const auto& support : help.capabilities.input_support) {
-        text += "  " + std::string(support.format) + ": preserve, gray";
-        if (support.binary) {
-            text += ", bw";
-        }
-        text += '\n';
-    }
-    text += '\n';
-    if (help.list_commands) {
-        text += "Commands: process, verify, methods, version\n\n";
-    }
-    for (const auto& option : contract::option_catalog) {
-        if (!option.scope.contains(outcome.command)) {
-            continue;
-        }
-        text += option.name;
-        if (!option.metavar.empty()) {
-            text += ' ';
-            text += option.metavar;
-        }
-        text += "\n    ";
-        text += option.description;
-        text += '\n';
-    }
-    return text;
 }
 std::string failure_stages(const app::ProcessFailure& payload) {
     return (payload.illumination ? illumination_text(*payload.illumination) : "") +
@@ -197,7 +186,8 @@ Output text_form(const app::Outcome& outcome) {
                 return {
                     .out = {},
                     .err = std::string(payload.error.identifier()) + ": " +
-                           std::string(diagnostic(payload.error)) + "\n" + failure_stages(payload),
+                           std::string(diagnostic(payload.error)) + "\n" +
+                           publication_text(payload.error.publication) + failure_stages(payload),
                 };
             }
         },

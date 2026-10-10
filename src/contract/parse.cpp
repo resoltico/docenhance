@@ -2,17 +2,23 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/contract/parse.hpp"
 
+#include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/core/utf8.hpp"
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <ios>
 #include <locale>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <utility>
 namespace docenhance::contract {
 namespace {
@@ -82,6 +88,72 @@ core::Result<double> parse_finite(std::string_view input, double low, double hig
         value > high) {
         return std::unexpected(
             invalid("Expected a finite, in-range decimal without surrounding whitespace"));
+    }
+    return value;
+}
+namespace {
+std::string quoted_value(std::string_view value) {
+    constexpr std::size_t display_limit = 128;
+    if (value.size() > display_limit || !core::valid_utf8(value)) {
+        return "value omitted (overlong or invalid UTF-8)";
+    }
+    std::string text = "value \"";
+    constexpr std::string_view hex = "0123456789abcdef";
+    constexpr unsigned control_end = 32;
+    constexpr unsigned delete_code = 127;
+    constexpr unsigned hexadecimal_base = 16;
+    for (const char byte : value) {
+        const auto code = static_cast<unsigned char>(byte);
+        if (code < control_end || code == delete_code) {
+            text += "\\x";
+            text += hex.at(code / hexadecimal_base);
+            text += hex.at(code % hexadecimal_base);
+        } else {
+            if (byte == '\\' || byte == '"') {
+                text += '\\';
+            }
+            text += byte;
+        }
+    }
+    text += '"';
+    return text;
+}
+} // namespace
+core::Error option_error(OptionDiagnostic diagnostic) {
+    std::string message{diagnostic.name};
+    message += " " + quoted_value(diagnostic.value) + ": ";
+    message += diagnostic.reason;
+    for (const auto& option : option_catalog) {
+        if (option.name == diagnostic.name) {
+            message += "; domain/default: ";
+            message += option.domain;
+            break;
+        }
+    }
+    return invalid(std::move(message));
+}
+core::Result<double> parse_decimal_option(std::string_view name, std::string_view input, double low,
+                                          double high) {
+    auto result = parse_finite(input, low, high);
+    if (!result && result.error().code == core::ErrorCode::argument) {
+        return std::unexpected(
+            option_error({.name = name, .value = input, .reason = result.error().message}));
+    }
+    return result;
+}
+core::Result<std::uint32_t> parse_integer_option(std::string_view name, std::string_view input,
+                                                 std::uint32_t low, std::uint32_t high, bool odd) {
+    std::uint32_t value{};
+    if (input.empty() || !std::ranges::all_of(input, [](char c) { return c >= '0' && c <= '9'; })) {
+        return std::unexpected(
+            option_error({.name = name, .value = input, .reason = "Expected decimal digits only"}));
+    }
+    const auto parsed =
+        std::from_chars(std::to_address(input.begin()), std::to_address(input.end()), value);
+    if (parsed.ec != std::errc{} || parsed.ptr != std::to_address(input.end()) || value < low ||
+        value > high || (odd && value % 2 == 0)) {
+        return std::unexpected(option_error(
+            {.name = name, .value = input, .reason = "Integer outside the permitted domain"}));
     }
     return value;
 }

@@ -3,7 +3,8 @@
 ## Reviewed design
 
 TIFF/BigTIFF is a source container for continuous preserve/gray processing, with the existing
-I01/D01 pipeline and verified PNG bundle publication. Binary methods keep their grayscale-PNG
+[continuous processing pipeline](cli.md#implemented-operations) and verified PNG bundle publication.
+Enhancement remains opt-in. Binary methods keep their grayscale-PNG
 contract. One top-level IFD is admitted. A nonzero next-IFD pointer is a multipage refusal,
 including malformed/cyclic chains; SubIFDs are not followed or promoted. Signature dispatch uses
 one immutable, identified snapshot, irrespective of filename extension.

@@ -144,7 +144,8 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
     if (!published) {
         return std::unexpected(std::move(published.error()));
     }
-    return published_continuous(std::move(*published), decoded.description, run.reports);
+    return published_continuous(std::move(*published), decoded.description, run.reports,
+                                operation.parameters().alpha);
 }
 core::Result<app::PublishedContinuous> finish_frame(image::LinearSource& source,
                                                     bool source_prepared, const ContinuousRun& run,

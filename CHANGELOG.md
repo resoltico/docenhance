@@ -18,6 +18,9 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- Human CLI help now includes reviewed domains/defaults, value refusals identify supplied options, and errors expose truthful publication state with recovery guidance. Warnings explain representation changes, TV-L1 stopping and sharpening excursions. Current help describes bounded TIFF/BigTIFF and the implemented continuous pipeline.
+- A literal `--json` string value no longer enables JSON after successful parsing: both `--out-dir --json` and `--out-dir=--json` produce human text unless a separate JSON flag is parsed. Callers relying on the old presentation side effect must add the flag; syntax-failure JSON fallback remains. Path identities and processing admission are unchanged.
+
 - **Breaking (machine contracts):** command responses and processing records advance from version 7 to 12, adding required G02 rotation requests and conversion/binary rotation observations, closed R01 PSF/regularizer/blend requests, normalized kernel identity/phase/padding/resource observations and retained supplied-PSF path spelling, inference warnings, closed C03 grid/clip and S01 unsharp parameters, required `identity_tiles` observations (zero for other contrast methods), sharpening excursion/clipping/warning observations and required method-specific B01 threshold/fallback observations. Update schema consumers and geometry/contrast/binarization visitors; obsolete records are refused without a compatibility reader or migration.
 
 - **Breaking (C++ models):** `methods::ContrastModel` owns its charged immutable CLAHE maps and is move-only. Move prepared models into their lifetime owner and keep them live through output verification.
@@ -30,7 +33,13 @@ Notable changes to this project are documented in this file. The format is based
 
 - **Breaking (lint exception approvals):** registry entries now require preserved-text full SHA256 scope bindings and explicit occurrence counts. Compiler/formatter regions bind through restoration, and effective configuration exclusions are centrally registered as exact rules with reviewed scopes. Old approvals, hidden suppression routes and malformed or duplicated registry records are refused without a fallback. Contributors must review the affected code and rationale before recording a changed binding; a hash does not establish review quality.
 
+### Fixed
+
+- Zero-width/height PNG input now returns `E_INPUT` (exit 3) before resource arithmetic in continuous and binary modes; genuinely excessive positive dimensions retain `E_RESOURCE` (exit 4). No resource ceiling or numerical default changes.
+
 ### Internal
+
+- Fuzz regression oracles distinguish JSON flag/value roles and reject accidental zero-dimension decoding or processing after refused admission. AFL tooling rejects startup seed failures and inherited engine overrides, retains engine failure diagnostics and findings when statistics are absent, and failure audits reject executable identity changes.
 
 - Quality-gate and nightly CI reuse verified locked dependency sources through exact OS-specific source caches. Acquisition still validates every restored source before use, and cache misses are saved only after successful acquisition. Application/native build configurations, private dependency prefixes, project binaries and test evidence remain fresh; the existing verified Intel LLVM tool cache remains separate. Native corpus replay compiles and lints its shared driver once per configuration instead of 23 times, retaining the same options, hardening, sanitizer instrumentation and all 23 replay tests. Tooling workers clear inherited Git repository overrides before discovery, keeping temporary fixture writes out of the caller's checkout under hooks while preserving parent state and deliberate fixture overrides. Complete platform, sanitizer, fuzz and package coverage remains required; hosted end-to-end savings are unmeasured. See [the measured CI baseline and design](docs/ci-performance.md).
 

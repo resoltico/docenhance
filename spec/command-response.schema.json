@@ -614,12 +614,14 @@
             },
             "message": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "description": "Diagnostic identifies rejected option values and reviewed domains when applicable; diagnostic escaping never changes admitted path identity."
             }
           }
         },
         "publication": {
-          "type": "string"
+          "type": "string",
+          "description": "Typed observed state, independent of error identifier. Human errors render this state and recovery guidance too. An incomplete response or delivery failure cannot prove absence of effects."
         },
         "illumination": {
           "$ref": "#/$defs/illumination"
