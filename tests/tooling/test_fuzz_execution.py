@@ -69,11 +69,11 @@ class FuzzExecutionTests(unittest.TestCase):
                 stats.write_text("execs_done : 42\nsaved_crashes : 0\nsaved_hangs : 0\n")
                 executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
                 self.assertTrue(fuzz_execution.completed(0, executions, findings, 2, 1))
-                (output / kind / "id:000000").write_bytes(b"retained failing input")
+                (output / kind / "id_000000").write_bytes(b"retained failing input")
                 executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
-                self.assertEqual(findings, [f"afl/default/{kind}/id:000000"])
+                self.assertEqual(findings, [f"afl/default/{kind}/id_000000"])
                 self.assertFalse(fuzz_execution.completed(0, executions, findings, 2, 1))
-                (output / kind / "id:000000").unlink()
+                (output / kind / "id_000000").unlink()
                 stats.write_text(f"execs_done : 42\nsaved_{kind} : 1\n")
                 executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
                 self.assertEqual(findings, ["afl/default/fuzzer_stats"])
@@ -110,7 +110,7 @@ class FuzzExecutionTests(unittest.TestCase):
                     log.write_text("synthetic startup refusal\n")
                     crashes = log.parent / "afl/default/crashes"
                     crashes.mkdir(parents=True)
-                    (crashes / "id:000000").write_bytes(b"synthetic finding")
+                    (crashes / "id_000000").write_bytes(b"synthetic finding")
                     return result_code
 
                 with (
@@ -122,7 +122,7 @@ class FuzzExecutionTests(unittest.TestCase):
                 self.assertFalse(report["passed"])
                 self.assertEqual(report["exit_code"], exit_code)
                 self.assertEqual(report["executions"], 0)
-                self.assertEqual(report["findings"], ["afl/default/crashes/id:000000"])
+                self.assertEqual(report["findings"], ["afl/default/crashes/id_000000"])
                 self.assertIn("engine.log", report["error"])
                 if exit_code:
                     self.assertIn("exited with 1", report["error"])

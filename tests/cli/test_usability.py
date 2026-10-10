@@ -155,7 +155,10 @@ def role_cases(exe: Path, root: Path, source: Path) -> None:
         expect((target / "result.png").is_file(), "literal path retained")
         if json_mode:
             response = json.loads(result.stdout)
-            expect(response["output"] == "--json/result.png", "reported identity unchanged")
+            expect(
+                response["output"] == str(Path("--json") / "result.png"),
+                "reported identity unchanged",
+            )
         call_json(exe, ["verify", str(target), "--json"])
     # Successful parsing followed by admission failure must also use the parsed flag role.
     for index, options in enumerate((["--out-dir", "--json"], ["--out-dir=--json"])):
