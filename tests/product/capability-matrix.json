@@ -1,0 +1,7186 @@
+{
+  "matrix_version": 1,
+  "active_method_cases": {
+    "I01": [
+      "active-I01"
+    ],
+    "I02": [
+      "active-I02"
+    ],
+    "D01": [
+      "active-D01"
+    ],
+    "D02": [
+      "active-D02",
+      "active-D02-default"
+    ],
+    "C01": [
+      "active-C01"
+    ],
+    "C02": [
+      "active-C02"
+    ],
+    "C03": [
+      "active-C03"
+    ],
+    "S01": [
+      "active-S01"
+    ],
+    "R01": [
+      "active-R01"
+    ],
+    "B02": [
+      "binary-B02-r0",
+      "binary-B02-r90",
+      "binary-B02-r180",
+      "binary-B02-r270"
+    ],
+    "B03": [
+      "binary-B03-r0",
+      "binary-B03-r90",
+      "binary-B03-r180",
+      "binary-B03-r270"
+    ],
+    "B01": [
+      "binary-B01-r0",
+      "binary-B01-r90",
+      "binary-B01-r180",
+      "binary-B01-r270"
+    ],
+    "G02": [
+      "geometry-8-o1-r90",
+      "geometry-8-o1-r180",
+      "geometry-8-o1-r270",
+      "geometry-8-o2-r90",
+      "geometry-8-o2-r180",
+      "geometry-8-o2-r270",
+      "geometry-8-o3-r90",
+      "geometry-8-o3-r180",
+      "geometry-8-o3-r270",
+      "geometry-8-o4-r90",
+      "geometry-8-o4-r180",
+      "geometry-8-o4-r270",
+      "geometry-8-o5-r90",
+      "geometry-8-o5-r180",
+      "geometry-8-o5-r270",
+      "geometry-8-o6-r90",
+      "geometry-8-o6-r180",
+      "geometry-8-o6-r270",
+      "geometry-8-o7-r90",
+      "geometry-8-o7-r180",
+      "geometry-8-o7-r270",
+      "geometry-8-o8-r90",
+      "geometry-8-o8-r180",
+      "geometry-8-o8-r270",
+      "geometry-16-o1-r90",
+      "geometry-16-o1-r180",
+      "geometry-16-o1-r270",
+      "geometry-16-o2-r90",
+      "geometry-16-o2-r180",
+      "geometry-16-o2-r270",
+      "geometry-16-o3-r90",
+      "geometry-16-o3-r180",
+      "geometry-16-o3-r270",
+      "geometry-16-o4-r90",
+      "geometry-16-o4-r180",
+      "geometry-16-o4-r270",
+      "geometry-16-o5-r90",
+      "geometry-16-o5-r180",
+      "geometry-16-o5-r270",
+      "geometry-16-o6-r90",
+      "geometry-16-o6-r180",
+      "geometry-16-o6-r270",
+      "geometry-16-o7-r90",
+      "geometry-16-o7-r180",
+      "geometry-16-o7-r270",
+      "geometry-16-o8-r90",
+      "geometry-16-o8-r180",
+      "geometry-16-o8-r270",
+      "binary-B01-r90",
+      "binary-B01-r180",
+      "binary-B01-r270",
+      "binary-B02-r90",
+      "binary-B02-r180",
+      "binary-B02-r270",
+      "binary-B03-r90",
+      "binary-B03-r180",
+      "binary-B03-r270"
+    ]
+  },
+  "cases": [
+    {
+      "id": "version",
+      "group": "discovery",
+      "source": "",
+      "options": [],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "version",
+      "publication": "not_started"
+    },
+    {
+      "id": "methods",
+      "group": "discovery",
+      "source": "",
+      "options": [],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "help-root",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "--help"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "root",
+      "publication": "not_started"
+    },
+    {
+      "id": "help-process",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "--help"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "help-verify",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "--help"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "verify",
+      "publication": "not_started"
+    },
+    {
+      "id": "help-methods",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "--help"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "help-version",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "--help"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "version",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-I01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "I01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-I02",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "I02"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-D01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "D01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-D02",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "D02"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-C01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "C01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-C02",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "C02"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-C03",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "C03"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-S01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "S01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-R01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "R01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-B02",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "B02"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-B03",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "B03"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-B01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "B01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-G01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "G01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 4,
+      "error": "E_NOT_IMPLEMENTED",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-G02",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "G02"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-G03",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "G03"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 4,
+      "error": "E_NOT_IMPLEMENTED",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-G04",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "G04"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 4,
+      "error": "E_NOT_IMPLEMENTED",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "method-G05",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "G05"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 4,
+      "error": "E_NOT_IMPLEMENTED",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-gray1",
+      "group": "representation",
+      "source": "gray1",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-gray2",
+      "group": "representation",
+      "source": "gray2",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-gray4",
+      "group": "representation",
+      "source": "gray4",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-gray8",
+      "group": "representation",
+      "source": "gray8",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-gray16",
+      "group": "representation",
+      "source": "gray16",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-rgb8",
+      "group": "representation",
+      "source": "rgb8",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-rgb16",
+      "group": "representation",
+      "source": "rgb16",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "representation-adam7",
+      "group": "representation",
+      "source": "adam7",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "palette",
+      "group": "representation",
+      "source": "palette",
+      "options": [],
+      "check": "palette",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgb8-preserve",
+      "group": "representation",
+      "source": "rgb8",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgb8-gray",
+      "group": "representation",
+      "source": "rgb8",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgb16-preserve",
+      "group": "representation",
+      "source": "rgb16",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgb16-gray",
+      "group": "representation",
+      "source": "rgb16",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgba8-preserve",
+      "group": "representation",
+      "source": "rgba8",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgba8-gray",
+      "group": "representation",
+      "source": "rgba8",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgba16-preserve",
+      "group": "representation",
+      "source": "rgba16",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgba16-gray",
+      "group": "representation",
+      "source": "rgba16",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "gray-alpha8-preserve",
+      "group": "representation",
+      "source": "gray-alpha8",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "gray-alpha8-gray",
+      "group": "representation",
+      "source": "gray-alpha8",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "gray-alpha16-preserve",
+      "group": "representation",
+      "source": "gray-alpha16",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "gray-alpha16-gray",
+      "group": "representation",
+      "source": "gray-alpha16",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgba8-black",
+      "group": "representation",
+      "source": "rgba8",
+      "options": [
+        "--alpha",
+        "black"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgba8-reject",
+      "group": "representation",
+      "source": "rgba8",
+      "options": [
+        "--alpha",
+        "reject"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 3,
+      "error": "E_INPUT",
+      "command": "process",
+      "publication": "not_published"
+    },
+    {
+      "id": "rgba16-black",
+      "group": "representation",
+      "source": "rgba16",
+      "options": [
+        "--alpha",
+        "black"
+      ],
+      "check": "alpha-or-gray",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rgba16-reject",
+      "group": "representation",
+      "source": "rgba16",
+      "options": [
+        "--alpha",
+        "reject"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 3,
+      "error": "E_INPUT",
+      "command": "process",
+      "publication": "not_published"
+    },
+    {
+      "id": "precision-to-8",
+      "group": "representation",
+      "source": "gray16",
+      "options": [
+        "--bit-depth",
+        "8"
+      ],
+      "check": "depth",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "precision-to-16",
+      "group": "representation",
+      "source": "gray16",
+      "options": [
+        "--bit-depth",
+        "16"
+      ],
+      "check": "depth",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c1-d8",
+      "group": "tiff",
+      "source": "tiff-c1-d8",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c1-d16",
+      "group": "tiff",
+      "source": "tiff-c1-d16",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c5-d8",
+      "group": "tiff",
+      "source": "tiff-c5-d8",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c5-d16",
+      "group": "tiff",
+      "source": "tiff-c5-d16",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c8-d8",
+      "group": "tiff",
+      "source": "tiff-c8-d8",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c8-d16",
+      "group": "tiff",
+      "source": "tiff-c8-d16",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c32946-d8",
+      "group": "tiff",
+      "source": "tiff-c32946-d8",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c32946-d16",
+      "group": "tiff",
+      "source": "tiff-c32946-d16",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c32773-d8",
+      "group": "tiff",
+      "source": "tiff-c32773-d8",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-c32773-d16",
+      "group": "tiff",
+      "source": "tiff-c32773-d16",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b0-l0-p1",
+      "group": "tiff",
+      "source": "tiff-b0-l0-p1",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b0-l0-p2",
+      "group": "tiff",
+      "source": "tiff-b0-l0-p2",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b0-l1-p1",
+      "group": "tiff",
+      "source": "tiff-b0-l1-p1",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b0-l1-p2",
+      "group": "tiff",
+      "source": "tiff-b0-l1-p2",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b1-l0-p1",
+      "group": "tiff",
+      "source": "tiff-b1-l0-p1",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b1-l0-p2",
+      "group": "tiff",
+      "source": "tiff-b1-l0-p2",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b1-l1-p1",
+      "group": "tiff",
+      "source": "tiff-b1-l1-p1",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-b1-l1-p2",
+      "group": "tiff",
+      "source": "tiff-b1-l1-p2",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-fax3",
+      "group": "tiff",
+      "source": "tiff-fax3",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-fax4",
+      "group": "tiff",
+      "source": "tiff-fax4",
+      "options": [],
+      "check": "tiff",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-gray-document-baseline-preserve",
+      "group": "jpeg",
+      "source": "jpeg-gray-document-baseline",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-gray-document-baseline-gray",
+      "group": "jpeg",
+      "source": "jpeg-gray-document-baseline",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-gray-document-progressive-preserve",
+      "group": "jpeg",
+      "source": "jpeg-gray-document-progressive",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-gray-document-progressive-gray",
+      "group": "jpeg",
+      "source": "jpeg-gray-document-progressive",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-chroma-patch-baseline-preserve",
+      "group": "jpeg",
+      "source": "jpeg-chroma-patch-baseline",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-chroma-patch-baseline-gray",
+      "group": "jpeg",
+      "source": "jpeg-chroma-patch-baseline",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-chroma-patch-progressive-preserve",
+      "group": "jpeg",
+      "source": "jpeg-chroma-patch-progressive",
+      "options": [
+        "--output-mode",
+        "preserve"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "jpeg-chroma-patch-progressive-gray",
+      "group": "jpeg",
+      "source": "jpeg-chroma-patch-progressive",
+      "options": [
+        "--output-mode",
+        "gray"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-jpeg-1.tif",
+      "group": "tiff",
+      "source": "jpeg-1.tif",
+      "options": [],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "tiff-jpeg-1-progressive.tif",
+      "group": "tiff",
+      "source": "jpeg-1-progressive.tif",
+      "options": [],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "baseline-shaded",
+      "group": "baseline",
+      "source": "shaded",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "baseline-noisy",
+      "group": "baseline",
+      "source": "noisy",
+      "options": [],
+      "check": "samples",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-I01",
+      "group": "benefit",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16"
+      ],
+      "check": "paper",
+      "reference": "",
+      "methods": [
+        "I01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-I01",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-strength",
+        "0"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "I01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-I01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "I01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-I01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "I01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-I02",
+      "group": "benefit",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8"
+      ],
+      "check": "paper",
+      "reference": "",
+      "methods": [
+        "I02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-I02",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--background-max-gain",
+        "1"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "I02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-I02",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "I02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-I02",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "I02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-D01",
+      "group": "benefit",
+      "source": "noisy",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7"
+      ],
+      "check": "noise",
+      "reference": "",
+      "methods": [
+        "D01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-D01",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--denoise-blend",
+        "0"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "D01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-D01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "D01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-D01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "D01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-D02",
+      "group": "benefit",
+      "source": "noisy",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100"
+      ],
+      "check": "noise",
+      "reference": "",
+      "methods": [
+        "D02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-D02",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--denoise-blend",
+        "0"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "D02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-D02",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "D02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-D02",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "D02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-C01",
+      "group": "benefit",
+      "source": "low-contrast",
+      "options": [
+        "--contrast",
+        "levels"
+      ],
+      "check": "levels",
+      "reference": "",
+      "methods": [
+        "C01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-C01",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--contrast-blend",
+        "0"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-C01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-C01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-C02",
+      "group": "benefit",
+      "source": "gray8",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2"
+      ],
+      "check": "gamma",
+      "reference": "",
+      "methods": [
+        "C02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-C02",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "1"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-C02",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-C02",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-C03",
+      "group": "benefit",
+      "source": "low-contrast",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2"
+      ],
+      "check": "local-contrast",
+      "reference": "",
+      "methods": [
+        "C03"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-C03",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--contrast-blend",
+        "0"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C03"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-C03",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C03"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-C03",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "C03"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-S01",
+      "group": "benefit",
+      "source": "soft-edge",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0"
+      ],
+      "check": "edge",
+      "reference": "",
+      "methods": [
+        "S01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-S01",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-threshold",
+        "0",
+        "--sharpen-amount",
+        "0"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "S01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-S01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "S01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-S01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "S01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-R01",
+      "group": "benefit",
+      "source": "soft-edge",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5"
+      ],
+      "check": "edge",
+      "reference": "",
+      "methods": [
+        "R01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "identity-R01",
+      "group": "identity",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--deblur-blend",
+        "0"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "R01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "protect-R01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "protected",
+      "reference": "baseline-shaded",
+      "methods": [
+        "R01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "all-protected-R01",
+      "group": "protection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--protect-mask",
+        "{mask-all}"
+      ],
+      "check": "same",
+      "reference": "baseline-shaded",
+      "methods": [
+        "R01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "active-D02-default",
+      "group": "benefit",
+      "source": "noisy",
+      "options": [
+        "--denoise",
+        "tvl1"
+      ],
+      "check": "noise",
+      "reference": "",
+      "methods": [
+        "D02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "surface-auto-flat",
+      "group": "applicability",
+      "source": "flat",
+      "options": [
+        "--illumination",
+        "auto"
+      ],
+      "check": "auto-skip",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "surface-black",
+      "group": "applicability",
+      "source": "black",
+      "options": [
+        "--illumination",
+        "surface"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 4,
+      "error": "E_METHOD_INAPPLICABLE",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "morph-black",
+      "group": "identity",
+      "source": "black",
+      "options": [
+        "--illumination",
+        "morph"
+      ],
+      "check": "samples",
+      "reference": "",
+      "methods": [
+        "I02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "restoration-motion",
+      "group": "restoration",
+      "source": "soft-edge",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "motion",
+        "--psf-angle",
+        "35"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [
+        "R01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "restoration-kernel",
+      "group": "restoration",
+      "source": "soft-edge",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "kernel",
+        "--psf-file",
+        "{psf}"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [
+        "R01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o1-r0",
+      "group": "geometry",
+      "source": "geometry-8-1",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o1-r90",
+      "group": "geometry",
+      "source": "geometry-8-1",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o1-r180",
+      "group": "geometry",
+      "source": "geometry-8-1",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o1-r270",
+      "group": "geometry",
+      "source": "geometry-8-1",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o2-r0",
+      "group": "geometry",
+      "source": "geometry-8-2",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o2-r90",
+      "group": "geometry",
+      "source": "geometry-8-2",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o2-r180",
+      "group": "geometry",
+      "source": "geometry-8-2",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o2-r270",
+      "group": "geometry",
+      "source": "geometry-8-2",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o3-r0",
+      "group": "geometry",
+      "source": "geometry-8-3",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o3-r90",
+      "group": "geometry",
+      "source": "geometry-8-3",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o3-r180",
+      "group": "geometry",
+      "source": "geometry-8-3",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o3-r270",
+      "group": "geometry",
+      "source": "geometry-8-3",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o4-r0",
+      "group": "geometry",
+      "source": "geometry-8-4",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o4-r90",
+      "group": "geometry",
+      "source": "geometry-8-4",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o4-r180",
+      "group": "geometry",
+      "source": "geometry-8-4",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o4-r270",
+      "group": "geometry",
+      "source": "geometry-8-4",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o5-r0",
+      "group": "geometry",
+      "source": "geometry-8-5",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o5-r90",
+      "group": "geometry",
+      "source": "geometry-8-5",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o5-r180",
+      "group": "geometry",
+      "source": "geometry-8-5",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o5-r270",
+      "group": "geometry",
+      "source": "geometry-8-5",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o6-r0",
+      "group": "geometry",
+      "source": "geometry-8-6",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o6-r90",
+      "group": "geometry",
+      "source": "geometry-8-6",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o6-r180",
+      "group": "geometry",
+      "source": "geometry-8-6",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o6-r270",
+      "group": "geometry",
+      "source": "geometry-8-6",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o7-r0",
+      "group": "geometry",
+      "source": "geometry-8-7",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o7-r90",
+      "group": "geometry",
+      "source": "geometry-8-7",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o7-r180",
+      "group": "geometry",
+      "source": "geometry-8-7",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o7-r270",
+      "group": "geometry",
+      "source": "geometry-8-7",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o8-r0",
+      "group": "geometry",
+      "source": "geometry-8-8",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o8-r90",
+      "group": "geometry",
+      "source": "geometry-8-8",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o8-r180",
+      "group": "geometry",
+      "source": "geometry-8-8",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-8-o8-r270",
+      "group": "geometry",
+      "source": "geometry-8-8",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o1-r0",
+      "group": "geometry",
+      "source": "geometry-16-1",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o1-r90",
+      "group": "geometry",
+      "source": "geometry-16-1",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o1-r180",
+      "group": "geometry",
+      "source": "geometry-16-1",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o1-r270",
+      "group": "geometry",
+      "source": "geometry-16-1",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o2-r0",
+      "group": "geometry",
+      "source": "geometry-16-2",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o2-r90",
+      "group": "geometry",
+      "source": "geometry-16-2",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o2-r180",
+      "group": "geometry",
+      "source": "geometry-16-2",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o2-r270",
+      "group": "geometry",
+      "source": "geometry-16-2",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o3-r0",
+      "group": "geometry",
+      "source": "geometry-16-3",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o3-r90",
+      "group": "geometry",
+      "source": "geometry-16-3",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o3-r180",
+      "group": "geometry",
+      "source": "geometry-16-3",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o3-r270",
+      "group": "geometry",
+      "source": "geometry-16-3",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o4-r0",
+      "group": "geometry",
+      "source": "geometry-16-4",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o4-r90",
+      "group": "geometry",
+      "source": "geometry-16-4",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o4-r180",
+      "group": "geometry",
+      "source": "geometry-16-4",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o4-r270",
+      "group": "geometry",
+      "source": "geometry-16-4",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o5-r0",
+      "group": "geometry",
+      "source": "geometry-16-5",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o5-r90",
+      "group": "geometry",
+      "source": "geometry-16-5",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o5-r180",
+      "group": "geometry",
+      "source": "geometry-16-5",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o5-r270",
+      "group": "geometry",
+      "source": "geometry-16-5",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o6-r0",
+      "group": "geometry",
+      "source": "geometry-16-6",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o6-r90",
+      "group": "geometry",
+      "source": "geometry-16-6",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o6-r180",
+      "group": "geometry",
+      "source": "geometry-16-6",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o6-r270",
+      "group": "geometry",
+      "source": "geometry-16-6",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o7-r0",
+      "group": "geometry",
+      "source": "geometry-16-7",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o7-r90",
+      "group": "geometry",
+      "source": "geometry-16-7",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o7-r180",
+      "group": "geometry",
+      "source": "geometry-16-7",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o7-r270",
+      "group": "geometry",
+      "source": "geometry-16-7",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o8-r0",
+      "group": "geometry",
+      "source": "geometry-16-8",
+      "options": [
+        "--rotate",
+        "0"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o8-r90",
+      "group": "geometry",
+      "source": "geometry-16-8",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o8-r180",
+      "group": "geometry",
+      "source": "geometry-16-8",
+      "options": [
+        "--rotate",
+        "180"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "geometry-16-o8-r270",
+      "group": "geometry",
+      "source": "geometry-16-8",
+      "options": [
+        "--rotate",
+        "270"
+      ],
+      "check": "geometry",
+      "reference": "",
+      "methods": [
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B01-r0",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "otsu",
+        "--rotate",
+        "0"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B01-r90",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "otsu",
+        "--rotate",
+        "90"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B01-r180",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "otsu",
+        "--rotate",
+        "180"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B01-r270",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "otsu",
+        "--rotate",
+        "270"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B02-r0",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--rotate",
+        "0"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B02",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B02-r90",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--rotate",
+        "90"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B02",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B02-r180",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--rotate",
+        "180"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B02",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B02-r270",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--rotate",
+        "270"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B02",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B03-r0",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--rotate",
+        "0"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B03",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B03-r90",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--rotate",
+        "90"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B03",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B03-r180",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--rotate",
+        "180"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B03",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-B03-r270",
+      "group": "binarization",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--rotate",
+        "270"
+      ],
+      "check": "binary",
+      "reference": "",
+      "methods": [
+        "B03",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "rotated-baseline",
+      "group": "baseline",
+      "source": "shaded",
+      "options": [
+        "--rotate",
+        "90"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I01-D01-C01",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "levels",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I01",
+        "D01",
+        "R01",
+        "C01",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I01-D01-C02",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I01",
+        "D01",
+        "R01",
+        "C02",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I01-D01-C03",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I01",
+        "D01",
+        "R01",
+        "C03",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I01-D02-C01",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "levels",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I01",
+        "D02",
+        "R01",
+        "C01",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I01-D02-C02",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I01",
+        "D02",
+        "R01",
+        "C02",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I01-D02-C03",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I01",
+        "D02",
+        "R01",
+        "C03",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I02-D01-C01",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "levels",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I02",
+        "D01",
+        "R01",
+        "C01",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I02-D01-C02",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I02",
+        "D01",
+        "R01",
+        "C02",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I02-D01-C03",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I02",
+        "D01",
+        "R01",
+        "C03",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I02-D02-C01",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "levels",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I02",
+        "D02",
+        "R01",
+        "C01",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I02-D02-C02",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I02",
+        "D02",
+        "R01",
+        "C02",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "compose-I02-D02-C03",
+      "group": "composition",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8",
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--rotate",
+        "90",
+        "--protect-mask",
+        "{mask}"
+      ],
+      "check": "composition",
+      "reference": "rotated-baseline",
+      "methods": [
+        "I02",
+        "D02",
+        "R01",
+        "C03",
+        "S01",
+        "G02"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "stress-1536x1024",
+      "group": "stress",
+      "source": "stress",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--contrast",
+        "levels",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0"
+      ],
+      "check": "composition",
+      "reference": "",
+      "methods": [
+        "I01",
+        "D01",
+        "C01",
+        "S01"
+      ],
+      "exit_code": 0,
+      "error": "",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-rotate",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--rotate",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-output-mode",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-bit-depth",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--bit-depth",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-alpha",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--alpha",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-profile-policy",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--profile-policy",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-binarize",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--binarize",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-fixed-threshold",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--fixed-threshold",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sauvola-window",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sauvola-window",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sauvola-k",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sauvola-k",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sauvola-r",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sauvola-r",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-illumination",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-background-strength",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-strength",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-background-max-gain",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-max-gain",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-background-target",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-target",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-background-cell",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-cell",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-background-quantile",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-quantile",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-background-smooth",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-smooth",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-background-radius",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-radius",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-protect-mask",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--protect-mask",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-denoise",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-denoise-blend",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise-blend",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-nlm-h",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--nlm-h",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-nlm-patch",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--nlm-patch",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-nlm-search",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--nlm-search",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-tv-lambda",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--tv-lambda",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-tv-iterations",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--tv-iterations",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-tv-tolerance",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--tv-tolerance",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-deblur",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-psf",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--psf",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-psf-sigma",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--psf-sigma",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-psf-length",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--psf-length",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-psf-angle",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--psf-angle",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-psf-file",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--psf-file",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-wiener-k",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--wiener-k",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-deblur-blend",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur-blend",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-contrast",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-contrast-blend",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast-blend",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-levels-low",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--levels-low",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-levels-high",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--levels-high",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-gamma",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--gamma",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-clahe-grid",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--clahe-grid",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-clahe-clip",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--clahe-clip",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sharpen",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sharpen-sigma",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen-sigma",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sharpen-amount",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen-amount",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sharpen-threshold",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen-threshold",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-I01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-I01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-cell",
+        "16"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-I01",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-I02",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-I02",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--background-radius",
+        "8"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-I02",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "8"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-D01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-D01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--nlm-patch",
+        "3"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-D01",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-D02",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-D02",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--tv-lambda",
+        "0.5"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-D02",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-C01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-C01",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--contrast",
+        "levels"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-C02",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-C02",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--gamma",
+        "2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-C02",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-C03",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-C03",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--clahe-grid",
+        "2x2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-C03",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-S01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-S01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen-amount",
+        "1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-S01",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "selector-R01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "unknown"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "unselected-R01",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--psf",
+        "gaussian"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "binary-reject-R01",
+      "group": "rejection",
+      "source": "gray8",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-rotate-45",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--rotate",
+        "45"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-rotate-leading-zero",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--rotate",
+        "090"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-sauvola-even-window",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--sauvola-window",
+        "4"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-nlm-even-patch",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "4"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-nlm-even-search",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-search",
+        "8"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-nlm-patch-greater-search",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "15",
+        "--nlm-search",
+        "7"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-morph-surface-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-cell",
+        "16"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-surface-morph-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-radius",
+        "8"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-nlm-tv-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--tv-lambda",
+        "1.5"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-tv-nlm-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--nlm-h",
+        "3"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-levels-gamma-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--gamma",
+        "1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-gamma-levels-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--levels-low",
+        "0.5"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-gaussian-motion-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-angle",
+        "0"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "cross-motion-gaussian-option",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "motion",
+        "--psf-sigma",
+        "1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "clahe-too-small",
+      "group": "applicability",
+      "source": "gray8",
+      "options": [
+        "--contrast",
+        "clahe"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "nlm-too-small",
+      "group": "applicability",
+      "source": "black",
+      "options": [
+        "--denoise",
+        "nlm"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 4,
+      "error": "E_METHOD_INAPPLICABLE",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-fixed-threshold-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--fixed-threshold",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-fixed-threshold-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--fixed-threshold",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sauvola-window-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--sauvola-window",
+        "2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sauvola-window-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--sauvola-window",
+        "4097"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sauvola-k-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--sauvola-k",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sauvola-k-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--sauvola-k",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sauvola-r-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--sauvola-r",
+        "0.001"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sauvola-r-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "sauvola",
+        "--sauvola-r",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-strength-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-strength",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-strength-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-strength",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-max-gain-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-max-gain",
+        "0.9"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-max-gain-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-max-gain",
+        "4.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-target-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-target",
+        "0.09"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-target-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-target",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-cell-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "7"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-cell-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "513"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-quantile-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-quantile",
+        "0.74"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-quantile-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-quantile",
+        "1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-smooth-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-smooth",
+        "0.09"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-smooth-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "surface",
+        "--background-cell",
+        "16",
+        "--background-smooth",
+        "21"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-radius-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "0"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-background-radius-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--illumination",
+        "morph",
+        "--background-radius",
+        "257"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-denoise-blend-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--denoise-blend",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-denoise-blend-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--denoise-blend",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-nlm-h-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--nlm-h",
+        "0.09"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-nlm-h-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "7",
+        "--nlm-h",
+        "26"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-nlm-patch-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-search",
+        "7",
+        "--nlm-patch",
+        "2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-nlm-patch-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-search",
+        "7",
+        "--nlm-patch",
+        "16"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-nlm-search-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "6"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-nlm-search-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "nlm",
+        "--nlm-patch",
+        "3",
+        "--nlm-search",
+        "42"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-tv-lambda-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-iterations",
+        "100",
+        "--tv-lambda",
+        "0.04"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-tv-lambda-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-iterations",
+        "100",
+        "--tv-lambda",
+        "21"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-tv-iterations-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "9"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-tv-iterations-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "1001"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-tv-tolerance-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--tv-tolerance",
+        "1e-9"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-tv-tolerance-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--denoise",
+        "tvl1",
+        "--tv-lambda",
+        "0.5",
+        "--tv-iterations",
+        "100",
+        "--tv-tolerance",
+        "0.01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-contrast-blend-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--contrast-blend",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-contrast-blend-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--contrast-blend",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-levels-low-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--levels-low",
+        "-1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-levels-low-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--levels-low",
+        "11"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-levels-high-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--levels-high",
+        "89"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-levels-high-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "levels",
+        "--levels-high",
+        "101"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-gamma-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "0.24"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-gamma-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "4.01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-clahe-grid-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "1x2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-clahe-grid-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "33x2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-clahe-clip-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--clahe-clip",
+        "0.9"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-clahe-clip-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "clahe",
+        "--clahe-grid",
+        "2x2",
+        "--clahe-clip",
+        "9"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sharpen-sigma-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--sharpen-sigma",
+        "0.2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sharpen-sigma-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "0",
+        "--sharpen-sigma",
+        "3.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sharpen-amount-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-threshold",
+        "0",
+        "--sharpen-amount",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sharpen-amount-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-threshold",
+        "0",
+        "--sharpen-amount",
+        "2.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sharpen-threshold-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-sharpen-threshold-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sharpen",
+        "unsharp",
+        "--sharpen-amount",
+        "1",
+        "--sharpen-threshold",
+        "21"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-psf-sigma-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "0.2"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-psf-sigma-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "5.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-psf-length-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "motion",
+        "--psf-length",
+        "0.9"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-psf-length-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "motion",
+        "--psf-length",
+        "31.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-psf-angle-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "motion",
+        "--psf-angle",
+        "-181"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-psf-angle-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "motion",
+        "--psf-angle",
+        "181"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-wiener-k-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--wiener-k",
+        "1e-6"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-wiener-k-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--wiener-k",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-deblur-blend-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--deblur-blend",
+        "-0.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "range-deblur-blend-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian",
+        "--psf-sigma",
+        "1.5",
+        "--deblur-blend",
+        "1.1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "decimal-grammar-0",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "nan"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "decimal-grammar-1",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "+1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "decimal-grammar-2",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        " 1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "decimal-grammar-3",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "0x1"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "decimal-grammar-4",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "1e999"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "decimal-grammar-5",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "1e-999"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "decimal-grammar-6",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--contrast",
+        "gamma",
+        "--gamma",
+        "1.0junk"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    }
+  ]
+}

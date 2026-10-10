@@ -69,9 +69,10 @@ contract::Invocation invocation(bool binary) {
     value.output_mode = binary ? "bw" : "preserve";
     return value;
 }
-app::PublishedContinuous continuous() {
+app::PublishedContinuous continuous(bool black = false) {
     app::PublishedContinuous value;
     value.output = "output/result.png";
+    value.alpha = black ? image::AlphaPolicy::black : image::AlphaPolicy::white;
     value.run = std::string(32, 'a');
     value.record = {.sha256 = std::string(64, 'b'), .bytes = 512};
     value.conversion.source = {.width = 2, .height = 2};
@@ -168,8 +169,8 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
     ReturningProcessor control{continuous()};
     CHECK(app::dispatch(invocation(false), control, verifier).exit_code() ==
           core::ExitCode::success);
-    for (unsigned change = 0; change < 5; ++change) {
-        auto value = continuous();
+    for (unsigned change = 0; change < 6; ++change) {
+        auto value = continuous(change == 5);
         if (change == 0) {
             value.conversion.output.width = 3;
         }

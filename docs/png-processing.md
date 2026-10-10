@@ -1,10 +1,11 @@
 # PNG representation and color processing
 
-This contract defines PNG input and the shared no-filter continuous-tone representation.
-[JPEG admission](jpeg-processing.md) feeds that same color/I01/output path through a separately
-specified container decoder. Its default does not apply an enhancement filter. The separately specified opt-in
-[I01 illumination stage](illumination.md) operates after interpretation and before quantization;
-this representation contract does not define denoising, sharpening, restoration or classification. The separate B01/B02/B03 stored-sample
+This contract defines PNG input and the shared continuous-tone representation.
+[JPEG admission](jpeg-processing.md) and [TIFF admission](tiff-processing.md) feed the same
+interpretation and output path through separate container decoders. The default applies no
+enhancement filter. Explicit stages follow geometry, illumination, denoising, restoration,
+contrast, sharpening and final quantization; see [current CLI behavior](cli.md).
+This representation contract does not define denoising, sharpening, restoration or classification. The separate B01/B02/B03 stored-sample
 contract remains in [binarization](binarization.md). Preserve original documents: color conversion,
 alpha flattening, grayscale conversion, and requested quantization can discard information.
 
@@ -187,7 +188,8 @@ PNG Third Edition cICP precedence is an explicitly researched addition to its ol
 
 Passing these conformance fixtures is not an empirical readability/fidelity benchmark of arbitrary
 real documents. No new method, neural component, runtime network, renderer GUI, batch processor,
-recipe/preset system, TIFF adapter or public release artifact is introduced.
+recipe/preset system or public release artifact is implied by this PNG contract.
+The implemented bounded TIFF/BigTIFF adapter has its separate [source contract](tiff-processing.md).
 
 ## Primary references
 

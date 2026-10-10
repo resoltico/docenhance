@@ -80,6 +80,6 @@ struct PublishedRun {
 struct ContinuousReports;
 [[nodiscard]] core::Result<app::PublishedContinuous>
 published_continuous(PublishedRun published, image::SourceDescription source,
-                     const ContinuousReports& reports);
+                     const ContinuousReports& reports, image::AlphaPolicy alpha);
 [[nodiscard]] core::Result<PublishedRun> publish_run(const RunPublication& run);
 } // namespace docenhance::host

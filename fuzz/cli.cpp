@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 // Fuzzing of the complete command line: argument parsing (CLI11), validation and dispatch.
 // Properties: only contract exit codes; exactly one well-formed JSON object in JSON mode, with
-// nothing on stderr; errors on stderr in text mode; JSON errors whenever an exact --json option
-// token (before any "--") is present; identical results on repeated runs.
+// nothing on stderr; errors on stderr in text mode; parsed JSON flags select JSON, while
+// option values keep their role; syntax failures retain raw-token fallback. Repeated runs agree.
 #include "docenhance/cli/run.hpp"
 #include "docenhance/contract/cli_contract.hpp"
 #include "processor.hpp"
@@ -36,6 +36,7 @@ struct Outcome {
     int code;
     std::string out;
     std::string err;
+    unsigned processor_calls;
     bool operator==(const Outcome&) const = default;
 };
 
@@ -69,7 +70,7 @@ Outcome invoke(const std::vector<std::string>& args) {
     docenhance::tests::RefusingVerifier verifier;
     const int code =
         docenhance::cli::run(argv, {.processor = processor, .verifier = verifier}, out, err);
-    return {.code = code, .out = out.str(), .err = err.str()};
+    return {.code = code, .out = out.str(), .err = err.str(), .processor_calls = processor.calls};
 }
 
 void check_json(const Outcome& outcome) {
@@ -96,7 +97,65 @@ void check_text(const Outcome& outcome) {
     } else {
         require(outcome.out.empty(), "text errors write nothing to stdout");
         require(outcome.err.starts_with("E_") && outcome.err.ends_with('\n'),
-                "text errors are one diagnostic line on stderr");
+                "text errors contain a diagnostic on stderr");
+    }
+}
+struct JsonRoles {
+    bool fallback = false;
+    bool flag = false;
+    bool exact_flag = false;
+    bool syntax_failure = false;
+};
+JsonRoles json_roles(const std::vector<std::string>& args) {
+    JsonRoles roles;
+    // Independent role walk uses the reviewed catalog, not the CLI parser. A string option's
+    // next token is its value; an equals value does not consume another token. Syntax failure
+    // can deliberately select JSON more broadly. Joined flags use the reviewed default spellings.
+    const auto option_tokens =
+        args | std::views::drop(1) |
+        std::views::take_while([](const std::string& arg) { return arg != "--"; });
+    roles.fallback =
+        std::ranges::any_of(option_tokens, [](const std::string& arg) { return arg == "--json"; });
+    bool pending_value = false;
+    for (const auto& arg : args | std::views::drop(1)) {
+        if (arg == "--") {
+            break;
+        }
+        if (pending_value) {
+            pending_value = false;
+            continue;
+        }
+        if (arg == "--json") {
+            roles.exact_flag = true;
+            roles.flag = true;
+        } else if (arg == "--json=true" || arg == "--json=" || arg == "--json={}") {
+            roles.flag = true;
+        } else if (arg.starts_with("--json=") || arg == "--wat") {
+            // These unconsumed tokens necessarily fail syntax; admission cannot accept them.
+            roles.syntax_failure = true;
+        }
+        pending_value =
+            std::ranges::any_of(docenhance::contract::option_catalog, [&arg](const auto& option) {
+                return arg == option.name && !option.metavar.empty();
+            });
+    }
+    return roles;
+}
+void check_json_roles(const std::vector<std::string>& args, const Outcome& outcome) {
+    const bool json_mode = outcome.out.starts_with('{');
+    const auto roles = json_roles(args);
+    if (roles.syntax_failure) {
+        require(outcome.code == exit_invocation && json_mode == roles.fallback,
+                "known syntax errors use only the exact-token JSON fallback");
+    }
+    // Syntax failure uses only an exact raw token. Successful syntax can also admit CLI11's
+    // default-valued flag spellings; argument exit 2 alone cannot distinguish syntax/admission.
+    if (roles.exact_flag || (roles.flag && outcome.code != exit_invocation)) {
+        require(json_mode, "a parsed JSON flag selects JSON output");
+    }
+    if (json_mode) {
+        require(outcome.code == exit_invocation ? (roles.flag || roles.fallback) : roles.flag,
+                "JSON follows parsed flag roles or the syntax-failure fallback");
     }
 }
 } // namespace
@@ -109,20 +168,20 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
                 outcome.code == exit_input || outcome.code == exit_processing ||
                 outcome.code == exit_output,
             "only contract exit codes occur (invariant failures are defects)");
+    require(outcome.processor_calls <= 1, "processing is invoked at most once");
+    if (outcome.code != exit_processing ||
+        (args.size() > 1 &&
+         (args[1] == "version" || args[1] == "methods" || args[1] == "verify"))) {
+        require(outcome.processor_calls == 0,
+                "rejected admission and read-only commands never invoke processing");
+    }
     const bool json_mode = outcome.out.starts_with('{');
     if (json_mode) {
         check_json(outcome);
     } else {
         check_text(outcome);
     }
-    // Arguments after "--" are operands, not options.
-    const auto options = args | std::views::drop(1) |
-                         std::views::take_while([](const std::string& a) { return a != "--"; });
-    const bool json_token =
-        std::ranges::any_of(options, [](const std::string& a) { return a == "--json"; });
-    if (outcome.code != exit_success && json_token) {
-        require(json_mode, "an exact --json token selects JSON error output");
-    }
+    check_json_roles(args, outcome);
     require(invoke(args) == outcome, "the command line is deterministic");
     return 0;
 }

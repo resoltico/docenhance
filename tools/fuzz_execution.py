@@ -137,7 +137,12 @@ def environment(run: Run) -> dict[str, str]:
     """Enforce sanitizer failure behavior without exporting the inherited environment."""
     result = {**os.environ, **settings(run.root)["sanitizer_options"]}
     if run.engine == "afl":
-        result.update(AFL_NO_UI="1", AFL_SKIP_CPUFREQ="1")
+        result = {key: value for key, value in result.items() if not key.startswith("AFL_")}
+        result.update(
+            AFL_NO_UI="1",
+            AFL_SKIP_CPUFREQ="1",
+            AFL_EXIT_ON_SEED_ISSUES="1",
+        )
         result["ASAN_OPTIONS"] += ":symbolize=0"
     return result
 
@@ -182,13 +187,30 @@ def bounded_process(
                 stop_process(process, graceful=graceful)
 
 
+def engine_findings(run: Run, directory: Path) -> list[str]:
+    """Retain artifacts even when startup or missing statistics prevent completion."""
+    paths = (
+        (directory / "artifacts").glob("*")
+        if run.engine == "libfuzzer"
+        else (
+            path
+            for kind in ("crashes", "hangs")
+            for path in (directory / "afl/default" / kind).glob("id*")
+        )
+    )
+    return sorted({path.relative_to(directory).as_posix() for path in paths if path.is_file()})
+
+
 def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str]]:
     """Require positive native execution statistics and enumerate all recorded findings."""
+    findings = engine_findings(run, directory)
     if run.engine == "libfuzzer":
+        if not (directory / "artifacts").is_dir():
+            msg = "Missing libFuzzer artifact directory"
+            raise FuzzError(msg)
         text = (directory / "engine.log").read_text(encoding="utf-8", errors="replace")
         counts = EXECUTIONS.findall(text)
         executions = int(counts[-1]) if counts else 0
-        findings = [path for path in (directory / "artifacts").iterdir() if path.is_file()]
     else:
         output = directory / "afl/default"
         values = dict(
@@ -198,15 +220,9 @@ def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str]]:
         )
         values = {key.strip(): value.strip() for key, value in values.items()}
         executions = int(values.get("execs_done", "0"))
-        findings = [
-            path
-            for kind in ("crashes", "hangs")
-            for path in (output / kind).glob("id*")
-            if path.is_file()
-        ]
         if int(values.get("saved_crashes", "0")) or int(values.get("saved_hangs", "0")):
-            findings.append(output / "fuzzer_stats")
-    return executions, sorted({path.relative_to(directory).as_posix() for path in findings})
+            findings.append("afl/default/fuzzer_stats")
+    return executions, sorted(set(findings))
 
 
 def completed(
@@ -245,13 +261,19 @@ def execute(run: Run, work: Path) -> Path:
             command, environment(run), directory / "engine.log", run.seconds + ENGINE_GRACE
         )
         report["engine_elapsed_seconds"] = time.monotonic() - engine_started
+        if report["exit_code"] != 0:
+            report["error"] = f"Fuzz engine exited with {report['exit_code']}; inspect engine.log"
         executions, findings = engine_evidence(run, directory)
         report.update(executions=executions, findings=findings)
         report["passed"] = completed(
             report["exit_code"], executions, findings, report["engine_elapsed_seconds"], run.seconds
         )
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
-        report["error"] = str(exc)
+        report["findings"] = engine_findings(run, directory)
+        if "error" in report:
+            report["statistics_error"] = str(exc)
+        else:
+            report["error"] = f"{exc}; inspect engine.log when present"
     finally:
         report["elapsed_seconds"] = time.monotonic() - started
         write_json(directory / "result.json", report)

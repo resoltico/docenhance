@@ -32,6 +32,20 @@ inline void parser_cases() {
         require(!contract::parse_finite(text, -10, 10).has_value(),
                 "noncanonical/invalid decimal accepted");
     }
+    const auto option = contract::parse_decimal_option("--gamma", "5", 0.25, 4);
+    require(!option && option.error().code == core::ErrorCode::argument &&
+                option.error().message.contains("--gamma value \"5\"") &&
+                option.error().message.contains("[0.25,4]"),
+            "named decimal diagnostic");
+    require(contract::parse_integer_option("--sauvola-window", "31", 3, 4095, true).value() == 31,
+            "named integer acceptance");
+    for (const auto* const text : {"", "4", "+31", "31.0", "1e1", "4294967296"}) {
+        const auto integer =
+            contract::parse_integer_option("--sauvola-window", text, 3, 4095, true);
+        require(!integer && integer.error().message.contains("--sauvola-window") &&
+                    integer.error().message.contains("[3,4095]"),
+                "named integer refusal");
+    }
     require(!contract::parse_finite("2", 0, 1).has_value(), "range enforced");
     require(!contract::parse_finite("0", 1, 0).has_value(), "invalid bounds rejected");
     require(image::checked_elements(12, 10, 3, 360).value() == 360, "exact raster budget");

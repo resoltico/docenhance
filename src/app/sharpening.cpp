@@ -29,15 +29,18 @@ core::Result<methods::Sharpening> prepare_sharpening(const contract::Invocation&
     }
     const methods::UnsharpParameters defaults;
     auto sigma = i.sharpen_sigma
-                     ? contract::parse_finite(*i.sharpen_sigma, methods::Unsharp::minimum_sigma,
-                                              methods::Unsharp::maximum_sigma)
+                     ? contract::parse_decimal_option("--sharpen-sigma", *i.sharpen_sigma,
+                                                      methods::Unsharp::minimum_sigma,
+                                                      methods::Unsharp::maximum_sigma)
                      : core::Result<double>{defaults.sigma};
-    auto amount = i.sharpen_amount ? contract::parse_finite(*i.sharpen_amount, 0,
-                                                            methods::Unsharp::maximum_amount)
-                                   : core::Result<double>{defaults.amount};
+    auto amount = i.sharpen_amount
+                      ? contract::parse_decimal_option("--sharpen-amount", *i.sharpen_amount, 0,
+                                                       methods::Unsharp::maximum_amount)
+                      : core::Result<double>{defaults.amount};
     auto threshold =
         i.sharpen_threshold
-            ? contract::parse_finite(*i.sharpen_threshold, 0, methods::Unsharp::maximum_threshold)
+            ? contract::parse_decimal_option("--sharpen-threshold", *i.sharpen_threshold, 0,
+                                             methods::Unsharp::maximum_threshold)
             : core::Result<double>{defaults.threshold};
     if (!sigma) {
         return std::unexpected(sigma.error());

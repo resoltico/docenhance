@@ -16,13 +16,15 @@
 #include <expected>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 namespace docenhance::app {
 namespace {
-core::Result<double> value(const std::optional<std::string>& raw, double fallback, double low,
-                           double high) {
-    return raw ? contract::parse_finite(*raw, low, high) : core::Result<double>{fallback};
+core::Result<double> value(const std::optional<std::string>& raw, std::string_view name,
+                           double fallback, double low, double high) {
+    return raw ? contract::parse_decimal_option(name, *raw, low, high)
+               : core::Result<double>{fallback};
 }
 core::Result<methods::Psf> psf(const contract::Invocation& i) {
     if (i.psf == "gaussian") {
@@ -31,8 +33,8 @@ core::Result<methods::Psf> psf(const contract::Invocation& i) {
                                  "Gaussian PSF accepts only --psf-sigma");
         }
         auto sigma =
-            value(i.psf_sigma, methods::GaussianPsf{}.sigma, methods::GaussianPsf::minimum_sigma,
-                  methods::GaussianPsf::maximum_sigma);
+            value(i.psf_sigma, "--psf-sigma", methods::GaussianPsf{}.sigma,
+                  methods::GaussianPsf::minimum_sigma, methods::GaussianPsf::maximum_sigma);
         if (!sigma) {
             return std::unexpected(sigma.error());
         }
@@ -43,9 +45,9 @@ core::Result<methods::Psf> psf(const contract::Invocation& i) {
             return core::failure(core::ErrorCode::argument,
                                  "Motion PSF accepts only --psf-length and --psf-angle");
         }
-        auto length = value(i.psf_length, methods::MotionPsf{}.length,
+        auto length = value(i.psf_length, "--psf-length", methods::MotionPsf{}.length,
                             methods::MotionPsf::minimum_length, methods::MotionPsf::maximum_length);
-        auto angle = value(i.psf_angle, methods::MotionPsf{}.angle,
+        auto angle = value(i.psf_angle, "--psf-angle", methods::MotionPsf{}.angle,
                            methods::MotionPsf::minimum_angle, methods::MotionPsf::maximum_angle);
         if (!length) {
             return std::unexpected(length.error());
@@ -86,9 +88,9 @@ core::Result<methods::Restoration> prepare_restoration(const contract::Invocatio
         return core::failure(core::ErrorCode::argument, "--deblur requires off or wiener");
     }
     auto kernel = psf(i);
-    auto k = value(i.wiener_k, methods::WienerParameters{}.k, methods::Wiener::minimum_k,
-                   methods::Wiener::maximum_k);
-    auto blend = value(i.deblur_blend, methods::WienerParameters{}.blend, 0, 1);
+    auto k = value(i.wiener_k, "--wiener-k", methods::WienerParameters{}.k,
+                   methods::Wiener::minimum_k, methods::Wiener::maximum_k);
+    auto blend = value(i.deblur_blend, "--deblur-blend", methods::WienerParameters{}.blend, 0, 1);
     if (!kernel) {
         return std::unexpected(kernel.error());
     }

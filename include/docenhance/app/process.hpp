@@ -139,6 +139,7 @@ struct PublishedBinary {
 };
 struct PublishedContinuous {
     std::string output;
+    image::AlphaPolicy alpha = image::AlphaPolicy::white;
     image::ConversionReport conversion;
     methods::IlluminationReport illumination;
     std::string run;

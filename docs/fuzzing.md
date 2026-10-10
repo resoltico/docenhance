@@ -44,6 +44,11 @@ Missing statistics, zero executions, missing/duplicate reports, timeouts and sav
 are failures. JUnit and CTest logs are retained as evidence; target reports establish completion
 without trusting a decorative PASS line or treating skipped tests as successes.
 
+AFL++ runs with an owned set of runtime `AFL_*` variables, clearing inherited engine overrides.
+Startup seed crashes or timeouts fail the run instead of silently removing retained regressions
+from the active queue. Startup refusals preserve the engine exit and log location separately from
+missing statistics; available finding files remain listed even when statistics cannot be read.
+
 ## Evidence and corpus ownership
 
 Each invocation exclusively creates a new run directory below the requested work parent.

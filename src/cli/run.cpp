@@ -88,10 +88,10 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const I
         if (!command.parser->parsed()) {
             continue;
         }
-        // Keep the exact --json pre-scan even when syntax later fails.
-        command.invocation.json = command.invocation.json || invocation.json;
+        // Successful parsing assigns token roles; raw-token fallback is for syntax failure only.
         invocation = std::move(command.invocation);
         if (root.help || root.json || root.root_version) {
+            invocation.json = invocation.json || root.json;
             return argument_error(invocation, "Root flags cannot be combined with a subcommand; "
                                               "place --help/--json after the command");
         }
@@ -103,7 +103,6 @@ std::optional<Outcome> select_command(std::span<ParsedCommand> commands, const I
 }
 std::optional<Outcome> apply_root_flags(const CLI::App& cli, Invocation root,
                                         Invocation& invocation) {
-    root.json = root.json || invocation.json;
     invocation = std::move(root);
     if (has_repeated_option(cli)) {
         return argument_error(invocation, "Repeated root options are not allowed");
@@ -141,6 +140,12 @@ Outcome parse_and_dispatch(std::span<const char* const> args, Invocation& invoca
             command.parser->add_option("subject", command.invocation.subject)
                 ->multi_option_policy(CLI::MultiOptionPolicy::Throw);
         }
+        // CLI11 otherwise hands a delimiter back to the root when no operand slot remains.
+        // A rejecting slot keeps all later tokens positional, including for operand-free commands.
+        command.parser->add_option("EXTRA")->check(CLI::Validator{
+            [](std::string& /*value*/) { return std::string{"Unexpected additional operand"}; },
+            "No additional operands",
+        });
     }
     cli.parse(static_cast<int>(args.size()), args.data());
     if (auto rejected = select_command(commands, root.invocation, invocation)) {

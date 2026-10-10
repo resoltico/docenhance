@@ -10,12 +10,14 @@
 #include "support/color_samples.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
+#include "support/png_shape.hpp"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <span>
 namespace {
+
 void rows(docenhance::image::RowSource& producer, docenhance::core::Budget& budget) {
     const auto shape = producer.descriptor().shape;
     const auto size = docenhance::image::raster_row_bytes(shape).value();
@@ -46,7 +48,14 @@ void decode(std::span<const std::uint8_t> bytes, docenhance::image::ProfilePolic
             docenhance::core::Budget& budget) {
     auto source = docenhance::io::decode_png_raster(bytes, budget, policy, {},
                                                     {.encoded_bytes = 65536, .pixels = 4096});
+    if (docenhance::fuzz::zero_png_dimension(bytes)) {
+        docenhance::fuzz::require(!source, "zero PNG dimensions cannot decode successfully");
+    }
     if (!source) {
+        if (docenhance::fuzz::zero_png_dimension(bytes)) {
+            docenhance::fuzz::require(source.error().code == docenhance::core::ErrorCode::input,
+                                      "zero PNG dimensions are malformed input, not resources");
+        }
         docenhance::fuzz::require(source.error().code == docenhance::core::ErrorCode::input ||
                                       source.error().code == docenhance::core::ErrorCode::resource,
                                   "malformed PNG fails without an invariant error");

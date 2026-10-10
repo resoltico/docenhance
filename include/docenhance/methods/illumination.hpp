@@ -33,6 +33,11 @@ inline constexpr double surface_default_quantile = 0.90;
 inline constexpr double surface_default_smooth = 1.0;
 // The largest admissible max_gain; no illumination correction can brighten a sample further.
 inline constexpr double illumination_gain_limit = 4;
+inline constexpr double illumination_min_target = 0.1;
+inline constexpr double surface_min_quantile = 0.75;
+inline constexpr double surface_max_quantile = 0.99;
+inline constexpr double surface_min_smooth = 0.1;
+inline constexpr double surface_max_smooth = 20;
 struct SurfaceParameters {
     SurfaceMode mode = SurfaceMode::explicit_surface;
     double strength = illumination_default_strength;

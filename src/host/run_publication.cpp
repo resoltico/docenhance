@@ -191,7 +191,8 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
 
 core::Result<app::PublishedContinuous> published_continuous(PublishedRun published,
                                                             image::SourceDescription source,
-                                                            const ContinuousReports& reports) {
+                                                            const ContinuousReports& reports,
+                                                            image::AlphaPolicy alpha) {
     const auto& illumination = reports.illumination.get();
     const auto& denoising = reports.denoising.get();
     const auto& contrast = reports.contrast.get();
@@ -209,6 +210,7 @@ core::Result<app::PublishedContinuous> published_continuous(PublishedRun publish
     report.verified = published.verification == bundle::Verification::decoded_and_compared;
     return app::PublishedContinuous{
         .output = std::move(published.output),
+        .alpha = alpha,
         .conversion = report,
         .illumination = illumination,
         .run = std::move(published.run),

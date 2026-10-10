@@ -8,7 +8,7 @@ P = process.
 
 - `root` — `docenhance COMMAND [OPTIONS]`
 - `process` — `docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]`
-  Admit static PNG or bounded 8-bit baseline/progressive Huffman JPEG by signature. JPEG supports preserve/gray with opt-in I01; bw and protection masks retain their grayscale PNG contracts. All PNG paths reject animation and trailing container bytes; binary processing retains stored grayscale samples.
+  Admit static PNG, bounded 8-bit baseline/progressive Huffman JPEG or bounded single-page TIFF/BigTIFF by signature. Continuous preserve/gray defaults to representation without enhancement; explicitly selected stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Binary processing retains its stored 1/2/4/8-bit nontransparent grayscale PNG contract. All PNG paths reject animation and trailing container bytes.
 - `verify` — `docenhance verify DIRECTORY [--json]`
   Validate the complete supported run record, closed artifact inventory and observable PNG properties without executing the recorded request.
 - `methods` — `docenhance methods [ID] [--json]`
@@ -25,6 +25,8 @@ P = process.
 **Decimal values.** Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale. Conversion overflow, subnormal results and nonzero magnitudes rounded to zero are rejected; signed zero is admitted.
 
 **Window values.** Decimal digits only; odd integer in [3,4095]. No sign, whitespace, fraction or exponent.
+
+**Tokens values.** String options consume their next token as a value even when it looks like an option; --out-dir --json and --out-dir=--json both name the literal directory --json. On successful parsing only a parsed --json flag selects JSON presentation. An additional --json selects JSON independently. After --, tokens are operands. On syntax failure, an exact --json token before -- selects the JSON diagnostic fallback, even if that token might have been intended as a value; failed syntax never executes processing.
 
 ## `--out-dir DIRECTORY`
 
@@ -44,7 +46,7 @@ Exact clockwise quarter-turn after metadata orientation on continuous output; bi
 
 **Scope:** P. **Domain/default:** preserve; preserve|gray|bw.
 
-Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output has no enhancement filter and is verified before publication. Gray converts linear luminance; bw explicitly activates stored-sample binarization. JPEG input supports preserve/gray only; bw requires grayscale PNG.
+Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output defaults to no enhancement filter and is verified before publication. Explicit stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Gray converts linear luminance; bw explicitly activates stored-sample binarization. JPEG and TIFF/BigTIFF support preserve/gray only; bw requires grayscale PNG.
 
 ## `--bit-depth DEPTH`
 
@@ -56,7 +58,7 @@ Continuous output only. Auto retains 16-bit source precision, otherwise 8. Expli
 
 **Scope:** P. **Domain/default:** white; white|black|reject.
 
-Continuous output only. Composite straight PNG alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque.
+Continuous output only. Composite source alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque.
 
 ## `--profile-policy POLICY`
 
@@ -108,7 +110,7 @@ B02 only. Normalized deviation scale: 0.5 means 127.5 in byte units, not 128. Bl
 
 **Scope:** All commands. **Domain/default:** False.
 
-Render one JSON response on stdout and no diagnostic text on stderr. Flush the selected stream before returning. JSON exit_code describes the rendered command outcome; response-delivery failure can instead end the process with exit 5. Check both the response and process status. A missing/incomplete response or exit 5 does not prove that publication did not commit; do not retry blindly.
+Render one JSON response on stdout and no diagnostic text on stderr. Flush the selected stream before returning. JSON exit_code describes the rendered command outcome; response-delivery failure can instead end the process with exit 5. Check both the response and process status. A missing/incomplete response or exit 5 does not prove that publication did not commit; do not retry blindly. Successful parsing uses the parsed flag only: a literal --json option value does not switch presentation. Syntax failure retains the exact-token JSON fallback before --. The default-valued spellings --json=true, --json= and --json={} also parse as flags; other value overrides are rejected. They do not select the exact-token fallback on syntax failure.
 
 ## `--help`
 

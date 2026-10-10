@@ -46,7 +46,10 @@ succeed; binary and continuous output are independently verified before commit. 
 
 `docenhance methods` reports I01, I02, D01, D02, C01, C02, C03, S01, R01, B01, B02, B03 and G02. `methods ID` selects one entry.
 `version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
-Help, version and capability discovery do not invoke the image-processing host.
+Help, version and capability discovery do not invoke the image-processing host. Human help
+shows reviewed defaults and value domains alongside each option. The continuous pipeline is
+geometry, illumination, denoising, restoration, contrast, sharpening and final quantization;
+enhancement stages remain opt-in.
 
 ## Optional illumination and protection
 
@@ -73,6 +76,16 @@ quantization, with exact protection of masked destinations. Both are opt-in and 
 output; see [denoising](denoising.md) and [TV-L1 denoising](tvl1-denoising.md) for parameters,
 resource accounting, stopping diagnostics and cancellation.
 
+## Optional restoration
+
+```sh
+docenhance process INPUT.png --out-dir RESTORED --deblur wiener --psf gaussian
+```
+
+R01 is explicit known-PSF Fourier restoration after denoising and before contrast. The supplied
+PSF is an unverified model, even for an identity output; see [restoration](restoration.md).
+It defaults to off and requires continuous output. No automatic blur estimation is implied.
+
 ## Optional contrast
 
 ```sh
@@ -81,7 +94,7 @@ docenhance process INPUT.png --out-dir GAMMA --contrast gamma --gamma 1.2
 docenhance process INPUT.png --out-dir CLAHE --contrast clahe --clahe-grid 8x8 --clahe-clip 2
 ```
 
-Contrast follows illumination and denoising. It defaults to off; all alternatives require
+Contrast follows illumination, denoising and optional restoration. It defaults to off; all alternatives require
 continuous output, preserve protected entering RGB and share perceptual blending and color
 transport. Levels fits every eligible sample; gamma applies f^G with exact endpoints. See
 [contrast](contrast.md) for percentile units, clipping, identities and resources.
@@ -102,7 +115,7 @@ resources and the limits of increased edge contrast.
 
 With `--json`, binary success contains the admitted `method` and `method_version`. Continuous
 success instead contains `operation: continuous`, a typed `conversion` record and an
-`illumination`, `denoising`, `contrast` and `sharpening` stage records (including disabled), with no fictional conversion-method ID. Both identify the final output path and `publication: completed`. The delivered machine contract is
+`illumination`, `denoising`, `restoration`, `contrast` and `sharpening` stage records (including disabled), with no fictional conversion-method ID. Both identify the final output path and `publication: completed`. The delivered machine contract is
 [command-response.schema.json](../schemas/command-response.schema.json); edit the authoring
 schema and method catalog under `spec/`, then regenerate, rather than editing generated output.
 
@@ -114,8 +127,15 @@ it retains `publication: completed` and the published directory. Inspect the rep
 An unimplemented method, command or format/operation branch uses `E_NOT_IMPLEMENTED`, exit 4,
 with `not_started` publication. JPEG on the binary PNG-only branch is such a refusal; unsupported
 JPEG coding, sampling, color and metadata within continuous admission use `E_INPUT`, exit 3. Publication states distinguish
-`not_started`, `not_published` and `completed`. An unreported processing effect, ambiguous commit
+`not_started`, `not_published`, `completed` and `unknown`. An unreported processing effect, ambiguous commit
 or unconfirmed staging cleanup uses `E_PUBLICATION_UNKNOWN`, exit 7, with state `unknown`.
+
+Every human error states the typed publication state. `not_started` means publication did not start (preparation may already have run);
+`not_published` means no result was published. Correct the problem before retrying either case.
+For `completed`, inspect the destination and verify its bundle before further action; for `unknown`,
+inspect destination and staging entries. Neither state authorizes a blind retry. Human warnings
+explain color assumptions/overrides, irreversible alpha/precision changes, TV-L1 stopping and
+sharpening excursions while retaining the machine codes and observed values.
 
 JSON goes only to stdout and text errors only to stderr. Rendering and unformatted delivery occur
 once, followed by an explicit flush of the selected stream. The response's `exit_code` describes
@@ -125,6 +145,14 @@ response and process status; do not retry blindly. Flushing is not acknowledgeme
 
 CLI tokens and admitted paths must be well-formed UTF-8, with no embedded path NUL. Identity bytes
 are not normalized or repaired. Invalid diagnostic text alone gets an explanatory fallback.
+String option values retain their token role: `--out-dir --json` and `--out-dir=--json` both
+name the literal directory `--json` and produce human text. Add a separately parsed `--json`
+flag to select JSON. The default-valued spellings `--json=true`, `--json=` and `--json={}` also parse as
+flags, but do not trigger the exact-token syntax-failure fallback. Other flag overrides are refused.
+After `--`, tokens are operands; put options before that delimiter.
+Only syntax failure uses the exact `--json` token before `--` as a diagnostic fallback, even if
+it might have been intended as a value. Syntax failures never start processing.
+
 The `tests/cli/test_sauvola.py` in the source distribution cover admission, decoding, method
 execution, published samples, selected discovery and response conformance together.
 
