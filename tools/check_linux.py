@@ -14,10 +14,13 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import uuid
 from pathlib import Path
 
 from cache_lock import exclusive_cache
+from docker_execution import LABEL, run_container
 from parallel import MAX_JOBS
+from process_execution import owned_process
 
 ROOT = Path(__file__).resolve().parents[1]
 IMAGE_PATTERN = re.compile(r"[a-z0-9./_-]+@sha256:[0-9a-f]{64}")
@@ -71,7 +74,16 @@ def cache_identity(image: str, platform: str, root: Path = ROOT) -> str:
     return f"docenhance-linux-{digest.hexdigest()[:20]}"
 
 
-def run_arguments(image: str, platform: str, root: Path = ROOT) -> list[str]:
+def source_cache_identity(root: Path = ROOT) -> str:
+    """Verified source bytes need no compiler, architecture or private-build recipe copy."""
+    digest = hashlib.sha256(str(root.resolve()).encode())
+    for name in ("deps/lock.json", "tools/dep_acquire.py", "tools/dep_verify.py"):
+        digest.update(name.encode())
+        digest.update((root / name).read_bytes())
+    return f"docenhance-sources-{digest.hexdigest()[:20]}"
+
+
+def run_arguments(image: str, platform: str, name: str, token: str, root: Path = ROOT) -> list[str]:
     """Keep Linux outputs/caches separate from the host and process the current worktree."""
     cache = cache_identity(image, platform, root)
     command = [
@@ -79,6 +91,10 @@ def run_arguments(image: str, platform: str, root: Path = ROOT) -> list[str]:
         "run",
         "--rm",
         "--init",
+        "--name",
+        name,
+        "--label",
+        f"{LABEL}={token}",
         "--platform",
         platform,
         "--workdir",
@@ -91,6 +107,10 @@ def run_arguments(image: str, platform: str, root: Path = ROOT) -> list[str]:
             "--mount",
             f"type=volume,source={cache}-{suffix},target=/source/{directory}",
         ]
+    command += [
+        "--mount",
+        f"type=volume,source={source_cache_identity(root)},target=/source/.cache/deps",
+    ]
     host_cache = root / ".cache/deps"
     if host_cache.is_dir():
         command += ["--mount", f"type=bind,source={host_cache},target=/host-deps,readonly"]
@@ -107,8 +127,9 @@ def invoke(arguments: list[str], log: Path) -> bool:
     with log.open("a", encoding="utf-8") as stream:
         stream.write("\n" + " ".join(arguments) + "\n")
         stream.flush()
-        result = subprocess.run(arguments, cwd=ROOT, stdout=stream, stderr=stream, check=False)
-    return result.returncode == 0
+        with owned_process(arguments, dict(os.environ), stream, cwd=ROOT, graceful=True) as process:
+            status = process.wait()
+    return status == 0
 
 
 def prepare_image(base: str, image: str, platform: str, log: Path) -> bool:
@@ -184,8 +205,10 @@ def main() -> int:
             print(f"Linux Docker gate: full build/test diagnostics: {log}", flush=True)
             platform = native_platform()
             base, image = image_identity(platform)
-            if not prepare_image(base, image, platform, log) or not invoke(
-                run_arguments(image, platform), log
+            token = uuid.uuid4().hex
+            name = f"docenhance-gate-{token}"
+            if not prepare_image(base, image, platform, log) or not run_container(
+                run_arguments(image, platform, name, token), log, ROOT, name, token
             ):
                 print(f"FAIL: Linux Docker gate; complete diagnostics: {log}", file=sys.stderr)
                 return 1

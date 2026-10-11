@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import importlib
 import json
+import os
 import struct
 import subprocess
 import sys
@@ -25,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def process_observation() -> ModuleType:
     """Developer-only POSIX measurement; runtime processing has no Python dependency."""
-    if sys.platform == "win32":
+    if os.name != "posix":
         msg = "POSIX child RSS observation is unavailable on Windows"
         raise RuntimeError(msg)
     return importlib.import_module("os")

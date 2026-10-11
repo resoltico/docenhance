@@ -7,12 +7,17 @@ from __future__ import annotations
 import io
 import json
 import os
+import stat
 import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 from tools_path import ROOT
 
@@ -130,6 +135,147 @@ class FuzzExecutionTests(unittest.TestCase):
                 self.assertEqual(
                     (directory / "engine.log").read_text(), "synthetic startup refusal\n"
                 )
+
+
+class FuzzScratchTests(unittest.TestCase):
+    """Completed input scratch is disposable; provenance and failure evidence are not."""
+
+    def fixture_engine(
+        self, command: list[str], env: dict[str, str], log: Path, timeout: int
+    ) -> int:
+        """Write explicitly synthetic positive work and queued bytes, not a native fuzz result."""
+        del command, env, timeout
+        log.write_text("stat::number_of_executed_units: 42\n")
+        (log.parent / "corpus/generated").write_bytes(b"successful mutation")
+        queue = log.parent / "afl/default/queue"
+        (queue / ".state").mkdir(parents=True)
+        (queue / "id_000001").write_bytes(b"successful queue input")
+        (queue / ".state/deterministic_done").write_bytes(b"queue state")
+        (queue.parent / "fuzzer_stats").write_text(
+            "execs_done : 42\nsaved_crashes : 0\nsaved_hangs : 0\n"
+        )
+        return 0
+
+    def test_completed_runs_remove_only_owned_scratch_after_engine_return(self) -> None:
+        """Positive engine work retains the index/log/statistics and removes disposable inputs."""
+        for engine in ("libfuzzer", "afl"):
+            with self.subTest(engine=engine), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                run = fuzz_execution.Run(
+                    fuzz_manifest.targets()[0], Path(sys.executable), engine, 1
+                )
+                with (
+                    patch("fuzz_execution.shutil.which", return_value="/fixture/afl-fuzz"),
+                    patch("fuzz_execution.bounded_process", side_effect=self.fixture_engine),
+                    patch("fuzz_execution.time.monotonic", side_effect=[0, 0, 2, 3]),
+                ):
+                    directory = fuzz_execution.execute(run, work)
+                report = json.loads((directory / "result.json").read_text())
+                self.assertTrue(report["passed"])
+                self.assertFalse((directory / "corpus").exists())
+                self.assertTrue((directory / "corpus-index.json").is_file())
+                self.assertIn("42", (directory / "engine.log").read_text())
+                self.assertTrue((directory / "afl/default/fuzzer_stats").is_file())
+                self.assertEqual((directory / "afl/default/queue").exists(), engine != "afl")
+
+    def test_findings_and_cleanup_errors_cannot_pass(self) -> None:
+        """A finding keeps exact scratch; cleanup failure remains visible with records intact."""
+        for finding in (False, True):
+            with self.subTest(finding=finding), tempfile.TemporaryDirectory() as temporary:
+                work = Path(temporary)
+                run = fuzz_execution.Run(fuzz_manifest.targets()[0], Path(sys.executable), "afl", 1)
+
+                def engine(
+                    command: list[str],
+                    env: dict[str, str],
+                    log: Path,
+                    timeout: int,
+                    *,
+                    finding_case: bool = finding,
+                ) -> int:
+                    result = self.fixture_engine(command, env, log, timeout)
+                    if finding_case:
+                        crashes = log.parent / "afl/default/crashes"
+                        crashes.mkdir()
+                        (crashes / "id_000000").write_bytes(b"exact failing input")
+                    return result
+
+                with (
+                    patch("fuzz_execution.shutil.which", return_value="/fixture/afl-fuzz"),
+                    patch("fuzz_execution.bounded_process", side_effect=engine),
+                    patch("fuzz_execution.time.monotonic", side_effect=[0, 0, 2, 3]),
+                    patch(
+                        "fuzz_execution.remove_successful_scratch",
+                        side_effect=PermissionError("owned scratch cleanup refused"),
+                    ) as cleanup,
+                ):
+                    directory = fuzz_execution.execute(run, work)
+                report = json.loads((directory / "result.json").read_text())
+                self.assertFalse(report["passed"])
+                self.assertTrue((directory / "corpus-index.json").is_file())
+                self.assertEqual(
+                    (directory / "corpus/generated").read_bytes(), b"successful mutation"
+                )
+                if finding:
+                    cleanup.assert_not_called()
+                    self.assertEqual(
+                        (directory / "afl/default/crashes/id_000000").read_bytes(),
+                        b"exact failing input",
+                    )
+                else:
+                    self.assertIn("cleanup refused", report["error"])
+
+    def test_all_ancestors_and_entries_are_checked_before_any_removal(self) -> None:
+        """An unsafe second scratch tree cannot delete even the first corpus."""
+        for mutation in ("linked-parent", "special-entry", "file-root"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                directory = root / "owned"
+                (directory / "corpus").mkdir(parents=True)
+                (directory / "corpus/seed").write_bytes(b"keep on refusal")
+                (directory / "afl").mkdir()
+                if mutation == "linked-parent":
+                    external = root / "external"
+                    external.mkdir()
+                    sentinel = external / "sentinel"
+                    sentinel.write_bytes(b"outside owner")
+                    (directory / "afl/default").symlink_to(external, target_is_directory=True)
+                    with self.assertRaises(fuzz_manifest.FuzzError):
+                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                    self.assertEqual(sentinel.read_bytes(), b"outside owner")
+                elif mutation == "file-root":
+                    queue = directory / "afl/default/queue"
+                    queue.parent.mkdir()
+                    queue.write_bytes(b"not a scratch directory")
+                    with self.assertRaises(fuzz_manifest.FuzzError):
+                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                    self.assertEqual(queue.read_bytes(), b"not a scratch directory")
+                else:
+                    special = directory / "afl/default/queue/.state/special"
+                    special.parent.mkdir(parents=True)
+                    special.write_bytes(b"synthetic special-entry identity")
+                    original = Path.lstat
+
+                    def unsupported(
+                        path: Path,
+                        *,
+                        special_path: Path = special,
+                        inspect: Callable[[Path], os.stat_result] = original,
+                    ) -> os.stat_result:
+                        observed = inspect(path)
+                        if path == special_path:
+                            fields = list(observed)
+                            fields[0] = stat.S_IFIFO | 0o600
+                            return os.stat_result(fields)
+                        return observed
+
+                    with (
+                        patch.object(Path, "lstat", unsupported),
+                        self.assertRaises(fuzz_manifest.FuzzError),
+                    ):
+                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                    self.assertTrue(special.is_file())
+                self.assertEqual((directory / "corpus/seed").read_bytes(), b"keep on refusal")
 
 
 class FailureAuditIdentityTests(unittest.TestCase):

@@ -83,8 +83,9 @@ replay registrations.
 The driver retains the existing compile options, warnings, hardening, lint and requested sanitizer
 instrumentation; every harness retains its own target options and links.
 
-Retained macOS ARM64 `.ninja_log` action durations from `out/g02-release/app`,
-`out/g02-sanitize/app` and `out/g02-tsan/app` charged 248.0, 370.1 and 376.0 seconds respectively
+Retained macOS ARM64 action traces `out/ci-performance/g02-release-app.ninja_log`,
+`out/ci-performance/g02-sanitize-app.ninja_log` and
+`out/ci-performance/g02-tsan-app.ninja_log` charged 248.0, 370.1 and 376.0 seconds respectively
 in aggregate to the 23 repeated driver compile/lint invocations; these builds used four workers.
 Removing 22 of 23 copies corresponds to ideal four-worker work reductions of approximately 59,
 88 and 90 seconds respectively. These are estimates of avoided work divided by worker capacity,

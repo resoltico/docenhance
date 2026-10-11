@@ -92,7 +92,11 @@ measurements do not establish other platforms' performance or replace complete w
 Windows CI runs the target-admission CMake controls before the long native build, so a platform-specific guard regression fails promptly. The complete native tooling suite still runs afterward. Source-property lookup preserves CMake's declared directory spelling, including Windows DOS short names; filesystem alias expansion must not disconnect a suppression from its source.
 
 The outer native-suite watchdog allows 30 minutes for the whole graph, including the separately weighted compiler/AST check;
-it is not a processing-latency guarantee.
+the supervisor reserves its final minute for cleanup and evidence reconciliation. Discovery and
+admission share the execution deadline with the child suite. On POSIX, interruption unwinds the
+owned child group, allowing nested runners a bounded grace before killing remaining group members.
+Windows cleanup covers the direct child; it does not establish descendant termination.
+This watchdog is not a processing-latency guarantee.
 
 ## Local Linux verification with Docker
 

@@ -33,6 +33,10 @@ a growing target set cannot silently omit work or overrun a hand-maintained aggr
 
 The runner bounds its engine subprocess independently of CTest. Each engine owns a separate process
 group on POSIX. Timeout and interruption paths terminate that owned group and retain failed state.
+A campaign interruption also unwinds its child CTest group. Surviving cooperating nested runners receive
+bounded grace to clean their detached engine groups, even if CTest exits first. Remaining group
+members are then killed and the direct child reaped. Windows cleanup covers only the direct child.
+Other independently detached descendants are outside this process-group cleanup guarantee.
 A hard runner/host kill can leave an incomplete report; incomplete evidence cannot pass.
 
 A passing campaign requires CTest success AND exactly one passing report per expected target.
@@ -59,7 +63,14 @@ origins stay recorded. Symlink and nonregular corpus entries are rejected rather
 
 Reports retain the binary and manifest hashes, command arguments, requested duration, execution
 count, engine exit, elapsed time and finding paths. Full engine logs and actual reproducers remain
-beside the reports. The inherited environment and credentials are never exported. Review any new
+beside the reports. After the owned engine processes join, a completed run with no findings
+removes only its own staged/generated corpus and AFL queue scratch. The seed-origin index,
+statistics, logs and result records remain; committed seeds and regressions are never removed.
+Failed or incomplete engine runs retain their scratch for investigation. Every cleanup candidate
+and ancestor is checked before removal; links and special files are refused. Cleanup errors fail
+the run and preserve records and any remaining scratch; an unlink failure can leave partial
+cleanup. Earlier run directories are never automatically pruned.
+The inherited environment and credentials are never exported. Review any new
 finding, minimize it deliberately, then commit the regression; a successful campaign never edits
 its own repository corpus. Both engines run short required PR campaigns and longer nightly
 campaigns. CI packages the evidence as a tar archive because AFL++ filenames contain colons that

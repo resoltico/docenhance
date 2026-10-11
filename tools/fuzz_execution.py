@@ -4,13 +4,12 @@
 
 from __future__ import annotations
 
-import contextlib
 import hashlib
 import json
 import os
 import re
 import shutil
-import signal
+import stat
 import subprocess
 import tempfile
 import time
@@ -19,6 +18,7 @@ from pathlib import Path
 from typing import Any
 
 from fuzz_manifest import ENGINE_GRACE, MAX_SECONDS, ROOT, FuzzError, Target, positive, settings
+from process_execution import bounded_process
 
 PER_INPUT_SECONDS = 5
 MEMORY_LIMIT_MIB = 2048
@@ -147,46 +147,6 @@ def environment(run: Run) -> dict[str, str]:
     return result
 
 
-def stop_process(process: subprocess.Popen[bytes], *, graceful: bool) -> None:
-    """Terminate only this run's process group, then reap its direct child."""
-    if graceful and os.name == "posix":
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGTERM)
-        try:
-            process.wait(timeout=10)
-        except subprocess.TimeoutExpired:
-            pass
-        else:
-            return
-    if os.name == "posix":
-        with contextlib.suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)
-    else:
-        process.kill()
-    process.wait()
-
-
-def bounded_process(
-    command: list[str], env: dict[str, str], log: Path, timeout: int, *, graceful: bool = False
-) -> int:
-    """Run without a shell and preserve logs, including timeout/interrupt diagnostics."""
-    with (
-        log.open("wb") as stream,
-        subprocess.Popen(
-            command,
-            stdout=stream,
-            stderr=subprocess.STDOUT,
-            env=env,
-            start_new_session=os.name == "posix",
-        ) as process,
-    ):
-        try:
-            return process.wait(timeout=timeout)
-        finally:
-            if process.poll() is None:
-                stop_process(process, graceful=graceful)
-
-
 def engine_findings(run: Run, directory: Path) -> list[str]:
     """Retain artifacts even when startup or missing statistics prevent completion."""
     paths = (
@@ -232,6 +192,41 @@ def completed(
     return exit_code == 0 and executions > 0 and not findings and elapsed >= seconds
 
 
+def remove_successful_scratch(directory: Path, engine: str) -> list[str]:
+    """Remove joined, completed runs' disposable inputs; validate all paths before deleting any."""
+    candidates = [directory / "corpus"]
+    ancestors = [directory]
+    if engine == "afl":
+        ancestors.extend([directory / "afl", directory / "afl/default"])
+    for ancestor in ancestors:
+        if not stat.S_ISDIR(ancestor.lstat().st_mode):
+            msg = f"Scratch ancestor is not a regular directory: {ancestor}"
+            raise FuzzError(msg)
+    queue = directory / "afl/default/queue"
+    if engine == "afl" and (queue.exists() or queue.is_symlink()):
+        candidates.append(queue)
+    nodes = [path for candidate in candidates for path in [candidate, *candidate.rglob("*")]]
+    identities = {}
+    for path in nodes:
+        state = path.lstat()
+        if not (
+            stat.S_ISDIR(state.st_mode) or (path not in candidates and stat.S_ISREG(state.st_mode))
+        ):
+            msg = f"Scratch entry is not a regular file or directory: {path}"
+            raise FuzzError(msg)
+        identities[path] = (state.st_dev, state.st_ino, state.st_mode)
+    for path in sorted(nodes, key=lambda path: len(path.parts), reverse=True):
+        state = path.lstat()
+        if identities[path] != (state.st_dev, state.st_ino, state.st_mode):
+            msg = f"Scratch entry changed before removal: {path}"
+            raise FuzzError(msg)
+        if stat.S_ISDIR(state.st_mode):
+            path.rmdir()
+        else:
+            path.unlink()
+    return [path.relative_to(directory).as_posix() for path in candidates]
+
+
 def execute(run: Run, work: Path) -> Path:
     """Always retain a result record once a workspace is claimed; only complete runs pass."""
     positive(run.seconds, MAX_SECONDS, "seconds")
@@ -265,9 +260,11 @@ def execute(run: Run, work: Path) -> Path:
             report["error"] = f"Fuzz engine exited with {report['exit_code']}; inspect engine.log"
         executions, findings = engine_evidence(run, directory)
         report.update(executions=executions, findings=findings)
-        report["passed"] = completed(
+        if completed(
             report["exit_code"], executions, findings, report["engine_elapsed_seconds"], run.seconds
-        )
+        ):
+            report["scratch_removed"] = remove_successful_scratch(directory, run.engine)
+            report["passed"] = True
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         report["findings"] = engine_findings(run, directory)
         if "error" in report:

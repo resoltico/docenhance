@@ -22,6 +22,7 @@ from tools_path import ROOT
 import fuzz_execution
 import fuzz_manifest
 import run_fuzz_campaign
+from process_execution import bounded_process
 
 
 class FuzzManifestTests(unittest.TestCase):
@@ -215,7 +216,7 @@ class EvidenceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             log = Path(temporary) / "engine.log"
             with self.assertRaises(subprocess.TimeoutExpired):
-                fuzz_execution.bounded_process(
+                bounded_process(
                     [
                         sys.executable,
                         "-c",

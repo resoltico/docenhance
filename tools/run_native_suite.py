@@ -9,19 +9,24 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 import tempfile
+import time
 from pathlib import Path
 from typing import Any
 
 from architecture import load_manifest
 from audit_build import FALSE, read_cache
 from fuzz_manifest import targets
+from process_execution import bounded_process
 from sanitizer_evidence import check_compilation
 from test_evidence import EvidenceError, complete_junit, discovery
 
 ROOT = Path(__file__).resolve().parents[1]
 # Test cases contain their own CPU-heavy references, compilers and processing workers.
 MAX_TEST_PROCESSES = 2
+# Leave a minute for group cleanup and evidence reconciliation inside CMake's 1800-second limit.
+NATIVE_EXECUTION_SECONDS = 1740
 
 
 def layer_records_errors(layers: dict[str, Any], records: dict[str, Any]) -> list[str]:
@@ -110,6 +115,7 @@ def registrations(build: Path, tests: list[dict[str, Any]]) -> set[str]:
 
 def run(args: argparse.Namespace) -> int:
     """Create fresh evidence, execute every test, and refuse incomplete or skipped results."""
+    deadline = time.monotonic() + NATIVE_EXECUTION_SECONDS
     build = args.build.resolve()
     directory = Path(tempfile.mkdtemp(prefix="native-", dir=build))
     print(f"Native suite evidence: {directory}", flush=True)
@@ -129,9 +135,13 @@ def run(args: argparse.Namespace) -> int:
         "--output-junit",
         str(directory / "ctest.xml"),
     ]
-    result = subprocess.run(command, check=False)
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        msg = "Native discovery and compilation checks exhausted the execution deadline"
+        raise EvidenceError(msg)
+    exit_code = bounded_process(command, dict(os.environ), None, remaining, graceful=True)
     complete_junit(directory / "ctest.xml", {test["name"] for test in tests}, units)
-    return result.returncode
+    return exit_code
 
 
 def main() -> int:
@@ -147,7 +157,11 @@ def main() -> int:
     args = parser.parse_args()
     if not 1 <= args.jobs <= MAX_TEST_PROCESSES:
         parser.error(f"native test jobs must be in [1,{MAX_TEST_PROCESSES}]")
-    return run(args)
+    try:
+        return run(args)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"FAIL: native suite: {error}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

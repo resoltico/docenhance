@@ -263,8 +263,17 @@ when unit tests are disabled. Package directories, includes and archives stay in
 
 The Docker gate selects the Linux daemon's native architecture explicitly. `DOCKER_DEFAULT_PLATFORM`
 is refused; its image and native volumes bind architecture, image contents and dependency/build
-policy. One gate owns a checkout at a time. Each run retains its own diagnostic log, with
+policy. Verified locked source inputs use a separate volume bound to the checkout, source lock
+and acquisition/verification rules; changing a native build recipe does not duplicate those inputs.
+One gate owns a checkout at a time. Each run retains its own diagnostic log, with
 `latest.log` a convenience copy. An interrupted writer claim requires inspection before removal.
+The gate labels its uniquely named container and removes only a verified owned identity.
+A failed daemon query or removal fails the gate and retains the inspection-required writer claim.
+After interruption or unsuccessful CLI completion, an empty query establishes absence only at
+that observation; an in-flight creation request remains unconfirmed and retains the claim too.
+Inspect the recorded container name/label and daemon state before removing such a claim and retrying.
+CLI termination alone does not establish container cleanup. Obsolete inactive build trees and native volumes need no
+historical archive when their required failure reproducers and evidence are already retained.
 
 ## Complete execution and package evidence
 
