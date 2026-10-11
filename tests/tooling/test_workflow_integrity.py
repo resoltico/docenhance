@@ -230,9 +230,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
             ),
         ):
             with self.subTest(old=old):
-                self.assert_mutation_refused(
-                    ".github/workflows/nightly.yml", old, new, diagnostic
-                )
+                self.assert_mutation_refused(".github/workflows/nightly.yml", old, new, diagnostic)
         self.assert_mutation_refused(
             ".github/workflows/ci.yml",
             "retention-days: 7",
