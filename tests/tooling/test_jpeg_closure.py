@@ -16,6 +16,7 @@ class JpegTurboClosureTests(unittest.TestCase):
     """An innocent CMake option alone must not authorize a reviewed exclusion."""
 
     def test_compiled_and_installed_turbojpeg_are_refused(self) -> None:
+        """Refuse upstream TurboJPEG compilation and installed library files."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             build = root / "deps/jpeg"
