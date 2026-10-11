@@ -79,10 +79,12 @@ def source_entries(build: Path) -> list[tuple[Path, str]]:
             continue
         for path in [root, *sorted(root.rglob("*"))]:
             if path.is_symlink() or not (path.is_file() or path.is_dir()):
-                raise ValueError(f"Unsafe fuzz evidence entry: {path}")
+                message = f"Unsafe fuzz evidence entry: {path}"
+                raise ValueError(message)
             size += path.stat().st_size if path.is_file() else 0
             if size > MAX_SOURCE_BYTES or len(entries) >= MAX_FILES:
-                raise ValueError("Fuzz evidence exceeds the admitted archive budget")
+                message = "Fuzz evidence exceeds the admitted archive budget"
+                raise ValueError(message)
             entries.append((path, path.relative_to(build).as_posix()))
     return entries
 
@@ -90,7 +92,8 @@ def source_entries(build: Path) -> list[tuple[Path, str]]:
 def archive_evidence(build: Path, engine: str, commit: str, output: Path) -> dict[str, Any]:
     """Always archive a manifest; absent campaign evidence stays visibly unsuccessful."""
     if re.fullmatch("[0-9a-f]{40}", commit) is None:
-        raise ValueError("Expected an immutable 40-character source SHA")
+        message = "Expected an immutable 40-character source SHA"
+        raise ValueError(message)
     summary = describe(build, engine, commit)
     entries = source_entries(build)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -127,6 +130,7 @@ def archive_evidence(build: Path, engine: str, commit: str, output: Path) -> dic
 
 
 def main() -> int:
+    """Validate explicit provenance, retain archive bytes and summarize outcome."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
     parser.add_argument("--engine", choices=("afl", "libfuzzer"), required=True)
@@ -146,10 +150,11 @@ def main() -> int:
                     f"SHA-256: `{summary['archive_sha256']}`; "
                     f"commit: `{summary['source_commit']}`.\n"
                 )
-        return 0
     except (OSError, ValueError, TypeError, KeyError, tarfile.TarError) as error:
         print(f"Fuzz evidence publication failed: {error}")
         return 1
+    else:
+        return 0
 
 
 if __name__ == "__main__":
