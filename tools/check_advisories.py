@@ -153,7 +153,9 @@ def scan(cache: Path, report_path: Path | None = None) -> bool:
             )
             for advisory in findings:
                 accepted = reviewed(dependency, advisory, features)
-                verdict = "reviewed exclusion from configured build" if accepted else "REVIEW REQUIRED"
+                verdict = (
+                    "reviewed exclusion from configured build" if accepted else "REVIEW REQUIRED"
+                )
                 canonical = json.dumps(
                     {key: value for key, value in advisory.items() if key != "modified"},
                     sort_keys=True, separators=(",", ":")
