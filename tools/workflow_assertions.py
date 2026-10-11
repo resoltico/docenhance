@@ -14,9 +14,12 @@ def require_evidence_upload(
     job: dict[str, Any], *, name: str, path: str, artifact: str, days: int
 ) -> dict[str, Any]:
     """Failed jobs must upload an actual artifact; missing bytes are fatal."""
-    steps = [item for item in job.get("steps", []) if item.get("name") == name]
+    steps: list[dict[str, Any]] = [
+        item for item in job.get("steps", []) if item.get("name") == name
+    ]
     if len(steps) != 1:
-        raise ValueError(f"Required evidence upload missing or duplicated: {name}")
+        message = f"Required evidence upload missing or duplicated: {name}"
+        raise ValueError(message)
     step = steps[0]
     expected = {
         "name": artifact,
@@ -30,7 +33,8 @@ def require_evidence_upload(
         or step.get("with") != expected
         or step.get("continue-on-error", "false") != "false"
     ):
-        raise ValueError(f"Required evidence upload has unsafe settings: {name}")
+        message = f"Required evidence upload has unsafe settings: {name}"
+        raise ValueError(message)
     return step
 
 
