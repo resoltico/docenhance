@@ -170,13 +170,18 @@ def scan(cache: Path, report_path: Path | None = None) -> bool:
                 unreviewed |= not accepted
             persist()
         report["status"] = "review_required" if unreviewed else "reviewed_or_empty"
-        print("OSV database observations only; empty results do not prove absence of vulnerabilities.")
-        print("TIFF archive coverage uses OSS-Fuzz package version, not an exact Git-commit query.")
-        return not unreviewed
+        print(
+            "OSV database observations only; empty results do not prove absence of vulnerabilities."
+        )
+        print(
+            "TIFF archive coverage uses OSS-Fuzz package version, not an exact Git-commit query."
+        )
     except (OSError, ValueError, TypeError, RuntimeError, http.client.HTTPException) as error:
         report["status"] = "observation_failed"
         report["error"] = str(error)
         raise
+    else:
+        return not unreviewed
     finally:
         persist()
         if summary := os.getenv("GITHUB_STEP_SUMMARY"):
