@@ -6,10 +6,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import http.client
 import json
+import os
 import re
 import sys
+from datetime import UTC, datetime
 from http import HTTPStatus
 from pathlib import Path
 from typing import Any
@@ -109,34 +112,98 @@ def source_query(dependency: Dependency, cache: Path) -> dict[str, Any]:
     }
 
 
-def scan(cache: Path) -> bool:
-    """Report every source and match; reviewed exclusions remain visible source vulnerabilities."""
+def scan(cache: Path, report_path: Path | None = None) -> bool:
+    """Retain a complete or explicitly incomplete source-bound advisory observation."""
     features = (ROOT / "deps/features.json").read_bytes()
+    locked = (ROOT / "deps/lock.json").read_bytes()
+    report: dict[str, Any] = {
+        "schema_version": 1,
+        "observed_at": datetime.now(UTC).isoformat(),
+        "lock_sha256": hashlib.sha256(locked).hexdigest(),
+        "features_sha256": hashlib.sha256(features).hexdigest(),
+        "status": "incomplete",
+        "sources": [],
+    }
     unreviewed = False
-    for dependency in load_lock(ROOT / "deps/lock.json")["dependencies"]:
-        query = source_query(dependency, cache)
-        findings = matches(query)
+
+    def persist() -> None:
+        if report_path is None:
+            return
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = report_path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(report_path)
+
+    try:
+        for dependency in load_lock(ROOT / "deps/lock.json")["dependencies"]:
+            observation: dict[str, Any] = {
+                "name": dependency["name"],
+                "pinned_identity": dependency.get("object", dependency.get("digest")),
+                "findings": [],
+            }
+            report["sources"].append(observation)
+            persist()
+            query = source_query(dependency, cache)
+            observation["query"] = query
+            findings = matches(query)
+            print(
+                f"{dependency['name']}: {json.dumps(query, sort_keys=True)}; "
+                f"{len(findings)} matches",
+                flush=True,
+            )
+            for advisory in findings:
+                accepted = reviewed(dependency, advisory, features)
+                verdict = (
+                    "reviewed exclusion from configured build" if accepted else "REVIEW REQUIRED"
+                )
+                canonical = json.dumps(
+                    {key: value for key, value in advisory.items() if key != "modified"},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                observation["findings"].append(
+                    {
+                        "id": advisory["id"],
+                        "summary": advisory.get("summary", ""),
+                        "modified": advisory.get("modified"),
+                        "evidence_sha256": hashlib.sha256(canonical).hexdigest(),
+                        "reviewed_exclusion": accepted,
+                    }
+                )
+                print(f"  {advisory['id']}: {verdict}; {advisory.get('summary', '')}", flush=True)
+                unreviewed |= not accepted
+            persist()
+        report["status"] = "review_required" if unreviewed else "reviewed_or_empty"
         print(
-            f"{dependency['name']}: {json.dumps(query, sort_keys=True)}; {len(findings)} matches",
-            flush=True,
+            "OSV database observations only; empty results do not prove absence of vulnerabilities."
         )
-        for advisory in findings:
-            accepted = reviewed(dependency, advisory, features)
-            verdict = "reviewed exclusion from configured build" if accepted else "REVIEW REQUIRED"
-            print(f"  {advisory['id']}: {verdict}; {advisory.get('summary', '')}", flush=True)
-            unreviewed |= not accepted
-    print("OSV database observations only; empty results do not prove absence of vulnerabilities.")
-    print("TIFF archive coverage uses OSS-Fuzz package version, not an exact Git-commit query.")
-    return not unreviewed
+        print("TIFF archive coverage uses OSS-Fuzz package version, not an exact Git-commit query.")
+    except (OSError, ValueError, TypeError, RuntimeError, http.client.HTTPException) as error:
+        report["status"] = "observation_failed"
+        report["error"] = str(error)
+        raise
+    else:
+        return not unreviewed
+    finally:
+        persist()
+        if summary := os.getenv("GITHUB_STEP_SUMMARY"):
+            with Path(summary).open("a", encoding="utf-8") as output:
+                output.write(
+                    f"### Locked-source advisory observation\n\n"
+                    f"Status: **{report['status']}**; "
+                    f"sources visited: {len(report['sources'])}. "
+                    "A reviewed exclusion is not a repaired upstream source.\n"
+                )
 
 
 def main() -> int:
     """Network monitoring is development/CI tooling; product execution remains offline."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cache", type=Path, default=ROOT / ".cache/deps")
+    parser.add_argument("--report", type=Path, help="Atomically retain full or partial observation")
     args = parser.parse_args()
     try:
-        return 0 if scan(args.cache) else 1
+        return 0 if scan(args.cache, args.report) else 1
     except (OSError, ValueError, TypeError, RuntimeError, http.client.HTTPException) as error:
         print(f"Advisory observation failed: {error}", file=sys.stderr)
         return 1

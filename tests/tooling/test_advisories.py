@@ -100,7 +100,11 @@ class AdvisoryTests(unittest.TestCase):
         """Timestamp-only changes pass; changed vulnerability evidence, source or policy refuses."""
         dependencies = json.loads((ROOT / "deps/lock.json").read_bytes())["dependencies"]
         features = (ROOT / "deps/features.json").read_bytes()
-        for name, identifier in (("zlib", "CVE-2026-76844"), ("opencv", "OSV-2023-444")):
+        for name, identifier in (
+            ("zlib", "CVE-2026-76844"),
+            ("opencv", "OSV-2023-444"),
+            ("jpeg", "OSV-2026-1068"),
+        ):
             dependency = next(d for d in dependencies if d["name"] == name)
             advisory = json.loads(
                 (ROOT / "tests/fixtures/advisories" / (identifier + ".json")).read_bytes()
@@ -115,7 +119,11 @@ class AdvisoryTests(unittest.TestCase):
         """A valid observation timestamp cannot conceal any other changed advisory field."""
         dependencies = json.loads((ROOT / "deps/lock.json").read_bytes())["dependencies"]
         features = (ROOT / "deps/features.json").read_bytes()
-        for name, identifier in (("zlib", "CVE-2026-76844"), ("opencv", "OSV-2023-444")):
+        for name, identifier in (
+            ("zlib", "CVE-2026-76844"),
+            ("opencv", "OSV-2023-444"),
+            ("jpeg", "OSV-2026-1068"),
+        ):
             dependency = next(d for d in dependencies if d["name"] == name)
             advisory = json.loads(
                 (ROOT / "tests/fixtures/advisories" / (identifier + ".json")).read_bytes()

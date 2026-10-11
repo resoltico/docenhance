@@ -5,12 +5,12 @@
 from __future__ import annotations
 
 import json
-import re
 from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from ci_contract import JOB_TITLES, NATIVE_RUNNERS, SANITIZERS, require_workflow_coverage
+from ci_contract import NATIVE_RUNNERS, SANITIZERS, require_workflow_coverage
+from workflow_assertions import action_errors, aggregate_job, require_evidence_upload
 from workflow_cache import source_cache
 from workflow_config import python_errors, workflow
 
@@ -122,34 +122,40 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
         f"python tools/run_fuzz_campaign.py --plan --seconds {seconds} "
         f"--jobs 4 --job-budget {budget}",
     )
-    required_step(job, "ctest --preset ${{ matrix.preset }} --output-on-failure")
-
-
-def aggregate_job(document: dict[str, Any]) -> None:
-    """The always-running aggregate refuses every non-success result from every required job."""
-    names = set(JOB_TITLES) - {"gate"}
-    gate = document["jobs"]["gate"]
-    if set(document["jobs"]) != names | {"gate"} or set(gate.get("needs", [])) != names:
-        msg = "Aggregate must depend on every required quality job"
-        raise ValueError(msg)
-    if gate.get("if") != "always()" or gate.get("continue-on-error", "false") != "false":
-        msg = "Aggregate must run and refuse non-success results"
-        raise ValueError(msg)
-    variables = {f"{name.upper()}_RESULT": f"${{{{ needs.{name}.result }}}}" for name in names}
-    lines = {f'test "${variable}" = success' for variable in variables}
-    steps = gate.get("steps", [])
-    if len(steps) != 1 or set(steps[0].get("run", "").strip().splitlines()) != lines:
-        msg = "Aggregate must execute each actual result assertion"
-        raise ValueError(msg)
-    step = steps[0]
-    if (
-        step.get("env") != variables
-        or step.get("shell") != "bash"
-        or "if" in step
-        or step.get("continue-on-error", "false") != "false"
+    campaign_step = required_step(job, "ctest --preset ${{ matrix.preset }} --output-on-failure")
+    triage_step = required_step(
+        job,
+        "python tools/triage_fuzz_findings.py --build out/${{ matrix.preset }}/app "
+        "--engine ${{ matrix.engine }}",
+        "always()",
+    )
+    archive_step = required_step(
+        job,
+        "python tools/package_fuzz_evidence.py --build out/${{ matrix.preset }}/app "
+        "--engine ${{ matrix.engine }} --commit ${{ github.sha }} "
+        "--output out/${{ matrix.preset }}/fuzz-evidence.tar.gz",
+        "always()",
+    )
+    upload = require_evidence_upload(
+        job,
+        name="Upload campaign evidence" if nightly else "Upload fuzz evidence",
+        path="out/${{ matrix.preset }}/fuzz-evidence.tar.gz",
+        artifact=(
+            "campaign-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}"
+            if nightly
+            else "fuzz-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}"
+        ),
+        days=30 if nightly else 7,
+    )
+    steps = job["steps"]
+    if not (
+        steps.index(campaign_step)
+        < steps.index(triage_step)
+        < steps.index(archive_step)
+        < steps.index(upload)
     ):
-        msg = "Aggregate result bindings and fatal Bash execution must agree"
-        raise ValueError(msg)
+        message = "Fuzz evidence steps must follow campaign execution"
+        raise ValueError(message)
 
 
 def quality_workflow(document: dict[str, Any], major: str) -> None:
@@ -189,29 +195,6 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     aggregate_job(document)
 
 
-def action_errors(document: dict[str, Any]) -> list[str]:
-    """Inspect actual Action fields and trigger keys, excluding comments and decorative strings."""
-    actions = [job.get("uses", "") for job in document.get("jobs", {}).values()]
-    actions += [
-        step["uses"]
-        for job in document.get("jobs", {}).values()
-        for step in job.get("steps", [])
-        if "uses" in step
-    ]
-    errors = [
-        f"Unpinned action: {action}"
-        for action in actions
-        if action
-        and not action.startswith("./")
-        and not re.fullmatch(r"[^@]+@[0-9a-f]{40}", action)
-    ]
-    if "pull_request_target" in document.get("on", {}):
-        errors.append("Privileged pull-request trigger prohibited")
-    if "defaults" in document:
-        errors.append("Workflow execution defaults may not remap required checks")
-    return errors
-
-
 def hook_errors(root: Path) -> list[str]:
     """The actual local hook invokes the aggregate without optional stages or arguments."""
     hooks = workflow(root / ".pre-commit-config.yaml")
@@ -236,6 +219,34 @@ def hook_errors(root: Path) -> list[str]:
     return []
 
 
+def nightly_workflow(document: dict[str, Any], major: str) -> None:
+    """Require queued nightly runs, strict OSV observations and complete fuzz/sanitizer coverage."""
+    if document.get("concurrency") != {
+        "group": "nightly-${{ github.workflow }}-${{ github.ref }}",
+        "cancel-in-progress": "false",
+        "queue": "max",
+    }:
+        message = "Nightly concurrency must retain complete pending runs"
+        raise ValueError(message)
+    advisories = required_job(document, "advisories")
+    source_cache(advisories, required_step(advisories, "python tools/deps.py fetch"))
+    scan = required_step(
+        advisories, "python tools/check_advisories.py --report out/advisories/report.json"
+    )
+    upload = require_evidence_upload(
+        advisories,
+        name="Upload source-bound advisory observations",
+        path="out/advisories/report.json",
+        artifact="advisory-${{ github.run_id }}-${{ github.run_attempt }}",
+        days=30,
+    )
+    if advisories["steps"].index(upload) <= advisories["steps"].index(scan):
+        message = "Advisory evidence must be uploaded after observation"
+        raise ValueError(message)
+    sanitizer_job(document, major)
+    fuzz_job(document, major, nightly=True)
+
+
 def integrity_errors(root: Path) -> list[str]:
     """Run semantic checks with file-specific diagnostics and no false success on parse failure."""
     try:
@@ -256,11 +267,7 @@ def integrity_errors(root: Path) -> list[str]:
             if path.name == "ci.yml":
                 quality_workflow(document, major)
             elif path.name == "nightly.yml":
-                advisories = required_job(document, "advisories")
-                source_cache(advisories, required_step(advisories, "python tools/deps.py fetch"))
-                required_step(advisories, "python tools/check_advisories.py")
-                sanitizer_job(document, major)
-                fuzz_job(document, major, nightly=True)
+                nightly_workflow(document, major)
             elif path.name == "source.yml":
                 required_step(required_job(document, "source"), SOURCE_GATE)
                 source = document["jobs"]["source"]

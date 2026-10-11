@@ -35,10 +35,13 @@ void populate(LinearFixture& source, const std::vector<double>& values) {
         }
     }
 }
-void check_reference_row(std::span<const double> row, std::span<const double> expected) {
+void check_reference_row(std::span<const double> row, std::span<const double> entering,
+                         std::span<const double> expected) {
     for (std::size_t x = 0; x < expected.size(); ++x) {
-        const auto actual = image::srgb_encode(row[x * image::rgb_channels]).value();
-        CHECK(std::abs(actual - std::clamp(expected[x], 0.0, 1.0)) < 1e-12);
+        const auto linear = sharpen_reference_linear_output(
+            sharpen_reference_srgb_decode(entering[x]), entering[x], expected[x]);
+        CHECK(sharpen_reference_gray_rgb_matches(
+            row.subspan(x * image::rgb_channels, image::rgb_channels), linear));
     }
 }
 void check_reference_case(image::Extent extent, double sigma) {
@@ -64,8 +67,10 @@ void check_reference_case(image::Extent extent, double sigma) {
     for (std::uint32_t y = 0; y < extent.height; ++y) {
         const auto row = source.row(y);
         REQUIRE(model->apply({.row = y, .first = 0}, row, {}, report, {}));
-        check_reference_row(row, std::span<const double>{expected}.subspan(
-                                     std::size_t{y} * extent.width, extent.width));
+        check_reference_row(
+            row,
+            std::span<const double>{values}.subspan(std::size_t{y} * extent.width, extent.width),
+            std::span<const double>{expected}.subspan(std::size_t{y} * extent.width, extent.width));
     }
     CHECK(report.evaluated_samples == values.size());
     const auto range = report.pre_clamp.value_or(methods::ExcursionRange{
@@ -93,6 +98,29 @@ bool check_preparation_cancel(LinearFixture& source, const methods::Unsharp& met
     return completed;
 }
 } // namespace
+TEST_CASE("Independent sharpening oracle preserves sRGB knot and detects every RGB mutation",
+          "[sharpening]") {
+    // The published piecewise sRGB constants have a tiny forward/inverse discontinuity.
+    // The old encode(actual) == raw candidate check would reject a correct linear output.
+    constexpr double encoded_knot_neighbor = 0.0404499671;
+    const auto expected = sharpen_reference_srgb_decode(encoded_knot_neighbor);
+    CHECK(std::abs(sharpen_reference_srgb_encode(expected) - encoded_knot_neighbor) > 2e-12);
+    CHECK(sharpen_reference_linear_output(0.25, encoded_knot_neighbor, encoded_knot_neighbor) ==
+          0.25);
+    CHECK(sharpen_reference_linear_output(0.25, encoded_knot_neighbor,
+                                          encoded_knot_neighbor + 0.01) != 0.25);
+    for (const auto encoded : std::array{0.0, 0.0404499671, 0.04045, 0.04045001, 0.5, 1.0}) {
+        const auto linear = sharpen_reference_srgb_decode(encoded);
+        std::array<double, image::rgb_channels> channels{linear, linear, linear};
+        CHECK(sharpen_reference_gray_rgb_matches(channels, linear));
+        for (auto& component : channels) {
+            component += 1e-5;
+            CHECK(!sharpen_reference_gray_rgb_matches(channels, linear));
+            component -= 1e-5;
+        }
+    }
+}
+
 TEST_CASE("Unsharp soft threshold uses signed residual and public byte-equivalent units",
           "[sharpening]") {
     const auto method =

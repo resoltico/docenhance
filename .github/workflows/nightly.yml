@@ -10,8 +10,9 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: fuzz-campaign
+  group: nightly-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
+  queue: max
 jobs:
   advisories:
     name: Locked source advisory review
@@ -43,7 +44,15 @@ jobs:
             .cache/deps/sources
             .cache/deps/receipts
           key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
-      - run: python tools/check_advisories.py
+      - run: python tools/check_advisories.py --report out/advisories/report.json
+      - name: Upload source-bound advisory observations
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: advisory-${{ github.run_id }}-${{ github.run_attempt }}
+          path: out/advisories/report.json
+          if-no-files-found: error
+          retention-days: 30
   sanitize:
     name: Sanitized / ${{ matrix.preset }}
     strategy:
@@ -173,17 +182,17 @@ jobs:
           cmake --build --preset ${{ matrix.preset }}
       - name: Fuzz every CTest-registered target
         run: ctest --preset ${{ matrix.preset }} --output-on-failure
-      - name: Retain campaign evidence
+      - name: Replay saved findings for diagnosis
         if: always()
-        shell: bash
-        run: |
-          mkdir -p out/${{ matrix.preset }}/app/fuzz-work out/${{ matrix.preset }}/app/Testing/Temporary
-          tar -czf out/${{ matrix.preset }}/fuzz-evidence.tar.gz -C out/${{ matrix.preset }}/app fuzz-work Testing/Temporary
+        run: python tools/triage_fuzz_findings.py --build out/${{ matrix.preset }}/app --engine ${{ matrix.engine }}
+      - name: Package complete campaign or explicit setup-failure diagnostics
+        if: always()
+        run: python tools/package_fuzz_evidence.py --build out/${{ matrix.preset }}/app --engine ${{ matrix.engine }} --commit ${{ github.sha }} --output out/${{ matrix.preset }}/fuzz-evidence.tar.gz
       - name: Upload campaign evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: campaign-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: out/${{ matrix.preset }}/fuzz-evidence.tar.gz
-          if-no-files-found: warn
-          retention-days: 7
+          if-no-files-found: error
+          retention-days: 30
