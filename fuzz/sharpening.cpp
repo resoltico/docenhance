@@ -40,12 +40,14 @@ class Source final : public docenhance::image::LinearSource {
         }
         return {};
     }
+    [[nodiscard]] double linear(std::size_t index) const {
+        return values_.at(index);
+    }
     [[nodiscard]] std::vector<double> perceptual() const {
         std::vector<double> result;
         result.reserve(values_.size());
         for (const auto linear : values_) {
-            result.push_back(linear <= 0.0031308 ? 12.92 * linear
-                                                 : (1.055 * std::pow(linear, 1 / 2.4)) - 0.055);
+            result.push_back(docenhance::tests::sharpen_reference_srgb_encode(linear));
         }
         return result;
     }
@@ -66,7 +68,8 @@ void scalar_check(docenhance::fuzz::FuzzInput& input, const docenhance::methods:
                               "independent piecewise soft threshold");
 }
 void reconstruct(const docenhance::methods::SharpenModel& model, Source& source,
-                 docenhance::methods::SharpenReport& report, const std::vector<double>& expected) {
+                 docenhance::methods::SharpenReport& report,
+                 const std::vector<double>& entering, const std::vector<double>& expected) {
     namespace image = docenhance::image;
     using docenhance::fuzz::require;
     std::array<double, Source::width * image::rgb_channels> rgb{};
@@ -80,11 +83,14 @@ void reconstruct(const docenhance::methods::SharpenModel& model, Source& source,
                 "immutable sharpening replay");
         require(rgb == verification, "replay samples identical");
         for (std::size_t x = 0; x < Source::width; ++x) {
-            const auto actual = image::srgb_encode(rgb.at(x * image::rgb_channels));
-            require(actual && std::abs(*actual -
-                                       std::clamp(expected.at((std::size_t{y} * Source::width) + x),
-                                                  0.0, 1.0)) < 2e-12,
-                    "independent direct 2D Gaussian and soft-threshold output");
+            const auto index = (std::size_t{y} * Source::width) + x;
+            const auto target = docenhance::tests::sharpen_reference_linear_output(
+                source.linear(index), entering.at(index), expected.at(index));
+            require(docenhance::tests::sharpen_reference_gray_rgb_matches(
+                        std::span<const double>{rgb}.subspan(x * image::rgb_channels,
+                                                               image::rgb_channels),
+                        target),
+                    "independent direct 2D Gaussian and linear RGB output");
         }
         require(
             std::ranges::all_of(rgb, [](double p) { return std::isfinite(p) && p >= 0 && p <= 1; }),
@@ -114,15 +120,16 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     if (!model->active()) {
         return 0;
     }
+    const auto entering = source.perceptual();
     const auto expected =
-        docenhance::tests::sharpen_reference(source.perceptual(), {
+        docenhance::tests::sharpen_reference(entering, {
                                                                       .width = Source::width,
                                                                       .height = Source::height,
                                                                       .sigma = sigma,
                                                                       .amount = amount,
                                                                       .threshold = threshold,
                                                                   });
-    reconstruct(*model, source, report, expected);
+    reconstruct(*model, source, report, entering, expected);
     report.complete = true;
     report.status = report.changed_samples == 0 ? methods::SharpenStatus::no_change
                                                 : methods::SharpenStatus::applied;
