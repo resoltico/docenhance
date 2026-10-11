@@ -7,9 +7,9 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import os
 import http.client
 import json
+import os
 import re
 import sys
 from datetime import UTC, datetime
@@ -131,8 +131,7 @@ def scan(cache: Path, report_path: Path | None = None) -> bool:
             return
         report_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = report_path.with_suffix(".tmp")
-        temporary.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n",
-                             encoding="utf-8")
+        temporary.write_text(json.dumps(report, sort_keys=True, indent=2) + "\n", encoding="utf-8")
         temporary.replace(report_path)
 
     try:
@@ -149,7 +148,8 @@ def scan(cache: Path, report_path: Path | None = None) -> bool:
             findings = matches(query)
             print(
                 f"{dependency['name']}: {json.dumps(query, sort_keys=True)}; "
-                f"{len(findings)} matches", flush=True
+                f"{len(findings)} matches",
+                flush=True,
             )
             for advisory in findings:
                 accepted = reviewed(dependency, advisory, features)
@@ -158,26 +158,26 @@ def scan(cache: Path, report_path: Path | None = None) -> bool:
                 )
                 canonical = json.dumps(
                     {key: value for key, value in advisory.items() if key != "modified"},
-                    sort_keys=True, separators=(",", ":")
+                    sort_keys=True,
+                    separators=(",", ":"),
                 ).encode("utf-8")
-                observation["findings"].append({
-                    "id": advisory["id"],
-                    "summary": advisory.get("summary", ""),
-                    "modified": advisory.get("modified"),
-                    "evidence_sha256": hashlib.sha256(canonical).hexdigest(),
-                    "reviewed_exclusion": accepted,
-                })
-                print(f"  {advisory['id']}: {verdict}; {advisory.get('summary', '')}",
-                      flush=True)
+                observation["findings"].append(
+                    {
+                        "id": advisory["id"],
+                        "summary": advisory.get("summary", ""),
+                        "modified": advisory.get("modified"),
+                        "evidence_sha256": hashlib.sha256(canonical).hexdigest(),
+                        "reviewed_exclusion": accepted,
+                    }
+                )
+                print(f"  {advisory['id']}: {verdict}; {advisory.get('summary', '')}", flush=True)
                 unreviewed |= not accepted
             persist()
         report["status"] = "review_required" if unreviewed else "reviewed_or_empty"
         print(
             "OSV database observations only; empty results do not prove absence of vulnerabilities."
         )
-        print(
-            "TIFF archive coverage uses OSS-Fuzz package version, not an exact Git-commit query."
-        )
+        print("TIFF archive coverage uses OSS-Fuzz package version, not an exact Git-commit query.")
     except (OSError, ValueError, TypeError, RuntimeError, http.client.HTTPException) as error:
         report["status"] = "observation_failed"
         report["error"] = str(error)

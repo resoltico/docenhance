@@ -107,8 +107,8 @@ TEST_CASE("Independent sharpening oracle preserves sRGB knot and detects every R
     CHECK(std::abs(sharpen_reference_srgb_encode(expected) - encoded_knot_neighbor) > 2e-12);
     CHECK(sharpen_reference_linear_output(0.25, encoded_knot_neighbor, encoded_knot_neighbor) ==
           0.25);
-    CHECK(sharpen_reference_linear_output(0.25, encoded_knot_neighbor, encoded_knot_neighbor + 0.01) !=
-          0.25);
+    CHECK(sharpen_reference_linear_output(0.25, encoded_knot_neighbor,
+                                          encoded_knot_neighbor + 0.01) != 0.25);
     for (const auto encoded : std::array{0.0, 0.0404499671, 0.04045, 0.04045001, 0.5, 1.0}) {
         const auto linear = sharpen_reference_srgb_decode(encoded);
         std::array<double, image::rgb_channels> channels{linear, linear, linear};

@@ -68,8 +68,8 @@ void scalar_check(docenhance::fuzz::FuzzInput& input, const docenhance::methods:
                               "independent piecewise soft threshold");
 }
 void reconstruct(const docenhance::methods::SharpenModel& model, Source& source,
-                 docenhance::methods::SharpenReport& report,
-                 const std::vector<double>& entering, const std::vector<double>& expected) {
+                 docenhance::methods::SharpenReport& report, const std::vector<double>& entering,
+                 const std::vector<double>& expected) {
     namespace image = docenhance::image;
     using docenhance::fuzz::require;
     std::array<double, Source::width * image::rgb_channels> rgb{};
@@ -88,7 +88,7 @@ void reconstruct(const docenhance::methods::SharpenModel& model, Source& source,
                 source.linear(index), entering.at(index), expected.at(index));
             require(docenhance::tests::sharpen_reference_gray_rgb_matches(
                         std::span<const double>{rgb}.subspan(x * image::rgb_channels,
-                                                               image::rgb_channels),
+                                                             image::rgb_channels),
                         target),
                     "independent direct 2D Gaussian and linear RGB output");
         }
@@ -123,12 +123,12 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     const auto entering = source.perceptual();
     const auto expected =
         docenhance::tests::sharpen_reference(entering, {
-                                                                      .width = Source::width,
-                                                                      .height = Source::height,
-                                                                      .sigma = sigma,
-                                                                      .amount = amount,
-                                                                      .threshold = threshold,
-                                                                  });
+                                                           .width = Source::width,
+                                                           .height = Source::height,
+                                                           .sigma = sigma,
+                                                           .amount = amount,
+                                                           .threshold = threshold,
+                                                       });
     reconstruct(*model, source, report, entering, expected);
     report.complete = true;
     report.status = report.changed_samples == 0 ? methods::SharpenStatus::no_change

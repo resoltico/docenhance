@@ -149,8 +149,10 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
     )
     steps = job["steps"]
     if not (
-        steps.index(campaign_step) < steps.index(triage_step)
-        < steps.index(archive_step) < steps.index(upload)
+        steps.index(campaign_step)
+        < steps.index(triage_step)
+        < steps.index(archive_step)
+        < steps.index(upload)
     ):
         message = "Fuzz evidence steps must follow campaign execution"
         raise ValueError(message)

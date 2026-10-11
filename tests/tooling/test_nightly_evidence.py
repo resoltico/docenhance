@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
-import tarfile
 
 from tools_path import ROOT
 
@@ -46,19 +46,20 @@ class NightlyEvidenceTests(unittest.TestCase):
             (work / "campaign.json").write_text(json.dumps({"passed": True}))
             (work / "ctest.xml").write_text("<testsuites/>")
             (work / "ctest.log").write_text("fake")
-            self.assertEqual(describe(build, "afl", "a" * 40)["state"],
-                             "campaign_failed_or_incomplete")
+            self.assertEqual(
+                describe(build, "afl", "a" * 40)["state"], "campaign_failed_or_incomplete"
+            )
             for target in targets():
                 child = work / f"{target.name}-sample"
                 child.mkdir()
                 (child / "result.json").write_text(
                     json.dumps({"target": target.name, "passed": True})
                 )
-            self.assertEqual(describe(build, "afl", "a" * 40)["state"],
-                             "complete_campaign")
+            self.assertEqual(describe(build, "afl", "a" * 40)["state"], "complete_campaign")
             (work / f"{targets()[0].name}-sample/result.json").unlink()
-            self.assertEqual(describe(build, "afl", "a" * 40)["state"],
-                             "campaign_failed_or_incomplete")
+            self.assertEqual(
+                describe(build, "afl", "a" * 40)["state"], "campaign_failed_or_incomplete"
+            )
 
     def test_unsafe_evidence_and_unpinned_source_are_rejected(self) -> None:
         """Reject symlinked data and nonimmutable source identity."""
@@ -94,15 +95,22 @@ class NightlyEvidenceTests(unittest.TestCase):
                 "findings": ["afl/default/crashes/id000000"],
             }
             (target / "result.json").write_text(json.dumps(report))
-            with patch("triage_fuzz_findings.replay", return_value={
-                "exit_code": -6, "timed_out": False, "reproduced": True,
-                "output": "fuzz property violated: synthetic", "truncated": False,
-            }) as runner:
+            with patch(
+                "triage_fuzz_findings.replay",
+                return_value={
+                    "exit_code": -6,
+                    "timed_out": False,
+                    "reproduced": True,
+                    "output": "fuzz property violated: synthetic",
+                    "truncated": False,
+                },
+            ) as runner:
                 result = triage(build, "afl")
                 self.assertEqual(result["status"], "complete")
                 self.assertEqual(len(result["cases"]), 1)
-                self.assertEqual(result["cases"][0]["sha256"],
-                                 hashlib.sha256(finding.read_bytes()).hexdigest())
+                self.assertEqual(
+                    result["cases"][0]["sha256"], hashlib.sha256(finding.read_bytes()).hexdigest()
+                )
                 runner.assert_called_once()
             binary.write_bytes(b"changed executable identity")
             with self.assertRaises(ValueError):

@@ -32,9 +32,7 @@ class JpegTurboClosureTests(unittest.TestCase):
 
             for source in ("/source/src/turbojpeg.c", "/source/src/turbojpeg-mp.c"):
                 with self.subTest(source=source):
-                    compile_database.write_text(
-                        json.dumps([{"file": source}]), encoding="utf-8"
-                    )
+                    compile_database.write_text(json.dumps([{"file": source}]), encoding="utf-8")
                     self.assertIn("translation unit", jpeg_turbo_failures(build)[0])
             compile_database.write_text(
                 json.dumps([{"file": "/source/src/jdapimin.c"}]), encoding="utf-8"
