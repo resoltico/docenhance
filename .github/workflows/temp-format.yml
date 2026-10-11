@@ -42,7 +42,7 @@ jobs:
             tools/triage_fuzz_findings.py \
             tools/workflow_assertions.py \
             tools/workflow_integrity.py
-          python -m clang_format -i \
+          clang-format -i \
             fuzz/sharpening.cpp \
             tests/support/sharpen_reference.hpp \
             tests/unit/sharpening.cpp
