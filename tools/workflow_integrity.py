@@ -152,7 +152,8 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
         steps.index(campaign_step) < steps.index(triage_step)
         < steps.index(archive_step) < steps.index(upload)
     ):
-        raise ValueError("Fuzz evidence steps must follow campaign execution")
+        message = "Fuzz evidence steps must follow campaign execution"
+        raise ValueError(message)
 
 
 def quality_workflow(document: dict[str, Any], major: str) -> None:
@@ -216,6 +217,34 @@ def hook_errors(root: Path) -> list[str]:
     return []
 
 
+def nightly_workflow(document: dict[str, Any], major: str) -> None:
+    """Require queued nightly runs, strict OSV observations and complete fuzz/sanitizer coverage."""
+    if document.get("concurrency") != {
+        "group": "nightly-${{ github.workflow }}-${{ github.ref }}",
+        "cancel-in-progress": "false",
+        "queue": "max",
+    }:
+        message = "Nightly concurrency must retain complete pending runs"
+        raise ValueError(message)
+    advisories = required_job(document, "advisories")
+    source_cache(advisories, required_step(advisories, "python tools/deps.py fetch"))
+    scan = required_step(
+        advisories, "python tools/check_advisories.py --report out/advisories/report.json"
+    )
+    upload = require_evidence_upload(
+        advisories,
+        name="Upload source-bound advisory observations",
+        path="out/advisories/report.json",
+        artifact="advisory-${{ github.run_id }}-${{ github.run_attempt }}",
+        days=30,
+    )
+    if advisories["steps"].index(upload) <= advisories["steps"].index(scan):
+        message = "Advisory evidence must be uploaded after observation"
+        raise ValueError(message)
+    sanitizer_job(document, major)
+    fuzz_job(document, major, nightly=True)
+
+
 def integrity_errors(root: Path) -> list[str]:
     """Run semantic checks with file-specific diagnostics and no false success on parse failure."""
     try:
@@ -236,29 +265,7 @@ def integrity_errors(root: Path) -> list[str]:
             if path.name == "ci.yml":
                 quality_workflow(document, major)
             elif path.name == "nightly.yml":
-                if document.get("concurrency") != {
-                    "group": "nightly-${{ github.workflow }}-${{ github.ref }}",
-                    "cancel-in-progress": "false",
-                    "queue": "max",
-                }:
-                    raise ValueError("Nightly concurrency must retain complete pending runs")
-                advisories = required_job(document, "advisories")
-                source_cache(advisories, required_step(advisories, "python tools/deps.py fetch"))
-                scan = required_step(
-                    advisories,
-                    "python tools/check_advisories.py --report out/advisories/report.json",
-                )
-                upload = require_evidence_upload(
-                    advisories,
-                    name="Upload source-bound advisory observations",
-                    path="out/advisories/report.json",
-                    artifact="advisory-${{ github.run_id }}-${{ github.run_attempt }}",
-                    days=30,
-                )
-                if advisories["steps"].index(upload) <= advisories["steps"].index(scan):
-                    raise ValueError("Advisory evidence must be uploaded after observation")
-                sanitizer_job(document, major)
-                fuzz_job(document, major, nightly=True)
+                nightly_workflow(document, major)
             elif path.name == "source.yml":
                 required_step(required_job(document, "source"), SOURCE_GATE)
                 source = document["jobs"]["source"]
