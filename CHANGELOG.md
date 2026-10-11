@@ -35,9 +35,13 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Fixed
 
+- Verification supervisors now clean their owned POSIX process groups after timeouts and termination, including descendants that outlive their direct parent. Linux gates reconcile their uniquely labelled daemon container independently of the Docker CLI and retain the writer claim when creation or cleanup remains unconfirmed. Windows cleanup covers the direct child only; unconfirmed cleanup fails verification. Committed-source packaging avoids a Git pipe deadlock on large blob inventories.
+
 - Zero-width/height PNG input now returns `E_INPUT` (exit 3) before resource arithmetic in continuous and binary modes; genuinely excessive positive dimensions retain `E_RESOURCE` (exit 4). No resource ceiling or numerical default changes.
 
 ### Internal
+
+- Linux gate caches separate verified locked sources from native build recipes, avoiding repeated source copies when compiler/build configuration changes. Native and fuzz execution retain bounded waits and independent interruption/permission failure controls. Successful fuzz runs discard staged/generated inputs after process joins, retaining seed provenance, logs and statistics; failed engine runs preserve investigation inputs.
 
 - Fuzz regression oracles distinguish JSON flag/value roles and reject accidental zero-dimension decoding or processing after refused admission. AFL tooling rejects startup seed failures and inherited engine overrides, retains engine failure diagnostics and findings when statistics are absent, and failure audits reject executable identity changes.
 

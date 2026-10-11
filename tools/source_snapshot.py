@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path, PurePosixPath
 
 from dep_verify import command_environment, run
@@ -39,33 +40,39 @@ def snapshot(root: Path) -> dict[str, bytes]:
     if git is None:
         msg = "Git is required for committed source packaging"
         raise ValueError(msg)
-    result = subprocess.run(
-        [git, "-c", f"safe.directory={root.resolve()}", "cat-file", "--batch"],
-        input=requested.encode(),
-        capture_output=True,
-        cwd=root,
-        env=command_environment(),
-        check=True,
-        timeout=60,
-    )
+    # A regular input file avoids simultaneous blocking writes to Git's two batch pipes.
+    with tempfile.TemporaryFile() as requests:
+        requests.write(requested.encode())
+        requests.seek(0)
+        result = subprocess.run(
+            [git, "-c", f"safe.directory={root.resolve()}", "cat-file", "--batch"],
+            stdin=requests,
+            capture_output=True,
+            cwd=root,
+            env=command_environment(),
+            check=True,
+            timeout=60,
+        )
     data = result.stdout
     files = {}
+    offset = 0
     for name, identity in records:
-        header, data = data.split(b"\n", 1)
-        found, kind, size = header.decode("ascii").split()
+        end = data.index(b"\n", offset)
+        found, kind, size = data[offset:end].decode("ascii").split()
+        offset = end + 1
         count = int(size)
         if (
             found != identity
             or kind != "blob"
             or count < 0
-            or len(data) < count + 1
-            or data[count : count + 1] != b"\n"
+            or len(data) - offset < count + 1
+            or data[offset + count : offset + count + 1] != b"\n"
         ):
             msg = "Committed source blob response is incomplete or mismatched"
             raise ValueError(msg)
-        files[name] = data[:count]
-        data = data[count + 1 :]
-    if data or not files:
+        files[name] = data[offset : offset + count]
+        offset += count + 1
+    if offset != len(data) or not files:
         msg = "Committed source snapshot is empty or contains unexpected data"
         raise ValueError(msg)
     return files

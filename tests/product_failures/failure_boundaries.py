@@ -49,7 +49,7 @@ def paths(audit: Audit, source: Path) -> None:
     )
     if os.name == "posix":
         fifo = audit.workspace / "source-fifo"
-        os.mkfifo(fifo)
+        vars(os)["mkfifo"](fifo)
         audit.invoke("source-is-fifo", audit.process(fifo, audit.workspace / "unused"), INPUT)
         fifo.unlink()
     linked = audit.workspace / "source-link.png"

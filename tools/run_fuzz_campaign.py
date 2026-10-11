@@ -16,7 +16,7 @@ from typing import Any
 
 from architecture import ArchitectureError, load_manifest
 from architecture_build import client_violations
-from fuzz_execution import bounded_process, new_directory, write_json
+from fuzz_execution import new_directory, write_json
 from fuzz_instrumentation import inspect_archives
 from fuzz_manifest import (
     DEFAULT_JOBS,
@@ -29,6 +29,7 @@ from fuzz_manifest import (
     target_timeout,
     targets,
 )
+from process_execution import bounded_process
 from test_evidence import complete_junit
 
 

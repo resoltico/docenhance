@@ -53,8 +53,11 @@ class LinuxGateTests(unittest.TestCase):
             for name in ("tools.json", "lock.json", "features.json"):
                 (root / "deps" / name).write_text("{}", encoding="utf-8")
             (root / ".cache/deps").mkdir(parents=True)
+            (root / "tools").mkdir()
+            for name in ("dep_acquire.py", "dep_verify.py"):
+                (root / "tools" / name).write_text("fixture")
             with patch("check_linux.docker_executable", return_value="/usr/bin/docker"):
-                arguments = check_linux.run_arguments("image", "linux/arm64", root)
+                arguments = check_linux.run_arguments("image", "linux/arm64", "gate", "token", root)
             mounts = [
                 arguments[i + 1] for i, argument in enumerate(arguments) if argument == "--mount"
             ]
@@ -122,13 +125,34 @@ class LinuxGateTests(unittest.TestCase):
             (root / "deps").mkdir()
             for name in ("tools.json", "lock.json", "features.json"):
                 (root / "deps" / name).write_text("{}")
+            (root / "tools").mkdir()
+            for name in ("dep_acquire.py", "dep_verify.py"):
+                (root / "tools" / name).write_text("fixture")
             with patch("check_linux.docker_executable", return_value="docker"):
                 for jobs in ("02", "0", "65", "-1", "1.0"):
                     with (
                         patch.dict("check_linux.os.environ", {"DE_BUILD_JOBS": jobs}),
                         self.assertRaises(ValueError),
                     ):
-                        check_linux.run_arguments("image", "linux/arm64", root)
+                        check_linux.run_arguments("image", "linux/arm64", "gate", "token", root)
+
+    def test_source_cache_does_not_duplicate_native_recipes(self) -> None:
+        """Source pins govern sharing; compiler recipes still isolate native outputs."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("deps/lock.json", "tools/dep_acquire.py", "tools/dep_verify.py"):
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("source contract")
+            original = check_linux.source_cache_identity(root)
+            (root / "cmake").mkdir()
+            (root / "cmake/recipe.cmake").write_text("native recipe changed")
+            self.assertEqual(original, check_linux.source_cache_identity(root))
+            (root / "deps/lock.json").write_text("different immutable source")
+            self.assertNotEqual(original, check_linux.source_cache_identity(root))
+            before = check_linux.source_cache_identity(root)
+            (root / "tools/dep_verify.py").write_text("different verification")
+            self.assertNotEqual(before, check_linux.source_cache_identity(root))
 
     def test_missing_docker_and_failed_subprocess_are_failures(self) -> None:
         """Unavailable engines and nonzero native results cannot be reported as a pass."""
@@ -136,7 +160,7 @@ class LinuxGateTests(unittest.TestCase):
             check_linux.docker_executable()
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "log"
-            with patch("check_linux.subprocess.run") as run:
-                run.return_value.returncode = 9
+            with patch("check_linux.owned_process") as run:
+                run.return_value.__enter__.return_value.wait.return_value = 9
                 self.assertFalse(check_linux.invoke(["/usr/bin/false"], log))
             self.assertIn("/usr/bin/false", log.read_text())

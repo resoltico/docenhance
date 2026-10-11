@@ -12,22 +12,11 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import signal
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from fuzz_execution import Run, execute
 from fuzz_manifest import DEFAULT_SECONDS, FuzzError, duration, targets
-
-if TYPE_CHECKING:
-    from types import FrameType
-
-
-def interrupted(_signum: int, _frame: FrameType | None) -> None:
-    """Unwind on CTest cancellation so the engine group is killed and evidence is retained."""
-    msg = "Fuzz execution interrupted"
-    raise InterruptedError(msg)
 
 
 def main() -> int:
@@ -42,8 +31,6 @@ def main() -> int:
     parser.add_argument("--seconds", type=duration, default=DEFAULT_SECONDS)
     parser.add_argument("--engine", choices=["libfuzzer", "afl"], default="libfuzzer")
     args = parser.parse_args()
-    if os.name == "posix":
-        signal.signal(signal.SIGTERM, interrupted)
     # The campaign owns a fresh parent; independently invoked targets use their explicit --work.
     work = Path(os.environ.get("DE_FUZZ_RUN_ROOT", str(args.work))).resolve()
     try:

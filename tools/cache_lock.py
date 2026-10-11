@@ -13,6 +13,10 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+class WriterStateUnknownError(RuntimeError):
+    """The writer may still be active; its claim requires inspection before reuse."""
+
+
 @contextmanager
 def exclusive_cache(path: Path) -> Iterator[None]:
     """Claim a writer file atomically; a crash-leftover claim requires explicit inspection."""
@@ -22,10 +26,15 @@ def exclusive_cache(path: Path) -> Iterator[None]:
     except FileExistsError as error:
         msg = f"Cache writer already owns {path}; inspect the claim before retrying"
         raise RuntimeError(msg) from error
+    retain = False
     try:
         with stream:
             stream.write(str(os.getpid()))
             stream.flush()
             yield
+    except WriterStateUnknownError:
+        retain = True
+        raise
     finally:
-        path.unlink()
+        if not retain:
+            path.unlink()
