@@ -115,7 +115,7 @@ TEST_CASE("Independent sharpening oracle preserves sRGB knot and detects every R
         CHECK(sharpen_reference_gray_rgb_matches(channels, linear));
         for (auto& component : channels) {
             component += 1e-5;
-            CHECK_FALSE(sharpen_reference_gray_rgb_matches(channels, linear));
+            CHECK(!sharpen_reference_gray_rgb_matches(channels, linear));
             component -= 1e-5;
         }
     }
