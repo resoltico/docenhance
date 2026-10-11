@@ -1,4 +1,4 @@
-name: One-shot source formatting (temporary)
+name: One-shot source formatting (temporary, retry)
 on:
   push:
     branches: [fix/nightly-oracle-advisory-evidence-20261011]
