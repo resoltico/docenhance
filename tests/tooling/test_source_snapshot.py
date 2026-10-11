@@ -52,7 +52,15 @@ class SourceSnapshotTests(unittest.TestCase):
                 ],
             ):
                 subprocess.run(
-                    arguments,
+                    # Keep automatic maintenance joined before this fixture is removed.
+                    [
+                        arguments[0],
+                        "-c",
+                        "maintenance.autoDetach=false",
+                        "-c",
+                        "gc.autoDetach=false",
+                        *arguments[1:],
+                    ],
                     env=command_environment(),
                     cwd=ROOT,
                     capture_output=True,
