@@ -12,7 +12,7 @@ import time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
     from pathlib import Path
     from types import FrameType
     from typing import IO
@@ -39,6 +39,34 @@ def termination_unwind() -> Iterator[None]:
     finally:
         if previous is not None:
             signal.signal(signal.SIGTERM, previous)
+
+
+@contextlib.contextmanager
+def startup_interrupts() -> Iterator[None]:
+    """Record callable soft signals until construction returns an owned child."""
+    handlers: dict[int, Callable[[int, FrameType | None], object]] = {}
+    pending: list[tuple[int, FrameType | None]] = []
+
+    def record(signum: int, frame: FrameType | None) -> None:
+        if not pending:
+            pending.append((signum, frame))
+
+    signals: list[int] = [signal.SIGINT]
+    if os.name == "posix":
+        signals.append(signal.SIGTERM)
+    try:
+        for signum in signals:
+            previous = signal.getsignal(signum)
+            if callable(previous):
+                handlers[signum] = previous
+                signal.signal(signum, record)
+        yield
+    finally:
+        for signum, previous in handlers.items():
+            signal.signal(signum, previous)
+    if pending:
+        signum, frame = pending[0]
+        handlers[signum](signum, frame)
 
 
 def kill_group(process: subprocess.Popen[bytes]) -> None:
@@ -102,25 +130,28 @@ def owned_process(
 ) -> Iterator[subprocess.Popen[bytes]]:
     """Own only the launched session; Windows cleanup covers its direct child."""
     with termination_unwind():
-        process = subprocess.Popen(
-            command,
-            stdout=output,
-            stderr=subprocess.STDOUT,
-            env=env,
-            cwd=cwd,
-            start_new_session=os.name == "posix",
-        )
+        process = None
         try:
+            with startup_interrupts():
+                process = subprocess.Popen(
+                    command,
+                    stdout=output,
+                    stderr=subprocess.STDOUT,
+                    env=env,
+                    cwd=cwd,
+                    start_new_session=os.name == "posix",
+                )
             yield process
         finally:
-            try:
-                stop_process(process, graceful=graceful)
-            except OSError:
-                # Group cleanup remains unconfirmed; still join our unreaped direct child.
-                if process.poll() is None:
-                    process.kill()
-                process.wait()
-                raise
+            if process is not None:
+                try:
+                    stop_process(process, graceful=graceful)
+                except OSError:
+                    # Group cleanup remains unconfirmed; still join our unreaped direct child.
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait()
+                    raise
 
 
 def bounded_process(

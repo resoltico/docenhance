@@ -12,11 +12,26 @@ import socket
 import subprocess
 import sys
 import unittest
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 from tools_path import ROOT
 
 import process_execution
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from types import FrameType
+
+STARTUP_CHILD = """
+import json,os,signal,socket,sys
+connection=socket.create_connection((sys.argv[1],int(sys.argv[2])),timeout=10)
+connection.settimeout(None)
+connection.sendall(json.dumps({'pid':os.getpid(),
+    'term_default':signal.getsignal(signal.SIGTERM)==signal.SIG_DFL,
+    'int_ignored':signal.getsignal(signal.SIGINT)==signal.SIG_IGN}).encode()+b'\\n')
+connection.recv(1)
+"""
 
 REPEATED_TERMINATION = """
 import json,os,signal,socket,sys
@@ -45,6 +60,102 @@ except InterruptedError:
 
 class GroupPermissionTests(unittest.TestCase):
     """Independent syscall failures cannot be converted into successful group cleanup."""
+
+    def test_constructor_signals_cannot_escape_child_ownership(self) -> None:
+        """Real child readiness precedes interruption, before Popen can return its identity."""
+        cases = ["interrupt", "custom", "ignored"]
+        if os.name == "posix":
+            cases.append("terminate")
+        for mode in cases:
+            with self.subTest(mode=mode):
+                self.exercise_startup(mode)
+
+    def exercise_startup(self, mode: str) -> None:
+        """Interrupt the real constructor at an explicit post-spawn readiness checkpoint."""
+        original_handler = signal.getsignal(signal.SIGINT)
+        constructor = vars(subprocess.Popen)["_execute_child"]
+        created: list[subprocess.Popen[bytes]] = []
+        connections: list[socket.socket] = []
+        callbacks: list[int] = []
+
+        def custom(signum: int, _frame: FrameType | None) -> None:
+            callbacks.append(signum)
+            message = "Custom startup interruption"
+            raise ValueError(message)
+
+        with socket.socket() as listener:
+            listener.bind(("127.0.0.1", 0))
+            listener.listen(1)
+            listener.settimeout(10)
+            host, port = listener.getsockname()
+            facts: dict[str, object] = {}
+
+            def execute_child(
+                child: subprocess.Popen[bytes], *args: object, **kwargs: object
+            ) -> None:
+                constructor(child, *args, **kwargs)
+                created.append(child)
+                connection, _address = listener.accept()
+                connection.settimeout(10)
+                connections.append(connection)
+                with connection.makefile("rb") as stream:
+                    facts.update(json.loads(stream.readline()))
+                signum = signal.SIGTERM if mode == "terminate" else signal.SIGINT
+                signal.raise_signal(signum)
+
+            try:
+                handlers: dict[str, signal.Handlers | Callable[[int, FrameType | None], object]] = {
+                    "custom": custom,
+                    "ignored": signal.SIG_IGN,
+                }
+                selected_handler = handlers.get(mode, signal.default_int_handler)
+                signal.signal(signal.SIGINT, selected_handler)
+                expected = {
+                    "terminate": InterruptedError,
+                    "interrupt": KeyboardInterrupt,
+                    "custom": ValueError,
+                }
+                with patch("subprocess.Popen._execute_child", new=execute_child):
+                    scope = process_execution.owned_process(
+                        [sys.executable, "-c", STARTUP_CHILD, host, str(port)],
+                        dict(os.environ),
+                        None,
+                        graceful=True,
+                    )
+                    if mode == "ignored":
+                        with scope as child:
+                            self.assertIsNone(child.poll())
+                    else:
+                        with self.assertRaises(expected[mode]), scope:
+                            self.fail("Pending interruption was not delivered")
+                self.assertEqual(len(created), 1)
+                self.assert_startup_child(mode, facts, created[0], connections[0])
+                self.assertEqual(signal.getsignal(signal.SIGINT), selected_handler)
+                self.assertEqual(callbacks, [signal.SIGINT] if mode == "custom" else [])
+            finally:
+                signal.signal(signal.SIGINT, original_handler)
+                for child in created:
+                    if child.poll() is None:
+                        child.kill()
+                    child.wait()
+                for connection in connections:
+                    connection.close()
+
+    def assert_startup_child(
+        self,
+        mode: str,
+        facts: dict[str, object],
+        child: subprocess.Popen[bytes],
+        connection: socket.socket,
+    ) -> None:
+        """Descriptor closure and native exit establish cleanup, independently of helper calls."""
+        self.assertEqual(facts["pid"], child.pid)
+        self.assertTrue(facts["term_default"])
+        self.assertEqual(facts["int_ignored"], mode == "ignored")
+        self.assertIsNotNone(child.poll(), "Startup interruption leaked a live child")
+        self.assertEqual(connection.recv(1), b"")
+        if os.name == "posix":
+            self.assertEqual(child.returncode, -signal.SIGTERM)
 
     def test_repeated_termination_cannot_interrupt_outer_reconciliation(self) -> None:
         """Real second TERM arrives after inner cleanup, while the outer cleanup handshake waits."""
