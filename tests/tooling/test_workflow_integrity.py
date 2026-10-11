@@ -202,6 +202,44 @@ class WorkflowIntegrityTests(unittest.TestCase):
             install = commands.index("python tools/install_llvm.py --fuzzing")
             self.assertLess(plan, install)
 
+    def test_nightly_concurrency_and_evidence_are_mandatory(self) -> None:
+        """Changes to queuing, error-on-missing and forensic retention must fail."""
+        for old, new, diagnostic in (
+            ("queue: max", "queue: single", "Nightly concurrency"),
+            ("cancel-in-progress: false", "cancel-in-progress: true", "Nightly concurrency"),
+            (
+                "name: Upload source-bound advisory observations",
+                "name: Silently ignore advisory evidence",
+                "Required evidence upload",
+            ),
+            (
+                "if-no-files-found: error",
+                "if-no-files-found: warn",
+                "Required evidence upload",
+            ),
+            ("retention-days: 30", "retention-days: 1", "Required evidence upload"),
+            (
+                "python tools/triage_fuzz_findings.py",
+                "echo python tools/triage_fuzz_findings.py",
+                "Required executable step",
+            ),
+            (
+                "python tools/package_fuzz_evidence.py",
+                "echo python tools/package_fuzz_evidence.py",
+                "Required executable step",
+            ),
+        ):
+            with self.subTest(old=old):
+                self.assert_mutation_refused(
+                    ".github/workflows/nightly.yml", old, new, diagnostic
+                )
+        self.assert_mutation_refused(
+            ".github/workflows/ci.yml",
+            "retention-days: 7",
+            "retention-days: 1",
+            "Required evidence upload",
+        )
+
     def test_advisory_observation_cannot_be_disabled(self) -> None:
         """Scheduled monitoring must acquire identities and perform a mandatory query."""
         for old, new in (
