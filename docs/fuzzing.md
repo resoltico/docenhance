@@ -81,6 +81,9 @@ than receiving synthetic empty directories. Missing required upload bytes fail C
 inputs are replayed once under the already instrumented binary with a bounded watchdog and
 captured diagnostics, without making a failed campaign green if a crash is nonreproducible.
 The original inputs and engine evidence remain preserved separately from the diagnostic replay.
+An archive manifest is a provenance and completeness assertion, not independent proof
+of program correctness; the strict coordinator and per-target execution reports remain
+authoritative. Verification failures stay fatal even if replay cannot reproduce them.
 Evidence is commit/binary-specific, not a promise that a future version has no defects.
 
 ## Shared PNG decode boundary
