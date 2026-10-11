@@ -36,7 +36,8 @@ class NightlyEvidenceTests(unittest.TestCase):
             with tarfile.open(destination, "r:gz") as archive:
                 self.assertEqual(archive.getnames(), ["manifest.json"])
                 stream = archive.extractfile("manifest.json")
-                assert stream is not None
+                if stream is None:
+                    self.fail("Missing expected archive manifest")
                 manifest = json.loads(stream.read())
                 self.assertEqual(manifest["source_commit"], "a" * 40)
                 self.assertEqual(manifest["state"], "setup_or_build_failed")
