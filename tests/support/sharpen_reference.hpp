@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include <algorithm>
 #include <cmath>
+#include <span>
 #include <cstddef>
 #include <cstdint>
 #include <utility>
@@ -23,6 +25,32 @@ struct SharpenReferenceGaussian {
     std::vector<double> weights;
     double normalization = 0;
 };
+// Independent perceptual-to-linear reference. IEC 61966-2-1's published
+// branch constants do not form a mathematically exact round trip at the knot.
+// Comparing encode(actual) with the undecoded target is therefore incorrect.
+inline double sharpen_reference_srgb_decode(double encoded) {
+    return encoded <= 0.04045 ? encoded / 12.92
+                              : std::pow((encoded + 0.055) / 1.055, 2.4);
+}
+inline double sharpen_reference_srgb_encode(double linear) {
+    return linear <= 0.0031308 ? 12.92 * linear
+                               : (1.055 * std::pow(linear, 1.0 / 2.4)) - 0.055;
+}
+inline double sharpen_reference_linear_output(double entering_linear, double entering_encoded,
+                                              double candidate_encoded) {
+    const auto candidate = std::clamp(candidate_encoded, 0.0, 1.0);
+    // Production preserves the exact original sample for a perceptual no-op.
+    return candidate == entering_encoded ? entering_linear
+                                         : sharpen_reference_srgb_decode(candidate);
+}
+inline bool sharpen_reference_gray_rgb_matches(std::span<const double> actual,
+                                                double expected_linear,
+                                                double tolerance = 2e-12) {
+    return actual.size() == 3 && std::isfinite(expected_linear) &&
+           std::all_of(actual.begin(), actual.end(), [expected_linear, tolerance](double value) {
+               return std::isfinite(value) && std::abs(value - expected_linear) < tolerance;
+           });
+}
 inline std::uint32_t sharpen_reflect(std::int64_t index, std::uint32_t size) {
     if (size == 1) {
         return 0;
