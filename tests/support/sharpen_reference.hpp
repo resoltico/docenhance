@@ -44,7 +44,7 @@ inline double sharpen_reference_linear_output(double entering_linear, double ent
 inline bool sharpen_reference_gray_rgb_matches(std::span<const double> actual,
                                                double expected_linear, double tolerance = 2e-12) {
     return actual.size() == 3 && std::isfinite(expected_linear) &&
-           std::all_of(actual.begin(), actual.end(), [expected_linear, tolerance](double value) {
+           std::ranges::all_of(actual, [expected_linear, tolerance](double value) {
                return std::isfinite(value) && std::abs(value - expected_linear) < tolerance;
            });
 }
