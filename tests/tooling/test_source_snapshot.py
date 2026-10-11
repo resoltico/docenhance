@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import io
 import os
 import stat
 import subprocess
@@ -77,15 +76,16 @@ class SourceSnapshotTests(unittest.TestCase):
             ) -> subprocess.CompletedProcess[bytes]:
                 self.assertIn("cat-file", command)
                 self.assertNotIn("input", kwargs)
-                stream = kwargs.get("stdin")
-                if not isinstance(stream, io.BufferedIOBase):
-                    self.fail("Batch requests require a regular input stream")
-                self.assertTrue(stat.S_ISREG(os.fstat(stream.fileno()).st_mode))
+                fileno = getattr(kwargs.get("stdin"), "fileno", None)
+                if not callable(fileno):
+                    self.fail("Batch requests require a file descriptor")
+                descriptor = fileno()
+                self.assertTrue(stat.S_ISREG(os.fstat(descriptor).st_mode))
                 self.assertEqual(kwargs["timeout"], 60)
                 transfers.append(True)
                 return actual_run(
                     command,
-                    stdin=stream.fileno(),
+                    stdin=descriptor,
                     capture_output=True,
                     cwd=root,
                     env=command_environment(),

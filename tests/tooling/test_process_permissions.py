@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from types import FrameType
 
+WINDOWS_CONNECTION_RESET = 10054
+
 STARTUP_CHILD = """
 import json,os,signal,socket,sys
 connection=socket.create_connection((sys.argv[1],int(sys.argv[2])),timeout=10)
@@ -151,9 +153,17 @@ class GroupPermissionTests(unittest.TestCase):
         """Descriptor closure and native exit establish cleanup, independently of helper calls."""
         self.assertEqual(facts["pid"], child.pid)
         self.assertTrue(facts["term_default"])
-        self.assertEqual(facts["int_ignored"], mode == "ignored")
+        self.assertEqual(facts["int_ignored"], mode == "ignored" and os.name == "posix")
         self.assertIsNotNone(child.poll(), "Startup interruption leaked a live child")
-        self.assertEqual(connection.recv(1), b"")
+        try:
+            self.assertEqual(connection.recv(1), b"")
+        except ConnectionResetError as error:
+            # Windows TerminateProcess can reset TCP after the direct child is reaped.
+            if (
+                os.name != "nt"
+                or (getattr(error, "winerror", None) or error.errno) != WINDOWS_CONNECTION_RESET
+            ):
+                raise
         if os.name == "posix":
             self.assertEqual(child.returncode, -signal.SIGTERM)
 
