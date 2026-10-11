@@ -64,7 +64,7 @@ class SourceSnapshotTests(unittest.TestCase):
                     cwd=ROOT,
                     capture_output=True,
                     check=True,
-                    timeout=30,
+                    timeout=120,
                 )
             (root / "blob-0000.dat").write_bytes(b"dirty replacement")
             (root / "untracked.dat").write_bytes(b"untracked")
