@@ -24,6 +24,7 @@ class NightlyEvidenceTests(unittest.TestCase):
     """Fake campaign metadata must never be mistaken for full engine work."""
 
     def test_missing_and_partial_campaign_cannot_be_reported_complete(self) -> None:
+        """Absent or incomplete target reports never become a full completed campaign."""
         with tempfile.TemporaryDirectory() as temporary:
             build = Path(temporary) / "app"
             build.mkdir()
@@ -34,7 +35,9 @@ class NightlyEvidenceTests(unittest.TestCase):
             self.assertFalse((build / "fuzz-work").exists())
             with tarfile.open(destination, "r:gz") as archive:
                 self.assertEqual(archive.getnames(), ["manifest.json"])
-                manifest = json.loads(archive.extractfile("manifest.json").read())
+                stream = archive.extractfile("manifest.json")
+                assert stream is not None
+                manifest = json.loads(stream.read())
                 self.assertEqual(manifest["source_commit"], "a" * 40)
                 self.assertEqual(manifest["state"], "setup_or_build_failed")
             work = build / "fuzz-work/campaign-fixture"
@@ -57,6 +60,7 @@ class NightlyEvidenceTests(unittest.TestCase):
                              "campaign_failed_or_incomplete")
 
     def test_unsafe_evidence_and_unpinned_source_are_rejected(self) -> None:
+        """Reject symlinked data and nonimmutable source identity."""
         with tempfile.TemporaryDirectory() as temporary:
             build = Path(temporary) / "app"
             work = build / "fuzz-work"
@@ -71,6 +75,7 @@ class NightlyEvidenceTests(unittest.TestCase):
                 archive_evidence(build, "afl", "main", build / "archive.tar.gz")
 
     def test_saved_input_identity_is_checked_before_replay(self) -> None:
+        """Verify the exact original executable and crash input identity."""
         with tempfile.TemporaryDirectory() as temporary:
             build = Path(temporary)
             name = targets()[0].name
@@ -103,6 +108,7 @@ class NightlyEvidenceTests(unittest.TestCase):
                 triage(build, "afl")
 
     def test_advisory_observation_failure_is_written_not_silenced(self) -> None:
+        """A network failure persists evidence and still raises the original error."""
         with tempfile.TemporaryDirectory() as temporary:
             destination = Path(temporary) / "report.json"
             dependency = {"name": "jpeg", "object": "a" * 40}
