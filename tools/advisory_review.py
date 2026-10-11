@@ -19,13 +19,12 @@ FEATURE_DIGEST = "83aa49d63fbd528e8947d5d8481d86e1619191367c9b47f832732ffb79f13b
 
 def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: bytes) -> bool:
     """Bind evidence except valid modified timestamps; hashes do not prove review quality."""
-    if hashlib.sha256(features).hexdigest() != FEATURE_DIGEST:
-        return False
     # OSV modified is observation metadata, not vulnerability evidence. Never ignore another
     # field (including unknown fields, affected ranges or withdrawal) when binding a review.
     modified = advisory.get("modified")
     if (
-        not isinstance(modified, str)
+        hashlib.sha256(features).hexdigest() != FEATURE_DIGEST
+        or not isinstance(modified, str)
         or re.fullmatch(
             r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z", modified
         )
