@@ -143,8 +143,8 @@ def main() -> int:
                 report.write(
                     f"### {args.engine} campaign evidence\n\n"
                     f"State: **{summary['state']}**; "
-                    f"SHA-256: \\u0060{summary['archive_sha256']}\\u0060; "
-                    f"commit: \\u0060{summary['source_commit']}\\u0060.\n"
+                    f"SHA-256: `{summary['archive_sha256']}`; "
+                    f"commit: `{summary['source_commit']}`.\n"
                 )
         return 0
     except (OSError, ValueError, TypeError, KeyError, tarfile.TarError) as error:
