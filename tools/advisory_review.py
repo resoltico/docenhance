@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Two reviewed source matches excluded by mandatory private dependency recipes."""
+"""Source- and evidence-bound reviews of unreachable native dependency paths."""
 
 from __future__ import annotations
 
@@ -53,4 +53,16 @@ def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: byt
         ) == "9e2ede9628a55ec2742a1b180d3e69b0322281b9" and digest == (
             "dc33bbb2b4f178061f6d7e5f4eaf95bbf34ab3ee2e5f190a02e8fb4ac4e3b9a6"
         )
+    # OSV-2026-1068's reported call path uses tj3Compress8 (TurboJPEG API),
+    # not the classic JPEG decompression adapter. The private feature policy
+    # disables that API, and audit_build.jpeg_turbo_failures independently
+    # rejects its compiled translation units and installed archive.
+    # jpeg_abort itself is shared code and may remain linked.
+    if key == ("jpeg", "OSV-2026-1068"):  # advisory-review: OSV-2026-1068
+        return dependency.get(
+            "object"
+        ) == "c85e6b905bf237038faa936dab160ebfc5da0344" and digest == (
+            "bb96bc1003bf11f1d8205488219bceff8417ad58a5265c145fa6c7b16998e814"
+        )
+
     return False
