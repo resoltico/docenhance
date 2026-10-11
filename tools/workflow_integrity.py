@@ -94,6 +94,30 @@ def sanitizer_job(document: dict[str, Any], major: str) -> None:
         raise ValueError(msg)
 
 
+def require_evidence_upload(
+    job: dict[str, Any], *, name: str, path: str, artifact: str, days: int
+) -> dict[str, Any]:
+    """Failed jobs must upload an actual artifact; missing bytes are fatal."""
+    steps = [item for item in job.get("steps", []) if item.get("name") == name]
+    if len(steps) != 1:
+        raise ValueError(f"Required evidence upload missing or duplicated: {name}")
+    step = steps[0]
+    expected = {
+        "name": artifact,
+        "path": path,
+        "if-no-files-found": "error",
+        "retention-days": str(days),
+    }
+    if (
+        step.get("uses") != "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a"
+        or step.get("if") != "always()"
+        or step.get("with") != expected
+        or step.get("continue-on-error", "false") != "false"
+    ):
+        raise ValueError(f"Required evidence upload has unsafe settings: {name}")
+    return step
+
+
 def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
     """Both engines execute the complete campaign; comments cannot pin their compiler."""
     job = required_job(document, "campaign" if nightly else "fuzz")
@@ -122,7 +146,37 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
         f"python tools/run_fuzz_campaign.py --plan --seconds {seconds} "
         f"--jobs 4 --job-budget {budget}",
     )
-    required_step(job, "ctest --preset ${{ matrix.preset }} --output-on-failure")
+    campaign_step = required_step(job, "ctest --preset ${{ matrix.preset }} --output-on-failure")
+    triage_step = required_step(
+        job,
+        "python tools/triage_fuzz_findings.py --build out/${{ matrix.preset }}/app "
+        "--engine ${{ matrix.engine }}",
+        "always()",
+    )
+    archive_step = required_step(
+        job,
+        "python tools/package_fuzz_evidence.py --build out/${{ matrix.preset }}/app "
+        "--engine ${{ matrix.engine }} --commit ${{ github.sha }} "
+        "--output out/${{ matrix.preset }}/fuzz-evidence.tar.gz",
+        "always()",
+    )
+    upload = require_evidence_upload(
+        job,
+        name="Upload campaign evidence" if nightly else "Upload fuzz evidence",
+        path="out/${{ matrix.preset }}/fuzz-evidence.tar.gz",
+        artifact=(
+            "campaign-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}"
+            if nightly
+            else "fuzz-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}"
+        ),
+        days=30 if nightly else 7,
+    )
+    steps = job["steps"]
+    if not (
+        steps.index(campaign_step) < steps.index(triage_step)
+        < steps.index(archive_step) < steps.index(upload)
+    ):
+        raise ValueError("Fuzz evidence steps must follow campaign execution")
 
 
 def aggregate_job(document: dict[str, Any]) -> None:
@@ -256,9 +310,27 @@ def integrity_errors(root: Path) -> list[str]:
             if path.name == "ci.yml":
                 quality_workflow(document, major)
             elif path.name == "nightly.yml":
+                if document.get("concurrency") != {
+                    "group": "nightly-${{ github.workflow }}-${{ github.ref }}",
+                    "cancel-in-progress": "false",
+                    "queue": "max",
+                }:
+                    raise ValueError("Nightly concurrency must retain complete pending runs")
                 advisories = required_job(document, "advisories")
                 source_cache(advisories, required_step(advisories, "python tools/deps.py fetch"))
-                required_step(advisories, "python tools/check_advisories.py")
+                scan = required_step(
+                    advisories,
+                    "python tools/check_advisories.py --report out/advisories/report.json",
+                )
+                upload = require_evidence_upload(
+                    advisories,
+                    name="Upload source-bound advisory observations",
+                    path="out/advisories/report.json",
+                    artifact="advisory-${{ github.run_id }}-${{ github.run_attempt }}",
+                    days=30,
+                )
+                if advisories["steps"].index(upload) <= advisories["steps"].index(scan):
+                    raise ValueError("Advisory evidence must be uploaded after observation")
                 sanitizer_job(document, major)
                 fuzz_job(document, major, nightly=True)
             elif path.name == "source.yml":
