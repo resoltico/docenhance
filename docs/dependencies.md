@@ -99,9 +99,14 @@ evidence require review. A valid OSV `modified` timestamp is observation metadat
 change the review binding by itself; every other field, including unknown fields and withdrawal,
 remains bound. Missing or malformed timestamps are refused. See the
 [OSV field definitions](https://ossf.github.io/osv-schema/#id-modified-fields).
-The two current reviewed exclusions concern zlib gzip-file writing and
-OpenCV JPEG-2000 decoding: the former is removed from the private build, while the latter is outside
-the mandatory module/provider closure. These reviews are code-bound in the exception registry and
+The reviewed exclusions concern zlib gzip-file writing, OpenCV JPEG-2000 decoding,
+and OSV-2026-1068 in libjpeg-turbo's TurboJPEG compression API. The first is removed
+from the private build; OpenCV's affected imgcodecs/OpenJPEG path is outside the
+module/provider closure. The JPEG advisory reports tj3Compress8 -> jpeg_abort:
+the pinned build excludes the TurboJPEG library and compression entry point, while
+retaining the classic libjpeg decoder (which also uses jpeg_abort). The configured
+WITH_TURBOJPEG=OFF alone is insufficient: the native build audit independently
+rejects the TurboJPEG compilation units and an installed TurboJPEG library. These reviews are code-bound in the exception registry and
 rely on independent native build audits; hashes establish freshness, not review quality. They do
 not claim that the original upstream source is fixed. Review upstream/CNA evidence and actual
 reachability before changing sources or recording another exclusion.
@@ -112,3 +117,10 @@ source inventories remain mandatory. The Intel LLVM tool cache similarly require
 source/recipe identity and byte-matching readiness evidence; partial caches are not adopted.
 CI may reuse these verified analysis tools; each application/dependency build still starts in its
 own native build tree. Reusing a compiler installation is not proof of binary reproducibility.
+
+
+The nightly OSV job also writes a source-bound JSON observation report, including the
+lock and feature-policy hashes, exact finding-evidence fingerprints and an explicit
+incomplete/failure state when OSV queries cannot finish. Artifacts are retained for
+30 days. Neither a reviewed exclusion nor an empty OSV result means a vulnerability
+has been repaired or cannot exist.

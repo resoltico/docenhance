@@ -74,8 +74,16 @@ The inherited environment and credentials are never exported. Review any new
 finding, minimize it deliberately, then commit the regression; a successful campaign never edits
 its own repository corpus. Both engines run short required PR campaigns and longer nightly
 campaigns. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
-the artifact uploader cannot accept directly. Artifacts are retained for seven days, including
-failed runs.
+the artifact uploader cannot accept directly. PR artifacts are retained for seven days, and nightly
+campaign artifacts for 30 days, including failed runs. Each archive includes a manifest binding
+the engine and exact source commit; absent or incomplete campaigns are explicitly labeled rather
+than receiving synthetic empty directories. Missing required upload bytes fail CI. Saved crash
+inputs are replayed once under the already instrumented binary with a bounded watchdog and
+captured diagnostics, without making a failed campaign green if a crash is nonreproducible.
+The original inputs and engine evidence remain preserved separately from the diagnostic replay.
+An archive manifest is a provenance and completeness assertion, not independent proof
+of program correctness; the strict coordinator and per-target execution reports remain
+authoritative. Verification failures stay fatal even if replay cannot reproduce them.
 Evidence is commit/binary-specific, not a promise that a future version has no defects.
 
 ## Shared PNG decode boundary
@@ -196,3 +204,14 @@ blend are checked independently without importing the production transform or a 
 Immutable replay must reproduce exact transported rows without another native call, and destroying
 the prepared context must refund charged payloads. The kernel is supplied as test coefficients;
 the harness performs no source-file I/O.
+
+
+## Sharpening sRGB-boundary regression
+
+The independently computed sharpening reference is perceptual, but reconstructed source
+samples are linear RGB. The two committed AFL++ regressions from run 38043256044
+exercise the discontinuity at the published piecewise sRGB transfer threshold.
+The oracle now decodes the expected perceptual candidate to linear space (retaining
+exact input for a no-op) and compares all three RGB channels. No production transfer
+constants or numeric tolerances were relaxed. On mutation, replay, field/refund checks
+and direct two-dimensional Gaussian verification remain required.

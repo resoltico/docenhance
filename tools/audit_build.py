@@ -59,6 +59,28 @@ def zlib_stream_failures(binary: Path) -> list[str]:
     )
 
 
+def jpeg_turbo_failures(binary: Path) -> list[str]:
+    """Reject the TurboJPEG compression entry point in actual compiled/installable code.
+
+    OSV-2026-1068's reported path is tj3Compress8 -> jpeg_abort. The classic
+    decompressor also links jpeg_abort, so checking that symbol alone is NOT
+    an adequate test; the entire TurboJPEG API translation unit must be absent.
+    """
+    commands = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
+    turbo_sources = {"turbojpeg.c", "turbojpeg-mp.c"}
+    if any(Path(entry["file"]).name in turbo_sources for entry in commands):
+        return ["jpeg: TurboJPEG compression translation unit is compiled"]
+    library_directory = binary.parents[1] / "prefix" / "lib"
+    if not library_directory.is_dir():
+        return ["jpeg: private installed library directory is missing"]
+    if any(
+        path.is_file() and path.name.lower().lstrip("lib").startswith("turbojpeg")
+        for path in library_directory.iterdir()
+    ):
+        return ["jpeg: TurboJPEG API library is installed"]
+    return []
+
+
 def tiff_recipe_failures(binary: Path) -> list[str]:
     """The installed per-handle ABI and actual JPEG source must be the reviewed adaptation."""
     owned = binary / "owned-source/libtiff/tif_jpeg.c"
@@ -137,6 +159,8 @@ def source_recipe_failures(name: str, binary: Path) -> list[str]:
         return json_header_failures(binary)
     if name == "zlib":
         return zlib_stream_failures(binary)
+    if name == "jpeg":
+        return jpeg_turbo_failures(binary)
     return []
 
 

@@ -1004,6 +1004,10 @@
       "explanation": "The exact reviewed OpenCV source match concerns JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory evidence (all fields except a validated modified timestamp) invalidates the review. This is not a blanket OpenCV vulnerability exception.",
       "occurrences": 1
     },
+    "tools/advisory_review.py:advisory/OSV-2026-1068@7990bf9379c25b021d7d42fb163b28eff6d93b9d367bcf8e0b9b93fe6f9ffeeb": {
+      "explanation": "The pinned libjpeg-turbo source matches this OSV report for tj3Compress8 -> jpeg_abort. DocEnhance selects only the classic JPEG static library, without the TurboJPEG API. Private feature policy requires WITH_TURBOJPEG=OFF; actual compiled units and installed libraries are independently checked by the native audit on all supported builds. jpeg_abort itself is shared and its presence is not proof of reachability. Only this exact source, unchanged feature policy and complete observed advisory evidence are reviewed; any other match remains fatal.",
+      "occurrences": 1
+    },
     "tools/dep_acquire.py:ruff/S310@a409aabd0c8bc39ca160ca0096651ec49b325ac4de5f1e14f7d8727da8e89d1b": {
       "explanation": "Same https-only URL as the Request above; the final URL is re-checked after redirects before any byte is written.",
       "occurrences": 1
