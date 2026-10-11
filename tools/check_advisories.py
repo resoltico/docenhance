@@ -182,10 +182,10 @@ def scan(cache: Path, report_path: Path | None = None) -> bool:
         if summary := os.getenv("GITHUB_STEP_SUMMARY"):
             with Path(summary).open("a", encoding="utf-8") as output:
                 output.write(
-                    f"### Locked-source advisory observation\\n\\n"
+                    f"### Locked-source advisory observation\n\n"
                     f"Status: **{report['status']}**; "
                     f"sources visited: {len(report['sources'])}. "
-                    "A reviewed exclusion is not a repaired upstream source.\\n"
+                    "A reviewed exclusion is not a repaired upstream source.\n"
                 )
 
 
