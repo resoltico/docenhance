@@ -1,0 +1,65 @@
+name: One-shot source formatting (temporary)
+on:
+  push:
+    branches: [fix/nightly-oracle-advisory-evidence-20261011]
+    paths: [.github/workflows/temp-format.yml]
+permissions:
+  contents: write
+jobs:
+  format:
+    if: github.event.head_commit.message == 'Start one-shot formatter'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: '3.12'
+      - name: Format only touched code with locked tool versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check 'ruff==0.16.8' 'clang-format==23.1.1'
+          python -m ruff check --fix \
+            tests/tooling/test_jpeg_closure.py \
+            tests/tooling/test_nightly_evidence.py \
+            tools/advisory_review.py \
+            tools/audit_build.py \
+            tools/check_advisories.py \
+            tools/package_fuzz_evidence.py \
+            tools/triage_fuzz_findings.py \
+            tools/workflow_assertions.py \
+            tools/workflow_integrity.py
+          python -m ruff format \
+            tests/tooling/test_jpeg_closure.py \
+            tests/tooling/test_nightly_evidence.py \
+            tools/advisory_review.py \
+            tools/audit_build.py \
+            tools/check_advisories.py \
+            tools/package_fuzz_evidence.py \
+            tools/triage_fuzz_findings.py \
+            tools/workflow_assertions.py \
+            tools/workflow_integrity.py
+          python -m clang_format -i \
+            fuzz/sharpening.cpp \
+            tests/support/sharpen_reference.hpp \
+            tests/unit/sharpening.cpp
+      - name: Commit bounded changes and retire this temporary workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -- .github/workflows/temp-format.yml
+          git add -- \
+            tests/tooling/test_jpeg_closure.py tests/tooling/test_nightly_evidence.py \
+            tools/advisory_review.py tools/audit_build.py tools/check_advisories.py \
+            tools/package_fuzz_evidence.py tools/triage_fuzz_findings.py \
+            tools/workflow_assertions.py tools/workflow_integrity.py \
+            fuzz/sharpening.cpp tests/support/sharpen_reference.hpp \
+            tests/unit/sharpening.cpp
+          git diff --cached --check
+          git commit -m 'Normalize nightly remediation with pinned source formatters'
+          git push origin HEAD:refs/heads/fix/nightly-oracle-advisory-evidence-20261011
