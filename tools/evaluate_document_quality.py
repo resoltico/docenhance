@@ -22,6 +22,7 @@ from document_quality import BUNDLE_ROLES, ROOT, adjudicate, validate_plan
 # Independent first-party PNG decoder already used by the numerical/product references.
 sys.path.insert(0, str(ROOT / "tests/cli"))
 decode_output = importlib.import_module("continuous_fixtures").decode_output
+SEMANTIC_FACTS = ("source", "request", "execution", "protection", "output", "build")
 
 
 def digest(path: Path) -> str:
@@ -134,10 +135,8 @@ def check_repetition(candidate: dict[str, Any], replicate: dict[str, Any]) -> No
     if candidate["record"]["run"] == replicate["record"]["run"]:
         message = "Repeatability requires independently identified executions"
         raise ValueError(message)
-    if any(
-        candidate[name] != replicate[name] for name in ("request", "execution", "output", "build")
-    ):
-        message = "Repeated processing differs in samples, parameters, observations or build"
+    if any(candidate[name] != replicate[name] for name in SEMANTIC_FACTS):
+        message = "Repeated processing differs in source, protection or processing/build facts"
         raise ValueError(message)
 
 
@@ -215,10 +214,7 @@ def evaluate(plan: dict[str, Any], root: Path, executable: Path) -> dict[str, An
             ("replicate", "options"),
         ):
             actual = replay(executable, source, root, assessment[option_field])
-            if any(
-                actual[field] != records[name][field]
-                for field in ("request", "execution", "output", "build")
-            ):
+            if any(actual[field] != records[name][field] for field in SEMANTIC_FACTS):
                 message = f"Frozen {name} differs from actual processing by the selected executable"
                 raise ValueError(message)
         actual = records["candidate"]

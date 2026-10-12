@@ -46,12 +46,14 @@ candidate run with exactly the frozen settings. Store complete responses, record
 provenance, output identities and protected-mask assets with each run.
 
 `tools/evaluate_document_quality.py` requires a complete manifest, hashes actual source and
-executable bytes, invokes real read-only bundle verification, requires distinct bundle/run identities and compares repeated requests,
-observations, build facts and output identities, independently decodes integer PNG samples, checks geometry and
-protected destinations against the unenhanced comparator, and actually replays frozen candidate, comparator and replicate settings
-with the selected executable into private temporary results. Request, execution, output and build
-facts must match all scored bundles; artifact agreement cannot invent an unenhanced comparator. The build commit binding still needs independently reviewed build/CI
-provenance: a declared SHA or executable hash alone cannot prove which source built it.
+executable bytes, invokes real read-only bundle verification, requires distinct bundle/run identities
+and compares every semantic record section: source, request, execution, protection, output and build.
+It independently decodes integer PNG samples, checks geometry and protected destinations against
+the unenhanced comparator, and actually replays frozen candidate, comparator and replicate settings
+with the selected executable into private temporary results. All six semantic sections must match
+the scored bundles; artifact agreement cannot invent an unenhanced comparator. The build commit
+binding still needs independently reviewed build/CI provenance: a declared SHA or executable hash
+alone cannot prove which source built it.
 
 ```sh
 python tools/evaluate_document_quality.py --manifest /cleared/corpus/evaluation.json \

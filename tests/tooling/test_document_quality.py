@@ -183,7 +183,8 @@ class DocumentQualityTests(unittest.TestCase):
         """A verified-looking baseline must also agree with actual unenhanced replay."""
         plan = healthy_plan()
         record: dict[str, Any] = {
-            field: {} for field in ("request", "execution", "output", "build")
+            field: {}
+            for field in ("source", "request", "execution", "protection", "output", "build")
         }
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
@@ -195,18 +196,20 @@ class DocumentQualityTests(unittest.TestCase):
             for assessment in plan["assessments"]:
                 for name in ("candidate", "baseline", "replicate"):
                     (root / assessment[name]).mkdir()
-            false_baseline = copy.deepcopy(record)
-            false_baseline["output"] = {"sha256": "invented"}
-            with (
-                patch("evaluate_document_quality.read_bundle", return_value=record),
-                patch("evaluate_document_quality.fidelity"),
-                patch(
-                    "evaluate_document_quality.replay", side_effect=[record, false_baseline]
-                ) as run,
-                self.assertRaisesRegex(ValueError, "Frozen baseline differs"),
-            ):
-                evaluate(plan, root, executable)
-            self.assertEqual(run.call_count, 2)
+            for field in ("output", "protection", "source"):
+                false_baseline = copy.deepcopy(record)
+                false_baseline[field] = {"sha256": "invented"}
+                with (
+                    self.subTest(field=field),
+                    patch("evaluate_document_quality.read_bundle", return_value=record),
+                    patch("evaluate_document_quality.fidelity"),
+                    patch(
+                        "evaluate_document_quality.replay", side_effect=[record, false_baseline]
+                    ) as run,
+                    self.assertRaisesRegex(ValueError, "Frozen baseline differs"),
+                ):
+                    evaluate(plan, root, executable)
+                self.assertEqual(run.call_count, 2)
 
     def test_report_publication_cannot_overwrite_source_or_prior_evidence(self) -> None:
         """A real exclusive file write rejects collisions and preserves existing bytes."""
@@ -245,7 +248,7 @@ class DocumentQualityTests(unittest.TestCase):
         self.assertTrue(result["classes"]["already_good"]["accepted"])
 
     def test_replicate_aliases_and_wrong_build_cannot_prove_repeatability(self) -> None:
-        """Repeated paths, identical run identities and different builds refuse evidence."""
+        """Aliased paths, identical runs and different source/mask/build facts refuse evidence."""
         for prefix in ("", "./"):
             plan = healthy_plan()
             item = plan["assessments"][0]
@@ -253,14 +256,18 @@ class DocumentQualityTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "distinct bundle directories"):
                 validate_plan(plan)
         candidate: dict[str, Any] = {
-            field: {} for field in ("request", "execution", "output", "build")
+            field: {}
+            for field in ("source", "request", "execution", "protection", "output", "build")
         }
         candidate["record"] = {"run": "a"}
-        replicate = copy.deepcopy(candidate)
-        for change, message in (("run", "independently"), ("build", "build")):
-            if change == "build":
-                replicate["record"]["run"] = "b"
-                replicate["build"] = {"compiler": "different"}
+        for change in ("run", "build", "protection", "source"):
+            replicate = copy.deepcopy(candidate)
+            replicate["record"]["run"] = "b"
+            message = "independently" if change == "run" else "Repeated processing differs"
+            if change == "run":
+                replicate["record"]["run"] = "a"
+            else:
+                replicate[change] = {"identity": "different"}
             with self.assertRaisesRegex(ValueError, message):
                 fidelity(
                     Path(),

@@ -41,6 +41,10 @@ The original reviewed design and negative controls N01–N22 remain the starting
   build-mismatched repetition, and failed commands admitted as resource observations. Benefit
   classes require every page positive; all three distinct executions are build-bound and replayed;
   only completed successful commands yield resource measurements. Negative controls cover each.
+- A further review exposed equal-count protection masks producing identical output with stages
+  disabled while differing in supplied/canonical mask identities. Two actual verified bundles
+  reproduced this omission. Repetition and replay now share one definition of all semantic record
+  facts, including source and protection; only the execution identity/timestamp may differ.
 - Positive mean scores can conceal faint-mark loss. Any harm blocks the class; missing/uncertain
   human evidence abstains. An institutional rights label is evidence to review, not a warranty.
 
