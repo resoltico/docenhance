@@ -6,13 +6,18 @@ from __future__ import annotations
 
 import copy
 import json
+import shutil
+import tempfile
 import unittest
+from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from tools_path import ROOT
 
 from jsonschema import Draft202012Validator
 
+import generate_spec
 import method_metadata
 
 
@@ -27,7 +32,7 @@ class MethodMetadataTests(unittest.TestCase):
             "selector": "sauvola",
             "family": "binarization",
             "method_version": 1,
-            "status": "implemented",
+            "classification": "implemented-selectable",
             "arguments": ["--binarize"],
         }
 
@@ -41,7 +46,8 @@ class MethodMetadataTests(unittest.TestCase):
             {"method_version": True},
             {"method_version": 0},
             {"method_version": 1.5},
-            {"status": "available"},
+            {"classification": "available"},
+            {"status": "implemented"},
             {"selector": ""},
             {"selector": "a-b"},
             {"arguments": ["--absent"]},
@@ -62,11 +68,11 @@ class MethodMetadataTests(unittest.TestCase):
                     [entry, second], [{"name": "--binarize", "methods": "B02"}]
                 )
         with self.assertRaises(ValueError):
-            method_metadata.implemented([entry | {"status": "not-implemented"}], [])
+            method_metadata.implemented([entry | {"classification": "planned"}], [])
 
     def test_only_implemented_entries_generate_descriptors(self) -> None:
         """Planned method arguments need not be CLI capabilities and never enter the catalog."""
-        active, planned = self.entry(), self.entry() | {"id": "B01", "status": "not-implemented"}
+        active, planned = self.entry(), self.entry() | {"id": "B01", "classification": "planned"}
         planned["arguments"] = ["--future-option"]
         result = method_metadata.implemented(
             [active, planned], [{"name": "--binarize", "methods": "B02"}]
@@ -75,6 +81,47 @@ class MethodMetadataTests(unittest.TestCase):
         header = method_metadata.render_catalog(result)
         self.assertIn('"B02"', header)
         self.assertNotIn('"B01"', header)
+
+    def test_automatic_capabilities_have_no_selector_or_option_attribution(self) -> None:
+        """G01 is implemented automatically without manufacturing selectable descriptors."""
+        automatic = {
+            "id": "G01",
+            "method_version": 1,
+            "classification": "implemented-automatic",
+            "arguments": [],
+        }
+        options = [{"name": "--binarize", "methods": "B02"}]
+        self.assertEqual(
+            method_metadata.implemented([self.entry(), automatic], options), [self.entry()]
+        )
+        for change in ({"selector": "orientation"}, {"arguments": ["--binarize"]}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                method_metadata.implemented([self.entry(), automatic | change], options)
+        with self.assertRaises(ValueError):
+            method_metadata.implemented(
+                [self.entry(), automatic], [{"name": "--binarize", "methods": "B02,G01"}]
+            )
+
+    def test_authoring_format_and_derived_roadmap_refuse_stale_contracts(self) -> None:
+        """Root format breaks cleanly; the roadmap cannot retain a second capability inventory."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copytree(ROOT / "spec", root / "spec")
+            with patch.object(generate_spec, "ROOT", root):
+                outputs = generate_spec.outputs()
+                roadmap = outputs[root / "docs/roadmap.md"]
+                self.assertIn("G01: Metadata orientation (implemented-automatic)", roadmap)
+                self.assertIn("`tiff` input: preserve, gray", roadmap)
+                self.assertNotIn("Add TIFF", roadmap)
+                source = root / "spec/method-contract.json"
+                contract = json.loads(source.read_bytes())
+                for change in ({"schema_version": 1}, {"status": "implemented"}):
+                    source.write_text(json.dumps(contract | change))
+                    with (
+                        self.subTest(change=change),
+                        self.assertRaises(generate_spec.ContractError),
+                    ):
+                        generate_spec.outputs()
 
     def test_otsu_observations_are_closed_and_shared_with_records(self) -> None:
         """Both schemas derive one bounded fit shape and reject impossible fallback facts."""
@@ -102,7 +149,7 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 12,
+            "schema_version": 13,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
@@ -143,7 +190,7 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 12,
+            "schema_version": 13,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,

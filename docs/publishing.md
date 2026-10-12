@@ -52,3 +52,17 @@ or attaching it:
 shasum -a 256 -c docenhance-<project-version>-source.tar.gz.sha256
 gh attestation verify docenhance-<project-version>-source.tar.gz -R OWNER/docenhance
 ```
+
+## Native distribution and field-quality proof obligations
+
+Native distribution requires its own reviewed evidence for the exact executable and source commit:
+all seven required native lanes, both macOS 15 minimum runtimes and retained macOS 26 runtimes,
+relocated package execution, deployment/import and license inspections, and platform signing/
+notarization where applicable. Source attestation, a deployment flag or a newer-OS run cannot
+substitute for those observations. Source-only validation artifacts do not announce a signed
+binary release.
+
+Measured natural-document readability/no-harm claims additionally require the independent
+[cleared held-out protocol](document-quality.md). Technical Flickr pilots, synthetic references
+and bundle verification are not blinded human evaluation. Missing corpus coverage or reviewers
+blocks those claims; do not hide missing evidence behind a green engineering workflow.

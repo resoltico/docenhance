@@ -15,6 +15,7 @@ namespace docenhance::core {
 struct BudgetState {
     std::atomic<std::size_t> references{1};
     std::atomic<std::size_t> used{0};
+    std::atomic<std::size_t> peak{0};
 };
 namespace {
 void release_state(BudgetState* const state) noexcept {
@@ -90,6 +91,9 @@ Budget::~Budget() {
 std::size_t Budget::used() const noexcept {
     return state_ == nullptr ? 0 : state_->used.load(std::memory_order_relaxed);
 }
+std::size_t Budget::peak() const noexcept {
+    return state_ == nullptr ? 0 : state_->peak.load(std::memory_order_relaxed);
+}
 
 bool Budget::charge(std::size_t bytes) noexcept {
     if (state_ == nullptr) {
@@ -102,6 +106,11 @@ bool Budget::charge(std::size_t bytes) noexcept {
         }
         if (state_->used.compare_exchange_weak(used, used + bytes, std::memory_order_acq_rel,
                                                std::memory_order_relaxed)) {
+            const auto charged = used + bytes;
+            auto peak = state_->peak.load(std::memory_order_relaxed);
+            while (peak < charged &&
+                   !state_->peak.compare_exchange_weak(peak, charged, std::memory_order_relaxed)) {
+            }
             return true;
         }
     }

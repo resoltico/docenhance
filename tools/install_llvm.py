@@ -101,6 +101,11 @@ def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) ->
         "source_url": pin["source_url"],
         "source_sha256": pin["source_sha256"],
         "architecture": "x86_64",
+        "host_os_version": platform.mac_ver()[0],
+        "developer_directory": os.environ.get("DEVELOPER_DIR", "system-default"),
+        "deployment_target": json.loads((ROOT / "deps/tools.json").read_bytes())["macos"][
+            "deployment_target"
+        ],
         "recipe_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
     }
     identifier = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
@@ -166,6 +171,8 @@ def build_source_tools(pin: dict[str, Any], work: Path, target: Path) -> None:
             "-G",
             "Ninja",
             "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_OSX_DEPLOYMENT_TARGET="
+            + json.loads((ROOT / "deps/tools.json").read_bytes())["macos"]["deployment_target"],
             "-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra",
             "-DLLVM_TARGETS_TO_BUILD=X86",
             "-DLLVM_ENABLE_TERMINFO=OFF",

@@ -59,8 +59,8 @@ TEST_CASE("Continuous admission is distinct from binary method admission", "[con
     };
     const auto admitted = app::prepare_process(invocation);
     REQUIRE(admitted);
-    REQUIRE(std::holds_alternative<image::Continuous>(admitted->operation()));
-    CHECK(std::get<image::Continuous>(admitted->operation()).parameters().mode ==
+    REQUIRE(std::holds_alternative<app::ContinuousPlan>(admitted->plan()));
+    CHECK(std::get<app::ContinuousPlan>(admitted->plan()).operation.parameters().mode ==
           image::ToneMode::preserve);
     invocation.binarize = "fixed";
     CHECK(!app::prepare_process(invocation));

@@ -201,7 +201,7 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 12; obsolete formats are refused without backward compatibility or
+PNG bundle path. Current records use version 13; obsolete formats are refused without backward compatibility or
 migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
@@ -503,3 +503,14 @@ The separate challenge checks asymmetric/mirrored composition, non-square mask d
 unequal density pairs: two transpositions cancel, and a B-frame asset cannot be checked against
 C dimensions. G03–G05 stay unsupported until their complete resampling, footprint, bounds and
 analysis contracts exist. See [geometry](geometry.md).
+
+## Closed plans and truthful unstarted stages
+
+The [foundation design](foundation-design.md) replaces parallel request settings with an admitted
+binary/continuous plan and one fixed typed stage aggregate. Selection is not execution: untouched
+requested stages are explicitly unstarted, earlier completed observations survive failure, and
+publication remains a separate fact. The [separate challenge](foundation-qa.md) explains why no
+generic stage framework or second geometry layer is needed. Built-in G01 classification is distinct
+from selectable methods. The deployment floor is macOS 15.0, with actual minimum ARM64/Intel
+runtime lanes. The [quality protocol](document-quality.md) requires independent cleared held-out
+evidence before measured natural-document claims.

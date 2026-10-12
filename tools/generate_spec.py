@@ -12,9 +12,11 @@ import textwrap
 from pathlib import Path
 from typing import Any
 
+from capability_reference import render_methods, render_roadmap
 from method_metadata import implemented, metadata_outputs, support_matrix
 
 ROOT = Path(__file__).resolve().parents[1]
+METHOD_CONTRACT_VERSION = 2
 # The option fields, in the order the generated descriptor declares them. "scope" is typed and is
 # therefore rendered separately from the string fields.
 FIELDS = ("name", "metavar", "scope", "group", "domain", "methods", "description")
@@ -35,12 +37,6 @@ REFERENCE_PREAMBLE = (
     " the command line parses and documents today. See [current CLI behavior](cli.md) and"
     " [status](status.md) for supported behavior.\n\n"
     "P = process.\n\n"
-)
-METHODS_PREAMBLE = (
-    "# Methods\n\n"
-    "> Generated from `spec/method-contract.json` by `tools/generate_spec.py`. Only methods marked"
-    " **implemented** appear in `docenhance methods`; every other entry remains a reviewed design"
-    " target until its contract, tests, and fixtures exist.\n\n"
 )
 
 
@@ -193,18 +189,6 @@ def render_reference(contract: dict[str, Any]) -> str:
     return text.rstrip() + "\n"
 
 
-def render_methods(methods: list[dict[str, Any]]) -> str:
-    """Render docs/methods.md."""
-    text = METHODS_PREAMBLE
-    for method in methods:
-        text += f"## {method['id']} — {method['name']}\n\n"
-        text += f"Status: **{method['status']}**.\n\n"
-        references = ", ".join(f"`{x}`" for x in method.get("arguments", []))
-        references = references or "See geometry/common options in the target contract"
-        text += f"Method-specific argument references: {references}.\n\n"
-    return text.rstrip() + "\n"
-
-
 def render_cli_dictionary(contract: dict[str, Any], methods: list[dict[str, Any]]) -> str:
     """Render the CLI fuzzing dictionary: every command, option name and common value."""
     commands = [name for name in contract["commands"] if name != "root"]
@@ -223,6 +207,12 @@ def outputs() -> dict[Path, str]:
     contract = json.loads((ROOT / "spec/cli-contract.json").read_text(encoding="utf-8"))
     options = contract["options"]
     methods = json.loads((ROOT / "spec/method-contract.json").read_text(encoding="utf-8"))
+    if (
+        set(methods) != {"schema_version", "methods"}
+        or methods["schema_version"] != METHOD_CONTRACT_VERSION
+    ):
+        message = "Method authoring contract requires the current closed classification format"
+        raise ContractError(message)
     schema = json.loads((ROOT / "spec/command-response.schema.json").read_text(encoding="utf-8"))
     names = [option["name"] for option in options]
     if not names or len(names) != len(set(names)):
@@ -240,6 +230,7 @@ def outputs() -> dict[Path, str]:
         ),
         ROOT / "docs/cli-contract.md": render_reference(contract),
         ROOT / "docs/methods.md": render_methods(methods["methods"]),
+        ROOT / "docs/roadmap.md": render_roadmap(contract, methods["methods"]),
         ROOT / "fuzz/dict/cli.dict": render_cli_dictionary(contract, methods["methods"]),
         **metadata_outputs(ROOT, methods["methods"], options, contract["input_support"]),
     }

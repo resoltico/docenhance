@@ -4,8 +4,8 @@
 
 The application owns meaning; adapters own effects. The command line parses syntax into
 `contract::Invocation` through generated typed option bindings, retaining raw presence. `de_app` validates it and constructs a private-construction
-`ProcessRequest` containing a validated binary/continuous operation and a separate closed
-illumination, denoising, contrast and sharpening choices. Only that admitted value can cross `app::Processor`, the processing port.
+`ProcessRequest` owning a closed `BinaryPlan | ContinuousPlan`. Only the continuous alternative owns the fixed
+photometric plan and protection policy. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
 production composition root: it supplies the concrete host to the CLI. On Windows it converts
 wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
@@ -242,7 +242,7 @@ are shipped. The real Draft 2020-12 validator checks executable output, emitted 
 negative fixtures; the bounded typed record reader additionally validates cross-field relationships. The executable catalog is
 built from actual method variant alternatives and must equal the reviewed catalog at compile time.
 
-Required PR jobs cover structural/reference checks, the five-platform native matrix, libFuzzer,
+Required PR jobs cover structural/reference checks, seven native execution lanes including both macOS 15 minimum lanes, libFuzzer,
 and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target
 registration, including box-mean, rather than a second shell list. Native sanitizer presets instrument first-party code. The isolated PNG fuzz build additionally
 instruments pinned libjpeg/libpng/zlib/LCMS and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
@@ -263,8 +263,8 @@ measures I01 surfaces and I02 morphology fields without codec/native types or fi
 immutable model, oriented protection mask and downstream quantizer. `de_io` keeps exclusive
 ownership of encoding/verification/publication. There is no plugin or generic recipe framework.
 
-`ProcessFailure` is an application result envelope with a core error and optional typed stage
-observations. The processing port has closed binary and continuous success alternatives. Continuous success
+`ProcessFailure` is an application result envelope with a core error and one optional typed `StageObservations` aggregate. Selected untouched stages are `not_started`;
+attempted incomplete stages fail without erasing completed earlier facts. The processing port has closed binary and continuous success alternatives. Continuous success
 carries conversion, illumination and denoising observations together; the application still checks
 verification and agreement with the admitted request. The report consumes that same continuous
 result rather than a second copied representation. Publication selects binary or continuous artwork together with its matching operation;

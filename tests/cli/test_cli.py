@@ -20,6 +20,10 @@ from continuous_fixtures import Fixture
 from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
+WIRE_VERSION = json.loads(SCHEMA.read_bytes())["properties"]["schema_version"]["const"]
+RECORD_VERSION = json.loads(SCHEMA.with_name("run-record.schema.json").read_bytes())["properties"][
+    "record"
+]["properties"]["version"]["const"]
 COMMAND_TIMEOUT_SECONDS = 30
 SHA256_HEX_LENGTH = 64
 EXIT_INVOCATION = 2

@@ -5,7 +5,10 @@
 #include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/restoration.hpp"
+#include "docenhance/methods/stages.hpp"
 #include "stub_verifier.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -66,15 +69,64 @@ TEST_CASE("Restoration partial failures preserve bounded observations and reject
         }
         ReturningProcessor processor{std::unexpected(app::ProcessFailure{
             .error = {.code = core::ErrorCode::resource, .message = "Restoration refused"},
-            .restoration = observed,
+            .stages = methods::StageObservations{.restoration = observed},
         })};
         const auto outcome = app::dispatch(request, processor, verifier);
         CHECK(processor.calls() == 1);
         CHECK(error(outcome).code ==
               (change == 0 ? core::ErrorCode::resource : core::ErrorCode::publication_unknown));
         if (change == 0) {
-            CHECK(std::get<app::ProcessFailure>(outcome.payload).restoration == observed);
+            const auto& failed = std::get<app::ProcessFailure>(outcome.payload);
+            REQUIRE(failed.stages.has_value());
+            if (failed.stages) {
+                CHECK(failed.stages->restoration == observed);
+            }
         }
     }
+}
+TEST_CASE("A later completed stage cannot follow a selected unstarted or failed predecessor",
+          "[app]") {
+    UnusedVerifier verifier;
+    auto v = invocation();
+    v.illumination = "surface";
+    v.background_strength = "0";
+    v.denoise = "nlm";
+    v.denoise_blend = "0";
+    const auto admitted = app::prepare_process(v);
+    REQUIRE(admitted);
+    const auto& plan = std::get<app::ContinuousPlan>(admitted->plan());
+    for (unsigned state = 0; state < 3; ++state) {
+        auto stages = app::initial_stages(plan.photometric);
+        stages.denoising.status = methods::DenoiseStatus::no_change;
+        stages.denoising.reason = methods::DenoiseReason::zero_blend;
+        stages.denoising.complete = true;
+        stages.denoising.eligible_samples = 1;
+        if (state == 1) {
+            stages.illumination.status = methods::IlluminationStatus::failed;
+            stages.illumination.reason = methods::IlluminationReason::processing_failure;
+        } else if (state == 2) {
+            stages.illumination.status = methods::IlluminationStatus::no_change;
+            stages.illumination.reason = methods::IlluminationReason::zero_strength;
+            stages.illumination.complete = true;
+            stages.illumination.eligible_samples = 1;
+        }
+        ReturningProcessor processor{app::process_failure(
+            {.code = core::ErrorCode::resource, .message = "Later allocation refused"},
+            std::move(stages))};
+        const auto outcome = app::dispatch(v, processor, verifier);
+        CHECK(error(outcome).code ==
+              (state == 2 ? core::ErrorCode::resource : core::ErrorCode::publication_unknown));
+    }
+}
+TEST_CASE("Early continuous input failure retains known state with sharpening off", "[app]") {
+    UnusedVerifier verifier;
+    const methods::StageObservations unreported;
+    ReturningProcessor processor{app::process_failure(
+        {.code = core::ErrorCode::input, .message = "Input rejected before processing"},
+        unreported)};
+    const auto outcome = app::dispatch(invocation(), processor, verifier);
+    CHECK(processor.calls() == 1);
+    CHECK(error(outcome).code == core::ErrorCode::input);
+    CHECK(error(outcome).publication == core::Publication::not_started);
 }
 } // namespace docenhance::tests

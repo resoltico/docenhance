@@ -121,6 +121,8 @@ class Budget {
         return limit_;
     }
     [[nodiscard]] std::size_t used() const noexcept;
+    // High-water charged bytes, including reservations and refused system allocations; not RSS.
+    [[nodiscard]] std::size_t peak() const noexcept;
     [[nodiscard]] std::size_t available() const noexcept {
         return state_ == nullptr ? 0 : limit_ - used();
     }

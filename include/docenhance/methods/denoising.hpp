@@ -88,7 +88,7 @@ struct Tvl1Report {
     std::uint64_t field_bytes = 0;
     bool operator==(const Tvl1Report&) const = default;
 };
-enum class DenoiseStatus { disabled, no_change, applied, failed };
+enum class DenoiseStatus { not_started, disabled, no_change, applied, failed };
 enum class DenoiseReason { none, zero_blend, no_eligible_samples, no_effect, processing_failure };
 inline constexpr std::uint32_t nlm_tile_width = 256;
 inline constexpr std::uint32_t nlm_native_extent =

@@ -104,7 +104,8 @@ core::Result<methods::Restoration> prepare_restoration(const contract::Invocatio
         .transform([](auto selected) -> methods::Restoration { return selected; });
 }
 bool partial_restoration(const methods::RestorationReport& r, const ProcessRequest& request) {
-    const auto* const method = std::get_if<methods::Wiener>(&request.restoration());
+    const auto* const method = std::get_if<methods::Wiener>(
+        &std::get<app::ContinuousPlan>(request.plan()).photometric.restoration);
     if (method != nullptr ? (!r.requested || *r.requested != method->parameters())
                           : r.requested.has_value()) {
         return false;
@@ -113,7 +114,8 @@ bool partial_restoration(const methods::RestorationReport& r, const ProcessReque
         return false;
     }
     return r.complete
-               ? methods::valid_restoration(r, request.restoration())
+               ? methods::valid_restoration(
+                     r, std::get<app::ContinuousPlan>(request.plan()).photometric.restoration)
                : (!r.requested || (r.status == methods::RestorationStatus::failed &&
                                    r.reason == methods::RestorationReason::processing_failure));
 }

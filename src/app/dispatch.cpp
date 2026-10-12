@@ -67,14 +67,14 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
                        ? succeeded(invocation, std::move(result.error()))
                        : std::move(unknown_outcome);
         }
-        if (const auto* const method = std::get_if<methods::Binarization>(&request->operation())) {
+        if (const auto* const method = std::get_if<BinaryPlan>(&request->plan())) {
             auto* const image = std::get_if<PublishedBinary>(&*result);
             if (image == nullptr || !valid_published(*image, *request)) {
                 return unknown_outcome;
             }
             return succeeded(invocation, Processed{
                                              .output = std::move(image->output),
-                                             .method = methods::describe(*method),
+                                             .method = methods::describe(method->operation),
                                              .run = std::move(image->run),
                                              .record = std::move(image->record),
                                              .source_decoding = image->source_decoding,
@@ -179,8 +179,9 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor, V
             const auto selected = std::ranges::find(available.methods, invocation.subject,
                                                     &methods::ImplementedMethod::id);
             if (selected == available.methods.end()) {
-                return not_implemented(invocation, "No completed method with this ID is available; "
-                                                   "see docs/methods.md for planned methods");
+                return not_implemented(invocation,
+                                       "No selectable method with this ID is available; "
+                                       "see docs/methods.md for automatic capabilities and plans");
             }
             available.methods = available.methods.subspan(
                 static_cast<std::size_t>(selected - available.methods.begin()), 1);

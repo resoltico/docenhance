@@ -23,13 +23,15 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/restoration.hpp"
+#include "docenhance/methods/sharpening.hpp"
+#include "docenhance/methods/stages.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "linear_rows.hpp"
 #include "protection.hpp"
 #include "restoration.hpp"
 #include "run_publication.hpp"
 #include "sharpening.hpp"
-#include "stage_reports.hpp"
 
 #include <algorithm>
 #include <cstdint>
@@ -45,26 +47,26 @@ struct ContinuousRun {
     std::reference_wrapper<color::Converter> converter;
     std::reference_wrapper<core::Budget> budget;
     std::reference_wrapper<const core::Cancellation> cancellation;
-    ContinuousReports reports;
+    std::reference_wrapper<methods::StageObservations> reports;
     std::reference_wrapper<const bundle::RunContext> context;
 };
 core::Result<void> disabled_observations(ContinuousRun run,
                                          image::PlaneView<const std::uint8_t> protection) {
-    run.reports.illumination.get() = {};
+    run.reports.get().illumination = {};
     if (!protection.empty()) {
         for (std::uint32_t y = 0; y < protection.height(); ++y) {
             if (run.cancellation.get().requested(core::Checkpoint::measurement)) {
                 return core::cancelled();
             }
-            run.reports.illumination.get().protected_samples += static_cast<std::uint64_t>(
+            run.reports.get().illumination.protected_samples += static_cast<std::uint64_t>(
                 std::ranges::count_if(protection.row(y), [](auto p) { return p != 0; }));
         }
     }
     const auto extent = run.converter.get().extent();
-    run.reports.illumination.get().eligible_samples =
+    run.reports.get().illumination.eligible_samples =
         (std::uint64_t{extent.width} * extent.height) -
-        run.reports.illumination.get().protected_samples;
-    run.reports.illumination.get().complete = true;
+        run.reports.get().illumination.protected_samples;
+    run.reports.get().illumination.complete = true;
     return {};
 }
 // Prepares the rows the bundle will contain: either the converter itself, or the converter seen
@@ -73,12 +75,16 @@ core::Result<void> disabled_observations(ContinuousRun run,
 // during publication, long after this function returns.
 core::Result<std::optional<IlluminationModel>>
 prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
-    const auto* const surface = std::get_if<methods::Surface>(&run.request.get().illumination());
-    if (const auto* const morphology =
-            std::get_if<methods::Morphology>(&run.request.get().illumination())) {
+    if (run.reports.get().illumination.requested) {
+        run.reports.get().illumination.status = methods::IlluminationStatus::failed;
+    }
+    const auto* const surface = std::get_if<methods::Surface>(
+        &std::get<app::ContinuousPlan>(run.request.get().plan()).photometric.illumination);
+    if (const auto* const morphology = std::get_if<methods::Morphology>(
+            &std::get<app::ContinuousPlan>(run.request.get().plan()).photometric.illumination)) {
         auto model = methods::MorphologyModel::prepare(
             {run.converter.get(), protection}, *morphology, run.budget.get(),
-            run.cancellation.get(), run.reports.illumination.get());
+            run.cancellation.get(), run.reports.get().illumination);
         if (!model) {
             return std::unexpected(model.error());
         }
@@ -93,7 +99,7 @@ prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
     }
     auto model = methods::SurfaceModel::prepare({run.converter.get(), protection}, *surface,
                                                 run.budget.get(), run.cancellation.get(),
-                                                run.reports.illumination.get());
+                                                run.reports.get().illumination);
     if (!model) {
         return std::unexpected(model.error());
     }
@@ -107,11 +113,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
     const auto& cancellation = run.cancellation.get();
     const auto& request = run.request.get();
     const auto& context = run.context.get();
-    const auto& illumination = run.reports.illumination.get();
-    const auto& denoising = run.reports.denoising.get();
-    const auto& contrast = run.reports.contrast.get();
-    const auto& sharpening = run.reports.sharpening.get();
-    const auto& operation = std::get<image::Continuous>(request.operation());
+    const auto& operation = std::get<app::ContinuousPlan>(request.plan()).operation;
     auto block =
         image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1);
     if (!block) {
@@ -126,11 +128,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
                 .operation = operation,
                 .converter = std::cref(run.converter.get()),
                 .mask = protection.facts,
-                .illumination = illumination,
-                .denoising = denoising,
-                .contrast = contrast,
-                .sharpening = sharpening,
-                .restoration = run.reports.restoration.get(),
+                .stages = std::cref(run.reports.get()),
             },
         .budget = budget,
         .cancellation = cancellation,
@@ -144,44 +142,54 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
     if (!published) {
         return std::unexpected(std::move(published.error()));
     }
-    return published_continuous(std::move(*published), decoded.description, run.reports,
+    return published_continuous(std::move(*published), decoded.description, run.reports.get(),
                                 operation.parameters().alpha);
 }
 core::Result<app::PublishedContinuous> finish_frame(image::LinearSource& source,
                                                     bool source_prepared, const ContinuousRun& run,
                                                     const Protection& protection,
                                                     const io::IdentifiedRaster& decoded) {
-    auto& contrast = run.reports.contrast.get();
+    auto& contrast = run.reports.get().contrast;
     auto& budget = run.budget.get();
     const auto& cancellation = run.cancellation.get();
-    contrast.eligible_samples = run.reports.denoising.get().eligible_samples;
-    contrast.protected_samples = run.reports.denoising.get().protected_samples;
+    if (contrast.requested) {
+        contrast.status = methods::ContrastStatus::failed;
+    }
+    contrast.eligible_samples = run.reports.get().denoising.eligible_samples;
+    contrast.protected_samples = run.reports.get().denoising.protected_samples;
     const ContrastInput contrast_input{
         .source = source,
         .mask = protection.mask.view(),
         .prepared = source_prepared,
     };
-    auto mapping = prepare_contrast(contrast_input, run.request.get().contrast(), budget,
-                                    cancellation, contrast);
+    auto mapping = prepare_contrast(
+        contrast_input,
+        std::get<app::ContinuousPlan>(run.request.get().plan()).photometric.contrast, budget,
+        cancellation, contrast);
     if (!mapping) {
         return std::unexpected(mapping.error());
     }
     ContrastedSource contrasted{contrast_input, *mapping ? &**mapping : nullptr, contrast,
                                 cancellation};
-    run.reports.sharpening.get().eligible_samples = contrast.eligible_samples;
-    run.reports.sharpening.get().protected_samples = contrast.protected_samples;
+    if (run.reports.get().sharpening.requested) {
+        run.reports.get().sharpening.status = methods::SharpenStatus::failed;
+    }
+    run.reports.get().sharpening.eligible_samples = contrast.eligible_samples;
+    run.reports.get().sharpening.protected_samples = contrast.protected_samples;
     const SharpenInput sharpen_input{
         .source = contrasted,
         .mask = protection.mask.view(),
         .prepared = contrasted.prepared(),
     };
-    auto sharpening_model = prepare_sharpening(sharpen_input, run.request.get().sharpening(),
-                                               budget, cancellation, run.reports.sharpening.get());
+    auto sharpening_model = prepare_sharpening(
+        sharpen_input,
+        std::get<app::ContinuousPlan>(run.request.get().plan()).photometric.sharpening, budget,
+        cancellation, run.reports.get().sharpening);
     if (!sharpening_model) {
         return std::unexpected(sharpening_model.error());
     }
     SharpenedSource sharpened{sharpen_input, *sharpening_model ? &**sharpening_model : nullptr,
-                              run.reports.sharpening.get(), cancellation};
+                              run.reports.get().sharpening, cancellation};
     return publish_frame(sharpened, sharpened.prepared(), run, protection, decoded);
 }
 core::Result<app::PublishedContinuous>
@@ -189,9 +197,12 @@ restore_and_finish(image::LinearSource& source, bool source_prepared, const Cont
                    const Protection& protection, const io::IdentifiedRaster& decoded) {
     auto& budget = run.budget.get();
     const auto& cancellation = run.cancellation.get();
-    auto& restoration = run.reports.restoration.get();
-    restoration.eligible_samples = run.reports.denoising.get().eligible_samples;
-    restoration.protected_samples = run.reports.denoising.get().protected_samples;
+    auto& restoration = run.reports.get().restoration;
+    if (restoration.requested) {
+        restoration.status = methods::RestorationStatus::failed;
+    }
+    restoration.eligible_samples = run.reports.get().denoising.eligible_samples;
+    restoration.protected_samples = run.reports.get().denoising.protected_samples;
     const RestoreInput restoration_input{
         .source = source,
         .mask = protection.mask.view(),
@@ -199,11 +210,13 @@ restore_and_finish(image::LinearSource& source, bool source_prepared, const Cont
         .geometry_transformed =
             run.converter.get().report().orientation != image::Orientation::normal() ||
             run.request.get().rotation().degrees() != 0,
-        .illumination = run.reports.illumination.get(),
-        .denoising = run.reports.denoising.get(),
+        .illumination = run.reports.get().illumination,
+        .denoising = run.reports.get().denoising,
     };
-    auto restored_model = prepare_restoration(restoration_input, run.request.get().restoration(),
-                                              budget, cancellation, restoration);
+    auto restored_model = prepare_restoration(
+        restoration_input,
+        std::get<app::ContinuousPlan>(run.request.get().plan()).photometric.restoration, budget,
+        cancellation, restoration);
     if (!restored_model) {
         return std::unexpected(restored_model.error());
     }
@@ -213,14 +226,13 @@ restore_and_finish(image::LinearSource& source, bool source_prepared, const Cont
 }
 } // namespace
 core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& request,
-                                                  image::Continuous operation,
                                                   ContinuousExecution execution,
-                                                  ContinuousReports reports) {
-    auto& illumination = reports.illumination.get();
-    auto& denoising = reports.denoising.get();
+                                                  methods::StageObservations& reports) {
+    auto& illumination = reports.illumination;
+    auto& denoising = reports.denoising;
     const auto& cancellation = execution.cancellation.get();
     core::Budget budget{core::continuous_processing_budget};
-    initialize_stages(request, reports);
+    const auto& operation = std::get<app::ContinuousPlan>(request.plan()).operation;
     auto decoded =
         io::load_source(request.input(), budget, operation.parameters().profile, cancellation);
     if (!decoded) {
@@ -246,6 +258,9 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     auto prepared = prepare(run, protection->mask.view().as_const());
     if (!prepared) {
         return std::unexpected(prepared.error());
+    }
+    if (denoising.requested) {
+        denoising.status = methods::DenoiseStatus::failed;
     }
     denoising.eligible_samples = illumination.eligible_samples;
     denoising.protected_samples = illumination.protected_samples;

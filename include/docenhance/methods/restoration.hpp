@@ -96,7 +96,7 @@ struct ResolvedPsf {
     std::optional<PsfIdentity> source_identity = std::nullopt;
     bool operator==(const ResolvedPsf&) const = default;
 };
-enum class RestorationStatus { disabled, no_change, applied, failed };
+enum class RestorationStatus { not_started, disabled, no_change, applied, failed };
 enum class RestorationReason {
     none,
     zero_blend,
@@ -146,6 +146,7 @@ struct RestorationCharge {
 [[nodiscard]] std::string_view status_name(RestorationStatus value) noexcept;
 [[nodiscard]] std::string_view reason_name(RestorationReason value) noexcept;
 [[nodiscard]] bool valid_restoration_paths(const Restoration& method) noexcept;
+[[nodiscard]] bool valid_wiener_parameters(const WienerParameters& parameters);
 [[nodiscard]] bool valid_restoration_observations(const RestorationReport& report);
 [[nodiscard]] bool valid_restoration_extent(const RestorationReport& report, image::Extent extent);
 [[nodiscard]] bool valid_restoration(const RestorationReport& report, const Restoration& method);

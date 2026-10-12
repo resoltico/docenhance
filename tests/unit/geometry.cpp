@@ -150,16 +150,16 @@ app::PublishedContinuous geometry_observation() {
     value.conversion.output = value.conversion.source;
     value.conversion.assumed_transfer = true;
     value.conversion.verified = true;
-    value.illumination.complete = true;
-    value.illumination.eligible_samples = 4;
-    value.contrast.complete = true;
-    value.contrast.eligible_samples = 4;
-    value.sharpening.complete = true;
-    value.sharpening.eligible_samples = 4;
-    value.restoration.complete = true;
-    value.restoration.eligible_samples = 4;
-    value.denoising.complete = true;
-    value.denoising.eligible_samples = 4;
+    value.stages.illumination.complete = true;
+    value.stages.illumination.eligible_samples = 4;
+    value.stages.contrast.complete = true;
+    value.stages.contrast.eligible_samples = 4;
+    value.stages.sharpening.complete = true;
+    value.stages.sharpening.eligible_samples = 4;
+    value.stages.restoration.complete = true;
+    value.stages.restoration.eligible_samples = 4;
+    value.stages.denoising.complete = true;
+    value.stages.denoising.eligible_samples = 4;
     return value;
 }
 void check_rotation_observation(bool binary, unsigned degrees, unsigned observed) {

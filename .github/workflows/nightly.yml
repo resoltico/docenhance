@@ -47,7 +47,7 @@ jobs:
       - run: python tools/check_advisories.py --report out/advisories/report.json
       - name: Upload source-bound advisory observations
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: advisory-${{ github.run_id }}-${{ github.run_attempt }}
           path: out/advisories/report.json
@@ -190,7 +190,7 @@ jobs:
         run: python tools/package_fuzz_evidence.py --build out/${{ matrix.preset }}/app --engine ${{ matrix.engine }} --commit ${{ github.sha }} --output out/${{ matrix.preset }}/fuzz-evidence.tar.gz
       - name: Upload campaign evidence
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: campaign-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: out/${{ matrix.preset }}/fuzz-evidence.tar.gz

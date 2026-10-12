@@ -46,7 +46,7 @@ class Unsharp {
 };
 struct SharpenOff {};
 using Sharpening = std::variant<SharpenOff, Unsharp>;
-enum class SharpenStatus { disabled, no_change, applied, failed };
+enum class SharpenStatus { not_started, disabled, no_change, applied, failed };
 enum class SharpenReason { none, zero_amount, no_eligible_samples, no_effect, processing_failure };
 struct ExcursionRange {
     double low = 0;

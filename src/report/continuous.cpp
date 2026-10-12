@@ -21,11 +21,11 @@ nlohmann::ordered_json continuous_fields(const app::PublishedContinuous& value) 
     // the commit point and cannot assert that publication succeeded.
     return {
         {"operation", "continuous"},
-        {"illumination", bundle::illumination_fields(value.illumination)},
-        {"denoising", bundle::denoising_fields(value.denoising)},
-        {"restoration", bundle::restoration_fields(value.restoration)},
-        {"contrast", bundle::contrast_fields(value.contrast)},
-        {"sharpening", bundle::sharpen_fields(value.sharpening)},
+        {"illumination", bundle::illumination_fields(value.stages.illumination)},
+        {"denoising", bundle::denoising_fields(value.stages.denoising)},
+        {"restoration", bundle::restoration_fields(value.stages.restoration)},
+        {"contrast", bundle::contrast_fields(value.stages.contrast)},
+        {"sharpening", bundle::sharpen_fields(value.stages.sharpening)},
         {"output", value.output},
         {"publication", "completed"},
         {"conversion", bundle::conversion_fields(value.conversion)},
@@ -65,11 +65,11 @@ std::string continuous_text(const app::PublishedContinuous& value) {
                     " bits by request; discarded precision cannot be recovered.\n";
         }
     }
-    text += illumination_text(value.illumination);
-    text += denoising_text(value.denoising);
-    text += restoration_text(value.restoration);
-    text += contrast_text(value.contrast);
-    text += sharpening_text(value.sharpening);
+    text += illumination_text(value.stages.illumination);
+    text += denoising_text(value.stages.denoising);
+    text += restoration_text(value.stages.restoration);
+    text += contrast_text(value.stages.contrast);
+    text += sharpening_text(value.stages.sharpening);
     return text;
 }
 } // namespace docenhance::report

@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 12
+      "const": 13
     },
     "command": {
       "enum": [
@@ -576,16 +576,92 @@
           ]
         },
         "denoising": {
-          "$ref": "#/$defs/denoising"
+          "allOf": [
+            {
+              "$ref": "#/$defs/denoising"
+            },
+            {
+              "properties": {
+                "complete": {
+                  "const": true
+                },
+                "status": {
+                  "not": {
+                    "enum": [
+                      "failed",
+                      "not_started"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         },
         "contrast": {
-          "$ref": "#/$defs/contrast"
+          "allOf": [
+            {
+              "$ref": "#/$defs/contrast"
+            },
+            {
+              "properties": {
+                "complete": {
+                  "const": true
+                },
+                "status": {
+                  "not": {
+                    "enum": [
+                      "failed",
+                      "not_started"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         },
         "sharpening": {
-          "$ref": "#/$defs/sharpening"
+          "allOf": [
+            {
+              "$ref": "#/$defs/sharpening"
+            },
+            {
+              "properties": {
+                "complete": {
+                  "const": true
+                },
+                "status": {
+                  "not": {
+                    "enum": [
+                      "failed",
+                      "not_started"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         },
         "restoration": {
-          "$ref": "#/$defs/restoration"
+          "allOf": [
+            {
+              "$ref": "#/$defs/restoration"
+            },
+            {
+              "properties": {
+                "complete": {
+                  "const": true
+                },
+                "status": {
+                  "not": {
+                    "enum": [
+                      "failed",
+                      "not_started"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "required": [
@@ -1224,7 +1300,8 @@
             "no_change",
             "skipped",
             "applied",
-            "failed"
+            "failed",
+            "not_started"
           ]
         },
         "reason": {
@@ -1769,7 +1846,8 @@
                 "enum": [
                   "no_change",
                   "applied",
-                  "failed"
+                  "failed",
+                  "not_started"
                 ]
               },
               "solver": {
@@ -1853,6 +1931,83 @@
                     }
                   }
                 ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not_started"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "complete": {
+                "const": false
+              },
+              "reason": {
+                "const": "none"
+              },
+              "resolved_cell": {
+                "type": "null"
+              },
+              "eligible_samples": {
+                "const": 0
+              },
+              "protected_samples": {
+                "const": 0
+              },
+              "cells": {
+                "const": 0
+              },
+              "measured_cells": {
+                "const": 0
+              },
+              "dark_cells": {
+                "const": 0
+              },
+              "background_reference": {
+                "type": "null"
+              },
+              "solver": {
+                "type": "null"
+              },
+              "measurements": {
+                "type": "null"
+              },
+              "morphology": {
+                "type": "null"
+              },
+              "application": {
+                "properties": {
+                  "evaluated_samples": {
+                    "const": 0
+                  },
+                  "changed_samples": {
+                    "const": 0
+                  },
+                  "gain_capped_samples": {
+                    "const": 0
+                  },
+                  "saturated_samples": {
+                    "const": 0
+                  },
+                  "min_gain": {
+                    "const": 1
+                  },
+                  "max_gain": {
+                    "const": 1
+                  },
+                  "gain_capped_fraction": {
+                    "type": "null"
+                  },
+                  "saturated_fraction": {
+                    "type": "null"
+                  }
+                }
               }
             }
           }
@@ -2457,7 +2612,8 @@
             "disabled",
             "no_change",
             "applied",
-            "failed"
+            "failed",
+            "not_started"
           ]
         },
         "reason": {
@@ -2782,6 +2938,49 @@
                 }
               }
             ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not_started"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "complete": {
+                "const": false
+              },
+              "reason": {
+                "const": "none"
+              },
+              "eligible_samples": {
+                "const": 0
+              },
+              "protected_samples": {
+                "const": 0
+              },
+              "evaluated_samples": {
+                "const": 0
+              },
+              "corrected_samples": {
+                "const": 0
+              },
+              "changed_samples": {
+                "const": 0
+              },
+              "native_calls": {
+                "const": 0
+              },
+              "native_reserved_peak": {
+                "const": 0
+              },
+              "preparation_charge_peak": {
+                "const": 0
+              }
+            }
           }
         }
       ]
@@ -3218,7 +3417,8 @@
             "disabled",
             "no_change",
             "applied",
-            "failed"
+            "failed",
+            "not_started"
           ]
         },
         "reason": {
@@ -3410,7 +3610,8 @@
                 "enum": [
                   "no_change",
                   "applied",
-                  "failed"
+                  "failed",
+                  "not_started"
                 ]
               }
             }
@@ -3566,6 +3767,58 @@
             "properties": {
               "parameters": {
                 "$ref": "#/$defs/contrast_request/properties/parameters/oneOf/3"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not_started"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "complete": {
+                "const": false
+              },
+              "reason": {
+                "const": "none"
+              },
+              "levels": {
+                "type": "null"
+              },
+              "eligible_samples": {
+                "const": 0
+              },
+              "protected_samples": {
+                "const": 0
+              },
+              "measured_samples": {
+                "const": 0
+              },
+              "evaluated_samples": {
+                "const": 0
+              },
+              "corrected_samples": {
+                "const": 0
+              },
+              "changed_samples": {
+                "const": 0
+              },
+              "clipped_low_samples": {
+                "const": 0
+              },
+              "clipped_high_samples": {
+                "const": 0
+              },
+              "preparation_charge_peak": {
+                "const": 0
+              },
+              "identity_tiles": {
+                "const": 0
               }
             }
           }
@@ -3773,7 +4026,8 @@
             "disabled",
             "no_change",
             "applied",
-            "failed"
+            "failed",
+            "not_started"
           ]
         },
         "reason": {
@@ -3977,7 +4231,8 @@
                 "enum": [
                   "no_change",
                   "applied",
-                  "failed"
+                  "failed",
+                  "not_started"
                 ]
               }
             }
@@ -4012,6 +4267,55 @@
             "properties": {
               "warnings": {
                 "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not_started"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "complete": {
+                "const": false
+              },
+              "reason": {
+                "const": "none"
+              },
+              "pre_clamp": {
+                "type": "null"
+              },
+              "eligible_samples": {
+                "const": 0
+              },
+              "protected_samples": {
+                "const": 0
+              },
+              "context_samples": {
+                "const": 0
+              },
+              "evaluated_samples": {
+                "const": 0
+              },
+              "corrected_samples": {
+                "const": 0
+              },
+              "changed_samples": {
+                "const": 0
+              },
+              "clipped_low_samples": {
+                "const": 0
+              },
+              "clipped_high_samples": {
+                "const": 0
+              },
+              "preparation_charge_peak": {
+                "const": 0
               }
             }
           }
@@ -4371,7 +4675,8 @@
             "disabled",
             "no_change",
             "applied",
-            "failed"
+            "failed",
+            "not_started"
           ]
         },
         "reason": {
@@ -4574,13 +4879,87 @@
                 "enum": [
                   "no_change",
                   "applied",
-                  "failed"
+                  "failed",
+                  "not_started"
                 ]
               },
               "warnings": {
                 "contains": {
                   "const": "W_RESTORATION_INFERENCE"
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "not_started"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "complete": {
+                "const": false
+              },
+              "reason": {
+                "const": "none"
+              },
+              "psf": {
+                "type": "null"
+              },
+              "guard": {
+                "const": 0
+              },
+              "fft_width": {
+                "const": 0
+              },
+              "fft_height": {
+                "const": 0
+              },
+              "padded_mean": {
+                "type": "null"
+              },
+              "eligible_samples": {
+                "const": 0
+              },
+              "protected_samples": {
+                "const": 0
+              },
+              "context_samples": {
+                "const": 0
+              },
+              "evaluated_samples": {
+                "const": 0
+              },
+              "corrected_samples": {
+                "const": 0
+              },
+              "changed_samples": {
+                "const": 0
+              },
+              "raw_low_samples": {
+                "const": 0
+              },
+              "raw_high_samples": {
+                "const": 0
+              },
+              "blended_low_samples": {
+                "const": 0
+              },
+              "blended_high_samples": {
+                "const": 0
+              },
+              "preparation_charge_peak": {
+                "const": 0
+              },
+              "native_reserved_bytes": {
+                "const": 0
+              },
+              "native_calls": {
+                "const": 0
               }
             }
           }

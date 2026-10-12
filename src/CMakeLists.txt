@@ -48,11 +48,11 @@ de_library(de_methods LAYER methods
           methods/tvl1_objective.cpp methods/tvl1_model.cpp methods/tvl1_apply.cpp methods/tvl1_validation.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
-          "${DE_INCLUDE}/methods/otsu.hpp" "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
+          "${DE_INCLUDE}/methods/stages.hpp" "${DE_INCLUDE}/methods/otsu.hpp" "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
           "${DE_INCLUDE}/methods/restoration.hpp" "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/sharpening.hpp" "${DE_INCLUDE}/methods/contrast.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp" "${DE_INCLUDE}/methods/tvl1.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
-  SOURCES app/verification_observations.cpp app/restoration.cpp app/restoration.hpp app/observations.cpp app/observations.hpp app/denoising.cpp app/sharpening.cpp app/sharpening.hpp app/contrast.cpp app/contrast.hpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
+  SOURCES app/stage_observations.cpp app/verification_observations.cpp app/restoration.cpp app/restoration.hpp app/observations.cpp app/observations.hpp app/denoising.cpp app/sharpening.cpp app/sharpening.hpp app/contrast.cpp app/contrast.hpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
           "${DE_INCLUDE}/app/verify.hpp"
   LINKS de_core de_contract de_methods de_image)
@@ -98,7 +98,7 @@ if(DE_FUZZ_ONLY)
   return()
 endif()
 de_library(de_host LAYER host
-  SOURCES host/protection.cpp host/protection.hpp host/run_publication.cpp host/run_publication.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/stage_reports.cpp host/stage_reports.hpp host/continuous.cpp host/continuous.hpp
+  SOURCES host/protection.cpp host/protection.hpp host/run_publication.cpp host/run_publication.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
           host/restoration.cpp host/restoration.hpp host/linear_rows.cpp host/linear_rows.hpp host/denoising.cpp host/sharpening.cpp host/sharpening.hpp host/contrast.cpp host/contrast.hpp host/denoising.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
   LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color de_opencv)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)

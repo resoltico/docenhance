@@ -22,12 +22,12 @@ core::Result<Protection> load_protection(const app::ProcessRequest& request,
                                          const color::Converter& converter, core::Budget& budget,
                                          const core::Cancellation& cancellation) {
     Protection result;
-    if (request.protection()) {
+    const auto& mask_path = std::get<app::ContinuousPlan>(request.plan()).protection;
+    if (mask_path) {
         const auto report = converter.report();
         const auto shape = image::oriented_shape(report.source, report.orientation);
-        auto loaded = io::load_protection_png(*request.protection(),
-                                              {.width = shape.width, .height = shape.height},
-                                              budget, cancellation);
+        auto loaded = io::load_protection_png(
+            *mask_path, {.width = shape.width, .height = shape.height}, budget, cancellation);
         if (!loaded) {
             return std::unexpected(loaded.error());
         }

@@ -11,7 +11,6 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/publication.hpp"
 #include "docenhance/methods/binarization.hpp"
-#include "docenhance/methods/illumination.hpp"
 #include "file_contents.hpp"
 #include "native_publication.hpp"
 #include "png_fixture.hpp"
@@ -58,7 +57,6 @@ WrittenBundle written_bundle() {
     REQUIRE(digest);
     const auto method = methods::FixedThreshold::create();
     REQUIRE(method);
-    const methods::IlluminationReport illumination;
     const bundle::RunRecord facts{
         .context = {.identity = std::string(32, 'a'), .recorded = "2026-09-30T00:00:00Z"},
         .build = core::build_facts(),
@@ -86,11 +84,13 @@ WrittenBundle written_bundle() {
             },
         .protection = std::nullopt,
         .conversion = std::nullopt,
-        .illumination = illumination,
-        .denoising = {.complete = true},
-        .contrast = {.complete = true},
-        .sharpening = {.complete = true},
-        .restoration = {.complete = true},
+        .stages =
+            {
+                .denoising = {.complete = true},
+                .restoration = {.complete = true},
+                .contrast = {.complete = true},
+                .sharpening = {.complete = true},
+            },
     };
     auto record = bundle::serialize(facts);
     REQUIRE(record);

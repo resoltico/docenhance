@@ -15,11 +15,10 @@ from pathlib import Path
 from typing import Any
 
 from continuous_fixtures import Fixture, decode_output, gamma_profile, profile_from_output
-from test_cli import call_json, expect
+from test_cli import WIRE_VERSION, call_json, expect
 from test_jpeg import oriented_fixture
 from tiff_fixtures import Field, TiffFixture, container
 
-WIRE_VERSION = 12
 BYTE_DEPTH = 8
 WORD_DEPTH = 16
 FLATTENED_PIXELS = 3

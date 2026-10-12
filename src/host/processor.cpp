@@ -12,18 +12,12 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
-#include "docenhance/image/continuous.hpp"
 #include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/io/paths.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
-#include "docenhance/methods/contrast.hpp"
-#include "docenhance/methods/denoising.hpp"
-#include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
-#include "docenhance/methods/restoration.hpp"
-#include "docenhance/methods/sharpening.hpp"
 #include "run_publication.hpp"
 
 #include <cstdint>
@@ -133,36 +127,7 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         .rotation = request.rotation(),
     };
 }
-void failed_stages(ContinuousReports reports) {
-    auto& report = reports.illumination.get();
-    auto& denoising = reports.denoising.get();
-    auto& contrast = reports.contrast.get();
-    auto& sharpening = reports.sharpening.get();
-    auto& restoration = reports.restoration.get();
-    if (restoration.requested && !restoration.complete) {
-        restoration.status = methods::RestorationStatus::failed;
-        restoration.reason = methods::RestorationReason::processing_failure;
-    }
-    if (report.requested && !report.complete) {
-        report.status = methods::IlluminationStatus::failed;
-        if (report.reason == methods::IlluminationReason::none ||
-            report.reason == methods::IlluminationReason::no_effect) {
-            report.reason = methods::IlluminationReason::processing_failure;
-        }
-    }
-    if (denoising.requested && !denoising.complete) {
-        denoising.status = methods::DenoiseStatus::failed;
-        denoising.reason = methods::DenoiseReason::processing_failure;
-    }
-    if (sharpening.requested && !sharpening.complete) {
-        sharpening.status = methods::SharpenStatus::failed;
-        sharpening.reason = methods::SharpenReason::processing_failure;
-    }
-    if (contrast.requested && !contrast.complete) {
-        contrast.status = methods::ContrastStatus::failed;
-        contrast.reason = methods::ContrastReason::processing_failure;
-    }
-}
+
 } // namespace
 app::ProcessResult Processor::process(const app::ProcessRequest& request,
                                       const core::Cancellation& cancellation) {
@@ -182,43 +147,18 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
         return app::process_failure(
             {.code = core::ErrorCode::invariant, .message = "Invalid execution run context"});
     }
-    if (const auto* const method = std::get_if<methods::Binarization>(&request.operation())) {
-        auto result = binary(request, *method, cancellation, context);
+    if (const auto* const method = std::get_if<app::BinaryPlan>(&request.plan())) {
+        auto result = binary(request, method->operation, cancellation, context);
         if (!result) {
             return app::process_failure(std::move(result.error()));
         }
         return std::move(*result);
     }
-    methods::IlluminationReport report;
-    methods::DenoisingReport denoising;
-    methods::ContrastReport contrast;
-    methods::SharpenReport sharpening;
-    methods::RestorationReport restoration;
-    auto result = continuous(request, std::get<image::Continuous>(request.operation()),
-                             {.cancellation = cancellation, .context = context},
-                             {
-                                 .illumination = report,
-                                 .denoising = denoising,
-                                 .contrast = contrast,
-                                 .sharpening = sharpening,
-                                 .restoration = restoration,
-                             });
+    auto stages = app::initial_stages(std::get<app::ContinuousPlan>(request.plan()).photometric);
+    auto result = continuous(request, {.cancellation = cancellation, .context = context}, stages);
     if (!result) {
-        failed_stages({
-            .illumination = report,
-            .denoising = denoising,
-            .contrast = contrast,
-            .sharpening = sharpening,
-            .restoration = restoration,
-        });
-        return std::unexpected(app::ProcessFailure{
-            .error = std::move(result.error()),
-            .denoising = denoising,
-            .contrast = contrast,
-            .sharpening = sharpening,
-            .illumination = report,
-            .restoration = std::move(restoration),
-        });
+        app::failed_stages(stages);
+        return app::process_failure(std::move(result.error()), std::move(stages));
     }
     return std::move(*result);
 }

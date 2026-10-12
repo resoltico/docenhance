@@ -12,6 +12,8 @@ NATIVE_RUNNERS = {
     "linux-arm64": "ubuntu-24.04-arm",
     "macos-arm64": "macos-26",
     "macos-x86_64": "macos-26-intel",
+    "macos-15-arm64": "macos-15",
+    "macos-15-x86_64": "macos-15-intel",
     "windows-x86_64": "windows-2025-vs2026",
 }
 JOB_TITLES = {

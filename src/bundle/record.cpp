@@ -192,7 +192,7 @@ core::Result<std::string> serialize(const RunRecord& record) {
                         "conversion",
                         record.conversion ? conversion_fields(*record.conversion) : Json(nullptr),
                     },
-                    {"illumination", illumination_fields(record.illumination)},
+                    {"illumination", illumination_fields(record.stages.illumination)},
                 },
             },
             {
@@ -201,15 +201,18 @@ core::Result<std::string> serialize(const RunRecord& record) {
             },
             {"output", output_fields(record.output)},
         };
-        document.at("request").emplace("denoising", denoising_request_fields(record.denoising));
-        document.at("execution").emplace("denoising", denoising_fields(record.denoising));
-        document.at("request").emplace("contrast", contrast_request_fields(record.contrast));
-        document.at("execution").emplace("contrast", contrast_fields(record.contrast));
-        document.at("request").emplace("sharpening", sharpen_request_fields(record.sharpening));
-        document.at("execution").emplace("sharpening", sharpen_fields(record.sharpening));
+        document.at("request").emplace("denoising",
+                                       denoising_request_fields(record.stages.denoising));
+        document.at("execution").emplace("denoising", denoising_fields(record.stages.denoising));
+        document.at("request").emplace("contrast", contrast_request_fields(record.stages.contrast));
+        document.at("execution").emplace("contrast", contrast_fields(record.stages.contrast));
+        document.at("request").emplace("sharpening",
+                                       sharpen_request_fields(record.stages.sharpening));
+        document.at("execution").emplace("sharpening", sharpen_fields(record.stages.sharpening));
         document.at("request").emplace("restoration",
-                                       restoration_request_fields(record.restoration));
-        document.at("execution").emplace("restoration", restoration_fields(record.restoration));
+                                       restoration_request_fields(record.stages.restoration));
+        document.at("execution")
+            .emplace("restoration", restoration_fields(record.stages.restoration));
         document.at("execution").emplace("binarization", binarization_fields(record.otsu));
         return document.dump(record_indent, ' ', false, Json::error_handler_t::strict) + "\n";
     } catch (const Json::exception&) {

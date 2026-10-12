@@ -55,7 +55,8 @@ core::Result<methods::Sharpening> prepare_sharpening(const contract::Invocation&
         .transform([](auto value) -> methods::Sharpening { return value; });
 }
 bool partial_sharpen(const methods::SharpenReport& r, const ProcessRequest& request) {
-    const auto* const method = std::get_if<methods::Unsharp>(&request.sharpening());
+    const auto* const method = std::get_if<methods::Unsharp>(
+        &std::get<app::ContinuousPlan>(request.plan()).photometric.sharpening);
     if (method != nullptr ? (!r.requested || *r.requested != method->parameters())
                           : r.requested.has_value()) {
         return false;
@@ -63,7 +64,8 @@ bool partial_sharpen(const methods::SharpenReport& r, const ProcessRequest& requ
     if (!methods::valid_sharpen_observations(r)) {
         return false;
     }
-    return r.complete ? methods::valid_sharpen(r, request.sharpening())
+    return r.complete ? methods::valid_sharpen(
+                            r, std::get<app::ContinuousPlan>(request.plan()).photometric.sharpening)
                       : (!r.requested || (r.status == methods::SharpenStatus::failed &&
                                           r.reason == methods::SharpenReason::processing_failure));
 }

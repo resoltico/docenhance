@@ -49,10 +49,19 @@ def implemented(
         if type(version) is not int or version < 1:
             msg = f"{identity}: method_version must be a positive integer"
             raise ValueError(msg)
-        if entry.get("status") not in {"implemented", "not-implemented"}:
-            msg = f"{identity}: unknown implementation status"
+        if "status" in entry or entry.get("classification") not in {
+            "implemented-selectable",
+            "implemented-automatic",
+            "planned",
+        }:
+            msg = f"{identity}: unknown capability classification"
             raise ValueError(msg)
-        if entry["status"] != "implemented":
+        if entry["classification"] != "implemented-selectable":
+            if entry["classification"] == "implemented-automatic" and (
+                entry.get("selector") is not None or entry.get("arguments") != []
+            ):
+                msg = f"{identity}: automatic capabilities have no selector or options"
+                raise ValueError(msg)
             continue
         if entry.get("family") not in {
             "binarization",
@@ -79,7 +88,7 @@ def implemented(
     if not active:
         msg = "The executable must declare at least one implemented method"
         raise ValueError(msg)
-    validate_attribution(options, active, ids)
+    validate_attribution(options, active, {entry["id"] for entry in active})
     return active
 
 

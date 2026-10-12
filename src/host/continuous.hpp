@@ -11,22 +11,15 @@
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
+#include "docenhance/methods/stages.hpp"
 
 #include <functional>
 namespace docenhance::host {
-struct ContinuousReports {
-    std::reference_wrapper<methods::IlluminationReport> illumination;
-    std::reference_wrapper<methods::DenoisingReport> denoising;
-    std::reference_wrapper<methods::ContrastReport> contrast;
-    std::reference_wrapper<methods::SharpenReport> sharpening;
-    std::reference_wrapper<methods::RestorationReport> restoration;
-};
 struct ContinuousExecution {
     std::reference_wrapper<const core::Cancellation> cancellation;
     std::reference_wrapper<const bundle::RunContext> context;
 };
-[[nodiscard]] core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& request,
-                                                                image::Continuous operation,
-                                                                ContinuousExecution execution,
-                                                                ContinuousReports reports);
+[[nodiscard]] core::Result<app::PublishedContinuous>
+continuous(const app::ProcessRequest& request, ContinuousExecution execution,
+           methods::StageObservations& reports);
 } // namespace docenhance::host

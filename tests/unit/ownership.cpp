@@ -54,6 +54,15 @@ static_assert(!BorrowsBytes<core::Buffer> && !BorrowsBytes<const core::Buffer>);
 using Plane = image::Plane<std::uint8_t>;
 static_assert(BorrowsPlane<Plane&> && BorrowsPlane<const Plane&>);
 static_assert(!BorrowsPlane<Plane> && !BorrowsPlane<const Plane>);
+template <typename T>
+concept BorrowsPlan = requires(T&& owner) { std::forward<T>(owner).plan(); };
+template <typename T>
+concept CarriesPhotometric = requires(T plan) { plan.photometric; };
+template <typename T>
+concept CarriesProtection = requires(T plan) { plan.protection; };
+static_assert(!CarriesPhotometric<app::BinaryPlan> && !CarriesProtection<app::BinaryPlan>);
+static_assert(CarriesPhotometric<app::ContinuousPlan> && CarriesProtection<app::ContinuousPlan>);
+static_assert(BorrowsPlan<const app::ProcessRequest&> && !BorrowsPlan<app::ProcessRequest>);
 static_assert(BorrowsRequest<app::ProcessRequest&> && !BorrowsRequest<app::ProcessRequest>);
 static_assert(BorrowsRaster<const image::Raster&> && !BorrowsRaster<image::Raster>);
 static_assert(!BorrowsRaster<const image::Raster>);
@@ -124,8 +133,8 @@ TEST_CASE("Wrong-family and incomplete processing reports preserve unknown publi
         app::PublishedContinuous reported{};
         reported.output = "output/result.png";
         reported.conversion.verified = invalid != 1;
-        reported.illumination.complete = invalid != 2;
-        reported.denoising.complete = invalid != 3;
+        reported.stages.illumination.complete = invalid != 2;
+        reported.stages.denoising.complete = invalid != 3;
         ReportingProcessor continuous{reported};
         request.output_mode = invalid == 0 ? "bw" : "preserve";
         const auto outcome = app::dispatch(request, continuous, verifier);

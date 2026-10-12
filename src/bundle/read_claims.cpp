@@ -130,11 +130,14 @@ core::Result<void> canonical_claims(const RecordJson& document, const DeclaredBu
         .output = d.output,
         .protection = d.protection,
         .conversion = d.conversion,
-        .illumination = d.illumination,
-        .denoising = d.denoising,
-        .contrast = d.contrast,
-        .sharpening = d.sharpening,
-        .restoration = d.restoration,
+        .stages =
+            {
+                .illumination = d.illumination,
+                .denoising = d.denoising,
+                .restoration = d.restoration,
+                .contrast = d.contrast,
+                .sharpening = d.sharpening,
+            },
         .otsu = d.otsu,
         .rotation = d.rotation,
     };

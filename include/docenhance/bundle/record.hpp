@@ -13,6 +13,7 @@
 #include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
+#include "docenhance/methods/stages.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -28,7 +29,7 @@ namespace docenhance::bundle {
 // The record describes processing. It is finalized before the commit point, so it cannot assert
 // that publication succeeded; publication state belongs to the command response.
 
-inline constexpr unsigned record_version = 12;
+inline constexpr unsigned record_version = 13;
 inline constexpr const char* record_name = "run.json";
 inline constexpr const char* image_name = "result.png";
 inline constexpr const char* mask_name = "assets/protect-mask.png";
@@ -77,7 +78,7 @@ struct OutputFacts {
     Verification verification = Verification::not_performed;
 };
 
-// The same variant the application admits; naming it here costs no second definition.
+// The admitted representation captured by the record; continuous stage facts are owned below.
 using Operation = std::variant<methods::Binarization, image::Continuous>;
 
 struct RunRecord {
@@ -89,11 +90,7 @@ struct RunRecord {
     OutputFacts output;
     std::optional<ProtectionFacts> protection;
     std::optional<image::ConversionReport> conversion;
-    methods::IlluminationReport illumination;
-    methods::DenoisingReport denoising{};
-    methods::ContrastReport contrast{};
-    methods::SharpenReport sharpening{};
-    methods::RestorationReport restoration{};
+    methods::StageObservations stages;
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
     image::QuarterTurn rotation = image::QuarterTurn::identity();
 };

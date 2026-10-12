@@ -95,6 +95,14 @@ def signal_group(process: subprocess.Popen[bytes], signum: int) -> bool:
             vars(os)["killpg"](process.pid, 0)
         except ProcessLookupError:
             return False
+        except PermissionError:
+            # Reaping can precede Darwin's group removal. Only native ESRCH confirms absence;
+            # a persistent denial or a surviving group keeps cleanup unconfirmed.
+            time.sleep(REAP_RACE_SECONDS)
+            try:
+                vars(os)["killpg"](process.pid, 0)
+            except ProcessLookupError:
+                return False
         if signum:
             raise
     return True

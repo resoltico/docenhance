@@ -123,11 +123,13 @@ Json option_fields(contract::Command command) {
     return options;
 }
 std::string failure_stages(const app::ProcessFailure& payload) {
-    return (payload.illumination ? illumination_text(*payload.illumination) : "") +
-           (payload.denoising ? denoising_text(*payload.denoising) : "") +
-           (payload.restoration ? restoration_text(*payload.restoration) : "") +
-           (payload.contrast ? contrast_text(*payload.contrast) : "") +
-           (payload.sharpening ? sharpening_text(*payload.sharpening) : "");
+    if (!payload.stages) {
+        return {};
+    }
+    const auto& stages = *payload.stages;
+    return illumination_text(stages.illumination) + denoising_text(stages.denoising) +
+           restoration_text(stages.restoration) + contrast_text(stages.contrast) +
+           sharpening_text(stages.sharpening);
 }
 Json failure_fields(const app::ProcessFailure& payload) {
     const Json error = {
@@ -135,20 +137,13 @@ Json failure_fields(const app::ProcessFailure& payload) {
         {"message", diagnostic(payload.error)},
     };
     Json fields = {{"error", error}, {"publication", publication_name(payload.error.publication)}};
-    if (payload.restoration) {
-        fields.emplace("restoration", bundle::restoration_fields(*payload.restoration));
-    }
-    if (payload.sharpening) {
-        fields.emplace("sharpening", bundle::sharpen_fields(*payload.sharpening));
-    }
-    if (payload.contrast) {
-        fields.emplace("contrast", bundle::contrast_fields(*payload.contrast));
-    }
-    if (payload.denoising) {
-        fields.emplace("denoising", bundle::denoising_fields(*payload.denoising));
-    }
-    if (payload.illumination) {
-        fields.emplace("illumination", bundle::illumination_fields(*payload.illumination));
+    if (payload.stages) {
+        const auto& stages = *payload.stages;
+        fields.emplace("illumination", bundle::illumination_fields(stages.illumination));
+        fields.emplace("denoising", bundle::denoising_fields(stages.denoising));
+        fields.emplace("restoration", bundle::restoration_fields(stages.restoration));
+        fields.emplace("contrast", bundle::contrast_fields(stages.contrast));
+        fields.emplace("sharpening", bundle::sharpen_fields(stages.sharpening));
     }
     return fields;
 }

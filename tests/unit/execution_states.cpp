@@ -11,6 +11,7 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/sharpening.hpp"
+#include "docenhance/methods/stages.hpp"
 #include "processor.hpp"
 #include "stub_verifier.hpp"
 
@@ -79,16 +80,16 @@ app::PublishedContinuous continuous(bool black = false) {
     value.conversion.output = value.conversion.source;
     value.conversion.assumed_transfer = true;
     value.conversion.verified = true;
-    value.illumination.complete = true;
-    value.illumination.eligible_samples = 4;
-    value.contrast.complete = true;
-    value.contrast.eligible_samples = 4;
-    value.sharpening.complete = true;
-    value.sharpening.eligible_samples = 4;
-    value.restoration.complete = true;
-    value.restoration.eligible_samples = 4;
-    value.denoising.complete = true;
-    value.denoising.eligible_samples = 4;
+    value.stages.illumination.complete = true;
+    value.stages.illumination.eligible_samples = 4;
+    value.stages.contrast.complete = true;
+    value.stages.contrast.eligible_samples = 4;
+    value.stages.sharpening.complete = true;
+    value.stages.sharpening.eligible_samples = 4;
+    value.stages.restoration.complete = true;
+    value.stages.restoration.eligible_samples = 4;
+    value.stages.denoising.complete = true;
+    value.stages.denoising.eligible_samples = 4;
     return value;
 }
 const core::Error& error(const app::Outcome& value) {
@@ -178,10 +179,10 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
             value.conversion.output.model = image::SampleModel::rgb;
         }
         if (change == 2) {
-            value.illumination.eligible_samples = 5;
+            value.stages.illumination.eligible_samples = 5;
         }
         if (change == 3) {
-            value.illumination.max_gain = std::numeric_limits<double>::quiet_NaN();
+            value.stages.illumination.max_gain = std::numeric_limits<double>::quiet_NaN();
         }
         if (change == 4) {
             value.conversion.depth_reduced = true;
@@ -193,7 +194,7 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
     auto native_request = invocation(false);
     native_request.denoise = "nlm";
     auto impossible_native = continuous();
-    auto& native = impossible_native.denoising;
+    auto& native = impossible_native.stages.denoising;
     native.requested = methods::NlmParameters{};
     native.native_h =
         methods::nlm_native_strength(std::get<methods::NlmParameters>(*native.requested));
@@ -212,8 +213,9 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
     methods::IlluminationReport wrong;
     wrong.requested = methods::SurfaceParameters{.strength = 0.5};
     wrong.status = methods::IlluminationStatus::failed;
-    ReturningProcessor mismatch{app::process_failure(
-        {.code = core::ErrorCode::resource, .message = "Partial failure"}, wrong)};
+    ReturningProcessor mismatch{
+        app::process_failure({.code = core::ErrorCode::resource, .message = "Partial failure"},
+                             methods::StageObservations{.illumination = wrong})};
     CHECK(error(app::dispatch(request, mismatch, verifier)).publication ==
           core::Publication::unknown);
     wrong.solver = methods::SolverReport{.residual = std::numeric_limits<double>::quiet_NaN()};
@@ -222,7 +224,7 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
             .code = core::ErrorCode::numerical,
             .message = "Malformed partial diagnostic",
         },
-        wrong)};
+        methods::StageObservations{.illumination = wrong})};
     CHECK(error(app::dispatch(request, nonfinite, verifier)).publication ==
           core::Publication::unknown);
 }
@@ -300,30 +302,20 @@ TEST_CASE("Invalid command values have no scope bits and cannot reach execution"
     CHECK(outcome.command == contract::Command::root);
     CHECK(processor.calls == 0);
 }
-TEST_CASE("Early continuous input failure retains known state with sharpening off", "[app]") {
-    UnusedVerifier verifier;
-    const methods::SharpenReport unreported;
-    ReturningProcessor processor{app::process_failure(
-        {.code = core::ErrorCode::input, .message = "Input rejected before processing"},
-        std::nullopt, std::nullopt, std::nullopt, unreported)};
-    const auto result = error(app::dispatch(invocation(false), processor, verifier));
-    CHECK(processor.calls() == 1);
-    CHECK(result.code == core::ErrorCode::input);
-    CHECK(result.publication == core::Publication::not_started);
-}
 TEST_CASE("I02 failure observations reject foreign fields and invalid scalar domains",
           "[app][morphology]") {
     UnusedVerifier verifier;
     auto request = invocation(false);
     request.illumination = "morph";
     const methods::MorphologyParameters parameters;
-    methods::IlluminationReport report{
+    const methods::IlluminationReport report{
         .status = methods::IlluminationStatus::failed,
         .reason = methods::IlluminationReason::processing_failure,
         .requested = parameters,
     };
     const core::Error failure{.code = core::ErrorCode::resource, .message = "Before processing"};
-    ReturningProcessor valid{app::process_failure(failure, report)};
+    ReturningProcessor valid{
+        app::process_failure(failure, methods::StageObservations{.illumination = report})};
     CHECK(error(app::dispatch(request, valid, verifier)).code == core::ErrorCode::resource);
     for (unsigned mutation = 0; mutation < 6; ++mutation) {
         methods::IlluminationReport bad{
@@ -349,7 +341,8 @@ TEST_CASE("I02 failure observations reject foreign fields and invalid scalar dom
                 bad.morphology->count = 1;
             }
         }
-        ReturningProcessor malformed{app::process_failure(failure, bad)};
+        ReturningProcessor malformed{
+            app::process_failure(failure, methods::StageObservations{.illumination = bad})};
         CHECK(error(app::dispatch(request, malformed, verifier)).publication ==
               core::Publication::unknown);
     }
@@ -390,7 +383,8 @@ TEST_CASE("TV-L1 failure reports reject native claims and fictional stopping", "
                 .field_bytes = 64,
             };
         }
-        ReturningProcessor processor{app::process_failure(failure, std::nullopt, report)};
+        ReturningProcessor processor{
+            app::process_failure(failure, methods::StageObservations{.denoising = report})};
         const auto result = error(app::dispatch(request, processor, verifier));
         CHECK(result.publication == ((mutation == 0 || mutation == 6)
                                          ? core::Publication::not_started

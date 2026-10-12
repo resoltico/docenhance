@@ -102,7 +102,7 @@ struct ClaheMaps {
 struct ContrastOff {};
 using Contrast = std::variant<ContrastOff, Levels, Gamma, Clahe>;
 using ContrastParameters = std::variant<LevelsParameters, GammaParameters, ClaheParameters>;
-enum class ContrastStatus { disabled, no_change, applied, failed };
+enum class ContrastStatus { not_started, disabled, no_change, applied, failed };
 enum class ContrastReason {
     none,
     zero_blend,

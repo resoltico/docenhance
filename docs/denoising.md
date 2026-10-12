@@ -85,8 +85,8 @@ The existing final precommit cutoff and truthful publication reconciliation rema
 
 ## Records and verification
 
-New production records use version 12, with a closed denoising request and execution report; new
-responses use schema version 12. Only the current record format is accepted; obsolete formats are refused, with no migration.
+New production records use version 13, with a closed denoising request and execution report; new
+responses use schema version 13. Only the current record format is accepted; obsolete formats are refused, with no migration.
 The current format requires
 source decoding, full output verification and matching complete stage observations. Binary records
 carry explicit disabled denoising. Writer, complete reader, generated schemas and public response

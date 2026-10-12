@@ -83,6 +83,7 @@ bool reason_agrees(const IlluminationReport& r) {
         default:
             return false;
         }
+    case IlluminationStatus::not_started:
     case IlluminationStatus::disabled:
     case IlluminationStatus::failed:
         return false;

@@ -146,7 +146,8 @@ core::Result<DenoisingPlanes> prepare_denoising(DenoisingInput source_input,
                                                 methods::DenoisingReport& report) {
     auto& source = source_input.source.get();
     const auto protection = source_input.protection;
-    if (const auto* const tv = std::get_if<methods::Tvl1>(&request.denoising())) {
+    if (const auto* const tv = std::get_if<methods::Tvl1>(
+            &std::get<app::ContinuousPlan>(request.plan()).photometric.denoising)) {
         auto model =
             methods::Tvl1Model::prepare(source, protection, *tv, {budget, cancellation, report});
         if (!model) {
@@ -154,7 +155,8 @@ core::Result<DenoisingPlanes> prepare_denoising(DenoisingInput source_input,
         }
         return DenoisingPlanes{std::move(*model)};
     }
-    const auto* const method = std::get_if<methods::Nlm>(&request.denoising());
+    const auto* const method = std::get_if<methods::Nlm>(
+        &std::get<app::ContinuousPlan>(request.plan()).photometric.denoising);
     if (method == nullptr) {
         report.complete = true;
         return DenoisingPlanes{};
