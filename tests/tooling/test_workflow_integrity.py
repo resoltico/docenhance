@@ -52,6 +52,17 @@ class WorkflowIntegrityTests(unittest.TestCase):
         finally:
             path.write_text(original)
 
+    def test_minimum_runtime_toolchain_selection_is_required(self) -> None:
+        """A missing, optional or misrouted Xcode step cannot satisfy the physical minimum lane."""
+        for old, new in (
+            ("        run: python tools/select_xcode.py", "        run: echo skipped"),
+            ("startsWith(matrix.platform, 'macos-15-')", "matrix.platform == 'macos-arm64'"),
+        ):
+            with self.subTest(old=old):
+                self.assert_mutation_refused(
+                    ".github/workflows/ci.yml", old, new, "Required executable step"
+                )
+
     def test_reviewed_workflows(self) -> None:
         """Current source, platform, compiler, engine and aggregate routes agree."""
         self.assertEqual(integrity_errors(self.root), [])

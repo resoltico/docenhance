@@ -88,7 +88,8 @@
   },
   "macos": {
     "deployment_target": "15.0",
-    "decision": "docs/decisions.md"
+    "decision": "docs/decisions.md",
+    "minimum_runner_xcode": "26.0.1"
   },
   "cxx": {
     "standard": 23,

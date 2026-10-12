@@ -17,7 +17,7 @@ from typing import Any
 
 from jsonschema import ValidationError
 
-from document_quality import ROOT, adjudicate, validate_plan
+from document_quality import BUNDLE_ROLES, ROOT, adjudicate, validate_plan
 
 # Independent first-party PNG decoder already used by the numerical/product references.
 sys.path.insert(0, str(ROOT / "tests/cli"))
@@ -129,14 +129,22 @@ def check_comparator(candidate: dict[str, Any], baseline: dict[str, Any]) -> Non
         raise ValueError(message)
 
 
+def check_repetition(candidate: dict[str, Any], replicate: dict[str, Any]) -> None:
+    """Require separate execution identities and identical build-bound repeat facts."""
+    if candidate["record"]["run"] == replicate["record"]["run"]:
+        message = "Repeatability requires independently identified executions"
+        raise ValueError(message)
+    if any(
+        candidate[name] != replicate[name] for name in ("request", "execution", "output", "build")
+    ):
+        message = "Repeated processing differs in samples, parameters, observations or build"
+        raise ValueError(message)
+
+
 def fidelity(root: Path, assessment: dict[str, Any], records: dict[str, Any]) -> None:
     """Compare repeated output, geometry and protected integers with the independent decoder."""
-    candidate, baseline, replicate = (
-        records[name] for name in ("candidate", "baseline", "replicate")
-    )
-    if any(candidate[name] != replicate[name] for name in ("request", "execution", "output")):
-        message = "Repeated processing is not deterministic in samples, parameters or observations"
-        raise ValueError(message)
+    candidate, baseline, replicate = (records[name] for name in BUNDLE_ROLES)
+    check_repetition(candidate, replicate)
     image = decode_output((confined(root, assessment["candidate"]) / "result.png").read_bytes())
     reference = decode_output((confined(root, assessment["baseline"]) / "result.png").read_bytes())
     if (image.width, image.height) != (reference.width, reference.height) or candidate["request"][
@@ -186,17 +194,26 @@ def evaluate(plan: dict[str, Any], root: Path, executable: Path) -> dict[str, An
     samples = {sample["id"]: sample for sample in plan["corpus"]}
     evidence = []
     for assessment in plan["assessments"]:
+        directories = [confined(root, assessment[name]) for name in BUNDLE_ROLES]
+        identities = [path.stat() for path in directories]
+        if len({(item.st_dev, item.st_ino) for item in identities}) != len(BUNDLE_ROLES):
+            message = "Evaluation bundles alias the same physical directory"
+            raise ValueError(message)
         records = {
             name: read_bundle(
                 executable,
                 confined(root, assessment[name]),
                 samples[assessment["sample"]]["sha256"],
             )
-            for name in ("candidate", "baseline", "replicate")
+            for name in BUNDLE_ROLES
         }
         fidelity(root, assessment, records)
         source = confined(root, samples[assessment["sample"]]["path"])
-        for name, option_field in (("candidate", "options"), ("baseline", "baseline_options")):
+        for name, option_field in (
+            ("candidate", "options"),
+            ("baseline", "baseline_options"),
+            ("replicate", "options"),
+        ):
             actual = replay(executable, source, root, assessment[option_field])
             if any(
                 actual[field] != records[name][field]

@@ -291,10 +291,10 @@ class GroupPermissionTests(unittest.TestCase):
                 ),
             ):
                 if isinstance(final, ProcessLookupError):
-                    self.assertFalse(process_execution.signal_group(process, signal.SIGKILL))
+                    self.assertFalse(process_execution.signal_group(process, signal.SIGTERM))
                 else:
                     with self.assertRaises(PermissionError):
-                        process_execution.signal_group(process, signal.SIGKILL)
+                        process_execution.signal_group(process, signal.SIGTERM)
                 pause.assert_called_once_with(process_execution.REAP_RACE_SECONDS)
 
     def test_nonzero_signal_denial_stays_failure_when_group_still_exists(self) -> None:

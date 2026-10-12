@@ -26,6 +26,9 @@ The original reviewed design and negative controls N01–N22 remain the starting
   sampled thread/disk peaks and unavailable native-call timing must remain qualified.
 - Intel LLVM caches must not cross host OS identities; source tools bind host version and the
   deployment floor, compile for that floor and use separate runner-OS CI cache keys.
+- Actual macOS 15 ARM64 execution exposed Xcode 16.4 lacking non-experimental thread/stop-token
+  support. Select the declared installed Xcode before tools/builds, preserve the library probe and
+  actual OS/CPU guard, and rerun the complete lane; a newer toolchain is not a newer-OS substitute.
 - A deployment flag can pass on a newer OS. Check physical macOS major and CPU, then execute the
   relocated package on both minimum lanes, with complete latest-attempt CI reconciliation.
 - Recorded artifacts agreeing cannot prove a given binary produced them. Quality evaluation must
@@ -34,6 +37,10 @@ The original reviewed design and negative controls N01–N22 remain the starting
 - A real strict libFuzzer run completed illumination work but failed Darwin group cleanup with
   `EPERM`. After joining the direct child, one bounded absence recheck admits only native `ESRCH`;
   persistent denial, a live child or a surviving group still refuses cleanup confirmation.
+- Independent PR review identified aggregate sign acceptance hiding a zero score, aliased or
+  build-mismatched repetition, and failed commands admitted as resource observations. Benefit
+  classes require every page positive; all three distinct executions are build-bound and replayed;
+  only completed successful commands yield resource measurements. Negative controls cover each.
 - Positive mean scores can conceal faint-mark loss. Any harm blocks the class; missing/uncertain
   human evidence abstains. An institutional rights label is evidence to review, not a warranty.
 

@@ -79,6 +79,9 @@ jobs:
           python-version: '3.12'
       - name: Assert actual native runner OS and CPU
         run: python tools/check_runtime_platform.py --platform ${{ matrix.platform }}
+      - name: Select declared minimum-runner Xcode
+        if: startsWith(matrix.platform, 'macos-15-')
+        run: python tools/select_xcode.py
       - name: Restore pinned Intel LLVM tools
         id: intel-llvm-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

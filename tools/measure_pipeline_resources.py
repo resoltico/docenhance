@@ -105,8 +105,12 @@ def observe(executable: Path, source: Path, root: Path, options: list[str]) -> d
             message = "Measured command response was overlarge or failed delivery"
             raise ValueError(message)
         response = json.loads(payload)
-    if child.returncode != response["exit_code"]:
-        message = "Measured execution differs from delivered status"
+    if (
+        child.returncode != 0
+        or response["exit_code"] != 0
+        or response["publication"] != "completed"
+    ):
+        message = "Resource measurements require successful completed processing"
         raise ValueError(message)
     return {
         "wall_seconds": wall,

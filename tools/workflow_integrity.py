@@ -187,6 +187,9 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     required_step(
         native, "python tools/check_runtime_platform.py --platform ${{ matrix.platform }}"
     )
+    required_step(
+        native, "python tools/select_xcode.py", "startsWith(matrix.platform, 'macos-15-')"
+    )
     required_step(native, "python tools/install_build_tools.py")
     required_step(native, "python tools/install_llvm.py")
     source_cache(native, required_step(native, "cmake -P cmake/AcquireDependencies.cmake"))

@@ -21,14 +21,21 @@ import tools_path
 from jsonschema import ValidationError
 
 from document_quality import SCHEMA, adjudicate, frozen_digest, validate_plan
-from evaluate_document_quality import check_comparator, confined, evaluate, main, replay_options
+from evaluate_document_quality import (
+    check_comparator,
+    confined,
+    evaluate,
+    fidelity,
+    main,
+    replay_options,
+)
 
 
-def healthy_plan() -> dict[str, Any]:
+def healthy_plan(count: int = 10) -> dict[str, Any]:
     """Construct synthetic unanimous scores with adequate per-class paired sign evidence."""
     classes = json.loads(SCHEMA.read_bytes())["$defs"]["classes"]["items"]["enum"]
     corpus, assessments = [], []
-    for number in range(10):
+    for number in range(count):
         name = str(number)
         corpus.append(
             {
@@ -185,6 +192,9 @@ class DocumentQualityTests(unittest.TestCase):
             plan["executable_sha256"] = hashlib.sha256(executable.read_bytes()).hexdigest()
             for sample in plan["corpus"]:
                 (root / sample["path"]).write_text(sample["id"])
+            for assessment in plan["assessments"]:
+                for name in ("candidate", "baseline", "replicate"):
+                    (root / assessment[name]).mkdir()
             false_baseline = copy.deepcopy(record)
             false_baseline["output"] = {"sha256": "invented"}
             with (
@@ -222,3 +232,38 @@ class DocumentQualityTests(unittest.TestCase):
                 original = output.read_bytes()
                 self.assertEqual(main(), 1)
                 self.assertEqual(output.read_bytes(), original)
+
+    def test_unanimous_tie_cannot_hide_in_large_positive_class(self) -> None:
+        """Eleven gains and one certain tie pass the sign bound but not the benefit contract."""
+        plan = healthy_plan(12)
+        self.assertEqual(adjudicate(plan)["decision"], "accepted")
+        for review in plan["assessments"][0]["reviews"]:
+            review["delta"] = 0
+        result = adjudicate(plan)
+        self.assertLess(result["classes"]["faint_marks"]["sign_tail"], 0.05 / 13)
+        self.assertFalse(result["classes"]["faint_marks"]["accepted"])
+        self.assertTrue(result["classes"]["already_good"]["accepted"])
+
+    def test_replicate_aliases_and_wrong_build_cannot_prove_repeatability(self) -> None:
+        """Repeated paths, identical run identities and different builds refuse evidence."""
+        for prefix in ("", "./"):
+            plan = healthy_plan()
+            item = plan["assessments"][0]
+            item["replicate"] = prefix + item["candidate"]
+            with self.assertRaisesRegex(ValueError, "distinct bundle directories"):
+                validate_plan(plan)
+        candidate: dict[str, Any] = {
+            field: {} for field in ("request", "execution", "output", "build")
+        }
+        candidate["record"] = {"run": "a"}
+        replicate = copy.deepcopy(candidate)
+        for change, message in (("run", "independently"), ("build", "build")):
+            if change == "build":
+                replicate["record"]["run"] = "b"
+                replicate["build"] = {"compiler": "different"}
+            with self.assertRaisesRegex(ValueError, message):
+                fidelity(
+                    Path(),
+                    {},
+                    {"candidate": candidate, "baseline": candidate, "replicate": replicate},
+                )

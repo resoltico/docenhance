@@ -102,6 +102,7 @@ def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) ->
         "source_sha256": pin["source_sha256"],
         "architecture": "x86_64",
         "host_os_version": platform.mac_ver()[0],
+        "developer_directory": os.environ.get("DEVELOPER_DIR", "system-default"),
         "deployment_target": json.loads((ROOT / "deps/tools.json").read_bytes())["macos"][
             "deployment_target"
         ],

@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "spec/document-quality.schema.json"
 CONTROL_CLASSES = {"already_good", "preservation_control"}
 FAMILY_ERROR_RATE = 0.05
+BUNDLE_ROLES = ("candidate", "baseline", "replicate")
 
 
 def frozen_digest(corpus: list[dict[str, Any]]) -> str:
@@ -52,6 +53,10 @@ def validate_plan(plan: dict[str, Any]) -> None:
         message = "Every frozen held-out input must be assessed exactly once, never tuning inputs"
         raise ValueError(message)
     for assessment in plan["assessments"]:
+        paths = {Path(assessment[name]) for name in BUNDLE_ROLES}
+        if len(paths) != len(BUNDLE_ROLES):
+            message = "Candidate, baseline and replicate require distinct bundle directories"
+            raise ValueError(message)
         reviewers = [review["reviewer"] for review in assessment["reviews"]]
         pairs = {review["blind_pair"] for review in assessment["reviews"]}
         if len(set(reviewers)) != len(reviewers) or set(reviewers) != set(panel) or len(pairs) != 1:
@@ -89,7 +94,7 @@ def adjudicate(plan: dict[str, Any]) -> dict[str, Any]:
         tail = sum(math.comb(n, k) for k in range(positive, n + 1)) / (2**n)
         accepted = bool(items) and not harmed and not uncertain_samples
         if name not in CONTROL_CLASSES:
-            accepted &= tail <= FAMILY_ERROR_RATE / len(classes)
+            accepted &= positive == n and tail <= FAMILY_ERROR_RATE / len(classes)
         reports[name] = {
             "count": n,
             "positive": positive,

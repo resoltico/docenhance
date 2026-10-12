@@ -329,3 +329,9 @@ same immutable artifacts. A transport timeout is not proof that a remote write h
 The publishing job has contents-write and Actions-read permissions; source quality alone and a
 provenance attestation cannot substitute for full execution evidence. Repository Actions require
 full commit-SHA pinning, separately from the checked workflow source.
+
+The macOS 15 CI lanes select the exact installed Xcode declared by
+`deps/tools.json:macos.minimum_runner_xcode` before analysis tools or native builds. Runner defaults
+can lack standard `jthread`/stop-token support; use Xcode 26 or later locally. The unchanged library
+probe refuses incomplete standard-library support. Toolchain selection does not substitute for
+actual macOS 15 execution, package deployment inspection or the complete runtime suite.

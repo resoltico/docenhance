@@ -55,7 +55,7 @@ int main() {
          static_cast<int>(result.ec == std::errc{});
 }" DE_NATIVE_LIBRARY_AVAILABLE)
 if(NOT DE_NATIVE_LIBRARY_AVAILABLE)
-  message(FATAL_ERROR "The selected compiler, standard library and deployment target lack the required C++ library")
+  message(FATAL_ERROR "The selected compiler, standard library and deployment target lack std::expected, std::stop_source, std::jthread, std::span or std::from_chars. Select a complete C++23 toolchain (Xcode 26 or later on macOS). Compiler diagnostics: ${CMAKE_BINARY_DIR}/CMakeFiles/CMakeConfigureLog.yaml")
 endif()
 if(DE_BUILD_TESTS OR DE_ENABLE_FUZZING)
   enable_testing()
