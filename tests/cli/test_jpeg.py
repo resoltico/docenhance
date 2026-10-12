@@ -22,10 +22,8 @@ from continuous_fixtures import (
     gamma_profile,
     profile_from_output,
 )
-from test_cli import call_json, expect
+from test_cli import RECORD_VERSION, WIRE_VERSION, call_json, expect
 
-WIRE_VERSION = 12
-RECORD_VERSION = 12
 WORD_DEPTH = 16
 FIRST_TRANSPOSED = 5
 DATA = Path(__file__).resolve().parents[1] / "fixtures/jpeg"

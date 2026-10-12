@@ -7,19 +7,20 @@
 
 #include <cmath>
 #include <cstdint>
-#include <expected>
 #include <string_view>
 #include <utility>
 #include <variant>
 namespace docenhance::methods {
+bool valid_wiener_parameters(const WienerParameters& parameters) {
+    return std::isfinite(parameters.k) && parameters.k >= Wiener::minimum_k &&
+           parameters.k <= Wiener::maximum_k && std::isfinite(parameters.blend) &&
+           parameters.blend >= 0 && parameters.blend <= 1 &&
+           !parameters.psf.valueless_by_exception() && psf_side(parameters.psf).has_value();
+}
 core::Result<Wiener> Wiener::create(WienerParameters p) {
-    if (!std::isfinite(p.k) || p.k < Wiener::minimum_k || p.k > Wiener::maximum_k ||
-        !std::isfinite(p.blend) || p.blend < 0 || p.blend > 1) {
-        return core::failure(core::ErrorCode::argument, "Invalid Wiener regularization or blend");
-    }
-    auto side = psf_side(p.psf);
-    if (!side) {
-        return std::unexpected(side.error());
+    if (!valid_wiener_parameters(p)) {
+        return core::failure(core::ErrorCode::argument,
+                             "Invalid Wiener regularization, blend or PSF");
     }
     return Wiener{std::move(p)};
 }
@@ -67,6 +68,8 @@ core::Result<double> restoration_target(double input, double candidate, const Wi
 }
 std::string_view status_name(RestorationStatus value) noexcept {
     switch (value) {
+    case RestorationStatus::not_started:
+        return "not_started";
     case RestorationStatus::disabled:
         return "disabled";
     case RestorationStatus::no_change:

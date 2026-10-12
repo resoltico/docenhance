@@ -97,16 +97,22 @@ TEST_CASE("Restoration kernel path identity survives request moves", "[app][rest
     REQUIRE(admitted);
     auto moved = std::move(*admitted);
     REQUIRE(moved.ready());
-    const auto& path =
-        std::get<methods::FilePsf>(std::get<methods::Wiener>(moved.restoration()).parameters().psf)
-            .path;
+    const auto& path = std::get<methods::FilePsf>(
+                           std::get<methods::Wiener>(
+                               std::get<app::ContinuousPlan>(moved.plan()).photometric.restoration)
+                               .parameters()
+                               .psf)
+                           .path;
     CHECK(path == *i.psf_file);
     auto second = app::prepare_process(restoration_invocation()).value();
     second = std::move(moved);
     CHECK(second.ready());
-    CHECK(
-        std::get<methods::FilePsf>(std::get<methods::Wiener>(second.restoration()).parameters().psf)
-            .path == *i.psf_file);
+    CHECK(std::get<methods::FilePsf>(
+              std::get<methods::Wiener>(
+                  std::get<app::ContinuousPlan>(second.plan()).photometric.restoration)
+                  .parameters()
+                  .psf)
+              .path == *i.psf_file);
     for (const auto& invalid :
          {std::string{}, std::string{"bad\0name", 8}, std::string{"bad\xffname"}}) {
         i.psf_file = invalid;
@@ -130,7 +136,10 @@ TEST_CASE("Restoration admission validates finite bounded values with zero blend
     i.deblur_blend = "0";
     auto admitted = app::prepare_process(i);
     REQUIRE(admitted);
-    CHECK(std::get<methods::Wiener>(admitted->restoration()).parameters().blend == 0);
+    CHECK(std::get<methods::Wiener>(
+              std::get<app::ContinuousPlan>(admitted->plan()).photometric.restoration)
+              .parameters()
+              .blend == 0);
     i.psf.reset();
     CHECK(!app::prepare_process(i));
     i.psf = "kernel";

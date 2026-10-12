@@ -177,7 +177,7 @@ def smoke(root: Path, owner: Path) -> list[str]:
     expected = [
         {"id": m["id"], "method_version": m["method_version"]}
         for m in contract["methods"]
-        if m["status"] == "implemented"
+        if m["classification"] == "implemented-selectable"
     ]
     if version["methods"] != expected or version["input_support"] != support_matrix(
         json.loads((ROOT / "spec/cli-contract.json").read_bytes())["input_support"]

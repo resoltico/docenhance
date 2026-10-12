@@ -19,7 +19,7 @@ following sources when changing behavior.
 Start with [status](status.md) for verified capability boundaries, then read
 [architecture](architecture.md) and [design decisions](decisions.md) before changing production
 code. Use [build](build.md) and [quality](quality.md) to reproduce validation. The
-[roadmap](roadmap.md) orders work that is not yet implemented.
+[roadmap](roadmap.md) derives completed and future capability inventory from reviewed contracts.
 
 ## Generated documents
 
@@ -55,3 +55,8 @@ opt-in applicability, typed diagnostics, resources and independent preservation 
 [Geometry](geometry.md) specifies G01 metadata orientation, G02 exact clockwise quarter-turns,
 B-frame mask admission/assets, C/F processing coordinates and physical-resolution handling.
 Perspective, deskew and dewarping remain future contracts.
+
+[Foundation design](foundation-design.md) and its [separate QA](foundation-qa.md) describe the
+closed admitted plan/report ownership and mandatory validation. The
+[document-quality protocol](document-quality.md) and `spec/document-quality.schema.json`
+govern cleared held-out empirical evidence separately from product correctness.

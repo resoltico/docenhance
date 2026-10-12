@@ -85,11 +85,14 @@ bundle::RunRecord binarized_record() {
         // leaving the record's optional sections to whatever a default would be.
         .protection = std::nullopt,
         .conversion = std::nullopt,
-        .illumination = illumination,
-        .denoising = {.complete = true},
-        .contrast = {.complete = true},
-        .sharpening = {.complete = true},
-        .restoration = {.complete = true},
+        .stages =
+            {
+                .illumination = illumination,
+                .denoising = {.complete = true},
+                .restoration = {.complete = true},
+                .contrast = {.complete = true},
+                .sharpening = {.complete = true},
+            },
     };
 }
 } // namespace
@@ -125,9 +128,9 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
     }
     SECTION("a version this build does not support") {
         auto altered = *written;
-        const auto at = altered.find("\"version\": 12");
+        const auto at = altered.find("\"version\": 13");
         REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 12").size(), "\"version\": 11");
+        altered.replace(at, std::string_view("\"version\": 13").size(), "\"version\": 12");
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);
@@ -280,16 +283,16 @@ bundle::RunRecord restoration_record() {
         .assumed_transfer = true,
         .verified = true,
     };
-    record.illumination.complete = true;
-    record.illumination.eligible_samples = 5000;
-    record.denoising.eligible_samples = 5000;
-    record.contrast.eligible_samples = 5000;
-    record.sharpening.eligible_samples = 5000;
+    record.stages.illumination.complete = true;
+    record.stages.illumination.eligible_samples = 5000;
+    record.stages.denoising.eligible_samples = 5000;
+    record.stages.contrast.eligible_samples = 5000;
+    record.stages.sharpening.eligible_samples = 5000;
     const auto method = methods::Wiener::create({.blend = 0}).value();
     methods::ResolvedPsf psf{.width = 7, .height = 7, .coefficients = {}};
     psf.coefficients.resize(49);
     REQUIRE(methods::gaussian_psf({}, psf.coefficients));
-    record.restoration = {
+    record.stages.restoration = {
         .status = methods::RestorationStatus::no_change,
         .reason = methods::RestorationReason::zero_blend,
         .complete = true,
@@ -308,10 +311,10 @@ TEST_CASE("Restoration records retain resolved kernels and enforce request agree
     REQUIRE(written);
     auto declared = bundle::read_record(as_bytes(*written));
     REQUIRE(declared);
-    CHECK(declared->restoration == record.restoration);
+    CHECK(declared->restoration == record.stages.restoration);
     for (unsigned change = 0; change < 8; ++change) {
         auto altered = record;
-        auto& restoration = altered.restoration;
+        auto& restoration = altered.stages.restoration;
         if (!restoration.psf || !restoration.requested) {
             FAIL("Restoration fixture requires resolved PSF and request parameters");
             return;
@@ -349,7 +352,7 @@ TEST_CASE("Restoration records retain resolved kernels and enforce request agree
 TEST_CASE("Supplied PSF record verification does not depend on a present external path",
           "[bundle][restoration]") {
     auto record = restoration_record();
-    auto& restoration = record.restoration;
+    auto& restoration = record.stages.restoration;
     if (!restoration.requested) {
         FAIL("Restoration fixture requires request parameters");
         return;

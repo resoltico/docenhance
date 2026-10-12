@@ -1,0 +1,188 @@
+{
+  "schema_version": 13,
+  "command": "process",
+  "version": "0.7.0",
+  "exit_code": 3,
+  "error": {
+    "code": "E_INPUT",
+    "message": "Cannot open or inspect Source input"
+  },
+  "publication": "not_started",
+  "illumination": {
+    "status": "not_started",
+    "complete": false,
+    "reason": "none",
+    "method": {
+      "id": "I01",
+      "method_version": 1
+    },
+    "requested": {
+      "mode": "surface",
+      "strength": 1.0,
+      "max_gain": 2.0,
+      "target": "source",
+      "cell": "auto",
+      "quantile": 0.9,
+      "smooth": 1.0
+    },
+    "morphology": null,
+    "resolved_cell": null,
+    "eligible_samples": 0,
+    "protected_samples": 0,
+    "cells": 0,
+    "measured_cells": 0,
+    "dark_cells": 0,
+    "background_reference": null,
+    "coverage": null,
+    "solver": null,
+    "measurements": null,
+    "auto_predicates": {
+      "coverage": null,
+      "bright_quantile": null,
+      "median_background": null,
+      "background_variation": null,
+      "paper_fraction": null,
+      "dark_fraction": null
+    },
+    "application": {
+      "evaluated_samples": 0,
+      "changed_samples": 0,
+      "gain_capped_samples": 0,
+      "saturated_samples": 0,
+      "min_gain": 1.0,
+      "max_gain": 1.0,
+      "gain_capped_fraction": null,
+      "saturated_fraction": null
+    }
+  },
+  "denoising": {
+    "method": {
+      "id": "D01",
+      "method_version": 1
+    },
+    "parameters": {
+      "h": 3.0,
+      "patch": 7,
+      "search": 21,
+      "blend": 0.5
+    },
+    "status": "not_started",
+    "reason": "none",
+    "complete": false,
+    "analysis_depth": 16,
+    "distance": "L1",
+    "representation": "uint16",
+    "tvl1": null,
+    "warnings": [],
+    "native_h": 771.0,
+    "tile_width": 256,
+    "border": "REFLECT_101",
+    "eligible_samples": 0,
+    "protected_samples": 0,
+    "evaluated_samples": 0,
+    "corrected_samples": 0,
+    "changed_samples": 0,
+    "native_calls": 0,
+    "native_reserved_peak": 0,
+    "preparation_charge_peak": 0
+  },
+  "restoration": {
+    "method": {
+      "id": "R01",
+      "method_version": 1
+    },
+    "parameters": {
+      "psf": {
+        "kind": "gaussian",
+        "sigma": 1.0
+      },
+      "k": 0.01,
+      "blend": 0.5
+    },
+    "status": "not_started",
+    "reason": "none",
+    "complete": false,
+    "representation": "float32",
+    "psf": null,
+    "guard": 0,
+    "fft_width": 0,
+    "fft_height": 0,
+    "padded_mean": null,
+    "eligible_samples": 0,
+    "protected_samples": 0,
+    "context_samples": 0,
+    "evaluated_samples": 0,
+    "corrected_samples": 0,
+    "changed_samples": 0,
+    "raw_low_samples": 0,
+    "raw_high_samples": 0,
+    "blended_low_samples": 0,
+    "blended_high_samples": 0,
+    "raw_fraction": null,
+    "blended_fraction": null,
+    "native_calls": 0,
+    "native_reserved_bytes": 0,
+    "preparation_charge_peak": 0,
+    "warnings": [
+      "W_RESTORATION_INFERENCE"
+    ]
+  },
+  "contrast": {
+    "method": {
+      "id": "C03",
+      "method_version": 1
+    },
+    "parameters": {
+      "grid_columns": 8,
+      "grid_rows": 8,
+      "clip": 2.0,
+      "blend": 1.0
+    },
+    "status": "not_started",
+    "reason": "none",
+    "complete": false,
+    "representation": "float64",
+    "levels": null,
+    "eligible_samples": 0,
+    "protected_samples": 0,
+    "measured_samples": 0,
+    "identity_tiles": 0,
+    "evaluated_samples": 0,
+    "corrected_samples": 0,
+    "changed_samples": 0,
+    "clipped_low_samples": 0,
+    "clipped_high_samples": 0,
+    "clipped_low_fraction": null,
+    "clipped_high_fraction": null,
+    "preparation_charge_peak": 0
+  },
+  "sharpening": {
+    "method": {
+      "id": "S01",
+      "method_version": 1
+    },
+    "parameters": {
+      "sigma": 0.8,
+      "amount": 0.5,
+      "threshold": 1.0
+    },
+    "status": "not_started",
+    "reason": "none",
+    "complete": false,
+    "representation": "float64",
+    "pre_clamp": null,
+    "eligible_samples": 0,
+    "protected_samples": 0,
+    "context_samples": 0,
+    "evaluated_samples": 0,
+    "corrected_samples": 0,
+    "changed_samples": 0,
+    "clipped_low_samples": 0,
+    "clipped_high_samples": 0,
+    "clipped_fraction": null,
+    "preparation_charge_peak": 0,
+    "warnings": [
+      "W_SHARPENING"
+    ]
+  }
+}

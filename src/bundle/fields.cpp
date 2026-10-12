@@ -33,6 +33,8 @@ binarization_fields(const std::optional<methods::OtsuObservation>& observation) 
 using Json = nlohmann::ordered_json;
 std::string_view status_name(methods::IlluminationStatus status) noexcept {
     switch (status) {
+    case methods::IlluminationStatus::not_started:
+        return "not_started";
     case methods::IlluminationStatus::disabled:
         return "disabled";
     case methods::IlluminationStatus::no_change:

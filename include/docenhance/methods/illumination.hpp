@@ -106,8 +106,9 @@ struct MorphologyMeasurements {
     double background_max{};
     std::uint64_t field_bytes{};
     std::uint64_t preparation_charge_peak{};
+    bool operator==(const MorphologyMeasurements&) const = default;
 };
-enum class IlluminationStatus { disabled, no_change, skipped, applied, failed };
+enum class IlluminationStatus { not_started, disabled, no_change, skipped, applied, failed };
 enum class IlluminationReason {
     none,
     zero_strength,
@@ -123,6 +124,7 @@ struct SolverReport {
     unsigned iterations{};
     double residual{};
     double tolerance{};
+    bool operator==(const SolverReport&) const = default;
 };
 struct SurfaceMeasurements {
     std::uint32_t stride{};
@@ -136,6 +138,7 @@ struct SurfaceMeasurements {
     double variation{};
     double paper_fraction{};
     double dark_fraction{};
+    bool operator==(const SurfaceMeasurements&) const = default;
 };
 // The six predicates are in documented order: coverage, bright quantile, median background,
 // background variation, paper fraction, dark fraction. Null means not evaluated, never a pass.
@@ -163,6 +166,7 @@ struct IlluminationReport {
     std::uint64_t evaluated_samples{};
     double min_gain = 1;
     double max_gain = 1;
+    bool operator==(const IlluminationReport&) const = default;
 };
 struct IlluminationGain {
     double target{};

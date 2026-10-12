@@ -12,7 +12,7 @@ from pathlib import Path
 from continuous_fixtures import RGB, RGBA, Fixture, exif
 from illumination_reference import Plane, quantile, surface
 from morphology_reference import background
-from test_cli import call_json, expect
+from test_cli import RECORD_VERSION, call_json, expect
 from test_continuous import transfer_decode, transfer_encode
 from test_illumination import LINEAR, require_output, run
 from tvl1_reference import TvSettings, solve
@@ -21,7 +21,6 @@ WORD_MAX = 65535
 CODE_TOLERANCE = 4
 MINIMUM_LEVELS_RANGE = 1e-6
 RANK_TOLERANCE = 1e-12
-RECORD_VERSION = 12
 
 
 def map_levels(values: list[float], low: float, high: float) -> tuple[list[float], float, float]:

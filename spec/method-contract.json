@@ -1,11 +1,10 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "methods": [
     {
       "id": "I01",
       "name": "Quantile log-surface illumination",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--illumination",
         "--background-strength",
@@ -17,13 +16,13 @@
         "--protect-mask"
       ],
       "selector": "surface",
-      "family": "illumination"
+      "family": "illumination",
+      "classification": "implemented-selectable"
     },
     {
       "id": "I02",
       "name": "Morphological illumination",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--illumination",
         "--background-strength",
@@ -33,13 +32,13 @@
         "--protect-mask"
       ],
       "selector": "morph",
-      "family": "illumination"
+      "family": "illumination",
+      "classification": "implemented-selectable"
     },
     {
       "id": "D01",
       "name": "16-bit NLM-L1",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--denoise",
         "--denoise-blend",
@@ -49,13 +48,13 @@
         "--protect-mask"
       ],
       "selector": "nlm",
-      "family": "denoising"
+      "family": "denoising",
+      "classification": "implemented-selectable"
     },
     {
       "id": "D02",
       "name": "Floating-point TV-L1",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--denoise",
         "--denoise-blend",
@@ -65,13 +64,13 @@
         "--protect-mask"
       ],
       "selector": "tvl1",
-      "family": "denoising"
+      "family": "denoising",
+      "classification": "implemented-selectable"
     },
     {
       "id": "C01",
       "name": "Percentile levels",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--contrast",
         "--contrast-blend",
@@ -80,13 +79,13 @@
         "--protect-mask"
       ],
       "family": "contrast",
-      "selector": "levels"
+      "selector": "levels",
+      "classification": "implemented-selectable"
     },
     {
       "id": "C02",
       "name": "Gamma",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--contrast",
         "--contrast-blend",
@@ -94,13 +93,13 @@
         "--protect-mask"
       ],
       "family": "contrast",
-      "selector": "gamma"
+      "selector": "gamma",
+      "classification": "implemented-selectable"
     },
     {
       "id": "C03",
       "name": "Masked floating-point CLAHE",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--contrast",
         "--contrast-blend",
@@ -109,13 +108,13 @@
         "--protect-mask"
       ],
       "family": "contrast",
-      "selector": "clahe"
+      "selector": "clahe",
+      "classification": "implemented-selectable"
     },
     {
       "id": "S01",
       "name": "Thresholded unsharp masking",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--sharpen",
         "--sharpen-sigma",
@@ -124,13 +123,13 @@
         "--protect-mask"
       ],
       "family": "sharpening",
-      "selector": "unsharp"
+      "selector": "unsharp",
+      "classification": "implemented-selectable"
     },
     {
       "id": "R01",
       "name": "Known-PSF regularized Fourier restoration",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--deblur",
         "--psf",
@@ -143,13 +142,13 @@
         "--protect-mask"
       ],
       "selector": "wiener",
-      "family": "restoration"
+      "family": "restoration",
+      "classification": "implemented-selectable"
     },
     {
       "id": "B02",
       "name": "Sauvola",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--binarize",
         "--sauvola-window",
@@ -157,79 +156,80 @@
         "--sauvola-r"
       ],
       "selector": "sauvola",
-      "family": "binarization"
+      "family": "binarization",
+      "classification": "implemented-selectable"
     },
     {
       "id": "B03",
       "name": "Fixed threshold",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--binarize",
         "--fixed-threshold"
       ],
       "selector": "fixed",
-      "family": "binarization"
+      "family": "binarization",
+      "classification": "implemented-selectable"
     },
     {
       "id": "B01",
       "name": "Otsu",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--binarize"
       ],
       "selector": "otsu",
-      "family": "binarization"
+      "family": "binarization",
+      "classification": "implemented-selectable"
     },
     {
       "id": "G01",
       "name": "Metadata orientation",
       "method_version": 1,
-      "status": "not-implemented",
-      "arguments": []
+      "arguments": [],
+      "classification": "implemented-automatic"
     },
     {
       "id": "G02",
       "name": "Exact quarter-turn",
       "method_version": 1,
-      "status": "implemented",
       "arguments": [
         "--rotate"
       ],
       "selector": "quarter_turn",
-      "family": "geometry"
+      "family": "geometry",
+      "classification": "implemented-selectable"
     },
     {
       "id": "G03",
       "name": "Manual perspective",
       "method_version": 1,
-      "status": "not-implemented",
       "arguments": [
         "--quad",
         "--page-size"
-      ]
+      ],
+      "classification": "planned"
     },
     {
       "id": "G04",
       "name": "Deskew",
       "method_version": 1,
-      "status": "not-implemented",
       "arguments": [
         "--deskew",
         "--deskew-limit"
-      ]
+      ],
+      "classification": "planned"
     },
     {
       "id": "G05",
       "name": "Vertical text-line dewarp",
       "method_version": 1,
-      "status": "not-implemented",
       "arguments": [
         "--dewarp",
         "--dewarp-min-lines",
         "--dewarp-max-displacement"
-      ]
+      ],
+      "classification": "planned"
     }
   ]
 }

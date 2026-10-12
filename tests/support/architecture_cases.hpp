@@ -32,6 +32,16 @@ inline void ownership_cases() {
         survivor = std::move(ephemeral.allocate(128).value());
         survivor.bytes().front() = std::byte{42};
         require(ephemeral.used() == 128, "the shared ledger charges the buffer");
+        require(ephemeral.peak() == 128, "charged peak includes live payload");
+        {
+            const auto lease = ephemeral.reserve(256);
+            require(lease.has_value() && ephemeral.used() == 384 && ephemeral.peak() == 384,
+                    "native reservations share the payload high-water ledger");
+            require(!ephemeral.reserve(129) && ephemeral.peak() == 384,
+                    "budget refusal cannot invent a charge");
+        }
+        require(ephemeral.used() == 128 && ephemeral.peak() == 384,
+                "refunding native storage preserves the observed peak");
     }
     require(survivor.bytes().front() == std::byte{42}, "an owning buffer may outlive its budget");
     core::Budget budget{512};
@@ -140,7 +150,7 @@ inline void admission_cases() {
     invocation.binarize = "fixed";
     auto accepted = app::prepare_process(invocation);
     require(accepted.has_value() && std::get<methods::FixedThreshold>(
-                                        std::get<methods::Binarization>(accepted->operation()))
+                                        std::get<app::BinaryPlan>(accepted->plan()).operation)
                                             .threshold() == 0.5,
             "application admission owns defaults");
     invocation.fixed_threshold = "NaN";

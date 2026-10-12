@@ -65,7 +65,7 @@ TEST_CASE("Otsu admission rejects every explicit method-specific option", "[app]
     const auto admitted = app::prepare_process(value);
     REQUIRE(admitted);
     CHECK(std::holds_alternative<methods::Otsu>(
-        std::get<methods::Binarization>(admitted->operation())));
+        std::get<app::BinaryPlan>(admitted->plan()).operation));
     for (unsigned option = 0; option < 4; ++option) {
         for (const auto* const spelling : {"", "0.5"}) {
             auto changed = value;

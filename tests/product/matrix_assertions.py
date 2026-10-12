@@ -374,7 +374,7 @@ def discovery_check(case: Case, response: dict[str, Any]) -> None:
         expected = [
             {"id": method["id"], "method_version": method["method_version"]}
             for method in reviewed["methods"]
-            if method["status"] == "implemented"
+            if method["classification"] == "implemented-selectable"
             and (not case.id.startswith("method-") or method["id"] == case.options[0])
         ]
         require(

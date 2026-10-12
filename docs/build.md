@@ -95,7 +95,7 @@ CI jobs reject.
 | `platform` | `release` | The platform's own release toolchain: GCC, Clang/AppleClang or MSVC |
 
 `release` builds the shipped binary, so it deliberately uses each platform's own toolchain — GCC
-on Linux, Apple clang on macOS, MSVC on Windows — exactly as the five required native CI jobs do.
+on Linux, Apple clang on macOS, MSVC on Windows — exactly as the required native CI jobs do.
 It still refuses a compiler outside those families. On Windows the pinned contract also resolves
 to MSVC: there is no validated LLVM-clang build of the dependency superbuild, and required CI
 builds and packages Windows with `cl.exe`.
@@ -202,8 +202,9 @@ The version comes only from the top-level `project(... VERSION ...)` command. Us
 when referring to release artifacts; package verification reads generated naming metadata rather
 than reconstructing a filename. Do not maintain the version separately in this
 document. Do not copy the entire dependency prefix into a release. Static third-party linkage does
-not mean a fully static libc/OS runtime. macOS signing/notarization, Windows signing, minimum-OS
-execution and Linux glibc-baseline checks remain later release gates. CI artifacts are validation
+not mean a fully static libc/OS runtime. macOS signing/notarization, Windows signing and Linux glibc-baseline distribution checks remain later release gates.
+The macOS 15 ARM64/Intel minimum is exercised by required CI and deployment-load-command
+inspection; evidence remains specific to the tested commit. CI artifacts are validation
 artifacts, not signed final application releases.
 
 ## Source packaging

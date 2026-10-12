@@ -3,7 +3,6 @@
 #include "run_publication.hpp"
 
 #include "bundle_verify.hpp"
-#include "continuous.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/bundle/record.hpp"
 #include "docenhance/core/identity.hpp"
@@ -16,11 +15,7 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/io/publication.hpp"
-#include "docenhance/methods/contrast.hpp"
-#include "docenhance/methods/denoising.hpp"
-#include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/restoration.hpp"
-#include "docenhance/methods/sharpening.hpp"
+#include "docenhance/methods/stages.hpp"
 
 #include <expected>
 #include <functional>
@@ -128,11 +123,6 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
             }
         },
         run.artwork);
-    const methods::IlluminationReport none;
-    const methods::DenoisingReport disabled{.complete = true};
-    const methods::ContrastReport disabled_contrast{.complete = true};
-    const methods::SharpenReport disabled_sharpen{.complete = true};
-    const methods::RestorationReport disabled_restoration{.complete = true};
     bundle::RunRecord record{
         .context = run.context.get(),
         .build = core::build_facts(),
@@ -147,11 +137,13 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         .output = composed.output,
         .protection = composed.protection,
         .conversion = composed.conversion,
-        .illumination = none,
-        .denoising = disabled,
-        .contrast = disabled_contrast,
-        .sharpening = disabled_sharpen,
-        .restoration = disabled_restoration,
+        .stages =
+            {
+                .denoising = {.complete = true},
+                .restoration = {.complete = true},
+                .contrast = {.complete = true},
+                .sharpening = {.complete = true},
+            },
         .rotation = run.rotation,
     };
     std::visit(
@@ -160,11 +152,7 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
             if constexpr (std::is_same_v<Kind, BinaryArtwork>) {
                 record.otsu = artwork.otsu;
             } else {
-                record.illumination = artwork.illumination.get();
-                record.denoising = artwork.denoising.get();
-                record.contrast = artwork.contrast.get();
-                record.sharpening = artwork.sharpening.get();
-                record.restoration = artwork.restoration.get();
+                record.stages = artwork.stages.get();
             }
         },
         run.artwork);
@@ -191,12 +179,8 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
 
 core::Result<app::PublishedContinuous> published_continuous(PublishedRun published,
                                                             image::SourceDescription source,
-                                                            const ContinuousReports& reports,
+                                                            methods::StageObservations& reports,
                                                             image::AlphaPolicy alpha) {
-    const auto& illumination = reports.illumination.get();
-    const auto& denoising = reports.denoising.get();
-    const auto& contrast = reports.contrast.get();
-    const auto& sharpening = reports.sharpening.get();
     // The conversion the record states, so the response and the record cannot disagree.
     if (!published.conversion) {
         return std::unexpected(core::Error{
@@ -212,14 +196,11 @@ core::Result<app::PublishedContinuous> published_continuous(PublishedRun publish
         .output = std::move(published.output),
         .alpha = alpha,
         .conversion = report,
-        .illumination = illumination,
+        .stages = std::move(reports),
         .run = std::move(published.run),
         .record = std::move(published.record),
         .source_decoding = source,
-        .denoising = denoising,
-        .contrast = contrast,
-        .sharpening = sharpening,
-        .restoration = reports.restoration.get(),
+
     };
 }
 core::Result<PublishedRun> publish_run(const RunPublication& run) {

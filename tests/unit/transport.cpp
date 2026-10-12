@@ -162,13 +162,15 @@ TEST_CASE("CLI typed bindings transfer nondefault values to their admitted owner
     const auto& request = *processor.received;
     CHECK(request.input() == "input.png");
     CHECK(request.output_directory() == "result");
-    CHECK(request.protection() == "mask.png");
-    const auto tone = std::get<image::Continuous>(request.operation()).parameters();
+    CHECK(std::get<app::ContinuousPlan>(request.plan()).protection == "mask.png");
+    const auto tone = std::get<app::ContinuousPlan>(request.plan()).operation.parameters();
     CHECK(tone.mode == image::ToneMode::gray);
     CHECK(tone.depth == image::OutputDepth::word);
     CHECK(tone.alpha == image::AlphaPolicy::black);
     CHECK(tone.profile == image::ProfilePolicy::srgb);
-    const auto light = std::get<methods::Surface>(request.illumination()).parameters();
+    const auto light = std::get<methods::Surface>(
+                           std::get<app::ContinuousPlan>(request.plan()).photometric.illumination)
+                           .parameters();
     CHECK(light.mode == methods::SurfaceMode::automatic);
     CHECK(light.strength == 0.25);
     CHECK(light.max_gain == 3);
@@ -176,7 +178,9 @@ TEST_CASE("CLI typed bindings transfer nondefault values to their admitted owner
     CHECK(light.cell == 32);
     CHECK(light.quantile == 0.8);
     CHECK(light.smooth == 4);
-    const auto denoise = std::get<methods::Nlm>(request.denoising()).parameters();
+    const auto denoise =
+        std::get<methods::Nlm>(std::get<app::ContinuousPlan>(request.plan()).photometric.denoising)
+            .parameters();
     CHECK(denoise.h == 4);
     CHECK(denoise.patch == 5);
     CHECK(denoise.search == 9);

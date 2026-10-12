@@ -53,6 +53,10 @@ jobs:
             os: macos-26
           - platform: macos-x86_64
             os: macos-26-intel
+          - platform: macos-15-arm64
+            os: macos-15
+          - platform: macos-15-x86_64
+            os: macos-15-intel
           - platform: windows-x86_64
             os: windows-2025-vs2026
     runs-on: ${{ matrix.os }}
@@ -73,22 +77,24 @@ jobs:
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
+      - name: Assert actual native runner OS and CPU
+        run: python tools/check_runtime_platform.py --platform ${{ matrix.platform }}
       - name: Restore pinned Intel LLVM tools
         id: intel-llvm-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: matrix.platform == 'macos-x86_64'
+        if: endsWith(matrix.platform, 'x86_64') && runner.os == 'macOS'
         with:
           path: ~/.cache/docenhance/llvm
           # A generation never receives a partial post-cancellation cache entry.
-          key: llvm-source-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
+          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py
       - name: Save verified Intel LLVM tools
-        if: matrix.platform == 'macos-x86_64' && steps.intel-llvm-cache.outputs.cache-hit != 'true'
+        if: endsWith(matrix.platform, 'x86_64') && runner.os == 'macOS' && steps.intel-llvm-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/docenhance/llvm
-          key: llvm-source-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
+          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
       - name: Restore locked dependency sources
         id: dependency-source-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

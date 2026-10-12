@@ -63,9 +63,11 @@ not evidence that its CI passed.
 Required CI includes Linux x86-64/ARM64, macOS Intel/ARM64 and Windows x86-64 native builds,
 real-executable contracts, structural/tooling checks, fuzzing, and independent ASan/UBSan and
 TSan suites. Native sanitizer coverage is first-party coverage; isolated fuzzing additionally instruments JPEG, TIFF, PNG, zlib and Little CMS.
-The macOS deployment target is 14.0; actual execution on every older supported OS, signing,
-notarization, performance/peak-RSS measurement and document-quality benchmarks remain release
-validation work, not capabilities or results claimed by this source tree.
+The macOS deployment floor is 15.0. Required CI includes actual macOS 15 ARM64/Intel execution
+and retains macOS 26 ARM64/Intel forward coverage; declared lanes require exact-commit passing
+evidence. Signing/notarization and independent natural-document readability claims are separate
+release obligations. The [quality protocol](document-quality.md) refuses missing rights/reviews;
+resource measurements describe named machines and inputs, never universal process-RSS limits.
 
 ## Not implemented
 

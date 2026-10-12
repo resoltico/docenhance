@@ -31,8 +31,10 @@ def discovery_cases() -> list[Case]:
             "discovery",
             "",
             (method["id"],),
-            exit_code=0 if method["status"] == "implemented" else 4,
-            error="" if method["status"] == "implemented" else "E_NOT_IMPLEMENTED",
+            exit_code=0 if method["classification"] == "implemented-selectable" else 4,
+            error=""
+            if method["classification"] == "implemented-selectable"
+            else "E_NOT_IMPLEMENTED",
             command="methods",
         )
         for method in contract["methods"]
@@ -326,7 +328,9 @@ def active_coverage(cases: list[Case]) -> dict[str, list[str]]:
     """Refuse a matrix that discovers a supported method but never exercises its active path."""
     reviewed = json.loads((ROOT / "spec/method-contract.json").read_text())
     coverage: dict[str, list[str]] = {
-        method["id"]: [] for method in reviewed["methods"] if method["status"] == "implemented"
+        method["id"]: []
+        for method in reviewed["methods"]
+        if method["classification"] == "implemented-selectable"
     }
     for case in cases:
         if case.group in ("benefit", "binarization", "geometry") and not case.exit_code:

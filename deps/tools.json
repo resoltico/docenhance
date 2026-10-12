@@ -87,7 +87,7 @@
     "decision": "docs/decisions.md"
   },
   "macos": {
-    "deployment_target": "14.0",
+    "deployment_target": "15.0",
     "decision": "docs/decisions.md"
   },
   "cxx": {

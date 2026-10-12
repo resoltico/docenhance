@@ -145,10 +145,18 @@ class DependencyIntegrityTests(unittest.TestCase):
             root = Path(temporary)
             tools = root / "build/bin"
             tools.mkdir(parents=True)
-            identity = {"source_sha256": "reviewed"}
+            identity = {
+                "source_sha256": "reviewed",
+                "host_os_version": "15.7",
+                "deployment_target": "15.0",
+            }
             (tools / "clang-tidy").write_bytes(b"tidy")
             with self.assertRaises(install_llvm.InstallError):
                 install_llvm.validate_source_tools(root, identity)
+            with self.assertRaises(install_llvm.InstallError):
+                install_llvm.validate_source_tools(root, identity | {"host_os_version": "26.0"})
+            with self.assertRaises(install_llvm.InstallError):
+                install_llvm.validate_source_tools(root, identity | {"deployment_target": "14.0"})
             (tools / "clang-query").write_bytes(b"query")
             (root / "receipt.json").write_text(
                 json.dumps(install_llvm.source_tool_receipt(root, identity))

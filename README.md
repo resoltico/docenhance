@@ -150,3 +150,8 @@ docenhance process scan.png --out-dir restored --deblur wiener --psf gaussian --
 Gaussian, motion and supplied grayscale PNG kernels model blur in the post-geometry processing frame F (currently the explicitly rotated frame C).
 R01 never estimates or verifies the real PSF and always reports `W_RESTORATION_INFERENCE`.
 See [restoration](docs/restoration.md) for phase, mean, resources and cancellation limits.
+
+Built-in G01 metadata orientation is automatic on continuous output; selectable methods remain
+separate. The macOS deployment floor is 15.0, with required minimum-runtime and newer-OS lanes.
+See the [independent document-quality protocol](docs/document-quality.md) for why synthetic
+correctness and artifact verification do not establish natural-document readability or authenticity.

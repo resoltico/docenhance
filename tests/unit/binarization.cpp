@@ -155,7 +155,7 @@ TEST_CASE("Application admits only options belonging to the selected method", "[
     const auto admitted = app::prepare_process(value);
     REQUIRE(admitted);
     const auto& method =
-        std::get<methods::Sauvola>(std::get<methods::Binarization>(admitted->operation()));
+        std::get<methods::Sauvola>(std::get<app::BinaryPlan>(admitted->plan()).operation);
     CHECK(method.window() == 31);
     CHECK(method.k() == 0.2);
     CHECK(method.r() == 0.5);

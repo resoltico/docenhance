@@ -18,6 +18,7 @@
 #include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
+#include "docenhance/methods/stages.hpp"
 
 #include <expected>
 #include <optional>
@@ -25,38 +26,50 @@
 #include <utility>
 #include <variant>
 namespace docenhance::app {
-using Operation = std::variant<methods::Binarization, image::Continuous>;
-// The application admits requests; adapters cannot construct an unvalidated request.
+struct BinaryPlan {
+    methods::Binarization operation;
+    image::QuarterTurn rotation = image::QuarterTurn::identity();
+};
+struct PhotometricPlan {
+    methods::Illumination illumination;
+    methods::Denoising denoising;
+    methods::Restoration restoration;
+    methods::Contrast contrast;
+    methods::Sharpening sharpening;
+};
+struct ContinuousPlan {
+    image::Continuous operation;
+    PhotometricPlan photometric;
+    std::optional<std::string> protection;
+    image::QuarterTurn rotation = image::QuarterTurn::identity();
+};
+using ProcessPlan = std::variant<BinaryPlan, ContinuousPlan>;
+// Only admission constructs requests. Binary plans cannot contain continuous stage or mask state.
 class ProcessRequest {
   public:
     ProcessRequest(const ProcessRequest&) = default;
     ProcessRequest& operator=(const ProcessRequest&) = default;
     ProcessRequest(ProcessRequest&& other) noexcept
         : input_(std::exchange(other.input_, {})), output_(std::move(other.output_)),
-          operation_(other.operation_), illumination_(other.illumination_),
-          protection_(std::move(other.protection_)), denoising_(other.denoising_),
-          restoration_(std::move(other.restoration_)), contrast_(other.contrast_),
-          sharpening_(other.sharpening_), rotation_(other.rotation_) {}
+          plan_(std::move(other.plan_)) {}
     ProcessRequest& operator=(ProcessRequest&& other) noexcept {
         if (this != &other) {
             input_ = std::exchange(other.input_, {});
             output_ = std::move(other.output_);
-            operation_ = other.operation_;
-            illumination_ = other.illumination_;
-            protection_ = std::move(other.protection_);
-            denoising_ = other.denoising_;
-            restoration_ = std::move(other.restoration_);
-            contrast_ = other.contrast_;
-            sharpening_ = other.sharpening_;
-            rotation_ = other.rotation_;
+            plan_ = std::move(other.plan_);
         }
         return *this;
     }
     ~ProcessRequest() = default;
     [[nodiscard]] bool ready() const noexcept {
-        return core::valid_path(input_) && core::valid_path(output_) &&
-               (!protection_ || core::valid_path(*protection_)) &&
-               methods::valid_restoration_paths(restoration_);
+        if (plan_.valueless_by_exception() || !core::valid_path(input_) ||
+            !core::valid_path(output_)) {
+            return false;
+        }
+        const auto* const continuous = std::get_if<ContinuousPlan>(&plan_);
+        return continuous == nullptr ||
+               ((!continuous->protection || core::valid_path(*continuous->protection)) &&
+                methods::valid_restoration_paths(continuous->photometric.restoration));
     }
     [[nodiscard]] const std::string& input() const& noexcept {
         return input_;
@@ -66,65 +79,21 @@ class ProcessRequest {
         return output_;
     }
     [[nodiscard]] const std::string& output_directory() const&& = delete;
-    [[nodiscard]] const methods::Illumination& illumination() const& noexcept {
-        return illumination_;
+    [[nodiscard]] const ProcessPlan& plan() const& noexcept {
+        return plan_;
     }
-    [[nodiscard]] const methods::Illumination& illumination() const&& = delete;
-    [[nodiscard]] const std::optional<std::string>& protection() const& noexcept {
-        return protection_;
+    [[nodiscard]] const ProcessPlan& plan() const&& = delete;
+    [[nodiscard]] image::QuarterTurn rotation() const {
+        return std::visit([](const auto& plan) { return plan.rotation; }, plan_);
     }
-    [[nodiscard]] const std::optional<std::string>& protection() const&& = delete;
-    [[nodiscard]] const methods::Denoising& denoising() const& noexcept {
-        return denoising_;
-    }
-    [[nodiscard]] const methods::Denoising& denoising() const&& = delete;
-    [[nodiscard]] const methods::Restoration& restoration() const& noexcept {
-        return restoration_;
-    }
-    [[nodiscard]] const methods::Restoration& restoration() const&& = delete;
-    [[nodiscard]] const methods::Contrast& contrast() const& noexcept {
-        return contrast_;
-    }
-    [[nodiscard]] const methods::Contrast& contrast() const&& = delete;
-    [[nodiscard]] const methods::Sharpening& sharpening() const& noexcept {
-        return sharpening_;
-    }
-    [[nodiscard]] const methods::Sharpening& sharpening() const&& = delete;
-    [[nodiscard]] image::QuarterTurn rotation() const noexcept {
-        return rotation_.rotation;
-    }
-    [[nodiscard]] const Operation& operation() const& noexcept {
-        return operation_;
-    }
-    [[nodiscard]] const Operation& operation() const&& = delete;
 
   private:
     friend core::Result<ProcessRequest> prepare_process(const contract::Invocation& /*invocation*/);
-    struct ProcessingOptions {
-        methods::Illumination illumination;
-        methods::Denoising denoising;
-        methods::Restoration restoration;
-        methods::Contrast contrast;
-        methods::Sharpening sharpening;
-        methods::ExactQuarterTurn rotation;
-    };
-    ProcessRequest(std::string input, std::string output, Operation operation,
-                   ProcessingOptions options, std::optional<std::string> protection)
-        : input_(std::move(input)), output_(std::move(output)), operation_(operation),
-          illumination_(options.illumination), protection_(std::move(protection)),
-          denoising_(options.denoising), restoration_(std::move(options.restoration)),
-          contrast_(options.contrast), sharpening_(options.sharpening),
-          rotation_(options.rotation) {}
+    ProcessRequest(std::string input, std::string output, ProcessPlan plan)
+        : input_(std::move(input)), output_(std::move(output)), plan_(std::move(plan)) {}
     std::string input_;
     std::string output_;
-    Operation operation_;
-    methods::Illumination illumination_;
-    std::optional<std::string> protection_;
-    methods::Denoising denoising_;
-    methods::Restoration restoration_;
-    methods::Contrast contrast_;
-    methods::Sharpening sharpening_;
-    methods::ExactQuarterTurn rotation_;
+    ProcessPlan plan_;
 };
 [[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
 // A published bundle is identified by the run and record digest, not a persisted publication claim.
@@ -141,14 +110,10 @@ struct PublishedContinuous {
     std::string output;
     image::AlphaPolicy alpha = image::AlphaPolicy::white;
     image::ConversionReport conversion;
-    methods::IlluminationReport illumination;
+    methods::StageObservations stages;
     std::string run;
     core::ContentIdentity record;
     std::optional<image::SourceDescription> source_decoding = std::nullopt;
-    methods::DenoisingReport denoising;
-    methods::ContrastReport contrast;
-    methods::SharpenReport sharpening;
-    methods::RestorationReport restoration;
 };
 using Published = std::variant<PublishedBinary, PublishedContinuous>;
 struct Processed {
@@ -162,26 +127,15 @@ struct Processed {
 };
 struct ProcessFailure {
     core::Error error;
-    std::optional<methods::DenoisingReport> denoising = std::nullopt;
-    std::optional<methods::ContrastReport> contrast = std::nullopt;
-    std::optional<methods::SharpenReport> sharpening = std::nullopt;
-    std::optional<methods::IlluminationReport> illumination = std::nullopt;
-    std::optional<methods::RestorationReport> restoration = std::nullopt;
+    std::optional<methods::StageObservations> stages = std::nullopt;
 };
 using ProcessResult = std::expected<Published, ProcessFailure>;
 [[nodiscard]] inline std::unexpected<ProcessFailure>
-process_failure(core::Error error, std::optional<methods::IlluminationReport> illumination = {},
-                std::optional<methods::DenoisingReport> denoising = {},
-                std::optional<methods::ContrastReport> contrast = {},
-                std::optional<methods::SharpenReport> sharpening = {}) {
-    return std::unexpected(ProcessFailure{
-        .error = std::move(error),
-        .denoising = denoising,
-        .contrast = contrast,
-        .sharpening = sharpening,
-        .illumination = illumination,
-    });
+process_failure(core::Error error, std::optional<methods::StageObservations> stages = {}) {
+    return std::unexpected(ProcessFailure{.error = std::move(error), .stages = std::move(stages)});
 }
+[[nodiscard]] methods::StageObservations initial_stages(const PhotometricPlan& plan);
+void failed_stages(methods::StageObservations& reports);
 // A deliberate effect boundary. There is no default implementation or hidden service lookup.
 // Expected errors retain their publication state in Result. If a port throws, the application
 // cannot prove whether its effects committed and returns publication_unknown, never not_started.

@@ -189,7 +189,8 @@ core::Result<image::Continuous> prepare_tone(const contract::Invocation& invocat
         .profile = *profile,
     });
 }
-core::Result<Operation> prepare_operation(const contract::Invocation& invocation) {
+using Representation = std::variant<methods::Binarization, image::Continuous>;
+core::Result<Representation> prepare_operation(const contract::Invocation& invocation) {
     const auto mode = invocation.output_mode.value_or("preserve");
     if (mode == "bw") {
         if (invocation.bit_depth || invocation.alpha || invocation.profile_policy) {
@@ -197,7 +198,9 @@ core::Result<Operation> prepare_operation(const contract::Invocation& invocation
                                  "Binary output retains its stored-sample/8-bit contract; "
                                  "continuous-tone policies are not applicable");
         }
-        return prepare_method(invocation).transform([](auto value) -> Operation { return value; });
+        return prepare_method(invocation).transform([](auto value) -> Representation {
+            return value;
+        });
     }
     if (mode != "preserve" && mode != "gray") {
         return core::failure(core::ErrorCode::argument,
@@ -208,7 +211,7 @@ core::Result<Operation> prepare_operation(const contract::Invocation& invocation
         return core::failure(core::ErrorCode::argument,
                              "Binarization requires explicit --output-mode bw");
     }
-    return prepare_tone(invocation).transform([](auto value) -> Operation { return value; });
+    return prepare_tone(invocation).transform([](auto value) -> Representation { return value; });
 }
 } // namespace
 core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation) {
@@ -255,17 +258,24 @@ core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocat
     if (!sharpening) {
         return std::unexpected(context(invocation, sharpening.error(), "Sharpening arguments"));
     }
-    return ProcessRequest{invocation.subject,
-                          invocation.output_directory,
-                          *method,
-                          {
-                              .illumination = *illumination,
-                              .denoising = *denoising,
-                              .restoration = std::move(*restoration),
-                              .contrast = *contrast,
-                              .sharpening = *sharpening,
-                              .rotation = {.rotation = *rotation},
-                          },
-                          invocation.protect_mask};
+    ProcessPlan plan = std::holds_alternative<methods::Binarization>(*method)
+                           ? ProcessPlan{BinaryPlan{
+                                 .operation = std::get<methods::Binarization>(*method),
+                                 .rotation = *rotation,
+                             }}
+                           : ProcessPlan{ContinuousPlan{
+                                 .operation = std::get<image::Continuous>(*method),
+                                 .photometric =
+                                     {
+                                         .illumination = *illumination,
+                                         .denoising = *denoising,
+                                         .restoration = std::move(*restoration),
+                                         .contrast = *contrast,
+                                         .sharpening = *sharpening,
+                                     },
+                                 .protection = invocation.protect_mask,
+                                 .rotation = *rotation,
+                             }};
+    return ProcessRequest{invocation.subject, invocation.output_directory, std::move(plan)};
 }
 } // namespace docenhance::app

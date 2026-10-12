@@ -19,6 +19,7 @@
 #include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
+#include "docenhance/methods/stages.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -48,11 +49,7 @@ struct ContinuousArtwork {
     image::Continuous operation;
     std::reference_wrapper<const color::Converter> converter;
     std::optional<MaskFacts> mask;
-    std::reference_wrapper<const methods::IlluminationReport> illumination;
-    std::reference_wrapper<const methods::DenoisingReport> denoising;
-    std::reference_wrapper<const methods::ContrastReport> contrast;
-    std::reference_wrapper<const methods::SharpenReport> sharpening;
-    std::reference_wrapper<const methods::RestorationReport> restoration;
+    std::reference_wrapper<const methods::StageObservations> stages;
 };
 using Artwork = std::variant<BinaryArtwork, ContinuousArtwork>;
 struct RunPublication {
@@ -77,9 +74,8 @@ struct PublishedRun {
     std::optional<image::ConversionReport> conversion;
 };
 
-struct ContinuousReports;
 [[nodiscard]] core::Result<app::PublishedContinuous>
 published_continuous(PublishedRun published, image::SourceDescription source,
-                     const ContinuousReports& reports, image::AlphaPolicy alpha);
+                     methods::StageObservations& reports, image::AlphaPolicy alpha);
 [[nodiscard]] core::Result<PublishedRun> publish_run(const RunPublication& run);
 } // namespace docenhance::host

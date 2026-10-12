@@ -104,7 +104,7 @@ bool valid_restoration_observations(const RestorationReport& r) {
     if (!valid_requested_state(r)) {
         return false;
     }
-    if (!Wiener::create(*r.requested) || r.status == RestorationStatus::disabled ||
+    if (!valid_wiener_parameters(*r.requested) || r.status == RestorationStatus::disabled ||
         !r.inference_warning || (r.psf && !canonical_psf(*r.requested, *r.psf))) {
         return false;
     }

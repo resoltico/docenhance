@@ -5,7 +5,6 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"
-#include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
@@ -61,7 +60,7 @@ bool illumination_request(const methods::IlluminationReport& report,
                        *report.requested == methods::IlluminationParameters{selected.parameters()};
             }
         },
-        request.illumination());
+        std::get<app::ContinuousPlan>(request.plan()).photometric.illumination);
 }
 bool denoising_request(const methods::DenoisingReport& report, const ProcessRequest& request) {
     return std::visit(
@@ -74,7 +73,7 @@ bool denoising_request(const methods::DenoisingReport& report, const ProcessRequ
                        *report.requested == methods::DenoisingParameters{selected.parameters()};
             }
         },
-        request.denoising());
+        std::get<app::ContinuousPlan>(request.plan()).photometric.denoising);
 }
 bool contrast_request(const methods::ContrastReport& r, const ProcessRequest& request) {
     return std::visit(
@@ -87,13 +86,14 @@ bool contrast_request(const methods::ContrastReport& r, const ProcessRequest& re
                        *r.requested == methods::ContrastParameters{selected.parameters()};
             }
         },
-        request.contrast());
+        std::get<app::ContinuousPlan>(request.plan()).photometric.contrast);
 }
 bool partial_contrast(const methods::ContrastReport& r, const ProcessRequest& request) {
     if (!contrast_request(r, request) || !methods::valid_contrast_observations(r)) {
         return false;
     }
-    return r.complete ? methods::valid_contrast(r, request.contrast())
+    return r.complete ? methods::valid_contrast(
+                            r, std::get<app::ContinuousPlan>(request.plan()).photometric.contrast)
                       : (!r.requested || (r.status == methods::ContrastStatus::failed &&
                                           r.reason == methods::ContrastReason::processing_failure));
 }
@@ -185,9 +185,11 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
     }
     if (r.requested && std::holds_alternative<methods::Tvl1Parameters>(*r.requested)) {
         return methods::valid_tvl1_observations(r) &&
-               (r.complete ? methods::valid_denoising(r, request.denoising())
-                           : r.status == methods::DenoiseStatus::failed &&
-                                 r.reason == methods::DenoiseReason::processing_failure);
+               (r.complete
+                    ? methods::valid_denoising(
+                          r, std::get<app::ContinuousPlan>(request.plan()).photometric.denoising)
+                    : r.status == methods::DenoiseStatus::failed &&
+                          r.reason == methods::DenoiseReason::processing_failure);
     }
     if (r.tvl1) {
         return false;
@@ -200,7 +202,8 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
         return false;
     }
     if (r.complete) {
-        return methods::valid_denoising(r, request.denoising());
+        return methods::valid_denoising(
+            r, std::get<app::ContinuousPlan>(request.plan()).photometric.denoising);
     }
     return r.requested ? r.status == methods::DenoiseStatus::failed &&
                              r.reason == methods::DenoiseReason::processing_failure &&
@@ -211,7 +214,7 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
 }
 } // namespace
 bool valid_published(const PublishedBinary& value, const ProcessRequest& request) {
-    const auto& method = std::get<methods::Binarization>(request.operation());
+    const auto& method = std::get<app::BinaryPlan>(request.plan()).operation;
     if (value.rotation != request.rotation() ||
         value.otsu.has_value() != std::holds_alternative<methods::Otsu>(method) ||
         (value.otsu && !methods::valid_otsu(*value.otsu)) ||
@@ -226,52 +229,61 @@ bool valid_published(const PublishedBinary& value, const ProcessRequest& request
            png->color_type == 0 && png->depth <= image::byte_bits;
 }
 bool valid_published(const PublishedContinuous& value, const ProcessRequest& request) {
+    const auto& plan = std::get<ContinuousPlan>(request.plan());
+    const auto& stages = value.stages;
     const auto& c = value.conversion;
-    const auto& light = value.illumination;
+    const auto& light = stages.illumination;
     const auto pixels = std::uint64_t{c.output.width} * c.output.height;
-    if (value.alpha != std::get<image::Continuous>(request.operation()).parameters().alpha ||
-        c.rotation != request.rotation() ||
+    if (value.alpha != plan.operation.parameters().alpha || c.rotation != request.rotation() ||
         !publication(value.output, value.run, value.record, request) ||
-        !image::valid_conversion(c, std::get<image::Continuous>(request.operation())) ||
-        !light.complete || !illumination_request(light, request) ||
+        !image::valid_conversion(c, plan.operation) || !light.complete ||
+        !illumination_request(light, request) ||
         !methods::valid_illumination(light, {.width = c.output.width, .height = c.output.height},
-                                     request.protection().has_value()) ||
+                                     plan.protection.has_value()) ||
         light.protected_samples > pixels ||
         light.eligible_samples != pixels - light.protected_samples ||
-        !methods::valid_denoising(value.denoising, request.denoising()) ||
-        !methods::valid_denoising_extent(value.denoising,
+        !methods::valid_denoising(stages.denoising, plan.photometric.denoising) ||
+        !methods::valid_denoising_extent(stages.denoising,
                                          {.width = c.output.width, .height = c.output.height}) ||
-        value.denoising.eligible_samples != light.eligible_samples ||
-        value.denoising.protected_samples != light.protected_samples ||
-        !methods::valid_restoration(value.restoration, request.restoration()) ||
-        !methods::valid_restoration_extent(value.restoration,
+        stages.denoising.eligible_samples != light.eligible_samples ||
+        stages.denoising.protected_samples != light.protected_samples ||
+        !methods::valid_restoration(stages.restoration, plan.photometric.restoration) ||
+        !methods::valid_restoration_extent(stages.restoration,
                                            {.width = c.output.width, .height = c.output.height}) ||
-        value.restoration.eligible_samples != light.eligible_samples ||
-        value.restoration.protected_samples != light.protected_samples ||
-        !restoration_prefix(value.restoration, c.orientation, c.rotation, light, value.denoising) ||
-        !methods::valid_contrast(value.contrast, request.contrast()) ||
-        value.contrast.eligible_samples != light.eligible_samples ||
-        value.contrast.protected_samples != light.protected_samples ||
-        !methods::valid_sharpen(value.sharpening, request.sharpening()) ||
-        !methods::valid_sharpen_extent(value.sharpening,
+        stages.restoration.eligible_samples != light.eligible_samples ||
+        stages.restoration.protected_samples != light.protected_samples ||
+        !restoration_prefix(stages.restoration, c.orientation, c.rotation, light,
+                            stages.denoising) ||
+        !methods::valid_contrast(stages.contrast, plan.photometric.contrast) ||
+        stages.contrast.eligible_samples != light.eligible_samples ||
+        stages.contrast.protected_samples != light.protected_samples ||
+        !methods::valid_sharpen(stages.sharpening, plan.photometric.sharpening) ||
+        !methods::valid_sharpen_extent(stages.sharpening,
                                        {.width = c.output.width, .height = c.output.height}) ||
-        value.sharpening.eligible_samples != light.eligible_samples ||
-        value.sharpening.protected_samples != light.protected_samples) {
+        stages.sharpening.eligible_samples != light.eligible_samples ||
+        stages.sharpening.protected_samples != light.protected_samples) {
         return false;
     }
     return !value.source_decoding || source_matches(*value.source_decoding, c.source);
 }
-bool valid_failure(const ProcessFailure& value, const ProcessRequest& request) {
-    if (std::holds_alternative<methods::Binarization>(request.operation()) &&
-        (value.illumination || value.denoising || value.contrast || value.sharpening ||
-         value.restoration)) {
-        return false;
-    }
-    return value.error.valid_publication() &&
-           (!value.illumination || partial_illumination(*value.illumination, request)) &&
-           (!value.denoising || partial_denoising(*value.denoising, request)) &&
-           (!value.contrast || partial_contrast(*value.contrast, request)) &&
-           (!value.sharpening || partial_sharpen(*value.sharpening, request)) &&
-           (!value.restoration || partial_restoration(*value.restoration, request));
+bool valid_partial_stages(const methods::StageObservations& stages, const ProcessRequest& request) {
+    const auto& plan = std::get<ContinuousPlan>(request.plan());
+    // Unstarted reports have initial facts; existing validators check attempted work.
+    const auto initial = [&] { return initial_stages(plan.photometric); };
+    return (stages.illumination.status == methods::IlluminationStatus::not_started
+                ? stages.illumination == initial().illumination
+                : partial_illumination(stages.illumination, request)) &&
+           (stages.denoising.status == methods::DenoiseStatus::not_started
+                ? stages.denoising == initial().denoising
+                : partial_denoising(stages.denoising, request)) &&
+           (stages.restoration.status == methods::RestorationStatus::not_started
+                ? stages.restoration == initial().restoration
+                : partial_restoration(stages.restoration, request)) &&
+           (stages.contrast.status == methods::ContrastStatus::not_started
+                ? stages.contrast == initial().contrast
+                : partial_contrast(stages.contrast, request)) &&
+           (stages.sharpening.status == methods::SharpenStatus::not_started
+                ? stages.sharpening == initial().sharpening
+                : partial_sharpen(stages.sharpening, request));
 }
 } // namespace docenhance::app

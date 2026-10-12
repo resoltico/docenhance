@@ -10,7 +10,6 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
-#include "docenhance/methods/illumination.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
@@ -120,7 +119,6 @@ std::string written_record(FuzzInput& input) {
     if (!method) {
         method = methods::FixedThreshold::create(0.5);
     }
-    const methods::IlluminationReport illumination;
     const bundle::RunRecord record{
         .context = {.identity = std::string(32, 'a'), .recorded = "2026-01-01T00:00:00Z"},
         .build = core::build_facts(),
@@ -156,11 +154,13 @@ std::string written_record(FuzzInput& input) {
             },
         .protection = std::nullopt,
         .conversion = std::nullopt,
-        .illumination = illumination,
-        .denoising = {.complete = true},
-        .contrast = {.complete = true},
-        .sharpening = {.complete = true},
-        .restoration = {.complete = true},
+        .stages =
+            {
+                .denoising = {.complete = true},
+                .restoration = {.complete = true},
+                .contrast = {.complete = true},
+                .sharpening = {.complete = true},
+            },
     };
     auto written = bundle::serialize(record);
     require(written.has_value(), "a record this program built always serializes");

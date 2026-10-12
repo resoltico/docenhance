@@ -34,6 +34,8 @@ double nlm_native_strength(const NlmParameters& p) noexcept {
 }
 std::string_view status_name(DenoiseStatus s) noexcept {
     switch (s) {
+    case DenoiseStatus::not_started:
+        return "not_started";
     case DenoiseStatus::disabled:
         return "disabled";
     case DenoiseStatus::no_change:
