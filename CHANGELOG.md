@@ -44,7 +44,7 @@ Notable changes to this project are documented in this file. The format is based
 
 - Corrected the sharpening independent fuzz oracle at the piecewise sRGB transfer boundary, comparing all three linear RGB channels without relaxing numerical tolerances. Kept both original AFL++ reproducers as regression inputs.
 
-- Verification supervisors now clean their owned POSIX process groups after timeouts and termination, including descendants that outlive their direct parent. Linux gates reconcile their uniquely labelled daemon container independently of the Docker CLI and retain the writer claim when creation or cleanup remains unconfirmed. Windows cleanup covers the direct child only; unconfirmed cleanup fails verification. Committed-source packaging avoids a Git pipe deadlock on large blob inventories.
+- Verification supervisors now clean their owned POSIX process groups after timeouts and termination, including descendants that outlive their direct parent. Delayed Darwin group removal gets one bounded native absence recheck after joining the child; permission denial alone never establishes cleanup. Linux gates reconcile their uniquely labelled daemon container independently of the Docker CLI and retain the writer claim when creation or cleanup remains unconfirmed. Windows cleanup covers the direct child only; unconfirmed cleanup fails verification. Committed-source packaging avoids a Git pipe deadlock on large blob inventories.
 
 - Zero-width/height PNG input now returns `E_INPUT` (exit 3) before resource arithmetic in continuous and binary modes; genuinely excessive positive dimensions retain `E_RESOURCE` (exit 4). No resource ceiling or numerical default changes.
 

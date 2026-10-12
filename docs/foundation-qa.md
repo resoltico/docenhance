@@ -31,6 +31,9 @@ The original reviewed design and negative controls N01–N22 remain the starting
 - Recorded artifacts agreeing cannot prove a given binary produced them. Quality evaluation must
   actually replay frozen candidate and comparator settings and compare results as well as independently checking integers.
 - Evaluation report creation is exclusive: an existing source or prior report must survive collision.
+- A real strict libFuzzer run completed illumination work but failed Darwin group cleanup with
+  `EPERM`. After joining the direct child, one bounded absence recheck admits only native `ESRCH`;
+  persistent denial, a live child or a surviving group still refuses cleanup confirmation.
 - Positive mean scores can conceal faint-mark loss. Any harm blocks the class; missing/uncertain
   human evidence abstains. An institutional rights label is evidence to review, not a warranty.
 

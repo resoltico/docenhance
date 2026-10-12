@@ -272,6 +272,31 @@ class GroupPermissionTests(unittest.TestCase):
         ):
             process_execution.group_exists(process)
 
+    def test_delayed_group_removal_requires_native_absence(self) -> None:
+        """A delayed ESRCH can confirm removal; repeated EPERM still cannot."""
+        process = Mock(spec=subprocess.Popen)
+        process.pid = 12345
+        process.poll.return_value = 0
+        for final in (ProcessLookupError(3, "absent"), PermissionError(1, "still denied")):
+            with (
+                patch("process_execution.time.sleep") as pause,
+                patch(
+                    "process_execution.os.killpg",
+                    create=True,
+                    side_effect=[
+                        PermissionError(1, "denied"),
+                        PermissionError(1, "removing"),
+                        final,
+                    ],
+                ),
+            ):
+                if isinstance(final, ProcessLookupError):
+                    self.assertFalse(process_execution.signal_group(process, signal.SIGKILL))
+                else:
+                    with self.assertRaises(PermissionError):
+                        process_execution.signal_group(process, signal.SIGKILL)
+                pause.assert_called_once_with(process_execution.REAP_RACE_SECONDS)
+
     def test_nonzero_signal_denial_stays_failure_when_group_still_exists(self) -> None:
         """A successful existence probe cannot hide a denied termination signal."""
         process = Mock(spec=subprocess.Popen)
