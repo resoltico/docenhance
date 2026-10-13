@@ -78,6 +78,61 @@ TEST_CASE("Invalid invocations never reach processing", "[cli]") {
     CHECK(cli::run(invalid, {.processor = processor, .verifier = verifier}, out, err) ==
           static_cast<int>(core::ExitCode::invocation));
 }
+TEST_CASE("A required string value can consume the option marker before a JSON flag", "[cli]") {
+    CapturingProcessor processor;
+    std::ostringstream out;
+    std::ostringstream err;
+    const auto args = std::to_array<const char*>(
+        {"docenhance", "process", "input.png", "--out-dir", "--", "--json"});
+    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
+          static_cast<int>(core::ExitCode::processing));
+    if (!processor.received.has_value()) {
+        FAIL("The admitted request did not reach processing");
+        return;
+    }
+    CHECK(processor.received->output_directory() == "--");
+    CHECK(out.str().starts_with('{'));
+    CHECK(err.str().empty());
+}
+TEST_CASE("A JSON-looking required value does not select JSON presentation", "[cli]") {
+    CountingProcessor processor;
+    std::ostringstream out;
+    std::ostringstream err;
+    const auto args =
+        std::to_array<const char*>({"docenhance", "process", "--profile-policy", "--json"});
+    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
+          static_cast<int>(core::ExitCode::invocation));
+    CHECK(processor.calls == 0);
+    CHECK(out.str().empty());
+    CHECK(err.str().starts_with("E_"));
+}
+TEST_CASE("Consumed and unconsumed markers keep admission and syntax presentation distinct",
+          "[cli]") {
+    const auto admission =
+        std::to_array<const char*>({"docenhance", "process", "--profile-policy", "--", "--json"});
+    const auto syntax = std::to_array<const char*>(
+        {"docenhance", "process", "--profile-policy", "--", "--wat", "--json"});
+    const auto operand = std::to_array<const char*>(
+        {"docenhance", "process", "--profile-policy", "embedded", "--", "--json"});
+    const auto check_case = [](std::span<const char* const> args, bool json) {
+        CountingProcessor processor;
+        std::ostringstream out;
+        std::ostringstream err;
+        CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
+              static_cast<int>(core::ExitCode::invocation));
+        CHECK(processor.calls == 0);
+        if (json) {
+            CHECK(out.str().starts_with('{'));
+            CHECK(err.str().empty());
+        } else {
+            CHECK(out.str().empty());
+            CHECK(err.str().starts_with("E_"));
+        }
+    };
+    check_case(admission, true);
+    check_case(syntax, false);
+    check_case(operand, false);
+}
 TEST_CASE("Output stream failure cannot repeat processing or render another outcome", "[cli]") {
     CountingProcessor processor;
     RefusingBuffer buffer;

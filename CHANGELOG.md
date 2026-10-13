@@ -4,7 +4,7 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
-## [0.8.0] - 2026-10-13
+## [0.8.0] - 2026-10-14
 
 ### Added
 

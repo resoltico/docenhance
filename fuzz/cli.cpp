@@ -118,12 +118,12 @@ JsonRoles json_roles(const std::vector<std::string>& args) {
         std::ranges::any_of(option_tokens, [](const std::string& arg) { return arg == "--json"; });
     bool pending_value = false;
     for (const auto& arg : args | std::views::drop(1)) {
-        if (arg == "--") {
-            break;
-        }
         if (pending_value) {
             pending_value = false;
             continue;
+        }
+        if (arg == "--") {
+            break;
         }
         if (arg == "--json") {
             roles.exact_flag = true;
@@ -147,10 +147,12 @@ void check_json_roles(const std::vector<std::string>& args, const Outcome& outco
     if (roles.syntax_failure) {
         require(outcome.code == exit_invocation && json_mode == roles.fallback,
                 "known syntax errors use only the exact-token JSON fallback");
+        return;
     }
-    // Syntax failure uses only an exact raw token. Successful syntax can also admit CLI11's
-    // default-valued flag spellings; argument exit 2 alone cannot distinguish syntax/admission.
-    if (roles.exact_flag || (roles.flag && outcome.code != exit_invocation)) {
+    // Syntax failure uses only an exact raw token. A consumed value can be "--", so a later
+    // parsed flag may lie beyond the raw fallback boundary. Exit 2 alone cannot distinguish
+    // syntax failure from refused admission; explicit transport tests cover both presentations.
+    if ((roles.exact_flag && roles.fallback) || (roles.flag && outcome.code != exit_invocation)) {
         require(json_mode, "a parsed JSON flag selects JSON output");
     }
     if (json_mode) {
