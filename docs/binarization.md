@@ -59,7 +59,7 @@ For B01, quantize every decoded stored sample `p` to `q = round(4095*p/255)` and
 build a 4,096-bin uint64 histogram. Positive half ties round upward (the byte input mapping has
 no half ties). Every admitted sample participates; there is no eligible mask, geometry padding,
 perceptual conversion or floating input plane. This deliberately retains the current binary domain.
-The blueprint's broader perceptual/mask/geometry pipeline requires a separate domain contract.
+Perceptual input and protection masks are outside the admitted binary domain; G02 rotation preserves exact stored samples.
 
 For each candidate integer `t` from 0 through 4094 with nonempty populations on both sides,
 compute float64 `w0*w1*(mu0-mu1)^2`, with population fractions `w0`, `w1` and mean bin
@@ -161,11 +161,11 @@ that count to fit the available charged-buffer budget; the kernel also caps slot
 The host retains its **128 MiB** image/codec budget and the decoder's input/pixel ceilings. Source,
 destination, row padding and scratch all count; small metadata, C buffers and OS thread stacks do
 not. This is neither a process-RSS ceiling nor arbitrary-page streaming. `--threads` and
-`--memory-mib` are not exposed by this PR.
+`--memory-mib` are not exposed by the CLI.
 
 ## Design review and separate QA
 
-The design was reviewed before implementation. These challenges determined the final structure:
+Current admission, numerical and ownership requirements are:
 
 | Challenge | Resolution |
 |---|---|
@@ -180,7 +180,7 @@ The design was reviewed before implementation. These challenges determined the f
 | Passing an algorithm oracle is mistaken for general restoration quality. | Test independent reference samples and one clearly synthetic illumination case; do not claim a real-document benchmark. |
 
 Factory input uses a named parameter record rather than a positional trio of convertible numeric
-types; the review rejects accidentally swapped `k`/`R` values as an avoidable API hazard.
+types; named fields prevent accidentally swapped `k`/`R` values.
 
 ## Verification obligations
 
@@ -190,7 +190,7 @@ extrema, equality, zero variance, exact-budget success, one-byte-short refusal a
 engine-independent `sauvola` harness compares against the direct oracle and is registered in the
 same manifest as all other campaigns and ordinary corpus replays.
 
-Real-executable tests validate both methods, selected capability discovery, all method-option
+Real-executable tests validate all three methods, selected capability discovery, all method-option
 conflicts, source preservation, publication and closed JSON responses. A known synthetic text mask
 on a changing background distinguishes Sauvola from global fixed thresholding; it is not evidence
 of universal superiority or preservation of arbitrary handwriting, faded marks, halftones or color.
@@ -204,8 +204,7 @@ admission. Cancellation can leave a partially written destination, which the hos
 publishing. No-stop arithmetic and method versions remain unchanged. See [cancellation](cancellation.md).
 
 B01 design and independent challenge cover empty-bin plateaus, exact byte-to-bin expansion,
-global tolerance selection and one-bin endpoint polarity. The simpler 256-bin alternative was
-rejected because the requested contract explicitly fixes 4,096 bins. Retained observations replace
+global tolerance selection and one-bin endpoint polarity. B01 requires 4,096 bins; a 256-bin alternative does not implement the contract. Retained observations replace
 refitting during encode/verify; serial fitting avoids worker-dependent reductions. Independent
 kernel and real-executable references cover all byte samples, skewed populations, low-depth PNG
 expansion, exact observations, wrong-method presence and obsolete/inconsistent records. B02/B03

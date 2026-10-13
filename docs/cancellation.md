@@ -72,8 +72,7 @@ already completed computation need not change that computation's result.
 | Sauvola | Before workspace acquisition, reflected initialization rows, output rows and 1024-sample output blocks. Column initialization/advance is bounded by the existing fixed strip and halo width, not image height. |
 | Box mean | Before intermediate acquisition, at 1024-sample reflected-sum/output intervals and within both separable passes. The no-stop summation order is unchanged. |
 | PNG decoding | Before header work, before plane allocation and zero-fill blocks, in bounded input callbacks and between decoded rows/passes. File and byte-span decoding use the same implementation. |
-| PNG encoding | Before opening the staged output, between rows and in bounded output callbacks. File close and error checking complete before cleanup or commit. Delayed flush/close failures
-outweigh cancellation; an earlier genuine failure remains primary. |
+| PNG encoding | Before opening the staged output, between rows and in bounded output callbacks. File close and error checking complete before cleanup or commit. Delayed flush/close failures outweigh cancellation; an earlier genuine failure remains primary. |
 | Output verification | During bounded native reads and 64 KiB sample comparisons. |
 | Manifest writing | Before opening and each transfer of at most 64 KiB, with checked flush and close on returned paths. |
 | Publication | Before stage reservation, between writers, during encoding and once immediately before the native exclusive rename. |
@@ -134,7 +133,7 @@ bytes. Neither missing output nor exit 5 establishes that image publication did 
 
 ## Design review and separate QA
 
-The design pass preceded product-code changes. The separate QA pass challenged and rejected:
+The following approaches violate the cancellation contract:
 
 - Calling `std::stop_source::request_stop()` from a signal handler, borrowing a stack source from a
   Windows callback, resetting shared handler state, or introducing a polling monitor thread.
@@ -148,8 +147,7 @@ The design pass preceded product-code changes. The separate QA pass challenged a
 - Sleep-based correctness tests or a test-only mode in the shipped executable. Checkpoint probes,
   worker barriers and a separate native test driver provide deterministic control instead.
 
-The accepted implementation keeps these constraints explicit. It adds no method, image format,
-recipe framework, job service, persistent thread pool, migration or compatibility branch.
+Cancellation remains execution control, independent of method configuration.
 
 ## Verification and limits
 
@@ -199,7 +197,7 @@ verification/publication failures; the existing final commit cutoff remains auth
 Moved-from requests are unready and refused before cancellation/I/O. Returned cancellation must
 be coherent with publication; contradictory port observations retain unknown processing state.
 Verification exceptions and malformed returns are contained at its read-only boundary and cannot
-claim staging or commit. See [execution ownership](execution-ownership-audit.md).
+claim staging or commit. [Architecture](architecture.md#authority-and-composition) owns execution-result admission.
 
 I02 observes measurement cancellation per bounded RGB transfer and protection scan, processing
 cancellation per extrema queue interval and Gaussian output interval, and application cancellation

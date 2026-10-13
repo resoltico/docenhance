@@ -46,8 +46,7 @@ use the runner's observed CPU count bounded by the shared execution policy.
 Native cases run with at most two concurrent processes, separately from build/AST worker counts. Every case, assertion, per-contract
 timeout and complete-result reconciliation remains required. The full composition reference case
 runs in isolation from other test processes, retaining its deadline and internal scheduler checks.
-The CLI and interpretation contracts reserve both native slots: measured overlap exhausted their
-existing 90-second deadlines, while serializing every case exhausted the whole-suite watchdog.
+The CLI and interpretation contracts reserve both native slots to avoid competing nested work within their per-contract deadlines.
 Other unit and fuzz replay cases retain bounded concurrency; no fixture or deadline is relaxed.
 
 Run heavyweight native and sanitizer test phases one at a time on a shared developer machine.
@@ -80,14 +79,6 @@ Empty-bin candidates have the same populations and score as that start, so their
 threshold and global relative tolerance are retained. A separate exhaustive 4,095-candidate oracle
 checks dense byte populations, sparse histograms, single-bin fallbacks and near ties. Required fuzz
 campaign durations, input domains, sanitizer settings and complete-target reconciliation are unchanged.
-
-Local interleaved measurements on macOS 27 ARM64 with LLVM 23.1.2 used the same real executable,
-fixtures and assertions. Three fresh-process repetitions gave median Otsu/Sauvola/sharpening suites
-of 4.638/4.001/6.494 seconds before schema reuse and 0.489/0.394/1.269 seconds after. Four full native
-architecture passes with two workers averaged 77.78 seconds before root reuse and 68.18 seconds
-after, with identical diagnostics. A fixed 600-input Otsu replay under ASan/UBSan and libFuzzer
-instrumentation improved median throughput from 164 to 4,999 executions per second. These local
-measurements do not establish other platforms' performance or replace complete workflow execution.
 
 Windows CI runs the target-admission CMake controls before the long native build, so a platform-specific guard regression fails promptly. The complete native tooling suite still runs afterward. Source-property lookup preserves CMake's declared directory spelling, including Windows DOS short names; filesystem alias expansion must not disconnect a suppression from its source.
 
@@ -147,7 +138,7 @@ Every linter is pinned in `deps/tools.json`:
 | mypy (strict) | Every Python file | `mypy.ini` | `python -m mypy` |
 | Quality gates | Everything above | `tools/check_gates.py` | `python tools/check_gates.py` |
 
-Install the pinned Python-distributed tools into the external build-tool environment described in [build setup](build.md) with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the required major and reports the actual patch version (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm` is equivalent. Homebrew does not preserve every historical formula name, so the major-version gate remains the authority. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
+Install the pinned Python-distributed tools into the external build-tool environment described in [build setup](build.md) with `python tools/install_build_tools.py --lint`. clang-tidy's major version must equal the pin, because findings differ between releases; CMake refuses any other. `python tools/install_llvm.py` installs the required major and reports the actual patch version (apt.llvm.org with a fingerprint-checked key on Linux, Homebrew `llvm` on macOS, the SHA-256-verified official installer on Windows); on macOS, `brew install llvm` is equivalent. Homebrew does not preserve every versioned formula name, so the major-version gate remains the authority. Shared presets always enable clang-tidy and warnings-as-errors, and the gates reject any shared preset that turns either off. Every first-party translation unit, including the reference runner and the fuzz entry point, is compiled in the normal build so that it is linted.
 
 The gates allow nothing to be grandfathered:
 
@@ -190,6 +181,6 @@ target 1,800 seconds; planning and CTest use the same selected concurrency and r
 per-target execution evidence. Workload admission precedes compiler installation and the build.
 
 Campaign completeness, bounded parallelism, corpus ownership and retained evidence are specified
-in [fuzzing](fuzzing.md). Each run owns a fresh directory; automatic corpus merging is removed.
+in [fuzzing](fuzzing.md). Each run owns a fresh directory; automatic corpus merging is not supported.
 The PNG fuzz build instruments libpng/zlib as well as first-party code. Required PR checks retain
 evidence artifacts; no source or regression is automatically rewritten by a successful run.

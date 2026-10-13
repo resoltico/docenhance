@@ -55,10 +55,10 @@ stop. Ownership refunds on all exits and the existing publication cutoff remain 
 
 ## Separate design QA
 
-The challenge pass rejected the RGBA API (precision loss and implicit orientation), scanline
+The contract excludes the RGBA API (precision loss and implicit orientation), scanline
 random access (stateful compressed strips), uncharged nested JPEG allocation, global callbacks,
 first-page success on multipage input, and treating a single-allocation cap as a total budget.
-It also checked MINISWHITE plus associated alpha: invert after unassociation, not by subtracting a
+For MINISWHITE plus associated alpha, invert after unassociation, not by subtracting a
 premultiplied value from the full sample maximum. Native sample byte order must be tested on both
 file endian orders. Palette expectations must not be derived from the decoder itself.
 

@@ -43,15 +43,11 @@ No-op reports do not claim field preparation; failed stages retain partial diagn
 validation rejects foreign I01 fields, impossible geometry and invalid scalar/resource domains at
 the application boundary; incomplete background reductions may retain unfinished ranges. The [current response and record contracts](bundles.md#source-observations-and-format-compatibility)
 reject obsolete forms without a reader or migration.
-Method versions retain I01=1 and introduce I02=1.
+Method versions come from the reviewed method contract.
 
 ## Chosen implementation and resource contract
 
-Use first-party float64 separable kernels in the existing numerical layer. This preserves the
-blueprint equations without adding OpenCV allocation/exception/global-diagnostic obligations to
-illumination. The blueprint's native-primitive route was considered; the existing NLM native
-adapter has a separate responsibility and is not broadened into an unrelated processing manager.
-No new package, layer edge or exception boundary is needed.
+First-party float64 separable kernels in the numerical layer implement the specified equations. Illumination has no OpenCV allocation, exception or global-diagnostic obligations; the NLM native adapter owns denoising. No additional package, layer edge or exception boundary is required.
 
 Whole-page fields avoid composed-halo ambiguity. Two charged float64 planes ping-pong through
 horizontal/vertical dilation, erosion and Gaussian smoothing. A monotone ring deque uses at most
@@ -67,12 +63,8 @@ with fixed bounded observation intervals.
 
 ## Separate skeptical QA
 
-A separate slow square-neighborhood experiment agrees with the separable closing for 1x1, 1x9,
-7x1, 3x5 and 7x9 inputs at radii 1, 3 and 16. It verifies exact constant preservation and retains
-a broad dark mark at radius 1 as a documented limitation. Gaussian normalization experiments cover
-radii 1, 2, 8, 128 and 256, support <=384, and exact constant-one results. Closing is not opening;
-negative/broad marks are not promised to disappear. A tiled alternative would require dependency
-radius 2r+ceil(3*sigma) for the complete composition, so a single-operation halo was rejected.
+Independent square-neighborhood references must cover degenerate axes, small images and radii exceeding image dimensions, with exact constant preservation. Gaussian references must cover maximal radius/support and exact constant-one results. Closing is not opening; negative/broad marks are not promised to disappear. A tiled alternative would require dependency
+radius 2r+ceil(3*sigma) for the complete composition, so a single-operation halo is insufficient.
 
 The challenge requires source/mask immutability, protected analysis fill rather than output fill,
 sparse-mask lattice fallback, no NaN masking, method-specific option presence and report identity,

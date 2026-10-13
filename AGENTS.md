@@ -85,7 +85,7 @@ quality evaluation. Clear provenance/rights and human reviews are required. Neve
 readability from synthetic formula tests or invent favorable results. Preserve sources and report
 per-class harms, uncertainty and abstention separately from engineering correctness.
 
-Documentation describes current truth. Keep one authority per fact and preserve historical audits
-as history. Changelog entries describe net release outcomes against the published baseline,
+Documentation describes current truth. Keep one authority per fact; historical matter belongs
+only in CHANGELOG.md. Changelog entries describe net release outcomes against the published baseline,
 including breaking action and non-guarantees. Retain Unreleased, dated history, tags and published
 artifacts. Deliver the whole authorized change with final independent QA and factual evidence.

@@ -207,15 +207,9 @@ measurements, target, six optional predicate decisions and application counters.
 to g before the strength exponent; capped samples include equality at max_gain; saturation counts
 raw target above one. Fractions with no evaluated samples are null.
 
-`complete` means the illumination stage finished, **not** that output was committed.
-One contiguous row-major output traversal completes the stage;
-repeated, skipped or out-of-order output blocks are refused before counting observations.
-Verification may read arbitrary blocks without advancing completion. With D01 active, its
-preparation traversal completes I01 before encoding; otherwise the encoder traversal does.
-A subsequent verification/publication failure retains the
-completed stage record alongside the actual command error. An interrupted or failed incomplete
-stage is `failed`, without erasing prior diagnostics. A completed stage is `applied` only when some
-working samples changed, otherwise `no_change`; an automatic decision not to apply is `skipped`.
+The [stage lifecycle contract](bundles.md#stage-progress-and-numerical-disposition) separates preparation, application observation, numerical disposition and publication. Active I01 remains unresolved while prepared or partly evaluated. One contiguous row-major output traversal completes application; repeated, skipped or out-of-order blocks fail before observation counts change. Verification can read arbitrary blocks without advancing those counts.
+
+Successful preparation of a consuming downstream stage can finish I01 before encoding. Gamma preparation and known identity paths can leave it prepared; a refusal before prefix consumption preserves that state. Otherwise final output traversal observes illumination. A direct interrupted/failed owner retains its real progress and diagnostics, while a consumer of an upstream failure remains unresolved. A completed active stage is `applied` when working samples changed, otherwise `no_change`; an automatic decision not to apply is `skipped`. Disabled and known identity decisions settle without artificial application work. Later verification/publication failure preserves completed facts.
 The application rejects a successful adapter result with a missing/incomplete or mismatched stage
 record as unknown publication, since effects may already have happened. It never invents success.
 
@@ -227,7 +221,7 @@ from completed binary methods, so I01 cannot masquerade as a binarizer.
 
 ## Design QA and verification obligations
 
-Design and a separate QA pass preceded implementation. The review rejected these shortcuts:
+Verification must protect the following properties:
 
 | Risk | Required resolution |
 |---|---|
@@ -257,8 +251,6 @@ and platforms separately; CI or benchmark success is not implied by these obliga
 
 ## References
 
-The supplied DocEnhance implementation blueprint (September 17, 2026), I01 and protection/photometric
-contracts, informs the method. Its planned presets and unrelated features are not reinstated.
 The matrix solver is independently written; algorithmic background is the SIAM/Netlib
 *Templates for the Solution of Linear Systems*, https://www.netlib.org/templates/templates.html,
 U. Trottenberg, C. W. Oosterlee and A. Schüller, *Multigrid* (Academic Press, 2001), and

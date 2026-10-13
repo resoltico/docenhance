@@ -31,9 +31,17 @@ first. Each file is identified by reading it back under the same bound verificat
 what this program publishes is something it can read: an artifact larger than a bundle may hold is
 refused before the commit point rather than published into a bundle `verify` would reject.
 
+## Stage progress and numerical disposition
+
+The five family reports separate `progress` from numerical `status` and publication. `methods::StageProgress` owns `not_started`, `preparing`, `prepared`, `evaluating` and `completed`; C++ completion is derived through `complete()`, not a writable boolean. Requested untouched stages remain unresolved with exact initial facts. Known disabled/identity decisions can complete without numerical traversal; active numerical effects settle only after observing the complete canvas.
+
+Direct failures retain the failing owner's actual progress and diagnostics. A consumer propagating an upstream read failure remains unresolved. Earlier completed facts and prepared models remain available; later unentered stages do not acquire work or failure. Illumination alone may remain prepared across downstream identity or refusal because its application is lazy. Other incomplete predecessors prohibit later entry. Verification uses retained models without changing recorded observations or counting them again.
+
+Continuous success requires all five reports to be complete and coherent with the admitted request. The binary record policy separately retains default unstarted illumination and completed disabled decisions for denoising/restoration/contrast/sharpening; it cannot claim continuous work. Preparation, numerical effect, publication and delivery never substitute for one another.
+
 ## What the record says
 
-`run.json` is a closed, versioned object. Version 14 admits exactly the supported binary or
+`run.json` is a closed, versioned object. The [current format authority](#source-observations-and-format-compatibility) admits exactly the supported binary or
 continuous operation, with reviewed method versions and validated parameters. Missing or unknown
 fields, duplicate object keys (including escaped equivalents), out-of-range numbers and inconsistent
 observations are refused. Numeric domains are checked before narrowing. Run identities are 32
@@ -48,7 +56,7 @@ schema. The typed reader remains authoritative and also checks relationships tha
 cannot express, such as matching dimensions, counts, derived fractions and conversion warnings.
 Independent schema tests check records emitted by the real executable and negative examples.
 
- Every field comes from a value the execution already
+Every field comes from a value the execution already
 held; the bundle layer that writes it defines no default, no option table and no processing rule of
 its own.
 
@@ -56,9 +64,9 @@ its own.
 |---|---|
 | `record` | The record format version, the run identity and the instant it was recorded |
 | `build` | Application version, platform, compiler and dependency-lock identity |
-| `source` | The digest/size of exact decoded source bytes and basename; required typed container/decode observations |
+| `source` | The digest/size of the exact encoded input snapshot and basename; required typed container/decode observations |
 | `request` | The admitted operation and its parameters, and whether a mask was supplied |
-| `execution` | The conversion observations and the illumination report, as the response states them |
+| `execution` | The conversion observations and illumination/denoising/restoration/contrast/sharpening reports, as the response states them |
 | `protection` | The supplied mask's digest, the stored canonical mask, its size, polarity and coordinate frame |
 | `output` | The result's relative path, digest, size, dimensions, depth, profile presence and the verification performed |
 
@@ -213,7 +221,7 @@ A digest detects disagreement with expected bytes. It is not a signature: it ide
 and anyone able to rewrite both an artifact and its record can produce another internally
 consistent bundle. Confirming a bundle establishes a structurally valid supported record and agreement with the
 observable properties of its included artifacts. Source identity, build identity, parameter use,
-processing observations and the producer's original sample comparison remain recorded historical
+processing observations and the producer's original sample comparison remain recorded producer
 claims; verification cannot establish those events without the original execution. It never reruns
 illumination or binarization. Agreement is not a statement about the meaning or authenticity of the
 original document.
@@ -232,7 +240,7 @@ relationships, exact tile count and source-derived native reservation. Working-s
 inferred from whether output bytes differ. See [denoising](denoising.md).
 
 JPEG and PNG source bytes remain absent: later verification checks recorded facts and included
-artifacts, not historical decoder execution or authenticity.
+artifacts, not original decoder execution or authenticity.
 
 Binary records retain an exact unstarted illumination placeholder. Their D/R/C/S reports describe
 explicit completed disabled decisions in the binary record branch, with no continuous work or

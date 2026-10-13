@@ -36,7 +36,7 @@ Source bytes are architecture-independent; OS separation preserves filesystem be
 pretending to identify a native compiler configuration. No build tree, installed prefix, object,
 application binary or prior test result is restored. Native and fuzz jobs build fresh configurations
 and retain source, feature, compilation, sanitizer, test and package checks. See the
-[CI performance evidence and cache design](ci-performance.md).
+[CI cache and replay ownership](ci-performance.md).
 
 The private zlib build retains its in-memory compression/decompression core and excludes the
 unused gzip-file translation units. Its upstream recipe identity is reviewed before adaptation;
@@ -49,7 +49,7 @@ at depth <=16, while record/response builders have fixed typed shapes. The sourc
 attribution are untouched. Feature policy pins the reviewed source-header digest; the build audit
 compares the installed header with the private build input and an independent reviewed output
 digest. Allocation-failure tests establish the
-cleanup behavior separately from that byte-identity check. See [the resource audit](resource-limits-audit.md).
+cleanup behavior separately from that byte-identity check. [Bundle resource bounds](bundles.md#reading-a-bundle-back) and native allocation-failure controls constrain this behavior.
 Native C++ integrations must consistently use the corrected installed header from the project's
 private prefix; mixing it with stock JSON headers would violate the inline definition contract.
 
@@ -79,14 +79,12 @@ feature policy, configured module closure, final binary composition, and relocat
 test. A source digest establishes identity; it is not a security endorsement or a reproducible
 machine-image claim.
 
-The retired development probe's meaningful properties remain at actual production owners:
+Production-owner verification covers the selected dependency behavior:
 PNG/JPEG/TIFF decode and charged allocation tests exercise codec bounds and error containment;
 continuous color tests exercise context-local Little CMS conversion; NLM adapter tests exercise
 native computation, reservation/refund and concurrent isolation; the digest adapter checks the
 SHA-256 `abc` known answer. Build/import audits bind installed dependency identities, features,
-archives and headers. These checks replace link demonstrations and advisory allocator settings
-with the actual production behavior. Demonstrations of global library allocator/thread policies
-were removed because production does not use them.
+archives and headers. These checks exercise actual production behavior; production does not use global library allocator/thread policies.
 
 ## Updating a dependency
 

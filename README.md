@@ -91,15 +91,15 @@ strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 ```text
 src/<layer>/          One directory per layer, with its public headers under
 include/docenhance/   Layers and their allowed edges: spec/architecture.json, docs/architecture.md
-spec/                 Reviewed authoring contracts: the CLI, the planned methods, the layer graph
-schemas/              Generated JSON response schema, enforced by executable tests
+spec/                 Reviewed CLI/method/layer, wire and quality-evidence contracts
+schemas/              Generated response and run-record schemas
 cmake/                Modern native build, isolation, policies, packaging
 cmake/opencv-hooks/   Reject nested OpenCV downloads
 cmake/presets/        Shared schema-12 preset definitions
 deps/                 Immutable source lock and explicit feature policy
 tests/                Unit, numeric, CLI and acquisition/security tests
 fuzz/                 Strict fuzz harnesses, corpora and regressions (libFuzzer, AFL++)
-tools/                Build-only standard-library Python automation
+tools/                Development, verification and source-publication Python tools
 docs/                 Status, architecture, decisions, build, quality, CLI, bundles and roadmap
 .github/              CI, source packaging, issue/PR templates and updates
 ```

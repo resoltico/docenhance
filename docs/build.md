@@ -65,7 +65,7 @@ cmake --build out/dev --target check-architecture
 Each configuration owns its executable at `out/<configuration>/bin/docenhance` (`docenhance.exe`
 on Windows), dependency products under `deps`, its private installation `prefix`, and bookkeeping
 under `ep`. Native packages and CPack scratch belong to `out/<configuration>/packages`. The app
-child contains first-party CMake state, libraries, tests/probes and its compilation database;
+child contains first-party CMake state, libraries, tests and its compilation database;
 `app/bin` is not a supported product location. `.cache/deps` contains acquired source inputs;
 `dist` contains source archives and deliberate exports.
 
@@ -139,7 +139,7 @@ Missing inspection tools fail verification. These observations do not prove prot
 function, an exploit-free program or execution on every supported OS version.
 
 Prefer the canonical `dev`, `release`, `sanitize`, `tsan`, `fuzz` and `fuzz-afl` workflows with an
-activated supported environment and explicit compiler selection. Redundant aliases and historical
+activated supported environment and explicit compiler selection. Redundant aliases and arbitrary
 binary-directory overrides add no isolation. Personal `CMakeUserPresets.json` remains ignored and
 is useful only for a concrete requirement, such as a truly external analysis tree:
 
@@ -259,7 +259,7 @@ major on Linux/macOS and native MSVC on Windows; it does not claim identical LLV
 The configured dependency plan determines compilation, importing and auditing. TIFF remains a
 required production source decoder; fuzzing uses its own complete codec/CLI closure. Native link,
 known-answer, allocation and feature properties are checked by production adapter tests and build
-audits. The retired development-probe option is refused; use a fresh build tree. Package metadata
+audits. `DE_BUILD_TOOLS` is unsupported and refused; use a fresh build tree. Package metadata
 remains the explicitly labeled full declared-source inventory, not a binary-composition certificate. Native dependency audit runs before the application build even
 when unit tests are disabled. Package directories, includes and archives stay in the owning prefix.
 
@@ -275,7 +275,7 @@ After interruption or unsuccessful CLI completion, an empty query establishes ab
 that observation; an in-flight creation request remains unconfirmed and retains the claim too.
 Inspect the recorded container name/label and daemon state before removing such a claim and retrying.
 CLI termination alone does not establish container cleanup. Obsolete inactive build trees and native volumes need no
-historical archive when their required failure reproducers and evidence are already retained.
+archive when their required failure reproducers and evidence are already retained.
 
 ## Complete execution and package evidence
 

@@ -1,7 +1,6 @@
 # Documentation map
 
-This directory explains the project; it does not duplicate machine-owned configuration. Use the
-following sources when changing behavior.
+Documentation describes the current implementation, contracts, requirements and limits. Release history belongs in the [changelog](../CHANGELOG.md); documentation does not serve as an execution log or certify unobserved platforms.
 
 | Concern | Authority | Supporting documentation |
 | --- | --- | --- |
@@ -10,53 +9,28 @@ following sources when changing behavior.
 | Dependency identities | `deps/lock.json` | [dependency policy](dependencies.md) |
 | Dependency features and tool pins | `deps/features.json`, `deps/tools.json` | [dependency policy](dependencies.md) |
 | Layer graph and allowed edges | `spec/architecture.json` | [architecture](architecture.md) |
-| Command syntax and method catalog | `spec/cli-contract.json`, `spec/method-contract.json` | [CLI contract](cli-contract.md), [methods](methods.md) |
-| Machine response shape | `spec/command-response.schema.json`, `spec/method-contract.json` | [current CLI behavior](cli.md) |
-| Release prose | `CHANGELOG.md` | [publishing](publishing.md) |
+| Command syntax and method classification | `spec/cli-contract.json`, `spec/method-contract.json` | [CLI contract](cli-contract.md), [methods](methods.md) |
+| Response and record shapes | `spec/command-response.schema.json`, `spec/run-record.schema.json` | [bundles](bundles.md), [CLI behavior](cli.md) |
+| Document-quality protocol and report | `spec/document-quality.schema.json` | [quality evaluation](document-quality.md) |
+| Release narrative | `CHANGELOG.md` | [publishing](publishing.md) |
 
 ## Reading order
 
-Start with [status](status.md) for verified capability boundaries, then read
-[architecture](architecture.md) and [design decisions](decisions.md) before changing production
-code. Use [build](build.md) and [quality](quality.md) to reproduce validation. The
-[roadmap](roadmap.md) derives completed and future capability inventory from reviewed contracts.
+Start with [status](status.md), then [architecture](architecture.md) and [design decisions](decisions.md). [Build](build.md), [quality](quality.md) and [fuzzing](fuzzing.md) describe required verification. Execution evidence must identify the actual commit, executable, platform, inputs and result; a documented command is not evidence that it ran.
 
-## Generated documents
+[Foundation design](foundation-design.md) describes admitted plans and lifecycle ownership. [Foundation review](foundation-qa.md) lists acceptance conditions. [Document-quality evaluation](document-quality.md) governs independent cleared held-out evidence separately from engineering correctness.
 
-[CLI contract](cli-contract.md) and [methods](methods.md) are generated from the reviewed `spec/`
-sources by `tools/generate_spec.py`; never edit them by hand. The structural check rejects stale
-generated output. Current guides describe supported policy and must be updated with the behavior they describe.
-Documents named `*-audit.md` and `*-design-qa.md` retain historical design challenges and evidence;
-their snapshots, measurements and superseded approaches do not override current contracts or
-commit-specific verification. Keep useful rationale rather than treating a past passing run as
-current platform evidence. [Dependency policy](dependencies.md) owns acquisition and verified-cache
-requirements; caches are permitted under that policy.
+## Representation and method guides
 
-## Design and measurement evidence
+- [PNG](png-processing.md), [JPEG](jpeg-processing.md) and [TIFF](tiff-processing.md) own container admission, sample interpretation, resource limits and output verification.
+- [Geometry](geometry.md) owns G01 metadata orientation, G02 exact quarter-turns, mask/PSF coordinate frames and resolution handling.
+- [Illumination](illumination.md) and [morphological illumination](morphological-illumination.md) own I01/I02 mathematics and applicability.
+- [NLM](denoising.md), [NLM validation](denoising-design-qa.md) and [TV-L1](tvl1-denoising.md) own denoising semantics and resource contracts.
+- [Restoration](restoration.md), [contrast](contrast.md) and [sharpening](sharpening.md) own the remaining continuous stages.
+- [Binarization](binarization.md) owns the separate B01/B02/B03 stored-gray contract.
+- [Cancellation](cancellation.md) and [bundles](bundles.md) own execution control and publication safety.
+- [CI cache and replay ownership](ci-performance.md) describes source/tool reuse and configuration-private verification work.
 
-For historical counterexamples and design challenges, see the [build integrity audit](build-integrity-audit.md),
-[clean-source/product audit](clean-build-product-audit.md) and
-[verification detection audit](verification-detection-audit.md). The
-[JPEG resource observations](jpeg-resource-observations.md) record measurements with their source,
-platform and input assumptions; use [JPEG processing](jpeg-processing.md) for enforced bounds.
-[TIFF processing](tiff-processing.md) defines single-page classic/BigTIFF coding, precision,
-metadata, allocation and cancellation admission.
-These records explain decisions and do not replace the current authorities above.
+## Generated references
 
-[Typed binarization](binarization.md) specifies B01/B02/B03 parameters, mathematics, memory, execution
-contracts and the separate design QA.
-
-[PNG processing](png-processing.md) specifies continuous-tone sample, profile, alpha, orientation,
-resource and verified-publication contracts, separately from binary method mathematics.
-
-[Illumination](illumination.md) specifies I01 fitting/application, original-depth protection masks,
-opt-in applicability, typed diagnostics, resources and independent preservation tests.
-
-[Geometry](geometry.md) specifies G01 metadata orientation, G02 exact clockwise quarter-turns,
-B-frame mask admission/assets, C/F processing coordinates and physical-resolution handling.
-Perspective, deskew and dewarping remain future contracts.
-
-[Foundation design](foundation-design.md) and its [separate QA](foundation-qa.md) describe the
-closed admitted plan/report ownership and mandatory validation. The
-[document-quality protocol](document-quality.md) and `spec/document-quality.schema.json`
-govern cleared held-out empirical evidence separately from product correctness.
+[CLI contract](cli-contract.md), [methods](methods.md) and [roadmap](roadmap.md) are generated from reviewed `spec/` sources by `tools/generate_spec.py`; do not edit them by hand. The roadmap is an inventory, not executable admission. Runtime selectable catalogs come from implemented types. Current guides must agree with those authorities.

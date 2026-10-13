@@ -43,7 +43,7 @@ Freeze levels thresholds once. Reuse the same immutable mapping in output verifi
 recompute quantiles nor count observations twice. Preparation/assessment distinguish a previously
 observed prefix from a prefix first consumed for levels analysis or gamma application. A flat
 levels measurement still completes its upstream prefix. Errors retain measured partial facts and
-completed illumination/denoising observations. Unknown effects remain unknown.
+actual earlier-stage observations, including prepared illumination when its prefix was not consumed. Unknown effects remain unknown.
 
 Cancellation is execution control, with bounded checkpoints in mask counting, transfers,
 validation, sorting, mapping and reconstruction. Preserve final publication cutoff and error
@@ -82,21 +82,11 @@ The model owns its maps and is move-only. Verification reuses them without refit
 Report identity_tiles (zero for other methods), measured eligible samples and charge peak, including
 truthful partial observations on failure. No architecture permission or dependency is added.
 
-The separate design challenge rejected equal-size nominal centers, independent stitched tiles,
-8-bit equalization/up-conversion, a second clip pass, protected range observations, and refitting
-at verification. A real-boundary challenge rejected tile-major source traversal: the upstream observation
-contract requires row-major order. Row streaming removes a redundant full-image scalar copy
-without changing histograms or the mapping. Independent executable references cover uneven dimensions, exterior
-centers, redistribution, protection, exact identities, color transport and sub-byte output levels.
+CLAHE uses actual contextual centers, row-major source observation and retained floating maps. Independent executable references cover uneven dimensions, exterior centers, redistribution, protection, exact identities, color transport and sub-byte output levels. Separate stitched tiles, 8-bit equalization/up-conversion, a second clip pass, protected range observations and verification refits do not implement this contract.
 Deterministic checkpoint tests exercise allocation/measurement/application stops and charge refunds;
 exact-budget and one-byte-short cases prove the charged workspace boundary.
 
 ## Separate challenge pass
-
-A preimplementation scalar experiment passed rank/tie/endpoint cases, monotonicity over all
-65,536 input codes for four gamma exponents, and 10,000 seeded color transports. Maximum
-linear-luminance transport error was 2.220446049250313e-16. These are mathematical checks,
-not platform or document-quality certification.
 
 Challenge rank rounding, ties, single eligibility, p=0/1 and equality at the clipping endpoints.
 Distinguish an eligible constant field from globally varying protected samples. Verify the strict

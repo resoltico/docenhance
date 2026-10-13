@@ -168,11 +168,7 @@ durability, output ancestors remain trusted, and blocking native/I/O calls can d
 
 ## Separate design QA and executable evidence
 
-The design and separate QA preceded implementation. The uploaded September 17 blueprint informed
-sample, color, alpha, orientation and verification requirements. This smaller package deliberately
-retains the current C++23/expected/layer/binarization contracts instead of restoring the blueprint's
-conflicting C++20, unimplemented recipe framework or different floating-point Sauvola semantics.
-PNG Third Edition cICP precedence is an explicitly researched addition to its older color ladder.
+Sample, color, alpha, orientation and verification admission follow the contracts above. PNG Third Edition cICP precedence determines the color interpretation ladder. The implementation follows the C++23, expected-return, layer and binary numerical contracts.
 
 | Challenge | Resolution and verification obligation |
 |---|---|
@@ -200,7 +196,7 @@ The implemented bounded TIFF/BigTIFF adapter has its separate [source contract](
 
 ## Interpretation audit
 
-The [input/numerical audit](input-numerical-audit.md) records the design and separate QA for exact
+[Interpretation verification](quality.md) requires exact
 scalar sample interpretation, shared static binary framing and metadata validation before
 precedence. Decoder APIs reject unknown policies and zero/relaxed limits explicitly. Scalar
 references include quantization-boundary and alpha adversaries; native engine precision remains
