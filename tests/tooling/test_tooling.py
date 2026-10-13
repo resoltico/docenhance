@@ -29,7 +29,9 @@ import project_version
 import repo_hygiene
 
 EXECUTABLE_MODE = 0o755
-LOCKED_DEPENDENCY_COUNT = 11
+LOCKED_DEPENDENCIES = frozenset(
+    {"zlib", "jpeg", "png", "tiff", "opencv", "lcms", "cli11", "json", "picosha2", "catch2"}
+)
 MIN_CLANG_TIDY_MAJOR = 23
 
 
@@ -39,7 +41,7 @@ class LockTests(unittest.TestCase):
     def test_committed_lock_is_fully_pinned(self) -> None:
         """Every dependency is locked and matches the feature policy."""
         lock = deps.load_lock(ROOT / "deps/lock.json")
-        self.assertEqual(len(lock["dependencies"]), LOCKED_DEPENDENCY_COUNT)
+        self.assertEqual({d["name"] for d in lock["dependencies"]}, LOCKED_DEPENDENCIES)
         self.assertEqual(
             {d["name"] for d in lock["dependencies"]},
             set(json.loads((ROOT / "deps/features.json").read_text())["dependencies"]),

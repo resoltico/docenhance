@@ -15,6 +15,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "stub_verifier.hpp"
 
 #include <array>
@@ -133,8 +134,10 @@ TEST_CASE("Wrong-family and incomplete processing reports preserve unknown publi
         app::PublishedContinuous reported{};
         reported.output = "output/result.png";
         reported.conversion.verified = invalid != 1;
-        reported.stages.illumination.complete = invalid != 2;
-        reported.stages.denoising.complete = invalid != 3;
+        reported.stages.illumination.progress =
+            invalid != 2 ? methods::StageProgress::completed : methods::StageProgress::prepared;
+        reported.stages.denoising.progress =
+            invalid != 3 ? methods::StageProgress::completed : methods::StageProgress::prepared;
         ReportingProcessor continuous{reported};
         request.output_mode = invalid == 0 ? "bw" : "preserve";
         const auto outcome = app::dispatch(request, continuous, verifier);

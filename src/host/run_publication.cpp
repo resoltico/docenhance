@@ -15,6 +15,7 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/io/publication.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/stages.hpp"
 
 #include <expected>
@@ -139,10 +140,10 @@ core::Result<void> write_record(void* const state, const io::BundleSlot& slot) {
         .conversion = composed.conversion,
         .stages =
             {
-                .denoising = {.complete = true},
-                .restoration = {.complete = true},
-                .contrast = {.complete = true},
-                .sharpening = {.complete = true},
+                .denoising = {.progress = methods::StageProgress::completed},
+                .restoration = {.progress = methods::StageProgress::completed},
+                .contrast = {.progress = methods::StageProgress::completed},
+                .sharpening = {.progress = methods::StageProgress::completed},
             },
         .rotation = run.rotation,
     };

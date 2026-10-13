@@ -94,7 +94,7 @@ TEST_CASE("Zero blend validates PSF without requiring an FFT budget") {
                                                     {tiny, {}, report, image::RowUse::measurement});
     REQUIRE(result);
     CHECK(!result->active());
-    CHECK(report.complete);
+    CHECK(report.complete());
     CHECK(methods::valid_restoration(report, method));
     psf.coefficients.front() = -1;
     CHECK(!opencv::RestorationModel::prepare(source, {}, method, psf,
@@ -115,7 +115,7 @@ TEST_CASE("Cancellation is observed on both sides of each indivisible native DFT
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(report.native_calls == (allowed + 1) / 2);
-        CHECK(!report.complete);
+        CHECK(!report.complete());
         CHECK(budget.used() == baseline);
     }
 }

@@ -14,7 +14,8 @@ The original reviewed design and negative controls N01–N22 remain the starting
 - Marking G01 selectable would invent a command. The closed classification corrects documentation
   without extending runtime method discovery; unknown classifications/attributions must fail.
 - A compiled counterexample accepted completed D01 after selected unstarted I01. The fixed-order
-  observation validator now rejects later work after a selected incomplete predecessor.
+  original observation validator rejected later work after every selected incomplete predecessor.
+  That rule was too broad for lazy preparation and is superseded by the resolution below.
 - Merely collecting reports does not fix lifecycle truth. Earlier completed reports must survive,
   untouched selected stages must be exactly initial facts, and success requires completion. A
   `noexcept` accessor cannot use potentially throwing visitation; the exception contract is explicit.
@@ -76,3 +77,18 @@ compiler/OS/input facts, exact commit/run/attempt IDs and artifacts. Local macOS
 forward-host evidence, not macOS 15 proof. Missing human reviewers block measured field-quality
 claims. A PR, workflow definition, synthetic score fixture or successful handoff hash does not
 establish final program acceptance. Final delivered evidence must supersede this baseline explicitly.
+
+## Current lifecycle implementation challenge
+
+The lazy pipeline admits prepared illumination before later applicability, allocation or PSF
+failures, and completed identity denoising before illumination is observed. A consuming successful
+model requires a completely observed prefix; gamma preparation does not. Propagated nested read
+errors retain the upstream failed/evaluating owner and unresolved/preparing consumer. Prepared
+model facts and partial counters must not be converted to a settled numerical effect.
+
+Shared I01 semantics now reject completed selected reports mutated to disabled, wrong identity
+reason, missing fitting facts, nonfinite measurements or incomplete eligible evaluation. Failed
+solver preparation may legitimately retain a finite residual above tolerance. The dedicated
+lifecycle controls exercise healthy and contradictory fake-port reports with exactly one
+processing call; real native and reference execution evidence belongs in foundation-verification.
+The historical execution results above remain bound to their original commits.

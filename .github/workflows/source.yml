@@ -29,6 +29,8 @@ jobs:
       - name: Required source gates
         run: python tools/check_all.py
       - name: Package deterministic source archive
+        env:
+          SOURCE_DATE_EPOCH: "0"
         run: python tools/package_source.py
       - name: Attest source-archive provenance
         uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4

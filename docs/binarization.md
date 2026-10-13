@@ -74,8 +74,8 @@ This is global Otsu; it does not adapt thresholds spatially.
 The fitted threshold remains immutable through output verification; no refitting
 or second observation count occurs. Successful B01 responses and records carry `threshold_bin`
 and `single_bin_fallback` in `binarization`. Other binary responses carry null; other execution
-records carry null. A true fallback requires threshold 2047. Response/record format 12 rejects
-obsolete forms and unknown fields.
+records carry null. A true fallback requires threshold 2047. The [current response/record contracts](bundles.md#source-observations-and-format-compatibility)
+reject obsolete forms and unknown fields.
 
 For B03, an input sample `p` is black exactly when `double(p)/255 <= threshold`. Its existing
 rounding and equality behavior is unchanged.

@@ -12,12 +12,12 @@ from pathlib import Path, PurePosixPath
 from dep_verify import command_environment, run
 
 
-def snapshot(root: Path) -> dict[str, bytes]:
-    """Require an exact repository root and snapshot every regular blob of its resolved HEAD."""
+def snapshot(root: Path, revision: str = "HEAD") -> dict[str, bytes]:
+    """Require an exact repository root and snapshot every regular blob of one resolved revision."""
     if Path(run("git", "rev-parse", "--show-toplevel", cwd=root)).resolve() != root.resolve():
         msg = "Source archive root must be the Git repository root"
         raise ValueError(msg)
-    commit = run("git", "rev-parse", "--verify", "HEAD^{commit}", cwd=root)
+    commit = run("git", "rev-parse", "--verify", f"{revision}^{{commit}}", cwd=root)
     tree = run("git", "ls-tree", "-r", "-z", "--full-tree", commit, cwd=root)
     records = []
     for record in tree.split("\0"):

@@ -7,6 +7,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
@@ -72,7 +73,7 @@ void contextual(docenhance::fuzz::FuzzInput& input) {
                 "CLAHE frozen replay");
         require(rgb == verification, "CLAHE immutable maps");
     }
-    report.complete = true;
+    report.progress = methods::StageProgress::completed;
     report.status = report.changed_samples == 0 ? methods::ContrastStatus::no_change
                                                 : methods::ContrastStatus::applied;
     report.reason = report.changed_samples == 0 ? methods::ContrastReason::no_effect

@@ -91,7 +91,7 @@ core::Result<methods::ContrastReport> observations(const RecordJson& v,
             r.reason = reason;
         }
     }
-    r.complete = record_boolean(record_field(v, "complete"));
+    r.progress = read_progress(record_field(v, "progress"));
     r.identity_tiles = static_cast<std::uint32_t>(
         record_integer(record_field(v, "identity_tiles"),
                        std::uint64_t{methods::clahe_maximum_grid} * methods::clahe_maximum_grid));

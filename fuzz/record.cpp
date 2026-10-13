@@ -6,10 +6,12 @@
 #include "docenhance/bundle/record.hpp"
 
 #include "docenhance/bundle/inventory.hpp"
+#include "docenhance/bundle/record_version.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
@@ -156,10 +158,10 @@ std::string written_record(FuzzInput& input) {
         .conversion = std::nullopt,
         .stages =
             {
-                .denoising = {.complete = true},
-                .restoration = {.complete = true},
-                .contrast = {.complete = true},
-                .sharpening = {.complete = true},
+                .denoising = {.progress = methods::StageProgress::completed},
+                .restoration = {.progress = methods::StageProgress::completed},
+                .contrast = {.progress = methods::StageProgress::completed},
+                .sharpening = {.progress = methods::StageProgress::completed},
             },
     };
     auto written = bundle::serialize(record);

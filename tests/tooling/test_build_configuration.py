@@ -88,6 +88,21 @@ de_commit_build_identity()
         self.assert_refused(self.configure(), "select a fresh build tree")
         self.assertIn("BUILD_TESTING:BOOL=ON", (build / "CMakeCache.txt").read_text())
 
+    def test_retired_probe_control_is_refused_in_command_and_cache(self) -> None:
+        """An obsolete flag cannot be silently ignored, regardless of its value."""
+        self.policy_project()
+        for value in ("ON", "OFF"):
+            with self.subTest(value=value):
+                self.assert_refused(
+                    self.configure(f"-DDE_BUILD_TOOLS={value}", build=value),
+                    "DE_BUILD_TOOLS is obsolete",
+                )
+        build = self.root / "cached"
+        build.mkdir()
+        (build / "CMakeCache.txt").write_text("DE_BUILD_TOOLS:BOOL=OFF\n")
+        self.assert_refused(self.configure(build="cached"), "select a fresh build tree")
+        self.assertIn("DE_BUILD_TOOLS:BOOL=OFF", (build / "CMakeCache.txt").read_text())
+
     def test_json_destruction_recipe_requires_reviewed_source(self) -> None:
         """The real dependency recipe refuses disabled correction, drift and absent cleanup."""
         recipe = ROOT / "cmake/dependencies/json/CMakeLists.txt"
@@ -261,12 +276,10 @@ find_package(Fixture 1.0 EXACT CONFIG REQUIRED PATHS "{owned.as_posix()}" NO_DEF
         self.assertEqual(admitted.returncode, 0, admitted.stdout + admitted.stderr)
         self.assertTrue(marker.is_file())
 
-    def test_probe_selection_is_the_recorded_dependency_plan(self) -> None:
-        """Without the probe, compile production TIFF codecs but no Leptonica."""
+    def test_production_selection_is_the_recorded_dependency_plan(self) -> None:
+        """Compile production TIFF codecs without an unused dependency."""
         self.policy_project()
-        result = self.configure(
-            "-DCMAKE_BUILD_TYPE=Release", "-DDE_TOOLCHAIN=platform", "-DDE_BUILD_TOOLS=OFF"
-        )
+        result = self.configure("-DCMAKE_BUILD_TYPE=Release", "-DDE_TOOLCHAIN=platform")
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         plan = json.loads((self.root / "build/dependency-plan.json").read_text())
         self.assertIn("tiff", plan)

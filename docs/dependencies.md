@@ -67,7 +67,7 @@ The lock distinguishes `runtime-candidate` dependencies from test-only dependenc
 source is not automatically a runtime feature: a layer may use it only when
 `spec/architecture.json` grants that package to the layer and the code actually includes it. The
 current permitted OpenCV module closure is `core`, `flann`, `geometry`, `imgproc`, and `photo`.
-The selected codecs, OpenCV, Leptonica and Little CMS do not authorize image decoding or processing
+The selected codecs, OpenCV and Little CMS do not authorize image decoding or processing
 until their complete contracts and tests exist.
 
 ## Attribution and release review
@@ -79,12 +79,21 @@ feature policy, configured module closure, final binary composition, and relocat
 test. A source digest establishes identity; it is not a security endorsement or a reproducible
 machine-image claim.
 
+The retired development probe's meaningful properties remain at actual production owners:
+PNG/JPEG/TIFF decode and charged allocation tests exercise codec bounds and error containment;
+continuous color tests exercise context-local Little CMS conversion; NLM adapter tests exercise
+native computation, reservation/refund and concurrent isolation; the digest adapter checks the
+SHA-256 `abc` known answer. Build/import audits bind installed dependency identities, features,
+archives and headers. These checks replace link demonstrations and advisory allocator settings
+with the actual production behavior. Demonstrations of global library allocator/thread policies
+were removed because production does not use them.
+
 ## Updating a dependency
 
 Review the official upstream release and license changes first. Change the lock and feature policy
 together when necessary, acquire into a fresh named cache entry, build in a fresh private prefix,
-and run the native probe, feature audit, numerical/CLI tests, fuzzing where applicable, and the
-relocated-package smoke test. Never accept an update merely because its version is higher.
+and run production adapter tests, the feature audit, numerical/CLI tests, fuzzing where applicable,
+and the relocated-package smoke test. Never accept an update merely because its version is higher.
 
 ## Advisory observations
 

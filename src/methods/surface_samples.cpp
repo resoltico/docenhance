@@ -203,7 +203,6 @@ bool surface_eligible(IlluminationReport& report) {
         return false;
     }
     const auto& m = *report.measurements;
-    constexpr double minimum_coverage = 0.60;
     constexpr double minimum_brightness = 0.35;
     constexpr double minimum_background = 0.20;
     constexpr double minimum_variation = 0.08;
@@ -211,7 +210,7 @@ bool surface_eligible(IlluminationReport& report) {
     constexpr double minimum_dark = 0.001;
     constexpr double maximum_dark = 0.40;
     report.predicates = {
-        static_cast<double>(report.measured_cells) / report.cells >= minimum_coverage,
+        static_cast<double>(report.measured_cells) / report.cells >= surface_automatic_coverage,
         m.luminance_q90 >= minimum_brightness,
         m.background_q50 >= minimum_background,
         m.variation >= minimum_variation,

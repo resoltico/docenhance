@@ -68,8 +68,8 @@ core::Result<double> restoration_target(double input, double candidate, const Wi
 }
 std::string_view status_name(RestorationStatus value) noexcept {
     switch (value) {
-    case RestorationStatus::not_started:
-        return "not_started";
+    case RestorationStatus::unresolved:
+        return "unresolved";
     case RestorationStatus::disabled:
         return "disabled";
     case RestorationStatus::no_change:

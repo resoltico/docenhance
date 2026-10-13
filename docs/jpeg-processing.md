@@ -124,8 +124,9 @@ charged allocations, peak RSS and runtime are different evidence, never intercha
 
 ## Persistent and response compatibility
 
-New production records use format version 13 and require a closed `source.decoding` PNG/JPEG/TIFF
-alternative. Response schema version 13 exposes the same mapping as `source_decoding` and reports an
+The [current record format](bundles.md#source-observations-and-format-compatibility) requires a closed
+`source.decoding` PNG/JPEG/TIFF alternative. The current response exposes the same mapping as
+`source_decoding` and reports an
 explicit input/output-mode matrix. A custom processing port can report unknown source observations
 as null; the native host always supplies them. Numerical method versions are unchanged.
 

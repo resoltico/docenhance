@@ -118,7 +118,7 @@ core::Result<methods::DenoisingReport> record_denoising(const RecordJson& value)
             r.reason = reason;
         }
     }
-    r.complete = record_boolean(record_field(value, "complete"));
+    r.progress = read_progress(record_field(value, "progress"));
     r.tvl1 = recorded_tvl1(record_field(value, "tvl1"));
     r.native_h = record_number(record_field(value, "native_h"));
     r.eligible_samples = record_integer(record_field(value, "eligible_samples"), UINT64_MAX);

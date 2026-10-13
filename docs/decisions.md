@@ -201,8 +201,8 @@ The classic libjpeg adapter uses a public, per-request charged memory manager, n
 virtual-array limit as proof of total memory use. Its reviewed native bootstrap has a separate
 conservative reservation. Full-resolution accurate integer decoding, upsampling, warning refusal,
 scan/marker limits and cancellation are fixed together. Output always uses the existing verified
-PNG bundle path. Current records use version 13; obsolete formats are refused without backward compatibility or
-migration. Source format is not a numerical method-version change.
+PNG bundle path. Current record format is owned by the schema authority linked from [bundles](bundles.md);
+obsolete formats are refused without backward compatibility or migration. Source format is not a numerical method-version change.
 See [JPEG](jpeg-processing.md) for the exact domain and executable evidence.
 
 ## Native denoising proves fixed operation composition
@@ -514,3 +514,14 @@ generic stage framework or second geometry layer is needed. Built-in G01 classif
 from selectable methods. The deployment floor is macOS 15.0, with actual minimum ARM64/Intel
 runtime lanes. The [quality protocol](document-quality.md) requires independent cleared held-out
 evidence before measured natural-document claims.
+
+## Lazy progress is independent of numerical disposition
+
+The reviewed 2026-10-13 lifecycle inventories actual source consumption for every fixed family.
+The methods owner shares one progress vocabulary; immutable models retain unresolved effect until
+host observing traversal completes. Identity paths settle without artificial upstream reads.
+Illumination alone uses its existing row-major observing cursor; other host assessments own
+completion. No additional source cursors or event log are required. Prefix-observed flags retain
+their entering-canvas meaning. Shared method semantics validate completed upstream reports on
+failure as well as success; exact initial reports and family-specific consumption rules replace
+the overbroad complete-prefix check. See the current resolution in [foundation design](foundation-design.md).

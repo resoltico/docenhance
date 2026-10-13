@@ -7,6 +7,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/stages.hpp"
 #include "stub_verifier.hpp"
@@ -52,9 +53,12 @@ TEST_CASE("Restoration partial failures preserve bounded observations and reject
     methods::RestorationReport known{
         .status = methods::RestorationStatus::failed,
         .reason = methods::RestorationReason::processing_failure,
+
+        .progress = methods::StageProgress::preparing,
         .inference_warning = true,
     };
     known.requested = methods::WienerParameters{};
+    known.eligible_samples = 1;
     for (unsigned change = 0; change < 5; ++change) {
         auto observed = known;
         REQUIRE(observed.requested);
@@ -65,11 +69,17 @@ TEST_CASE("Restoration partial failures preserve bounded observations and reject
         } else if (change == 3) {
             observed.evaluated_samples = 1;
         } else if (change == 4) {
-            observed.complete = true;
+            observed.progress = methods::StageProgress::completed;
         }
+        methods::StageObservations stages;
+        stages.illumination.progress = methods::StageProgress::completed;
+        stages.illumination.eligible_samples = 1;
+        stages.denoising.progress = methods::StageProgress::completed;
+        stages.denoising.eligible_samples = 1;
+        stages.restoration = observed;
         ReturningProcessor processor{std::unexpected(app::ProcessFailure{
             .error = {.code = core::ErrorCode::resource, .message = "Restoration refused"},
-            .stages = methods::StageObservations{.restoration = observed},
+            .stages = stages,
         })};
         const auto outcome = app::dispatch(request, processor, verifier);
         CHECK(processor.calls() == 1);
@@ -99,7 +109,7 @@ TEST_CASE("A later completed stage cannot follow a selected unstarted or failed 
         auto stages = app::initial_stages(plan.photometric);
         stages.denoising.status = methods::DenoiseStatus::no_change;
         stages.denoising.reason = methods::DenoiseReason::zero_blend;
-        stages.denoising.complete = true;
+        stages.denoising.progress = methods::StageProgress::completed;
         stages.denoising.eligible_samples = 1;
         if (state == 1) {
             stages.illumination.status = methods::IlluminationStatus::failed;
@@ -107,7 +117,7 @@ TEST_CASE("A later completed stage cannot follow a selected unstarted or failed 
         } else if (state == 2) {
             stages.illumination.status = methods::IlluminationStatus::no_change;
             stages.illumination.reason = methods::IlluminationReason::zero_strength;
-            stages.illumination.complete = true;
+            stages.illumination.progress = methods::StageProgress::completed;
             stages.illumination.eligible_samples = 1;
         }
         ReturningProcessor processor{app::process_failure(

@@ -3,6 +3,7 @@
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/progress.hpp"
 
 #include <nlohmann/json.hpp>
 #include <variant>
@@ -64,7 +65,7 @@ nlohmann::ordered_json denoising_fields(const methods::DenoisingReport& r) {
     fields.update(nlohmann::ordered_json{
         {"status", methods::status_name(r.status)},
         {"reason", methods::reason_name(r.reason)},
-        {"complete", r.complete},
+        {"progress", methods::progress_name(r.progress)},
         {"analysis_depth", precision},
         {"distance", r.requested ? Json("L1") : Json(nullptr)},
         {"representation", representation},

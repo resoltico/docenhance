@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 13
+      "const": 14
     },
     "command": {
       "enum": [
@@ -531,8 +531,8 @@
                     "applied"
                   ]
                 },
-                "complete": {
-                  "const": true
+                "progress": {
+                  "const": "completed"
                 }
               }
             }
@@ -582,14 +582,14 @@
             },
             {
               "properties": {
-                "complete": {
-                  "const": true
+                "progress": {
+                  "const": "completed"
                 },
                 "status": {
                   "not": {
                     "enum": [
                       "failed",
-                      "not_started"
+                      "unresolved"
                     ]
                   }
                 }
@@ -604,14 +604,14 @@
             },
             {
               "properties": {
-                "complete": {
-                  "const": true
+                "progress": {
+                  "const": "completed"
                 },
                 "status": {
                   "not": {
                     "enum": [
                       "failed",
-                      "not_started"
+                      "unresolved"
                     ]
                   }
                 }
@@ -626,14 +626,14 @@
             },
             {
               "properties": {
-                "complete": {
-                  "const": true
+                "progress": {
+                  "const": "completed"
                 },
                 "status": {
                   "not": {
                     "enum": [
                       "failed",
-                      "not_started"
+                      "unresolved"
                     ]
                   }
                 }
@@ -648,14 +648,14 @@
             },
             {
               "properties": {
-                "complete": {
-                  "const": true
+                "progress": {
+                  "const": "completed"
                 },
                 "status": {
                   "not": {
                     "enum": [
                       "failed",
-                      "not_started"
+                      "unresolved"
                     ]
                   }
                 }
@@ -1289,7 +1289,7 @@
         "measurements",
         "auto_predicates",
         "application",
-        "complete",
+        "progress",
         "morphology"
       ],
       "additionalProperties": false,
@@ -1301,7 +1301,7 @@
             "skipped",
             "applied",
             "failed",
-            "not_started"
+            "unresolved"
           ]
         },
         "reason": {
@@ -1640,8 +1640,14 @@
             }
           }
         },
-        "complete": {
-          "type": "boolean"
+        "progress": {
+          "enum": [
+            "not_started",
+            "preparing",
+            "prepared",
+            "evaluating",
+            "completed"
+          ]
         },
         "morphology": {
           "anyOf": [
@@ -1847,7 +1853,7 @@
                   "no_change",
                   "applied",
                   "failed",
-                  "not_started"
+                  "unresolved"
                 ]
               },
               "solver": {
@@ -1898,8 +1904,8 @@
               {
                 "if": {
                   "properties": {
-                    "complete": {
-                      "const": true
+                    "progress": {
+                      "const": "completed"
                     }
                   }
                 },
@@ -1938,15 +1944,20 @@
         {
           "if": {
             "properties": {
-              "status": {
+              "progress": {
                 "const": "not_started"
               }
             }
           },
           "then": {
             "properties": {
-              "complete": {
-                "const": false
+              "progress": {
+                "enum": [
+                  "not_started",
+                  "preparing",
+                  "prepared",
+                  "evaluating"
+                ]
               },
               "reason": {
                 "const": "none"
@@ -2008,6 +2019,38 @@
                     "type": "null"
                   }
                 }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "progress": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "not": {
+                  "enum": [
+                    "unresolved",
+                    "failed"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "unresolved",
+                  "failed",
+                  "disabled"
+                ]
               }
             }
           }
@@ -2581,7 +2624,7 @@
         "parameters",
         "status",
         "reason",
-        "complete",
+        "progress",
         "analysis_depth",
         "distance",
         "native_h",
@@ -2613,7 +2656,7 @@
             "no_change",
             "applied",
             "failed",
-            "not_started"
+            "unresolved"
           ]
         },
         "reason": {
@@ -2625,8 +2668,14 @@
             "processing_failure"
           ]
         },
-        "complete": {
-          "type": "boolean"
+        "progress": {
+          "enum": [
+            "not_started",
+            "preparing",
+            "prepared",
+            "evaluating",
+            "completed"
+          ]
         },
         "analysis_depth": {
           "enum": [
@@ -2865,8 +2914,8 @@
               {
                 "if": {
                   "properties": {
-                    "complete": {
-                      "const": true
+                    "progress": {
+                      "const": "completed"
                     }
                   }
                 },
@@ -2943,15 +2992,20 @@
         {
           "if": {
             "properties": {
-              "status": {
+              "progress": {
                 "const": "not_started"
               }
             }
           },
           "then": {
             "properties": {
-              "complete": {
-                "const": false
+              "progress": {
+                "enum": [
+                  "not_started",
+                  "preparing",
+                  "prepared",
+                  "evaluating"
+                ]
               },
               "reason": {
                 "const": "none"
@@ -2979,6 +3033,38 @@
               },
               "preparation_charge_peak": {
                 "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "progress": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "not": {
+                  "enum": [
+                    "unresolved",
+                    "failed"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "unresolved",
+                  "failed",
+                  "disabled"
+                ]
               }
             }
           }
@@ -3388,7 +3474,7 @@
         "parameters",
         "status",
         "reason",
-        "complete",
+        "progress",
         "representation",
         "levels",
         "eligible_samples",
@@ -3418,7 +3504,7 @@
             "no_change",
             "applied",
             "failed",
-            "not_started"
+            "unresolved"
           ]
         },
         "reason": {
@@ -3432,8 +3518,14 @@
             "processing_failure"
           ]
         },
-        "complete": {
-          "type": "boolean"
+        "progress": {
+          "enum": [
+            "not_started",
+            "preparing",
+            "prepared",
+            "evaluating",
+            "completed"
+          ]
         },
         "representation": {
           "enum": [
@@ -3611,7 +3703,7 @@
                   "no_change",
                   "applied",
                   "failed",
-                  "not_started"
+                  "unresolved"
                 ]
               }
             }
@@ -3774,15 +3866,20 @@
         {
           "if": {
             "properties": {
-              "status": {
+              "progress": {
                 "const": "not_started"
               }
             }
           },
           "then": {
             "properties": {
-              "complete": {
-                "const": false
+              "progress": {
+                "enum": [
+                  "not_started",
+                  "preparing",
+                  "prepared",
+                  "evaluating"
+                ]
               },
               "reason": {
                 "const": "none"
@@ -3819,6 +3916,38 @@
               },
               "identity_tiles": {
                 "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "progress": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "not": {
+                  "enum": [
+                    "unresolved",
+                    "failed"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "unresolved",
+                  "failed",
+                  "disabled"
+                ]
               }
             }
           }
@@ -3961,7 +4090,7 @@
         "parameters",
         "status",
         "reason",
-        "complete",
+        "progress",
         "representation",
         "pre_clamp",
         "clipped_fraction",
@@ -4027,7 +4156,7 @@
             "no_change",
             "applied",
             "failed",
-            "not_started"
+            "unresolved"
           ]
         },
         "reason": {
@@ -4039,8 +4168,14 @@
             "processing_failure"
           ]
         },
-        "complete": {
-          "type": "boolean"
+        "progress": {
+          "enum": [
+            "not_started",
+            "preparing",
+            "prepared",
+            "evaluating",
+            "completed"
+          ]
         },
         "representation": {
           "enum": [
@@ -4232,7 +4367,7 @@
                   "no_change",
                   "applied",
                   "failed",
-                  "not_started"
+                  "unresolved"
                 ]
               }
             }
@@ -4274,15 +4409,20 @@
         {
           "if": {
             "properties": {
-              "status": {
+              "progress": {
                 "const": "not_started"
               }
             }
           },
           "then": {
             "properties": {
-              "complete": {
-                "const": false
+              "progress": {
+                "enum": [
+                  "not_started",
+                  "preparing",
+                  "prepared",
+                  "evaluating"
+                ]
               },
               "reason": {
                 "const": "none"
@@ -4316,6 +4456,38 @@
               },
               "preparation_charge_peak": {
                 "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "progress": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "not": {
+                  "enum": [
+                    "unresolved",
+                    "failed"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "unresolved",
+                  "failed",
+                  "disabled"
+                ]
               }
             }
           }
@@ -4624,7 +4796,7 @@
         "parameters",
         "status",
         "reason",
-        "complete",
+        "progress",
         "representation",
         "psf",
         "guard",
@@ -4676,7 +4848,7 @@
             "no_change",
             "applied",
             "failed",
-            "not_started"
+            "unresolved"
           ]
         },
         "reason": {
@@ -4688,8 +4860,14 @@
             "processing_failure"
           ]
         },
-        "complete": {
-          "type": "boolean"
+        "progress": {
+          "enum": [
+            "not_started",
+            "preparing",
+            "prepared",
+            "evaluating",
+            "completed"
+          ]
         },
         "representation": {
           "enum": [
@@ -4880,7 +5058,7 @@
                   "no_change",
                   "applied",
                   "failed",
-                  "not_started"
+                  "unresolved"
                 ]
               },
               "warnings": {
@@ -4894,15 +5072,20 @@
         {
           "if": {
             "properties": {
-              "status": {
+              "progress": {
                 "const": "not_started"
               }
             }
           },
           "then": {
             "properties": {
-              "complete": {
-                "const": false
+              "progress": {
+                "enum": [
+                  "not_started",
+                  "preparing",
+                  "prepared",
+                  "evaluating"
+                ]
               },
               "reason": {
                 "const": "none"
@@ -4960,6 +5143,38 @@
               },
               "native_calls": {
                 "const": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "progress": {
+                "const": "completed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "not": {
+                  "enum": [
+                    "unresolved",
+                    "failed"
+                  ]
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "unresolved",
+                  "failed",
+                  "disabled"
+                ]
               }
             }
           }

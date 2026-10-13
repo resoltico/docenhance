@@ -10,6 +10,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/stages.hpp"
 #include "processor.hpp"
@@ -80,15 +81,15 @@ app::PublishedContinuous continuous(bool black = false) {
     value.conversion.output = value.conversion.source;
     value.conversion.assumed_transfer = true;
     value.conversion.verified = true;
-    value.stages.illumination.complete = true;
+    value.stages.illumination.progress = methods::StageProgress::completed;
     value.stages.illumination.eligible_samples = 4;
-    value.stages.contrast.complete = true;
+    value.stages.contrast.progress = methods::StageProgress::completed;
     value.stages.contrast.eligible_samples = 4;
-    value.stages.sharpening.complete = true;
+    value.stages.sharpening.progress = methods::StageProgress::completed;
     value.stages.sharpening.eligible_samples = 4;
-    value.stages.restoration.complete = true;
+    value.stages.restoration.progress = methods::StageProgress::completed;
     value.stages.restoration.eligible_samples = 4;
-    value.stages.denoising.complete = true;
+    value.stages.denoising.progress = methods::StageProgress::completed;
     value.stages.denoising.eligible_samples = 4;
     return value;
 }
@@ -310,6 +311,7 @@ TEST_CASE("I02 failure observations reject foreign fields and invalid scalar dom
     const methods::MorphologyParameters parameters;
     const methods::IlluminationReport report{
         .status = methods::IlluminationStatus::failed,
+        .progress = methods::StageProgress::preparing,
         .reason = methods::IlluminationReason::processing_failure,
         .requested = parameters,
     };
@@ -320,6 +322,7 @@ TEST_CASE("I02 failure observations reject foreign fields and invalid scalar dom
     for (unsigned mutation = 0; mutation < 6; ++mutation) {
         methods::IlluminationReport bad{
             .status = methods::IlluminationStatus::failed,
+            .progress = methods::StageProgress::preparing,
             .reason = methods::IlluminationReason::processing_failure,
             .requested = parameters,
         };
@@ -328,7 +331,7 @@ TEST_CASE("I02 failure observations reject foreign fields and invalid scalar dom
         } else if (mutation == 1) {
             bad.predicates.front() = false;
         } else if (mutation == 2) {
-            bad.complete = true;
+            bad.progress = methods::StageProgress::completed;
             bad.status = methods::IlluminationStatus::no_change;
         } else {
             bad.morphology =
@@ -345,50 +348,6 @@ TEST_CASE("I02 failure observations reject foreign fields and invalid scalar dom
             app::process_failure(failure, methods::StageObservations{.illumination = bad})};
         CHECK(error(app::dispatch(request, malformed, verifier)).publication ==
               core::Publication::unknown);
-    }
-}
-TEST_CASE("TV-L1 failure reports reject native claims and fictional stopping", "[app][tvl1]") {
-    UnusedVerifier verifier;
-    auto request = invocation(false);
-    request.denoise = "tvl1";
-    const core::Error failure{.code = core::ErrorCode::resource, .message = "Before solve"};
-    const methods::Tvl1Parameters parameters;
-    for (unsigned mutation = 0; mutation < 8; ++mutation) {
-        methods::DenoisingReport report{
-            .status = methods::DenoiseStatus::failed,
-            .reason = methods::DenoiseReason::processing_failure,
-            .requested = parameters,
-        };
-        if (mutation == 1) {
-            report.native_calls = 1;
-        }
-        if (mutation == 2) {
-            report.tvl1 = methods::Tvl1Report{
-                .iterations = 20,
-                .stop = methods::Tvl1Stop::tolerance_met,
-                .passing_checkpoints = 2,
-            };
-        }
-        if (mutation == 3) {
-            report.tvl1 = methods::Tvl1Report{.primal_update = 1};
-        }
-        if (mutation >= 4) {
-            report.eligible_samples = 1;
-            report.preparation_charge_peak = mutation == 7 ? 320 : 100000;
-            report.tvl1 = methods::Tvl1Report{
-                .iterations = 20,
-                .passing_checkpoints = mutation == 5 ? 0U : 1U,
-                .dual_update = mutation == 4 ? 1.0 : 0.0,
-                .objective_start = 0,
-                .field_bytes = 64,
-            };
-        }
-        ReturningProcessor processor{
-            app::process_failure(failure, methods::StageObservations{.denoising = report})};
-        const auto result = error(app::dispatch(request, processor, verifier));
-        CHECK(result.publication == ((mutation == 0 || mutation == 6)
-                                         ? core::Publication::not_started
-                                         : core::Publication::unknown));
     }
 }
 } // namespace docenhance::tests

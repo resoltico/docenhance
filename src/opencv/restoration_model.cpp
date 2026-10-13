@@ -5,6 +5,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/opencv/restoration.hpp"
 #include "restoration_work.hpp"
@@ -42,6 +43,7 @@ core::Result<RestorationModel> RestorationModel::prepare(image::LinearSource& so
                                                          const RestorationExecution& e) {
     auto& r = e.report.get();
     r = {};
+    r.progress = methods::StageProgress::preparing;
     r.requested = method.parameters();
     r.status = methods::RestorationStatus::failed;
     r.reason = methods::RestorationReason::processing_failure;
@@ -72,7 +74,7 @@ core::Result<RestorationModel> RestorationModel::prepare(image::LinearSource& so
         r.status = methods::RestorationStatus::no_change;
         r.reason = method.parameters().blend == 0 ? methods::RestorationReason::zero_blend
                                                   : methods::RestorationReason::no_eligible_samples;
-        r.complete = true;
+        r.progress = methods::StageProgress::completed;
         return RestorationModel{extent, method, {}};
     }
     auto work = restoration_work(extent, *r.psf, e);
@@ -91,6 +93,9 @@ core::Result<RestorationModel> RestorationModel::prepare(image::LinearSource& so
     if (!transformed) {
         return std::unexpected(transformed.error());
     }
+    r.status = methods::RestorationStatus::unresolved;
+    r.reason = methods::RestorationReason::none;
+    r.progress = methods::StageProgress::prepared;
     return RestorationModel{extent, method, std::move(work->candidate)};
 }
 } // namespace docenhance::opencv

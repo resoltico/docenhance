@@ -56,7 +56,7 @@ core::Result<void> validate_sharpen_claims(const RecordJson& document, DeclaredB
             r.reason = reason;
         }
     }
-    r.complete = record_boolean(record_field(v, "complete"));
+    r.progress = read_progress(record_field(v, "progress"));
     const auto& range = record_field(v, "pre_clamp");
     if (!range.is_null()) {
         r.pre_clamp = methods::ExcursionRange{

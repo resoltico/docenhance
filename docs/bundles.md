@@ -33,7 +33,7 @@ refused before the commit point rather than published into a bundle `verify` wou
 
 ## What the record says
 
-`run.json` is a closed, versioned object. Version 13 admits exactly the supported binary or
+`run.json` is a closed, versioned object. Version 14 admits exactly the supported binary or
 continuous operation, with reviewed method versions and validated parameters. Missing or unknown
 fields, duplicate object keys (including escaped equivalents), out-of-range numbers and inconsistent
 observations are refused. Numeric domains are checked before narrowing. Run identities are 32
@@ -220,10 +220,10 @@ original document.
 
 ## Source observations and format compatibility
 
-Current native output uses record version 13. It requires closed source decoding observations,
+Current native output uses record version 14. It requires closed source decoding observations,
 denoising, restoration, contrast and sharpening requests and complete execution reports, plus B01 threshold/fallback observations, alongside verified conversion and output facts.
 The reader accepts only this format; obsolete versions and unknown fields are refused. No backward
-compatibility reader or migration exists. The command response uses schema version 13.
+compatibility reader or migration exists. The command response uses schema version 14.
 
 D01 observations include typed settings, native float strength, 16-bit/L1 policy, global reflection,
 tile size, eligible/protected/evaluated/corrected/changed pixels, completed native calls and reserved/
@@ -233,3 +233,7 @@ inferred from whether output bytes differ. See [denoising](denoising.md).
 
 JPEG and PNG source bytes remain absent: later verification checks recorded facts and included
 artifacts, not historical decoder execution or authenticity.
+
+Binary records retain an exact unstarted illumination placeholder. Their D/R/C/S reports describe
+explicit completed disabled decisions in the binary record branch, with no continuous work or
+sample observations. The schema and typed reader reject fabricated progress in either form.

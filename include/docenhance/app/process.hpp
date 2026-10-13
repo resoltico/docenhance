@@ -135,7 +135,6 @@ process_failure(core::Error error, std::optional<methods::StageObservations> sta
     return std::unexpected(ProcessFailure{.error = std::move(error), .stages = std::move(stages)});
 }
 [[nodiscard]] methods::StageObservations initial_stages(const PhotometricPlan& plan);
-void failed_stages(methods::StageObservations& reports);
 // A deliberate effect boundary. There is no default implementation or hidden service lookup.
 // Expected errors retain their publication state in Result. If a port throws, the application
 // cannot prove whether its effects committed and returns publication_unknown, never not_started.

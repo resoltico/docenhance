@@ -41,8 +41,8 @@ remain method-specific; I02 reports resolved radius, sigma/support, analysis fil
 stride/fallback, background quantiles/range, resolved target, retained bytes and preparation charge.
 No-op reports do not claim field preparation; failed stages retain partial diagnostics. Method-owned
 validation rejects foreign I01 fields, impossible geometry and invalid scalar/resource domains at
-the application boundary; incomplete background reductions may retain unfinished ranges. Closed
-response and record contracts use version 13; obsolete forms have no reader/migration.
+the application boundary; incomplete background reductions may retain unfinished ranges. The [current response and record contracts](bundles.md#source-observations-and-format-compatibility)
+reject obsolete forms without a reader or migration.
 Method versions retain I01=1 and introduce I02=1.
 
 ## Chosen implementation and resource contract

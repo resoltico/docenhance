@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Conservative paired, per-class no-harm adjudication; no runtime image enhancement rules."""
+"""Frozen quality protocols and conservative class adjudication, separate from execution."""
 
 from __future__ import annotations
 
@@ -12,101 +12,181 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from quality_protocol import BUNDLE_ROLES, validate_relationships
+
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "spec/document-quality.schema.json"
+CONTROL_MINIMUM_PAGES = 2
 CONTROL_CLASSES = {"already_good", "preservation_control"}
 FAMILY_ERROR_RATE = 0.05
-BUNDLE_ROLES = ("candidate", "baseline", "replicate")
+MAX_JSON_DEPTH = 64
 
 
-def frozen_digest(corpus: list[dict[str, Any]]) -> str:
-    """Bind the original split, permissions, classes and file identities without a self-hash."""
-    return hashlib.sha256(
-        json.dumps(corpus, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+def canonical(value: object) -> bytes:
+    """Strict UTF-8 compact sorted-key JSON; preserve arrays and reject nonfinite values."""
+    return json.dumps(
+        value, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+
+
+def frozen_digest(value: object) -> str:
+    """Corpus, protocol and report identities hash their separate closed objects."""
+    return hashlib.sha256(canonical(value)).hexdigest()
+
+
+def unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    """Refuse duplicate keys instead of discarding evidence while decoding."""
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            message = "Duplicate evidence JSON key"
+            raise ValueError(message)
+        result[name] = value
+    return result
+
+
+def validate_depth(value: object) -> None:
+    """Bound malformed evidence nesting before schema diagnostics or canonical serialization."""
+    pending: list[tuple[object, int]] = [(value, 0)]
+    while pending:
+        node, depth = pending.pop()
+        if depth > MAX_JSON_DEPTH:
+            message = "Evidence JSON exceeds its nesting depth"
+            raise ValueError(message)
+        if isinstance(node, dict):
+            pending.extend((child, depth + 1) for child in node.values())
+        elif isinstance(node, list):
+            pending.extend((child, depth + 1) for child in node)
+
+
+def read_json(data: bytes) -> dict[str, Any]:
+    """Validate strict Unicode, finite numbers and duplicate-free objects before use."""
+    try:
+        value = json.loads(data.decode("utf-8"), object_pairs_hook=unique_object)
+        validate_depth(value)
+        canonical(value)
+    except RecursionError as error:
+        message = "Evidence JSON exceeds parser or serialization depth"
+        raise ValueError(message) from error
+    if not isinstance(value, dict):
+        message = "Evidence JSON must be an object"
+        raise TypeError(message)
+    return value
+
+
+def validator(kind: str) -> Draft202012Validator:
+    """Use the reviewed closed plan or report shape and common definitions."""
+    schema = read_json(SCHEMA.read_bytes())
+    return Draft202012Validator({"$defs": schema["$defs"], "$ref": f"#/$defs/{kind}"})
 
 
 def validate_plan(plan: dict[str, Any]) -> None:
-    """Refuse missing clearance, corpus drift, tuning contamination and invented reviewers."""
-    Draft202012Validator(json.loads(SCHEMA.read_bytes())).validate(plan)
-    if frozen_digest(plan["corpus"]) != plan["frozen_corpus_sha256"]:
-        message = "Frozen corpus identity differs; tuning or relabeling invalidates evaluation"
-        raise ValueError(message)
-    panel = [person["id"] for person in plan["panel"]]
-    samples = [sample["id"] for sample in plan["corpus"]]
-    identities = [sample["sha256"] for sample in plan["corpus"]]
-    assessed = [item["sample"] for item in plan["assessments"]]
-    if any(len(items) != len(set(items)) for items in (panel, samples, identities, assessed)):
-        message = "Duplicate reviewer, sample, source bytes or assessment"
-        raise ValueError(message)
-    groups: dict[str, list[str]] = {}
-    for sample in plan["corpus"]:
-        groups.setdefault(sample["document_id"], []).append(sample["split"])
-    if any(
-        len(set(splits)) != 1 or ("heldout" in splits and len(splits) != 1)
-        for splits in groups.values()
+    """Admit the schema and immutable protocol identity before evidence collection."""
+    validator("plan").validate(plan)
+    canonical(plan)
+    protocol = plan["protocol"]
+    if (
+        frozen_digest(protocol) != plan["protocol_sha256"]
+        or frozen_digest(protocol["corpus"]) != protocol["frozen_corpus_sha256"]
     ):
-        message = "A physical document cannot cross splits or count as independent held-out pages"
+        message = "Frozen protocol or corpus identity differs"
         raise ValueError(message)
-    heldout = {sample["id"] for sample in plan["corpus"] if sample["split"] == "heldout"}
-    if set(assessed) != heldout:
-        message = "Every frozen held-out input must be assessed exactly once, never tuning inputs"
-        raise ValueError(message)
-    for assessment in plan["assessments"]:
-        paths = {Path(assessment[name]) for name in BUNDLE_ROLES}
-        if len(paths) != len(BUNDLE_ROLES):
-            message = "Candidate, baseline and replicate require distinct bundle directories"
-            raise ValueError(message)
-        reviewers = [review["reviewer"] for review in assessment["reviews"]]
-        pairs = {review["blind_pair"] for review in assessment["reviews"]}
-        if len(set(reviewers)) != len(reviewers) or set(reviewers) != set(panel) or len(pairs) != 1:
-            message = "Each blind pair needs the whole independent panel exactly once"
-            raise ValueError(message)
+    validate_relationships(plan)
 
 
-def adjudicate(plan: dict[str, Any]) -> dict[str, Any]:
-    """Any material harm blocks acceptance; disagreement abstains rather than hiding in a mean."""
+def adjudicate(
+    plan: dict[str, Any], prior: dict[str, list[dict[str, Any]]] | None = None
+) -> dict[str, Any]:
+    """Incomplete engineering or human evidence abstains while retaining every intended page."""
     validate_plan(plan)
-    classes = json.loads(SCHEMA.read_bytes())["$defs"]["classes"]["items"]["enum"]
-    samples = {sample["id"]: sample for sample in plan["corpus"]}
+    protocol = plan["protocol"]
+    classes = protocol["claim_policy"]["classes"]
+    samples = {sample["id"]: sample for sample in protocol["corpus"]}
+    panel = {person["id"] for person in protocol["panel"]}
     results: dict[str, list[dict[str, Any]]] = {name: [] for name in classes}
     for assessment in plan["assessments"]:
         reviews = assessment["reviews"]
-        harms = sorted({harm for review in reviews for harm in review["harms"]})
-        deltas = {review["delta"] for review in reviews}
-        uncertain = any(review["uncertain"] for review in reviews) or len(deltas) != 1
-        # Disagreement needs another frozen review; unanimous scoring is conservative.
+        retained = reviews + (prior or {}).get(assessment["sample"], [])
+        outcomes = {name: assessment[name]["outcome"] for name in BUNDLE_ROLES}
+        complete = all(value == "completed" for value in outcomes.values())
+        reviewed = {review["reviewer"] for review in reviews} == panel
+        harms = sorted({harm for review in retained for harm in review["harms"]})
+        deltas = {review["delta"] for review in retained}
+        page_uncertain = (
+            not reviewed
+            or any(review["uncertain"] or review["delta"] < 0 for review in retained)
+            or len(deltas) != 1
+        )
         item = {
             "sample": assessment["sample"],
+            "engineering_complete": complete,
+            "natural_document": samples[assessment["sample"]]["source_kind"] == "natural_document",
+            "review_complete": reviewed,
             "harms": harms,
-            "uncertain": uncertain,
-            "delta": min(deltas),
+            "uncertain": page_uncertain,
+            "delta": min(deltas) if deltas else None,
+            "outcomes": outcomes,
         }
         for name in samples[assessment["sample"]]["classes"]:
             results[name].append(item)
     reports = {}
     for name, items in results.items():
-        harmed = [item["sample"] for item in items if item["harms"] or item["delta"] < 0]
-        uncertain_samples = [item["sample"] for item in items if item["uncertain"]]
+        harmed = [
+            item["sample"]
+            for item in items
+            if item["harms"] or (item["delta"] is not None and item["delta"] < 0)
+        ]
+        uncertain = [item["sample"] for item in items if item["uncertain"]]
+        incomplete = [
+            item["sample"]
+            for item in items
+            if not item["engineering_complete"] or not item["review_complete"]
+        ]
         n = len(items)
-        positive = sum(item["delta"] > 0 and not item["uncertain"] for item in items)
-        # One-sided exact paired sign tail, ties treated as nonpositive; Bonferroni family control.
+        positive = sum(
+            item["delta"] is not None
+            and item["delta"] > 0
+            and not item["uncertain"]
+            and item["engineering_complete"]
+            for item in items
+        )
         tail = sum(math.comb(n, k) for k in range(positive, n + 1)) / (2**n)
-        accepted = bool(items) and not harmed and not uncertain_samples
-        if name not in CONTROL_CLASSES:
+        accepted = (
+            bool(items)
+            and not harmed
+            and not uncertain
+            and not incomplete
+            and all(item["natural_document"] for item in items)
+        )
+        if name in CONTROL_CLASSES:
+            accepted &= n >= CONTROL_MINIMUM_PAGES
+        else:
             accepted &= positive == n and tail <= FAMILY_ERROR_RATE / len(classes)
         reports[name] = {
             "count": n,
             "positive": positive,
             "sign_tail": tail,
             "harmed": harmed,
-            "uncertain": uncertain_samples,
+            "uncertain": uncertain,
+            "incomplete": incomplete,
+            "engineering_failed": [
+                item["sample"] for item in items if "failed" in item["outcomes"].values()
+            ],
+            "engineering_refused": [
+                item["sample"] for item in items if "refused" in item["outcomes"].values()
+            ],
+            "missing_evidence": [
+                item["sample"] for item in items if "missing_evidence" in item["outcomes"].values()
+            ],
+            "review_incomplete": [item["sample"] for item in items if not item["review_complete"]],
             "accepted": accepted,
+            "pages": items,
         }
     return {
-        "protocol_version": 1,
-        "scope": "this frozen corpus and explicit settings only",
-        "source_commit": plan["source_commit"],
+        "protocol_version": 2,
+        "scope": "this frozen corpus and per-page policies only",
+        "source_commit": protocol["source_commit"],
+        "protocol_sha256": plan["protocol_sha256"],
         "classes": reports,
         "decision": "accepted" if all(r["accepted"] for r in reports.values()) else "abstain",
     }

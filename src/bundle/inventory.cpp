@@ -3,6 +3,7 @@
 #include "docenhance/bundle/inventory.hpp"
 
 #include "docenhance/bundle/record.hpp"
+#include "docenhance/bundle/record_version.hpp"
 #include "docenhance/core/bundle_path.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"

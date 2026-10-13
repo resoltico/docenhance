@@ -52,8 +52,8 @@ and the existing publication cutoff. Iteration exhaustion is a reported usable i
 numerical failure or false tolerance claim. Failed stages retain bounded partial observations.
 
 Typed denoising alternatives and parameter variants derive the runtime catalog. D01 native fields
-remain specific to NLM; D02 solver fields cannot be mixed with native observations. Closed response
-and record contracts use version 13 and refuse obsolete versions. No package or layer
+remain specific to NLM; D02 solver fields cannot be mixed with native observations. The [current response
+and record contracts](bundles.md#source-observations-and-format-compatibility) refuse obsolete versions. No package or layer
 edge is added: pure TV math belongs to de_methods and the existing host composes execution.
 
 ## Separate challenge and evidence obligations

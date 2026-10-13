@@ -11,6 +11,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "linear_fixture.hpp"
 #include "surface_detail.hpp"
@@ -144,11 +145,13 @@ TEST_CASE("I01 measurement, fit, interpolation and application preserve protecte
               tolerance);
         auto const pixels =
             source.row(0); // Internal test destination is explicitly independent of fitting now.
+        report.progress = methods::StageProgress::evaluating;
         REQUIRE(model->apply({}, pixels, mask.view().as_const(), report, {}));
         CHECK(pixels.front() == protected_dark);
         CHECK(pixels.subspan(image::rgb_channels, 1).front() > paper);
         CHECK(report.evaluated_samples == page.width - 1);
-        CHECK(report.status == methods::IlluminationStatus::applied);
+        CHECK(report.status == methods::IlluminationStatus::unresolved);
+        CHECK(report.changed_samples != 0);
     }
     CHECK(budget.used() == held);
 }

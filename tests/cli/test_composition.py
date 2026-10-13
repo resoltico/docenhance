@@ -163,7 +163,7 @@ def process(exe: Path, root: Path, fixture: Fixture, encoded: bytes, orientation
         )
         d01 = response["denoising"]
         expect(
-            d01["native_calls"] == 1 and d01["complete"],
+            d01["native_calls"] == 1 and d01["progress"] == "completed",
             "one native preparation, no verification rerun",
         )
         expect(
@@ -182,7 +182,7 @@ def process(exe: Path, root: Path, fixture: Fixture, encoded: bytes, orientation
         )
         i01 = response["illumination"]
         expect(
-            i01["complete"]
+            i01["progress"] == "completed"
             and i01["application"]["evaluated_samples"] == sum(not p for p in protected),
             "I01 observations counted once",
         )

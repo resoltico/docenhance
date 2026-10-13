@@ -35,7 +35,7 @@ def process(
         record["execution"]["denoising"] == response["denoising"],
         "response and record observations agree",
     )
-    expect(response["denoising"]["complete"], "completed D01")
+    expect(response["denoising"]["progress"] == "completed", "completed D01")
     return decode_output((out / "result.png").read_bytes()), response, out
 
 
@@ -209,7 +209,7 @@ def composition(exe: Path, root: Path, selection: str = "surface") -> None:
         <= COMPOSITION_TOLERANCE,
         "composition agrees within intermediate quantization error",
     )
-    expect(report["illumination"]["complete"], "illumination completed before D01")
+    expect(report["illumination"]["progress"] == "completed", "illumination completed before D01")
     for mode in ("preserve", "gray"):
         source = root / f"jpeg-{mode}.jpg"
         source.write_bytes((DATA / "gray-document-progressive.jpeg").read_bytes())
@@ -229,7 +229,7 @@ def record_validation(exe: Path, root: Path) -> None:
         call_json(exe, ["verify", str(output), "--json"], 3)
     for field, value in (
         ("native_h", 100),
-        ("complete", False),
+        ("progress", "prepared"),
         ("tile_width", 512),
         ("changed_samples", 1),
         ("preparation_charge_peak", (1 << 30) + 1),

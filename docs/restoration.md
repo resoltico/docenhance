@@ -84,7 +84,7 @@ observed before and after each call, but a running native transform is not inter
 or maximum cancellation latency is promised. Native errors retain precedence over a concurrent
 stop request. The existing final precommit cutoff and truthful publication states remain in force.
 
-Responses and run records use format 12. Closed requests and observations include the PSF,
+Responses and run records follow the [current format authority](bundles.md#source-observations-and-format-compatibility). Closed requests and observations include the PSF,
 regularizer/blend, normalized coefficients, centroid, padding/FFT geometry, eligible/context
 counts, raw/blended excursions, charged preparation peak and explicit warnings. Only complete
 current records are accepted; older records have no reader or migration.

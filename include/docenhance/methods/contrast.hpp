@@ -8,6 +8,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
 
 #include <array>
@@ -102,7 +103,7 @@ struct ClaheMaps {
 struct ContrastOff {};
 using Contrast = std::variant<ContrastOff, Levels, Gamma, Clahe>;
 using ContrastParameters = std::variant<LevelsParameters, GammaParameters, ClaheParameters>;
-enum class ContrastStatus { not_started, disabled, no_change, applied, failed };
+enum class ContrastStatus { unresolved, disabled, no_change, applied, failed };
 enum class ContrastReason {
     none,
     zero_blend,
@@ -120,7 +121,10 @@ struct LevelsRange {
 struct ContrastReport {
     ContrastStatus status = ContrastStatus::disabled;
     ContrastReason reason = ContrastReason::none;
-    bool complete = false;
+    StageProgress progress = StageProgress::not_started;
+    [[nodiscard]] bool complete() const noexcept {
+        return progress == StageProgress::completed;
+    }
     std::optional<ContrastParameters> requested = std::nullopt;
     std::optional<LevelsRange> levels = std::nullopt;
     std::uint64_t eligible_samples = 0;

@@ -6,6 +6,7 @@
 #include "docenhance/contract/command.hpp"
 #include "docenhance/contract/parse.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <expected>
@@ -64,9 +65,9 @@ bool partial_sharpen(const methods::SharpenReport& r, const ProcessRequest& requ
     if (!methods::valid_sharpen_observations(r)) {
         return false;
     }
-    return r.complete ? methods::valid_sharpen(
-                            r, std::get<app::ContinuousPlan>(request.plan()).photometric.sharpening)
-                      : (!r.requested || (r.status == methods::SharpenStatus::failed &&
-                                          r.reason == methods::SharpenReason::processing_failure));
+    return r.complete()
+               ? methods::valid_sharpen(
+                     r, std::get<app::ContinuousPlan>(request.plan()).photometric.sharpening)
+               : methods::valid_progress(r);
 }
 } // namespace docenhance::app

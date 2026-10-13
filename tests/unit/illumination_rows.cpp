@@ -74,27 +74,27 @@ TEST_CASE("Illumination completion requires one complete output traversal", "[ho
     std::array<double, std::size_t{width} * image::rgb_channels> rgb{};
     const auto half = std::span{rgb}.first((std::size_t{width} / 2) * image::rgb_channels);
     CHECK(!source.read({.row = height - 1, .first = width / 2}, half, image::RowUse::output));
-    CHECK(!report.complete);
+    CHECK(!report.complete());
     CHECK(report.evaluated_samples == 0);
     REQUIRE(source.read({.row = 0, .first = 0}, half, image::RowUse::output));
-    CHECK(!report.complete);
+    CHECK(!report.complete());
     const auto evaluated = report.evaluated_samples;
     CHECK(!source.read({.row = 0, .first = 0}, half, image::RowUse::output));
     CHECK(!source.read({.row = 1, .first = 0}, half, image::RowUse::output));
     CHECK(report.evaluated_samples == evaluated);
     REQUIRE(
         source.read({.row = height - 1, .first = width / 2}, half, image::RowUse::verification));
-    CHECK(!report.complete);
+    CHECK(!report.complete());
     CHECK(report.evaluated_samples == evaluated);
     REQUIRE(source.read({.row = 0, .first = width / 2}, half, image::RowUse::output));
     REQUIRE(source.read({.row = 1, .first = 0}, rgb, image::RowUse::output));
-    CHECK(report.complete);
+    CHECK(report.complete());
     CHECK(report.evaluated_samples == (width * height) - 1);
     const auto changed = report.changed_samples;
     REQUIRE(source.read({.row = 0, .first = 0}, rgb, image::RowUse::verification));
     CHECK(report.evaluated_samples == (width * height) - 1);
     CHECK(report.changed_samples == changed);
     CHECK(!source.read({.row = 0, .first = 0}, rgb, image::RowUse::output));
-    CHECK(report.complete);
+    CHECK(report.complete());
 }
 } // namespace docenhance::tests

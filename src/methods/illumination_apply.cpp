@@ -56,8 +56,6 @@ core::Result<void> apply_illumination_pixel(std::span<double> rgb, double backgr
     }
     if (*changed != original) {
         ++report.changed_samples;
-        report.status = IlluminationStatus::applied;
-        report.reason = IlluminationReason::none;
         std::ranges::copy(*changed, rgb.begin());
     }
     return {};

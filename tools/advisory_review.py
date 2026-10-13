@@ -10,11 +10,13 @@ import re
 from datetime import datetime
 from typing import Any
 
+# Foundation closure review: only unused Leptonica was removed; retained dependency
+# objects, feature policies and affected production call paths are unchanged.
 # R01 review: the feature delta corrects ownership and dispatch in core/dxt.cpp.
 # The CPU DFT adapter neither reaches imgcodecs/OpenJPEG nor gzip-file APIs. The
 # stream-only zlib recipe and mandatory OpenCV module/provider exclusions are unchanged.
 # The digest binds that reviewed policy; the native audits still verify its actual build.
-FEATURE_DIGEST = "83aa49d63fbd528e8947d5d8481d86e1619191367c9b47f832732ffb79f13bc5"
+FEATURE_DIGEST = "4bdfe5616bd6e7a823a0c9395f7604880bc9223d51b2f8caa094b7b1ddf83848"
 
 
 def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: bytes) -> bool:

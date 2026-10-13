@@ -45,11 +45,11 @@ bool observations_agree(const DeclaredBundle& d) {
         return false;
     }
     if (binary) {
-        return !d.conversion && !d.protection && !r.requested && !r.complete &&
-               r.eligible_samples == 0 && o.shape.model == image::SampleModel::gray &&
+        return !d.conversion && !d.protection && r == methods::IlluminationReport{} &&
+               o.shape.model == image::SampleModel::gray &&
                o.shape.depth == image::SampleDepth::byte() && !o.profile_embedded && !o.resolution;
     }
-    if (!d.conversion || !o.profile_embedded || !r.complete ||
+    if (!d.conversion || !o.profile_embedded || !r.complete() ||
         r.status == methods::IlluminationStatus::failed) {
         return false;
     }

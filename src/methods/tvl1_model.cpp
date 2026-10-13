@@ -8,6 +8,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/tvl1.hpp"
 
 #include <algorithm>
@@ -163,7 +164,12 @@ core::Result<Tvl1Model> Tvl1Model::prepare(image::LinearSource& source,
                                            image::PlaneView<const std::uint8_t> protection,
                                            const Tvl1& method, const Tvl1Execution& execution) {
     auto& report = execution.report.get();
-    report = {.status = DenoiseStatus::failed, .requested = method.parameters()};
+    report = {
+        .status = DenoiseStatus::failed,
+        .reason = DenoiseReason::processing_failure,
+        .progress = StageProgress::preparing,
+        .requested = method.parameters(),
+    };
     if (execution.cancellation.requested(core::Checkpoint::measurement)) {
         return core::cancelled();
     }
@@ -176,7 +182,7 @@ core::Result<Tvl1Model> Tvl1Model::prepare(image::LinearSource& source,
         report.status = DenoiseStatus::no_change;
         report.reason = method.parameters().blend == 0 ? DenoiseReason::zero_blend
                                                        : DenoiseReason::no_eligible_samples;
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         return Tvl1Model{{}, {}, method.parameters().blend};
     }
     auto input = plane(execution, source.extent());
@@ -215,8 +221,9 @@ core::Result<Tvl1Model> Tvl1Model::prepare(image::LinearSource& source,
     if (!solved) {
         return std::unexpected(solved.error());
     }
-    report.status = DenoiseStatus::no_change;
-    report.reason = DenoiseReason::no_effect;
+    report.status = DenoiseStatus::unresolved;
+    report.reason = DenoiseReason::none;
+    report.progress = StageProgress::prepared;
     return Tvl1Model{std::move(*input), std::move(*primal), method.parameters().blend};
 }
 } // namespace docenhance::methods

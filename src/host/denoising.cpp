@@ -11,8 +11,10 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/tvl1.hpp"
 #include "docenhance/opencv/nlm.hpp"
+#include "linear_rows.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -75,13 +77,16 @@ core::Result<void> DenoisedSource::read(image::RowRange range, std::span<double>
                                         image::RowUse use) {
     const auto& planes = planes_.get();
     const bool active = active_denoising(planes);
+    if (use == image::RowUse::output && active) {
+        report_.get().progress = methods::StageProgress::evaluating;
+    }
     auto read = source_.get().read(range, rgb, active ? image::RowUse::verification : use);
     if (!read || !active) {
         return read;
     }
     auto ignored = report_.get();
     auto& report = use == image::RowUse::output ? report_.get() : ignored;
-    return std::visit(
+    auto applied = std::visit(
         [&](const auto& value) -> core::Result<void> {
             using Planes = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<Planes, NlmPlanes>) {
@@ -91,6 +96,11 @@ core::Result<void> DenoisedSource::read(image::RowRange range, std::span<double>
             }
         },
         planes);
+    if (!applied && use == image::RowUse::output) {
+        report_.get().status = methods::DenoiseStatus::failed;
+        report_.get().reason = methods::DenoiseReason::processing_failure;
+    }
+    return applied;
 }
 
 namespace {
@@ -158,7 +168,7 @@ core::Result<DenoisingPlanes> prepare_denoising(DenoisingInput source_input,
     const auto* const method = std::get_if<methods::Nlm>(
         &std::get<app::ContinuousPlan>(request.plan()).photometric.denoising);
     if (method == nullptr) {
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         return DenoisingPlanes{};
     }
     report.requested = method->parameters();
@@ -169,7 +179,7 @@ core::Result<DenoisingPlanes> prepare_denoising(DenoisingInput source_input,
         report.status = methods::DenoiseStatus::no_change;
         report.reason = parameters.blend == 0 ? methods::DenoiseReason::zero_blend
                                               : methods::DenoiseReason::no_eligible_samples;
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         return DenoisingPlanes{};
     }
     const auto extent = source.extent();
@@ -198,37 +208,27 @@ core::Result<DenoisingPlanes> prepare_denoising(DenoisingInput source_input,
     if (!run) {
         return std::unexpected(run.error());
     }
+    report.progress = methods::StageProgress::prepared;
+    report.status = methods::DenoiseStatus::unresolved;
+    report.reason = methods::DenoiseReason::none;
     return DenoisingPlanes{std::move(planes)};
 }
 core::Result<void> assess_denoising(DenoisedSource& source, core::Budget& budget,
                                     const core::Cancellation& cancellation,
                                     methods::DenoisingReport& report) {
-    auto block =
-        image::Plane<double>::allocate(budget, image::linear_block_pixels * image::rgb_channels, 1);
-    if (!block) {
-        return std::unexpected(block.error());
-    }
-    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
-        for (std::uint32_t first = 0; first < source.extent().width;) {
-            if (cancellation.requested(core::Checkpoint::processing)) {
-                return core::cancelled();
-            }
-            const auto count = std::min(image::linear_block_pixels, source.extent().width - first);
-            auto read =
-                source.read({.row = y, .first = first},
-                            block->view().row(0).first(std::size_t{count} * image::rgb_channels),
-                            image::RowUse::output);
-            if (!read) {
-                return read;
-            }
-            first += count;
+    auto observed = observe_rows(source, budget, cancellation, false, nullptr);
+    if (!observed) {
+        if (report.progress == methods::StageProgress::prepared) {
+            report.status = methods::DenoiseStatus::failed;
+            report.reason = methods::DenoiseReason::processing_failure;
         }
+        return observed;
     }
     report.status = (report.changed_samples != 0U) ? methods::DenoiseStatus::applied
                                                    : methods::DenoiseStatus::no_change;
     report.reason = (report.changed_samples != 0U) ? methods::DenoiseReason::none
                                                    : methods::DenoiseReason::no_effect;
-    report.complete = true;
+    report.progress = methods::StageProgress::completed;
     return {};
 }
 } // namespace docenhance::host

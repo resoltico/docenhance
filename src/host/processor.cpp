@@ -157,7 +157,6 @@ app::ProcessResult Processor::process(const app::ProcessRequest& request,
     auto stages = app::initial_stages(std::get<app::ContinuousPlan>(request.plan()).photometric);
     auto result = continuous(request, {.cancellation = cancellation, .context = context}, stages);
     if (!result) {
-        app::failed_stages(stages);
         return app::process_failure(std::move(result.error()), std::move(stages));
     }
     return std::move(*result);

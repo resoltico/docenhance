@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from architecture import load_manifest
-from audit_build import FALSE, read_cache
+from audit_build import read_cache
 from fuzz_manifest import targets
 from process_execution import bounded_process
 from sanitizer_evidence import check_compilation
@@ -46,9 +46,7 @@ def compilation(build: Path) -> None:
     entries = json.loads((build / "compile_commands.json").read_text())
     check_compilation(cache, entries)
     compiled = {Path(item["file"]).resolve() for item in entries}
-    roots = ["src", "tests", "fuzz"]
-    if cache.get("DE_BUILD_TOOLS", "").upper() not in FALSE:
-        roots.append("tools")
+    roots = ["src", "tests", "fuzz", "tools"]
     missing = [
         str(path.relative_to(ROOT))
         for root in roots

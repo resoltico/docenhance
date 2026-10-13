@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-add_executable(de_tests unit/stage_outcomes.cpp unit/report_publication.cpp unit/value_contracts.cpp unit/geometry.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
+add_executable(de_tests unit/illumination_states.cpp unit/prepared_observations.cpp unit/lifecycle.cpp unit/stage_outcomes.cpp unit/report_publication.cpp unit/value_contracts.cpp unit/geometry.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
   unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_decode.cpp unit/tiff_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/psf_png.cpp unit/restoration_contract.cpp unit/restoration_states.cpp unit/restoration_admission.cpp unit/otsu.cpp unit/otsu_reference.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/morphology.cpp unit/tvl1.cpp unit/contrast.cpp unit/clahe.cpp unit/sharpening.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
 target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
 target_link_libraries(de_tests PRIVATE de_app de_bundle de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color de_opencv Catch2::Catch2WithMain)
@@ -65,21 +65,12 @@ else()
   # rest of the suite on top of them.
   set_tests_properties(architecture PROPERTIES PROCESSORS "${DE_BUILD_JOBS}")
 endif()
-if(DE_BUILD_TOOLS)
-  add_test(NAME build-source-coverage COMMAND "${Python3_EXECUTABLE}"
+add_test(NAME build-source-coverage COMMAND "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/tools/check_build_coverage.py" --build "${PROJECT_BINARY_DIR}")
-endif()
 add_test(NAME project-structure COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/check_project.py")
 add_test(NAME tooling COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/run_tooling_tests.py")
 # The strict runner owns two isolated module workers, so reserve both child-test slots.
 set_tests_properties(tooling PROPERTIES PROCESSORS 2)
-if(TARGET de_native_probe)
-  add_test(NAME dependency-native-link COMMAND de_native_probe)
-  # stdout carries the JSON response and nothing else. OpenCV logs there by default, so the probe
-  # silences every library first and this asserts that the silence held.
-  set_tests_properties(dependency-native-link PROPERTIES
-    FAIL_REGULAR_EXPRESSION "INFO:|WARNING:|ERROR:|Warning:")
-endif()
 if(DEFINED DE_SUPERBUILD_BINARY)
   add_test(NAME dependency-configuration COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/audit_build.py" --build "${DE_SUPERBUILD_BINARY}")
 endif()

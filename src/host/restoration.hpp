@@ -18,7 +18,7 @@ namespace docenhance::host {
 struct RestoreInput {
     std::reference_wrapper<image::LinearSource> source;
     image::PlaneView<const std::uint8_t> mask;
-    bool prepared = false;
+    bool prefix_observed = false;
     bool geometry_transformed = false;
     std::reference_wrapper<const methods::IlluminationReport> illumination;
     std::reference_wrapper<const methods::DenoisingReport> denoising;
@@ -37,8 +37,8 @@ class RestoredSource final : public image::LinearSource {
     [[nodiscard]] bool active() const noexcept {
         return model_ != nullptr && model_->active();
     }
-    [[nodiscard]] bool prepared() const noexcept {
-        return input_.prepared || (model_ != nullptr && model_->measured_source());
+    [[nodiscard]] bool prefix_observed() const noexcept {
+        return input_.prefix_observed || (model_ != nullptr && model_->measured_source());
     }
     [[nodiscard]] core::Result<void> read(image::RowRange range, std::span<double> rgb,
                                           image::RowUse use) override;

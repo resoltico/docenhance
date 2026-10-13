@@ -210,8 +210,19 @@ def discovery_cases(exe: Path) -> None:
     )
     options = call_json(exe, ["process", "--help", "--json"])["options"]
     contract = json.loads((SCHEMA.parents[1] / "spec/cli-contract.json").read_text())
+    methods = json.loads((SCHEMA.parents[1] / "spec/method-contract.json").read_text())["methods"]
     expected = [
-        {key: option[key] for key in ("name", "metavar", "description", "domain", "methods")}
+        {
+            **{key: option[key] for key in ("name", "metavar", "description", "domain")},
+            "methods": ",".join(
+                sorted(
+                    method["id"]
+                    for method in methods
+                    if method["classification"] != "planned"
+                    and option["name"] in method["arguments"]
+                )
+            ),
+        }
         for option in contract["options"]
         if option["scope"] in {"P", "All commands"}
     ]

@@ -5,6 +5,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
 
 #include <array>
@@ -108,7 +109,7 @@ struct MorphologyMeasurements {
     std::uint64_t preparation_charge_peak{};
     bool operator==(const MorphologyMeasurements&) const = default;
 };
-enum class IlluminationStatus { not_started, disabled, no_change, skipped, applied, failed };
+enum class IlluminationStatus { unresolved, disabled, no_change, skipped, applied, failed };
 enum class IlluminationReason {
     none,
     zero_strength,
@@ -145,7 +146,10 @@ struct SurfaceMeasurements {
 inline constexpr std::size_t surface_predicates = 6;
 struct IlluminationReport {
     IlluminationStatus status = IlluminationStatus::disabled;
-    bool complete = false;
+    StageProgress progress = StageProgress::not_started;
+    [[nodiscard]] bool complete() const noexcept {
+        return progress == StageProgress::completed;
+    }
     IlluminationReason reason = IlluminationReason::none;
     std::optional<IlluminationParameters> requested = std::nullopt;
     std::optional<std::uint32_t> cell = std::nullopt;
@@ -178,6 +182,7 @@ struct IlluminationGain {
                                                           IlluminationReport& report);
 [[nodiscard]] bool valid_morphology_report(const IlluminationReport& report, image::Extent extent,
                                            bool protection);
+[[nodiscard]] bool valid_illumination_observations(const IlluminationReport& report);
 [[nodiscard]] bool valid_illumination(const IlluminationReport& report, image::Extent extent,
                                       bool protection);
 } // namespace docenhance::methods

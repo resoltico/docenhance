@@ -11,6 +11,10 @@ scanline filter) followed by sample indices, constructing valid inputs without t
 encoder. Record inputs start with a selector: an even byte is followed by the raw JSON document;
 an odd byte selects synthetic-record construction and mutation. Continuous-tone seeds include
 precision and orientation claims; obsolete record versions remain rejection inputs.
+`binary-v14-record` and `continuous-v14-record` retain actual native schema-14 records
+with the leading zero discriminator. Their complete bundles passed native verification and
+Draft 2020-12 schema validation; the continuous seed includes completed I02/C02 work.
+The original corpus and regression inputs remain unchanged.
 The CLI harness has no host/filesystem authority. `morphology` consumes three selector bytes
 (width/height 1..8 and radius 1..4), followed by luminance bytes. It compares the complete
 I02 field against direct two-dimensional square extrema and Gaussian neighborhoods, including

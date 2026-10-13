@@ -263,15 +263,17 @@ measures I01 surfaces and I02 morphology fields without codec/native types or fi
 immutable model, oriented protection mask and downstream quantizer. `de_io` keeps exclusive
 ownership of encoding/verification/publication. There is no plugin or generic recipe framework.
 
-`ProcessFailure` is an application result envelope with a core error and one optional typed `StageObservations` aggregate. Selected untouched stages are `not_started`;
-attempted incomplete stages fail without erasing completed earlier facts. The processing port has closed binary and continuous success alternatives. Continuous success
+`ProcessFailure` is an application result envelope with a core error and one optional typed `StageObservations` aggregate. Selected untouched stages have progress `not_started` and unresolved effect;
+attempted families retain preparing/prepared/evaluating progress on failure without erasing
+completed earlier facts. A delegated read error preserves its upstream failed/evaluating owner
+and the unresolved/preparing consumer. The processing port has closed binary and continuous success alternatives. Continuous success
 carries conversion, illumination and denoising observations together; the application still checks
 verification and agreement with the admitted request. The report consumes that same continuous
 result rather than a second copied representation. Publication selects binary or continuous artwork together with its matching operation;
 continuous artwork requires the borrowed converter, mask and stage-observation owners.
 Record facts derive from that single selection rather than independently configured fields. Successful continuous
 results require complete matching illumination diagnostics;
-`complete` describes the numerical stage, not a later publication outcome. The generated schema
+`progress` records preparation and once-only application observation, independently of publication. The generated schema
 and executable catalog distinguish method families. [Illumination](illumination.md) owns the exact
 mathematics, resource phases, separate design QA and verification obligations.
 

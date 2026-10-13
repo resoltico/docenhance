@@ -5,6 +5,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <cmath>
@@ -18,6 +19,12 @@ bool empty_application(const SharpenReport& r) {
 }
 } // namespace
 bool valid_sharpen_observations(const SharpenReport& r) {
+    if (r.status == SharpenStatus::failed && r.reason != SharpenReason::processing_failure) {
+        return false;
+    }
+    if (!valid_progress(r)) {
+        return false;
+    }
     if (r.eligible_samples > image::source_pixels_max ||
         r.protected_samples > image::source_pixels_max - r.eligible_samples ||
         r.context_samples > r.eligible_samples + r.protected_samples ||
@@ -26,7 +33,7 @@ bool valid_sharpen_observations(const SharpenReport& r) {
         r.clipped_high_samples > r.evaluated_samples - r.clipped_low_samples ||
         r.clipped_low_samples + r.clipped_high_samples > r.corrected_samples ||
         r.preparation_charge_peak > core::continuous_processing_budget ||
-        (r.complete && r.status == SharpenStatus::failed)) {
+        (r.complete() && r.status == SharpenStatus::failed)) {
         return false;
     }
     if (!r.requested) {
@@ -46,6 +53,11 @@ bool valid_sharpen_observations(const SharpenReport& r) {
             return false;
         }
     } else if (!empty_application(r)) {
+        return false;
+    }
+    if ((r.progress == StageProgress::prepared || r.progress == StageProgress::evaluating) &&
+        (r.context_samples != r.eligible_samples + r.protected_samples ||
+         r.preparation_charge_peak == 0)) {
         return false;
     }
     return r.evaluated_samples == 0 ||
@@ -70,7 +82,7 @@ bool valid_sharpen_extent(const SharpenReport& r, image::Extent extent) {
     return bytes && r.preparation_charge_peak >= (2 * (*bytes)) + transfer;
 }
 bool valid_sharpen(const SharpenReport& r, const Sharpening& method) {
-    if (!r.complete || !valid_sharpen_observations(r)) {
+    if (!r.complete() || !valid_sharpen_observations(r)) {
         return false;
     }
     const auto* const selected = std::get_if<Unsharp>(&method);

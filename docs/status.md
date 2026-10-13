@@ -53,7 +53,7 @@ reference/property tests and manifest-declared engine-independent fuzz harnesses
 raw binary/continuous PNG, JPEG and TIFF decoding, raw ICC parsing/transforms, independently generated exact-sample PNG checks and a direct-window Sauvola oracle. See [fuzzing](fuzzing.md).
 
 Sauvola and the box-mean primitive use the internal scheduler; the public CLI does not expose
-`--threads`, batching or arbitrary recipes. OpenCV core/photo execute D01 and core executes R01 behind the bounded OpenCV adapter. Leptonica remains a development-probe package without production processing admission.
+`--threads`, batching or arbitrary recipes. OpenCV core/photo execute D01 and core executes R01 behind the bounded OpenCV adapter.
 
 ## Verification is commit-specific
 

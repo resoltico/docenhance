@@ -33,6 +33,8 @@ def run(command: Sequence[str], payload: str = "") -> str:
     """Run one command without a shell or inherited stdin."""
     environment = dict(os.environ)
     environment.pop("GH_DEBUG", None)
+    environment.pop("GH_HOST", None)
+    environment.pop("GH_REPO", None)
     environment["GH_PROMPT_DISABLED"] = "1"
     try:
         result = subprocess.run(
@@ -170,7 +172,7 @@ class GitHubAPI:
                 tag,
                 str(artifact.path),
                 "--repo",
-                self.repository,
+                f"github.com/{self.repository}",
             ]
         )
 

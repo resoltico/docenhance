@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/bundle/fields.hpp"
 #include "docenhance/methods/contrast.hpp"
+#include "docenhance/methods/progress.hpp"
 
 #include <nlohmann/json.hpp>
 #include <type_traits>
@@ -68,7 +69,7 @@ Json contrast_fields(const methods::ContrastReport& r) {
     fields.update(Json{
         {"status", methods::status_name(r.status)},
         {"reason", methods::reason_name(r.reason)},
-        {"complete", r.complete},
+        {"progress", methods::progress_name(r.progress)},
         {"representation", r.requested ? Json("float64") : Json(nullptr)},
         {"levels", range},
         {"eligible_samples", r.eligible_samples},

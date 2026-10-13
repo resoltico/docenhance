@@ -7,6 +7,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/opencv/restoration.hpp"
 #include "support/entry_point.hpp"
 #include "support/fft_dispatch.hpp"
@@ -90,7 +91,7 @@ void phase_case(double k, double blend, double mass) {
                         "independent asymmetric Fourier phase/DC");
             }
         }
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         report.status = report.changed_samples == 0 ? methods::RestorationStatus::no_change
                                                     : methods::RestorationStatus::applied;
         report.reason = report.changed_samples == 0 ? methods::RestorationReason::no_effect

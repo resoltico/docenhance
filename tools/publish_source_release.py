@@ -10,12 +10,14 @@ import hashlib
 import os
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 from typing import cast
 
 from changelog import ReleaseError, extract_release, require
 from github_release_api import COMMIT, GitHubAPI, run
-from project_version import SEMVER, project_version
+from package_source import make_archive
+from project_version import SEMVER, project_version, version_from_text
 from release_publication import Artifact, Release, publish_release
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,12 +39,35 @@ def assets_directory(directory: Path, version: str) -> tuple[Path, Path]:
             and not checksum.is_symlink()
         ),
     )
-    digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+    with archive.open("rb") as stream:
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    expected_checksum = f"{digest}  {archive.name}\n".encode()
+    require(
+        "Source release checksum has an invalid length",
+        condition=checksum.stat().st_size == len(expected_checksum),
+    )
+    with checksum.open("rb") as stream:
+        supplied_checksum = stream.read(len(expected_checksum) + 1)
     require(
         "Source release checksum does not match its archive",
-        condition=checksum.read_text(encoding="utf-8") == f"{digest}  {archive.name}\n",
+        condition=supplied_checksum == expected_checksum,
     )
     return archive, checksum
+
+
+def same_bytes(supplied: Path, expected: Path) -> bool:
+    """Refuse links and length mismatches before comparing bounded chunks."""
+    if (
+        supplied.is_symlink()
+        or not supplied.is_file()
+        or supplied.stat().st_size != expected.stat().st_size
+    ):
+        return False
+    with supplied.open("rb") as actual, expected.open("rb") as reference:
+        while block := reference.read(64 * 1024):
+            if actual.read(len(block)) != block:
+                return False
+        return actual.read(1) == b""
 
 
 def _git(*arguments: str) -> str:
@@ -91,10 +116,31 @@ def _context() -> tuple[str, str, str]:
 def publish(directory: Path) -> str:
     """Publish the exact tagged source assets and exact tagged changelog body."""
     repository, tag, commit = _context()
-    version = project_version(ROOT)
+    version = version_from_text(_git("show", f"{commit}:CMakeLists.txt"))
     require("Tag/project version mismatch", condition=tag == f"v{version}")
     body = extract_release(_git("show", f"{commit}:CHANGELOG.md"), version)
-    artifacts = tuple(Artifact.inspect(path) for path in assets_directory(directory, version))
+    archive = directory / f"docenhance-{version}-source.tar.gz"
+    checksum = archive.with_suffix(archive.suffix + ".sha256")
+    with tempfile.TemporaryDirectory(prefix="docenhance-release-") as temporary:
+        expected = make_archive(Path(temporary), epoch=0, revision=commit)
+        expected_artifacts = []
+        for supplied, regenerated in (
+            (archive, expected),
+            (checksum, expected.with_suffix(expected.suffix + ".sha256")),
+        ):
+            require(
+                "Source release asset differs from selected commit",
+                condition=same_bytes(supplied, regenerated),
+            )
+            expected_artifacts.append(Artifact.inspect(regenerated))
+        artifacts = tuple(Artifact.inspect(path) for path in assets_directory(directory, version))
+        require(
+            "Source release asset changed after source agreement",
+            condition=all(
+                actual.digest == expected.digest and actual.size == expected.size
+                for actual, expected in zip(artifacts, expected_artifacts, strict=True)
+            ),
+        )
     publish_release(GitHubAPI(repository), Release(tag, commit, body, artifacts))
     return f"https://github.com/{repository}/releases/tag/{tag}"
 

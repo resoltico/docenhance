@@ -7,6 +7,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "surface_detail.hpp"
 
@@ -78,22 +79,24 @@ core::Result<bool> applicable(bool enough, IlluminationReason reason, FitContext
 core::Result<bool> should_fit(FitContext context) {
     auto& report = context.report.get();
     const auto& parameters = context.method.get().parameters();
+    auto reason = IlluminationReason::none;
     if (report.eligible_samples == 0) {
-        report.reason = IlluminationReason::no_eligible_samples;
+        reason = IlluminationReason::no_eligible_samples;
     } else if (parameters.strength == 0) {
-        report.reason = IlluminationReason::zero_strength;
+        reason = IlluminationReason::zero_strength;
     } else if (parameters.max_gain == 1) {
-        report.reason = IlluminationReason::unit_gain;
+        reason = IlluminationReason::unit_gain;
     }
-    if (report.reason != IlluminationReason::none) {
+    if (reason != IlluminationReason::none) {
         report.status = IlluminationStatus::no_change;
+        report.reason = reason;
         return false;
     }
-    constexpr std::uint64_t minimum_samples = 16;
     const auto extent = context.input.source.get().extent();
-    return applicable(report.eligible_samples >=
-                          std::min(minimum_samples, std::uint64_t{extent.width} * extent.height),
-                      IlluminationReason::insufficient_samples, context);
+    return applicable(
+        report.eligible_samples >=
+            std::min(surface_minimum_samples, std::uint64_t{extent.width} * extent.height),
+        IlluminationReason::insufficient_samples, context);
 }
 // A cell darker than the paper reference divided by the largest admissible gain is beyond any
 // illumination I01 could correct. It is dark content such as a solid fill or dark photograph, not
@@ -157,15 +160,13 @@ core::Result<image::Plane<double>> fit_grid(const SurfaceGrid& grid, FitContext 
     }
     report.measured_cells = static_cast<std::uint32_t>(
         std::ranges::count_if(work->view().row(0), [](double w) { return w > 0; }));
-    constexpr double explicit_coverage = 0.25;
-    constexpr double automatic_coverage = 0.60;
     const double coverage = static_cast<double>(report.measured_cells) / report.cells;
     const bool automatic = context.method.get().parameters().mode == SurfaceMode::automatic;
-    report.predicates.front() = coverage >= automatic_coverage;
-    const auto covered =
-        applicable(report.measured_cells != 0 &&
-                       coverage >= (automatic ? automatic_coverage : explicit_coverage),
-                   IlluminationReason::insufficient_cells, context);
+    report.predicates.front() = coverage >= surface_automatic_coverage;
+    const auto covered = applicable(
+        report.measured_cells != 0 &&
+            coverage >= (automatic ? surface_automatic_coverage : surface_explicit_coverage),
+        IlluminationReason::insufficient_cells, context);
     if (!covered) {
         return std::unexpected(covered.error());
     }
@@ -190,7 +191,12 @@ core::Result<SurfaceModel> SurfaceModel::prepare(IlluminationInput input, const 
                                                  core::Budget& budget,
                                                  const core::Cancellation& cancellation,
                                                  IlluminationReport& report) {
-    report = {.status = IlluminationStatus::failed, .requested = method.parameters()};
+    report = {
+        .status = IlluminationStatus::failed,
+        .progress = StageProgress::preparing,
+        .reason = IlluminationReason::processing_failure,
+        .requested = method.parameters(),
+    };
     if (cancellation.requested(core::Checkpoint::measurement)) {
         return core::cancelled();
     }
@@ -211,7 +217,7 @@ core::Result<SurfaceModel> SurfaceModel::prepare(IlluminationInput input, const 
         return std::unexpected(proceed.error());
     }
     if (!*proceed) {
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         return model;
     }
     auto grid = surface_grid(input.source.get().extent(), method);
@@ -224,7 +230,7 @@ core::Result<SurfaceModel> SurfaceModel::prepare(IlluminationInput input, const 
         return std::unexpected(logs.error());
     }
     if (logs->empty()) {
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         return model;
     }
     model.logarithms_ = std::move(*logs);
@@ -239,12 +245,13 @@ core::Result<SurfaceModel> SurfaceModel::prepare(IlluminationInput input, const 
     if (method.parameters().mode == SurfaceMode::automatic && !eligible) {
         report.status = IlluminationStatus::skipped;
         report.reason = IlluminationReason::automatic_predicates;
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         return model;
     }
     model.active_ = true;
-    report.status = IlluminationStatus::no_change;
-    report.reason = IlluminationReason::no_effect;
+    report.status = IlluminationStatus::unresolved;
+    report.reason = IlluminationReason::none;
+    report.progress = StageProgress::prepared;
     return model;
 }
 } // namespace docenhance::methods

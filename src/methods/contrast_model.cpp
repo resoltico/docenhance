@@ -7,6 +7,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/contrast.hpp"
+#include "docenhance/methods/progress.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -15,6 +16,16 @@
 #include <variant>
 namespace docenhance::methods {
 namespace {
+void prepared(ContrastReport& report) {
+    report.status = ContrastStatus::unresolved;
+    report.reason = ContrastReason::none;
+    report.progress = StageProgress::prepared;
+}
+void identity(ContrastReport& report, ContrastReason reason) {
+    report.status = ContrastStatus::no_change;
+    report.reason = reason;
+    report.progress = StageProgress::completed;
+}
 core::Result<void> count(image::Extent extent, image::PlaneView<const std::uint8_t> mask,
                          const ContrastExecution& e) {
     if (extent.width == 0 || extent.height == 0 ||
@@ -48,12 +59,14 @@ core::Result<ContrastModel> ContrastModel::prepare(image::LinearSource& source,
                                                    const ContrastExecution& e) {
     auto& r = e.report.get();
     r = {};
+    r.progress = StageProgress::preparing;
     std::visit(
         [&](const auto& selected) {
             using M = std::decay_t<decltype(selected)>;
             if constexpr (!std::is_same_v<M, ContrastOff>) {
                 r.requested = selected.parameters();
                 r.status = ContrastStatus::failed;
+                r.reason = ContrastReason::processing_failure;
             }
         },
         method);
@@ -65,21 +78,17 @@ core::Result<ContrastModel> ContrastModel::prepare(image::LinearSource& source,
         return std::unexpected(counted.error());
     }
     if (!r.requested) {
-        r.complete = true;
+        r.progress = methods::StageProgress::completed;
         return ContrastModel{source.extent(), method, {}, false, false};
     }
     const auto blend = std::visit([](const auto& p) { return p.blend; }, *r.requested);
     if (blend == 0 || r.eligible_samples == 0) {
-        r.status = ContrastStatus::no_change;
-        r.reason = blend == 0 ? ContrastReason::zero_blend : ContrastReason::no_eligible_samples;
-        r.complete = true;
+        identity(r, blend == 0 ? ContrastReason::zero_blend : ContrastReason::no_eligible_samples);
         return ContrastModel{source.extent(), method, {}, false, false};
     }
     if (const auto* const gamma = std::get_if<Gamma>(&method);
         gamma != nullptr && gamma->parameters().gamma == 1) {
-        r.status = ContrastStatus::no_change;
-        r.reason = ContrastReason::identity_gamma;
-        r.complete = true;
+        identity(r, ContrastReason::identity_gamma);
         return ContrastModel{source.extent(), method, {}, false, false};
     }
     if (const auto* const levels = std::get_if<Levels>(&method)) {
@@ -89,11 +98,10 @@ core::Result<ContrastModel> ContrastModel::prepare(image::LinearSource& source,
         }
         r.levels = *range;
         if (range->high - range->low < levels_minimum_range) {
-            r.status = ContrastStatus::no_change;
-            r.reason = ContrastReason::insufficient_dynamic_range;
-            r.complete = true;
+            identity(r, ContrastReason::insufficient_dynamic_range);
             return ContrastModel{source.extent(), method, *range, false, true};
         }
+        prepared(r);
         return ContrastModel{source.extent(), method, *range, true, true};
     }
     if (const auto* const clahe = std::get_if<Clahe>(&method)) {
@@ -103,8 +111,10 @@ core::Result<ContrastModel> ContrastModel::prepare(image::LinearSource& source,
         }
         ContrastModel model{source.extent(), method, {}, true, true};
         model.maps_ = std::move(*maps);
+        prepared(r);
         return model;
     }
+    prepared(r);
     return ContrastModel{source.extent(), method, {}, true, false};
 }
 } // namespace docenhance::methods

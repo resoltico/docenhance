@@ -3,6 +3,7 @@
 #include "docenhance/bundle/record.hpp"
 
 #include "docenhance/bundle/fields.hpp"
+#include "docenhance/bundle/record_version.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"

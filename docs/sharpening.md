@@ -63,8 +63,8 @@ Allocation, gathering, Gaussian passes and reconstruction have bounded cancellat
 Cancelled/partial fields are not valid results; all owners refund their charges. Worker joins,
 error precedence and the final publication cutoff retain their existing contracts.
 
-Response and record version 13 includes closed S01 parameters and observations, with no older readers or
-migration. `pre_clamp` is the finite minimum/maximum over evaluated eligible destinations, null
+The [current response and record format](bundles.md#source-observations-and-format-compatibility)
+includes closed S01 parameters and observations, with no older readers or migration. `pre_clamp` is the finite minimum/maximum over evaluated eligible destinations, null
 when none were evaluated. `clipped_low_samples` counts strictly raw<0; `clipped_high_samples` counts
 strictly raw>1; `clipped_fraction` is their sum divided by evaluated samples, null for no evaluation.
 `context_samples` counts the complete entering canvas used to fit the blur. Counters and resource

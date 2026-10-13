@@ -10,6 +10,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "linear_fixture.hpp"
 #include "sharpen_reference.hpp"
 
@@ -314,6 +315,7 @@ TEST_CASE("Unsharp observation validation enforces requested excursion and corre
     methods::SharpenReport report;
     report.requested = methods::UnsharpParameters{.amount = 0.01, .threshold = 0};
     report.status = methods::SharpenStatus::applied;
+    report.progress = methods::StageProgress::completed;
     report.eligible_samples = report.context_samples = report.evaluated_samples = 2;
     report.corrected_samples = report.changed_samples = 2;
     report.pre_clamp = methods::ExcursionRange{.low = 0, .high = 1};

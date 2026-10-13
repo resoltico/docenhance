@@ -3,6 +3,7 @@
 #include "docenhance/bundle/record.hpp"
 
 #include "docenhance/bundle/inventory.hpp"
+#include "docenhance/bundle/record_version.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
@@ -12,6 +13,7 @@
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 
 #include <catch2/catch_test_macros.hpp>
@@ -88,10 +90,10 @@ bundle::RunRecord binarized_record() {
         .stages =
             {
                 .illumination = illumination,
-                .denoising = {.complete = true},
-                .restoration = {.complete = true},
-                .contrast = {.complete = true},
-                .sharpening = {.complete = true},
+                .denoising = {.progress = methods::StageProgress::completed},
+                .restoration = {.progress = methods::StageProgress::completed},
+                .contrast = {.progress = methods::StageProgress::completed},
+                .sharpening = {.progress = methods::StageProgress::completed},
             },
     };
 }
@@ -128,9 +130,9 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
     }
     SECTION("a version this build does not support") {
         auto altered = *written;
-        const auto at = altered.find("\"version\": 13");
+        const auto at = altered.find("\"version\": 14");
         REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 13").size(), "\"version\": 12");
+        altered.replace(at, std::string_view("\"version\": 14").size(), "\"version\": 12");
         const auto refused = bundle::read_record(as_bytes(altered));
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::input);
@@ -283,7 +285,7 @@ bundle::RunRecord restoration_record() {
         .assumed_transfer = true,
         .verified = true,
     };
-    record.stages.illumination.complete = true;
+    record.stages.illumination.progress = methods::StageProgress::completed;
     record.stages.illumination.eligible_samples = 5000;
     record.stages.denoising.eligible_samples = 5000;
     record.stages.contrast.eligible_samples = 5000;
@@ -295,7 +297,7 @@ bundle::RunRecord restoration_record() {
     record.stages.restoration = {
         .status = methods::RestorationStatus::no_change,
         .reason = methods::RestorationReason::zero_blend,
-        .complete = true,
+        .progress = methods::StageProgress::completed,
         .requested = method.parameters(),
         .psf = std::move(psf),
         .eligible_samples = 5000,

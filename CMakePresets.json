@@ -49,7 +49,6 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "DE_BUILD_TESTS": false,
-        "DE_BUILD_TOOLS": false,
         "DE_ENABLE_FUZZING": true,
         "DE_FUZZ_ONLY": true,
         "DE_ENABLE_ASAN": true,

@@ -236,7 +236,7 @@ def stage_check(case: Case, response: dict[str, Any]) -> None:
         if method in STAGE_REPORT:
             report = response[STAGE_REPORT[method]]
             require(
-                report["method"]["id"] == method and report["complete"],
+                report["method"]["id"] == method and report["progress"] == "completed",
                 f"{method} identity/completion disagrees",
             )
         elif method.startswith("B"):

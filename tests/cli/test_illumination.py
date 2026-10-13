@@ -58,7 +58,7 @@ def run(
         )
         return None, result
     expect(result["conversion"]["verified"], "illumination output verified before commit")
-    expect(result["illumination"]["complete"], "reported illumination is complete")
+    expect(result["illumination"]["progress"] == "completed", "reported illumination is complete")
     return decode_output((output / "result.png").read_bytes()), result
 
 

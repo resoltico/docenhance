@@ -11,6 +11,7 @@
 #include "docenhance/io/digest.hpp"
 #include "docenhance/io/publication.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "file_contents.hpp"
 #include "native_publication.hpp"
 #include "png_fixture.hpp"
@@ -86,10 +87,10 @@ WrittenBundle written_bundle() {
         .conversion = std::nullopt,
         .stages =
             {
-                .denoising = {.complete = true},
-                .restoration = {.complete = true},
-                .contrast = {.complete = true},
-                .sharpening = {.complete = true},
+                .denoising = {.progress = methods::StageProgress::completed},
+                .restoration = {.progress = methods::StageProgress::completed},
+                .contrast = {.progress = methods::StageProgress::completed},
+                .sharpening = {.progress = methods::StageProgress::completed},
             },
     };
     auto record = bundle::serialize(facts);

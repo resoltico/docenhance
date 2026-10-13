@@ -32,9 +32,6 @@ file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/hardening-policy.json" CONTENT "${de
 function(de_dependency_flags name output)
   set(c_flags ${de_hardening_compile})
   set(cxx_flags ${de_hardening_compile})
-  if(WIN32 AND name STREQUAL "leptonica")
-    list(APPEND c_flags /DLEPTONICA_INTERCEPT_ALLOC)
-  endif()
   if(DE_FUZZ_ONLY AND name MATCHES "^(png|zlib|lcms|jpeg|tiff|opencv)$")
     set(instrumentation -fsanitize=address,undefined,fuzzer-no-link
       -fno-sanitize-recover=all -fno-omit-frame-pointer)
@@ -45,7 +42,7 @@ function(de_dependency_flags name output)
   endif()
   set(arguments)
   foreach(language IN ITEMS C CXX)
-    if(language STREQUAL "CXX" AND name MATCHES "^(zlib|jpeg|png|leptonica|lcms)$")
+    if(language STREQUAL "CXX" AND name MATCHES "^(zlib|jpeg|png|lcms)$")
       continue()
     endif()
     if(name MATCHES "^(cli11|json|picosha2)$" OR

@@ -1,4 +1,7 @@
-# Foundational ownership and validation design
+# Historical foundation design and current lifecycle resolution
+
+The original foundation design below is historical. Its lifecycle vocabulary and format-13
+claims are superseded by the current resolution at the end of this document.
 
 The reviewed handoff is anchored to `09e7a979e9378ca81475c31f0c9eed36007a73ec`.
 The source/evidence baseline is collected before editing; later main changes must be reconciled.
@@ -26,7 +29,9 @@ the current order is fixed, and numerical/native ownership, model liveness and p
 by family. These differences are required correctness boundaries. The existing bundle reader still
 checks complete typed claims and canonical serialization, independent of JSON Schema.
 
-Response and record version 13 are current. Obsolete records are refused without migration.
+The historical change introduced format 13. Current response and record formats are owned
+independently by the schema authorities linked from [bundles](bundles.md); obsolete records
+are refused without migration.
 The source method contract has one classification: implemented-selectable, implemented-automatic
 or planned. G01 is automatic continuous metadata orientation, never a selector. G02 remains selectable;
 G03–G05 remain plans. Runtime descriptors continue coming from actual executable variants.
@@ -65,3 +70,22 @@ The [quality protocol](document-quality.md) closes the evidence gap through a go
 corpus, explicit comparator, actual deterministic replay, independent integer/protection comparison,
 blinded human review and per-class harm refusal. No favorable empirical result is inferred from
 synthetic tests. Source publication remains distinct from signed/notarized native distribution.
+
+## Current fixed-pipeline lifecycle resolution
+
+The 2026-10-13 reviewed foundation change separates progress from effect. The methods owner
+supplies `not_started`, `preparing`, `prepared`, `evaluating` and `completed`; selected stages
+retain `unresolved` numerical disposition until their observing full-canvas traversal finishes.
+Preparation errors retain their actual partial observations. A delegated upstream application
+failure leaves that owner failed/evaluating and the attempted consumer unresolved/preparing.
+Failures before an observing traversal retain the immutable model at failed/prepared; publication
+allocation failures do not invent a photometric failure. Replay never modifies historical reports.
+
+The host owns observing completion: illumination uses its existing row-major output cursor;
+denoising, restoration, contrast and sharpening complete after their host assessment traversal.
+Prefix-observed booleans describe completed entering observations, independently of model progress.
+Successful active D/R/S preparation and measured contrast consume the prefix; gamma preparation
+and documented identity paths may leave illumination prepared. The app validates these concrete
+consumption rules, exact initial reports and shared family semantics, rather than imposing a
+universal completed-prefix rule. Success and persisted records require complete observations.
+[Bundles](bundles.md) links the independently owned current response and record format authorities.

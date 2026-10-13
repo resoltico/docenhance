@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/bundle/fields.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 
 #include <cstdint>
@@ -80,7 +81,7 @@ Json restoration_fields(const methods::RestorationReport& r) {
     fields.update(Json{
         {"status", methods::status_name(r.status)},
         {"reason", methods::reason_name(r.reason)},
-        {"complete", r.complete},
+        {"progress", methods::progress_name(r.progress)},
         {"representation", r.requested ? Json("float32") : Json(nullptr)},
         {"psf", psf_fields(r.psf)},
         {"guard", r.guard},

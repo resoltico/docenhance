@@ -21,7 +21,7 @@
       "additionalProperties": false,
       "properties": {
         "version": {
-          "const": 13
+          "const": 14
         },
         "run": {
           "type": "string",
@@ -571,6 +571,49 @@
                   },
                   "requested": {
                     "type": "null"
+                  },
+                  "progress": {
+                    "const": "not_started"
+                  }
+                }
+              },
+              "denoising": {
+                "properties": {
+                  "status": {
+                    "const": "disabled"
+                  },
+                  "progress": {
+                    "const": "completed"
+                  }
+                }
+              },
+              "restoration": {
+                "properties": {
+                  "status": {
+                    "const": "disabled"
+                  },
+                  "progress": {
+                    "const": "completed"
+                  }
+                }
+              },
+              "contrast": {
+                "properties": {
+                  "status": {
+                    "const": "disabled"
+                  },
+                  "progress": {
+                    "const": "completed"
+                  }
+                }
+              },
+              "sharpening": {
+                "properties": {
+                  "status": {
+                    "const": "disabled"
+                  },
+                  "progress": {
+                    "const": "completed"
                   }
                 }
               }
@@ -608,16 +651,16 @@
                   },
                   {
                     "properties": {
-                      "complete": {
-                        "const": true
-                      },
                       "status": {
                         "not": {
                           "enum": [
                             "failed",
-                            "not_started"
+                            "unresolved"
                           ]
                         }
+                      },
+                      "progress": {
+                        "const": "completed"
                       }
                     }
                   }
@@ -630,16 +673,16 @@
                   },
                   {
                     "properties": {
-                      "complete": {
-                        "const": true
-                      },
                       "status": {
                         "not": {
                           "enum": [
                             "failed",
-                            "not_started"
+                            "unresolved"
                           ]
                         }
+                      },
+                      "progress": {
+                        "const": "completed"
                       }
                     }
                   }
@@ -652,16 +695,16 @@
                   },
                   {
                     "properties": {
-                      "complete": {
-                        "const": true
-                      },
                       "status": {
                         "not": {
                           "enum": [
                             "failed",
-                            "not_started"
+                            "unresolved"
                           ]
                         }
+                      },
+                      "progress": {
+                        "const": "completed"
                       }
                     }
                   }
@@ -674,16 +717,16 @@
                   },
                   {
                     "properties": {
-                      "complete": {
-                        "const": true
-                      },
                       "status": {
                         "not": {
                           "enum": [
                             "failed",
-                            "not_started"
+                            "unresolved"
                           ]
                         }
+                      },
+                      "progress": {
+                        "const": "completed"
                       }
                     }
                   }
@@ -696,16 +739,16 @@
                   },
                   {
                     "properties": {
-                      "complete": {
-                        "const": true
-                      },
                       "status": {
                         "not": {
                           "enum": [
                             "failed",
-                            "not_started"
+                            "unresolved"
                           ]
                         }
+                      },
+                      "progress": {
+                        "const": "completed"
                       }
                     }
                   }

@@ -184,7 +184,7 @@ TEST_CASE("CLAHE application stops preserve partial observations and frozen resi
         auto result = host::assess_contrast(output, budget, stop.cancellation(), report);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
-        CHECK(!report.complete);
+        CHECK(!report.complete());
         CHECK(methods::valid_contrast_observations(report));
         CHECK(budget.used() == resident);
     }

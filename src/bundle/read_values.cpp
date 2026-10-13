@@ -3,6 +3,7 @@
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "read_fields.hpp"
 
 #include <array>
@@ -13,6 +14,22 @@
 #include <string>
 #include <string_view>
 namespace docenhance::bundle {
+methods::StageProgress read_progress(const RecordJson& value) {
+    const auto text = record_text(value);
+    constexpr auto choices = std::to_array({
+        methods::StageProgress::not_started,
+        methods::StageProgress::preparing,
+        methods::StageProgress::prepared,
+        methods::StageProgress::evaluating,
+        methods::StageProgress::completed,
+    });
+    for (const auto progress : choices) {
+        if (methods::progress_name(progress) == text) {
+            return progress;
+        }
+    }
+    return static_cast<methods::StageProgress>(choices.size());
+}
 const RecordJson& record_field(const RecordJson& object, std::string_view name) {
     for (const auto& item : object.items()) {
         if (std::string_view{item.key()} == name) {
