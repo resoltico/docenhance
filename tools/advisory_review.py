@@ -52,7 +52,7 @@ def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: byt
         return dependency.get(
             "object"
         ) == "9e2ede9628a55ec2742a1b180d3e69b0322281b9" and digest == (
-            "dc33bbb2b4f178061f6d7e5f4eaf95bbf34ab3ee2e5f190a02e8fb4ac4e3b9a6"
+            "12a786006836a0b529e089dfb4b5991eb5396b42b4024a7ee761441ba2eaacd3"
         )
     # OSV-2026-1068's reported call path uses tj3Compress8 (TurboJPEG API),
     # not the classic JPEG decompression adapter. The private feature policy
