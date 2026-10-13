@@ -130,7 +130,7 @@ class QualityReplayTests(unittest.TestCase):
                     "binarization": None,
                     "rotation_degrees": 0,
                     "source_decoding": None,
-                    "output": str(output) + "/result.png",
+                    "output": str(output / "result.png"),
                     "record": {
                         "run": "a" * 32,
                         "path": "run.json",
