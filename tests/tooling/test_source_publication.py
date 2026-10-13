@@ -110,7 +110,7 @@ class SourcePublicationTests(unittest.TestCase):
     def checksum_archive(self) -> None:
         """Give even deliberately forged assets an internally matching checksum."""
         digest = hashlib.sha256(self.archive.read_bytes()).hexdigest()
-        self.checksum.write_text(f"{digest}  {self.archive.name}\n")
+        self.checksum.write_bytes(f"{digest}  {self.archive.name}\n".encode())
 
     def assert_preflight_refused(self) -> None:
         """A refusal must happen before constructing any remote transport."""
@@ -122,6 +122,15 @@ class SourcePublicationTests(unittest.TestCase):
                 publish_source_release.publish(self.assets)
             api.assert_not_called()
             publish.assert_not_called()
+
+    def test_noncanonical_checksum_is_refused_before_transport(self) -> None:
+        """Native newline translation cannot enter an exact-byte release checksum."""
+        expected = (
+            f"{hashlib.sha256(self.archive.read_bytes()).hexdigest()}  {self.archive.name}\n"
+        ).encode()
+        self.assertEqual(self.checksum.read_bytes(), expected)
+        self.checksum.write_bytes(expected.replace(b"\n", b"\r\n"))
+        self.assert_preflight_refused()
 
     def test_selected_archive_preserves_unusual_names_and_regression_bytes(self) -> None:
         """Exact selected bytes pass, and untracked files cannot enter regeneration."""

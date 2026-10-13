@@ -105,7 +105,7 @@ def make_archive(destination: Path, epoch: int = 0, revision: str = "HEAD") -> P
         publish(temp_path, target)
         digest = hashlib.sha256(target.read_bytes()).hexdigest()
         checksum = target.with_suffix(target.suffix + ".sha256")
-        checksum.write_text(f"{digest}  {target.name}\n", encoding="utf-8")
+        checksum.write_bytes(f"{digest}  {target.name}\n".encode())
         return target
     finally:
         temp_path.unlink(missing_ok=True)
