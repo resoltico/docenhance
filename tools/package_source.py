@@ -46,11 +46,11 @@ class ArchiveError(ValueError):
     """The source tree or destination cannot produce a trustworthy archive."""
 
 
-def source_files(root: Path) -> dict[str, bytes]:
+def source_files(root: Path, revision: str = "HEAD") -> dict[str, bytes]:
     """Select committed source blobs, excluding only declared build and machine artifacts."""
     return {
         name: data
-        for name, data in snapshot(root).items()
+        for name, data in snapshot(root, revision).items()
         if Path(name).parts[0] not in CHECKOUT_ARTIFACTS
         and not any(part in EXCLUDED for part in Path(name).parts)
         and Path(name).name not in EXCLUDED_NAMES
@@ -84,9 +84,9 @@ def publish(temp_path: Path, target: Path) -> None:
     temp_path.unlink()
 
 
-def make_archive(destination: Path, epoch: int = 0) -> Path:
+def make_archive(destination: Path, epoch: int = 0, revision: str = "HEAD") -> Path:
     """Build the archive and its .sha256 file in destination and return the archive path."""
-    entries = source_files(ROOT)
+    entries = source_files(ROOT, revision)
     version = version_from_text(entries["CMakeLists.txt"].decode("utf-8"))
     destination.mkdir(parents=True, exist_ok=True)
     target = destination / f"docenhance-{version}-source.tar.gz"
@@ -105,7 +105,7 @@ def make_archive(destination: Path, epoch: int = 0) -> Path:
         publish(temp_path, target)
         digest = hashlib.sha256(target.read_bytes()).hexdigest()
         checksum = target.with_suffix(target.suffix + ".sha256")
-        checksum.write_text(f"{digest}  {target.name}\n", encoding="utf-8")
+        checksum.write_bytes(f"{digest}  {target.name}\n".encode())
         return target
     finally:
         temp_path.unlink(missing_ok=True)

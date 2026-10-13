@@ -8,6 +8,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
 
 #include <cstdint>
@@ -46,7 +47,7 @@ class Unsharp {
 };
 struct SharpenOff {};
 using Sharpening = std::variant<SharpenOff, Unsharp>;
-enum class SharpenStatus { not_started, disabled, no_change, applied, failed };
+enum class SharpenStatus { unresolved, disabled, no_change, applied, failed };
 enum class SharpenReason { none, zero_amount, no_eligible_samples, no_effect, processing_failure };
 struct ExcursionRange {
     double low = 0;
@@ -56,7 +57,10 @@ struct ExcursionRange {
 struct SharpenReport {
     SharpenStatus status = SharpenStatus::disabled;
     SharpenReason reason = SharpenReason::none;
-    bool complete = false;
+    StageProgress progress = StageProgress::not_started;
+    [[nodiscard]] bool complete() const noexcept {
+        return progress == StageProgress::completed;
+    }
     std::optional<UnsharpParameters> requested = std::nullopt;
     std::optional<ExcursionRange> pre_clamp = std::nullopt;
     std::uint64_t eligible_samples = 0;

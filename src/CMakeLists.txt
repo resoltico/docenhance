@@ -49,7 +49,7 @@ de_library(de_methods LAYER methods
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
           "${DE_INCLUDE}/methods/stages.hpp" "${DE_INCLUDE}/methods/otsu.hpp" "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
-          "${DE_INCLUDE}/methods/restoration.hpp" "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/sharpening.hpp" "${DE_INCLUDE}/methods/contrast.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp" "${DE_INCLUDE}/methods/tvl1.hpp"
+          "${DE_INCLUDE}/methods/restoration.hpp" "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/sharpening.hpp" "${DE_INCLUDE}/methods/contrast.hpp" "${DE_INCLUDE}/methods/progress.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp" "${DE_INCLUDE}/methods/tvl1.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
   SOURCES app/stage_observations.cpp app/verification_observations.cpp app/restoration.cpp app/restoration.hpp app/observations.cpp app/observations.hpp app/denoising.cpp app/sharpening.cpp app/sharpening.hpp app/contrast.cpp app/contrast.hpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
@@ -61,6 +61,7 @@ de_library(de_bundle LAYER bundle
   SOURCES bundle/restoration_fields.cpp bundle/read_restoration.cpp bundle/morphology_fields.cpp bundle/denoising_fields.cpp bundle/sharpen_fields.cpp bundle/read_sharpen.cpp bundle/contrast_fields.cpp bundle/read_contrast.cpp bundle/tvl1_fields.cpp bundle/read_denoising.cpp bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp bundle/read_fields.hpp bundle/read_values.cpp bundle/read_json.cpp
           bundle/read_observations.cpp bundle/read_operation.cpp bundle/read_illumination.cpp bundle/read_claims.cpp bundle/source_fields.cpp bundle/read_source.cpp
   HEADERS "${DE_INCLUDE}/bundle/fields.hpp" "${DE_INCLUDE}/bundle/record.hpp"
+          "${DE_INCLUDE}/bundle/record_version.hpp"
           "${DE_INCLUDE}/bundle/inventory.hpp"
   LINKS de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_report LAYER report
@@ -110,11 +111,3 @@ de_apply_options(docenhance)
 set_target_properties(docenhance PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${DE_BUILD_OWNER}/bin")
 de_register_target(docenhance LAYER entry SOURCES entry/main.cpp entry/signals.cpp entry/signals.hpp LINKS de_cli de_core de_host)
 de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json")
-
-# Not a layer: this probe exists to prove the pinned native dependencies build, link and run, so it
-# links libraries it does not otherwise use. It never ships and nothing in src/ may depend on it.
-if(DE_BUILD_TOOLS)
-  add_executable(de_native_probe "${PROJECT_SOURCE_DIR}/tools/native_probe.cpp")
-  target_link_libraries(de_native_probe PRIVATE opencv_photo opencv_core DE::leptonica DE::lcms DE::jpeg DE::png DE::tiff DE::picosha2)
-  de_apply_options(de_native_probe)
-endif()

@@ -13,8 +13,8 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/tvl1.hpp"
@@ -92,10 +92,9 @@ bool partial_contrast(const methods::ContrastReport& r, const ProcessRequest& re
     if (!contrast_request(r, request) || !methods::valid_contrast_observations(r)) {
         return false;
     }
-    return r.complete ? methods::valid_contrast(
-                            r, std::get<app::ContinuousPlan>(request.plan()).photometric.contrast)
-                      : (!r.requested || (r.status == methods::ContrastStatus::failed &&
-                                          r.reason == methods::ContrastReason::processing_failure));
+    return r.complete() ? methods::valid_contrast(
+                              r, std::get<app::ContinuousPlan>(request.plan()).photometric.contrast)
+                        : methods::valid_progress(r);
 }
 bool source_matches(const image::SourceDescription& source, image::RasterShape shape) {
     if (!image::valid_source_description(source)) {
@@ -125,56 +124,29 @@ bool source_matches(const image::SourceDescription& source, image::RasterShape s
         },
         source);
 }
-bool finite_illumination(const methods::IlluminationReport& report) {
-    if (report.solver &&
-        (!std::isfinite(report.solver->residual) || !std::isfinite(report.solver->tolerance))) {
+bool partial_illumination(const methods::IlluminationReport& report,
+                          const ProcessRequest& request) {
+    return illumination_request(report, request) &&
+           methods::valid_illumination_observations(report);
+}
+bool partial_native(const methods::DenoisingReport& r) {
+    if (r.status == methods::DenoiseStatus::failed &&
+        r.reason != methods::DenoiseReason::processing_failure) {
         return false;
     }
-    if (report.background_reference && !std::isfinite(*report.background_reference)) {
+    // The machine contract caps this reported processing charge; this does not cap RSS.
+    if (r.preparation_charge_peak > core::continuous_processing_budget ||
+        (r.native_calls == 0 && (r.native_reserved_peak != 0 || r.preparation_charge_peak != 0)) ||
+        (r.native_calls != 0 &&
+         (r.native_reserved_peak == 0 || r.preparation_charge_peak < r.native_reserved_peak))) {
         return false;
     }
-    if (report.morphology) {
-        const auto& m = *report.morphology;
-        if (!std::isfinite(m.sigma) || (m.analysis_fill && !std::isfinite(*m.analysis_fill)) ||
-            (m.target && !std::isfinite(*m.target)) || !std::isfinite(m.background_q10) ||
-            !std::isfinite(m.background_q50) || !std::isfinite(m.background_q90) ||
-            !std::isfinite(m.background_min) || !std::isfinite(m.background_max) ||
-            m.radius < methods::Morphology::min_radius ||
-            m.radius > methods::Morphology::max_radius ||
-            m.field_bytes > core::continuous_processing_budget ||
-            m.preparation_charge_peak > core::continuous_processing_budget) {
-            return false;
-        }
+    if ((r.progress == methods::StageProgress::prepared ||
+         r.progress == methods::StageProgress::evaluating) &&
+        r.native_calls == 0) {
+        return false;
     }
-    if (!report.measurements) {
-        return true;
-    }
-    const auto& m = *report.measurements;
-    return std::isfinite(m.target) && std::isfinite(m.background_q10) &&
-           std::isfinite(m.background_q50) && std::isfinite(m.background_q90) &&
-           std::isfinite(m.luminance_q90) && std::isfinite(m.variation) &&
-           std::isfinite(m.paper_fraction) && std::isfinite(m.dark_fraction);
-}
-bool illumination_shape(const methods::IlluminationReport& r) {
-    return r.requested && std::holds_alternative<methods::MorphologyParameters>(*r.requested)
-               ? methods::valid_morphology_observations(r)
-               : !r.morphology;
-}
-bool partial_illumination(const methods::IlluminationReport& r, const ProcessRequest& request) {
-    return illumination_request(r, request) && finite_illumination(r) && illumination_shape(r) &&
-           static_cast<unsigned>(r.status) <=
-               static_cast<unsigned>(methods::IlluminationStatus::failed) &&
-           static_cast<unsigned>(r.reason) <=
-               static_cast<unsigned>(methods::IlluminationReason::processing_failure) &&
-           (!r.complete || r.status != methods::IlluminationStatus::failed) &&
-           (r.complete || !r.requested || r.status == methods::IlluminationStatus::failed) &&
-           r.eligible_samples <= image::source_pixels_max &&
-           r.protected_samples <= image::source_pixels_max - r.eligible_samples &&
-           r.evaluated_samples <= r.eligible_samples && r.changed_samples <= r.evaluated_samples &&
-           r.gain_capped_samples <= r.evaluated_samples &&
-           r.saturated_samples <= r.evaluated_samples && std::isfinite(r.min_gain) &&
-           std::isfinite(r.max_gain) && r.min_gain >= 1 && r.max_gain >= r.min_gain &&
-           r.max_gain <= methods::illumination_gain_limit;
+    return true;
 }
 bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& request) {
     if (!denoising_request(r, request) || r.eligible_samples > image::source_pixels_max ||
@@ -185,28 +157,22 @@ bool partial_denoising(const methods::DenoisingReport& r, const ProcessRequest& 
     }
     if (r.requested && std::holds_alternative<methods::Tvl1Parameters>(*r.requested)) {
         return methods::valid_tvl1_observations(r) &&
-               (r.complete
+               (r.complete()
                     ? methods::valid_denoising(
                           r, std::get<app::ContinuousPlan>(request.plan()).photometric.denoising)
-                    : r.status == methods::DenoiseStatus::failed &&
-                          r.reason == methods::DenoiseReason::processing_failure);
+                    : methods::valid_progress(r));
     }
     if (r.tvl1) {
         return false;
     }
-    // The machine contract caps this reported processing charge; this does not cap RSS.
-    if (r.preparation_charge_peak > core::continuous_processing_budget ||
-        (r.native_calls == 0 && (r.native_reserved_peak != 0 || r.preparation_charge_peak != 0)) ||
-        (r.native_calls != 0 &&
-         (r.native_reserved_peak == 0 || r.preparation_charge_peak < r.native_reserved_peak))) {
+    if (!partial_native(r)) {
         return false;
     }
-    if (r.complete) {
+    if (r.complete()) {
         return methods::valid_denoising(
             r, std::get<app::ContinuousPlan>(request.plan()).photometric.denoising);
     }
-    return r.requested ? r.status == methods::DenoiseStatus::failed &&
-                             r.reason == methods::DenoiseReason::processing_failure &&
+    return r.requested ? methods::valid_progress(r) &&
                              r.native_h == methods::nlm_native_strength(
                                                std::get<methods::NlmParameters>(*r.requested))
                        : r.status == methods::DenoiseStatus::disabled &&
@@ -236,7 +202,7 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
     const auto pixels = std::uint64_t{c.output.width} * c.output.height;
     if (value.alpha != plan.operation.parameters().alpha || c.rotation != request.rotation() ||
         !publication(value.output, value.run, value.record, request) ||
-        !image::valid_conversion(c, plan.operation) || !light.complete ||
+        !image::valid_conversion(c, plan.operation) || !light.complete() ||
         !illumination_request(light, request) ||
         !methods::valid_illumination(light, {.width = c.output.width, .height = c.output.height},
                                      plan.protection.has_value()) ||
@@ -269,21 +235,27 @@ bool valid_published(const PublishedContinuous& value, const ProcessRequest& req
 bool valid_partial_stages(const methods::StageObservations& stages, const ProcessRequest& request) {
     const auto& plan = std::get<ContinuousPlan>(request.plan());
     // Unstarted reports have initial facts; existing validators check attempted work.
-    const auto initial = [&] { return initial_stages(plan.photometric); };
-    return (stages.illumination.status == methods::IlluminationStatus::not_started
-                ? stages.illumination == initial().illumination
+    std::optional<methods::StageObservations> initial;
+    const auto expected = [&] -> const methods::StageObservations& {
+        if (!initial) {
+            initial.emplace(initial_stages(plan.photometric));
+        }
+        return *initial;
+    };
+    return (stages.illumination.progress == methods::StageProgress::not_started
+                ? stages.illumination == expected().illumination
                 : partial_illumination(stages.illumination, request)) &&
-           (stages.denoising.status == methods::DenoiseStatus::not_started
-                ? stages.denoising == initial().denoising
+           (stages.denoising.progress == methods::StageProgress::not_started
+                ? stages.denoising == expected().denoising
                 : partial_denoising(stages.denoising, request)) &&
-           (stages.restoration.status == methods::RestorationStatus::not_started
-                ? stages.restoration == initial().restoration
+           (stages.restoration.progress == methods::StageProgress::not_started
+                ? stages.restoration == expected().restoration
                 : partial_restoration(stages.restoration, request)) &&
-           (stages.contrast.status == methods::ContrastStatus::not_started
-                ? stages.contrast == initial().contrast
+           (stages.contrast.progress == methods::StageProgress::not_started
+                ? stages.contrast == expected().contrast
                 : partial_contrast(stages.contrast, request)) &&
-           (stages.sharpening.status == methods::SharpenStatus::not_started
-                ? stages.sharpening == initial().sharpening
+           (stages.sharpening.progress == methods::StageProgress::not_started
+                ? stages.sharpening == expected().sharpening
                 : partial_sharpen(stages.sharpening, request));
 }
 } // namespace docenhance::app

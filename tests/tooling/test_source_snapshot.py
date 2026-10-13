@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import subprocess
 import tempfile
@@ -66,6 +67,12 @@ class SourceSnapshotTests(unittest.TestCase):
                     check=True,
                     timeout=120,
                 )
+            commit = subprocess.run(
+                [str(shutil.which("git")), "-C", str(root), "rev-parse", "HEAD"],
+                capture_output=True,
+                check=True,
+                text=True,
+            ).stdout.strip()
             (root / "blob-0000.dat").write_bytes(b"dirty replacement")
             (root / "untracked.dat").write_bytes(b"untracked")
             actual_run = subprocess.run
@@ -94,7 +101,7 @@ class SourceSnapshotTests(unittest.TestCase):
                 )
 
             with patch("source_snapshot.subprocess", SimpleNamespace(run=observed_run)):
-                self.assertEqual(source_snapshot.snapshot(root), files)
+                self.assertEqual(source_snapshot.snapshot(root, commit), files)
             self.assertEqual(transfers, [True])
 
     def test_malformed_batch_response_cannot_become_a_partial_archive(self) -> None:

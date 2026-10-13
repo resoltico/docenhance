@@ -9,6 +9,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <cstdint>
@@ -27,6 +28,7 @@ using RecordJson = nlohmann::json;
 [[nodiscard]] const RecordJson& record_field(const RecordJson& object, std::string_view name);
 [[nodiscard]] std::uint64_t record_integer(const RecordJson& value, std::uint64_t maximum);
 [[nodiscard]] double record_number(const RecordJson& value);
+[[nodiscard]] methods::StageProgress read_progress(const RecordJson& value);
 [[nodiscard]] bool record_boolean(const RecordJson& value);
 [[nodiscard]] std::string record_text(const RecordJson& value);
 [[nodiscard]] core::Result<image::RasterShape> record_shape(const RecordJson& value);

@@ -8,6 +8,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/progress.hpp"
 
 #include <array>
 #include <cstddef>
@@ -33,8 +34,8 @@ binarization_fields(const std::optional<methods::OtsuObservation>& observation) 
 using Json = nlohmann::ordered_json;
 std::string_view status_name(methods::IlluminationStatus status) noexcept {
     switch (status) {
-    case methods::IlluminationStatus::not_started:
-        return "not_started";
+    case methods::IlluminationStatus::unresolved:
+        return "unresolved";
     case methods::IlluminationStatus::disabled:
         return "disabled";
     case methods::IlluminationStatus::no_change:
@@ -150,7 +151,7 @@ nlohmann::ordered_json illumination_fields(const methods::IlluminationReport& r)
     }
     return {
         {"status", status_name(r.status)},
-        {"complete", r.complete},
+        {"progress", methods::progress_name(r.progress)},
         {"reason", reason_name(r.reason)},
         {"method", identity},
         {"requested", requested},

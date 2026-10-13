@@ -150,7 +150,7 @@ core::Result<methods::IlluminationReport> record_illumination(const RecordJson& 
             r.reason = reason;
         }
     }
-    r.complete = record_boolean(record_field(value, "complete"));
+    r.progress = read_progress(record_field(value, "progress"));
     const auto& requested = record_field(value, "requested");
     if (!requested.is_null()) {
         auto p = parameters(requested);

@@ -148,6 +148,58 @@ def strict_and_noops(exe: Path, root: Path) -> None:
     )
 
 
+def lazy_failure_progress(exe: Path, root: Path) -> None:
+    """Later refusals preserve successful I02 preparation without invented evaluation."""
+    fixture = Fixture(9, 5, ((128,),) * 45, metadata=LINEAR)
+    _, refused = run(
+        exe,
+        root,
+        fixture,
+        ["--illumination", "morph", "--background-radius", "1", "--denoise", "nlm"],
+        4,
+    )
+    expect(refused["error"]["code"] == "E_METHOD_INAPPLICABLE", "native search refusal survives")
+    expect(
+        refused["illumination"]["progress"] == "prepared"
+        and refused["illumination"]["status"] == "unresolved",
+        "prepared I02 survives search refusal",
+    )
+    expect(
+        refused["illumination"]["application"]["evaluated_samples"] == 0,
+        "search refusal does not observe illumination",
+    )
+    expect(
+        refused["denoising"]["progress"] == "preparing" and refused["publication"] == "not_started",
+        "known pre-staging refusal",
+    )
+    for zero_blend in (False, True):
+        options = [
+            "--illumination",
+            "morph",
+            "--background-radius",
+            "1",
+            "--deblur",
+            "wiener",
+            "--psf",
+            "kernel",
+            "--psf-file",
+            str(root / "absent-psf.png"),
+        ]
+        if zero_blend:
+            options += ["--denoise", "nlm", "--denoise-blend", "0"]
+        _, refused = run(exe, root, fixture, options, 3)
+        expect(refused["error"]["code"] == "E_INPUT", "missing PSF retains actual asset refusal")
+        expect(
+            refused["illumination"]["progress"] == "prepared"
+            and refused["illumination"]["status"] == "unresolved",
+            "PSF load leaves I02 unobserved",
+        )
+        expect(
+            refused["denoising"]["progress"] == "completed", "identity denoising already settled"
+        )
+        expect(refused["restoration"]["progress"] == "preparing", "PSF owner attempted preparation")
+
+
 def main() -> None:
     """Run all groups against a real production executable."""
     exe = Path(sys.argv[1]).resolve()
@@ -155,6 +207,7 @@ def main() -> None:
         root = Path(directory)
         independent(exe, root)
         strict_and_noops(exe, root)
+        lazy_failure_progress(exe, root)
         colored_transport(exe, root, "morph")
         oriented_protection(exe, root, "morph")
         composition(exe, root, "morph")

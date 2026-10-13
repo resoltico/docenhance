@@ -79,14 +79,14 @@ foreach(name IN LISTS de_names)
   # Recipient contracts differ: C libraries do not consume a C++ compiler, and header-only
   # adapters do not consume compiler/CRT/PIC controls. Do not send ignored configuration.
   set(de_dependency_common ${de_common})
-  if(name MATCHES "^(zlib|jpeg|png|leptonica|lcms)$")
+  if(name MATCHES "^(zlib|jpeg|png|lcms)$")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_CXX_COMPILER:")
   elseif(name MATCHES "^(cli11|json|catch2)$")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_C_COMPILER:")
   elseif(name STREQUAL "picosha2")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-D(CMAKE_(C_COMPILER|CXX_COMPILER|MSVC_RUNTIME_LIBRARY|OSX_DEPLOYMENT_TARGET|POSITION_INDEPENDENT_CODE|PREFIX_PATH)|BUILD_SHARED_LIBS):")
   endif()
-  if(NOT name MATCHES "^(opencv|tiff|leptonica)$")
+  if(NOT name MATCHES "^(opencv|tiff)$")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_POLICY_DEFAULT_CMP0091:")
   endif()
   if(name MATCHES "^(zlib|jpeg|lcms|json|picosha2|catch2)$")
@@ -120,7 +120,6 @@ ExternalProject_Add(de_native
     "-DDE_SOURCE_CACHE:PATH=${DE_SOURCE_CACHE}"
     "-DDE_SUPERBUILD_BINARY:PATH=${PROJECT_BINARY_DIR}"
     "-DDE_BUILD_TESTS:BOOL=${DE_BUILD_TESTS}"
-    "-DDE_BUILD_TOOLS:BOOL=${DE_BUILD_TOOLS}"
     "-DDE_WARNINGS_AS_ERRORS:BOOL=${DE_WARNINGS_AS_ERRORS}"
     "-DDE_ENABLE_ASAN:BOOL=${DE_ENABLE_ASAN}"
     "-DDE_ENABLE_UBSAN:BOOL=${DE_ENABLE_UBSAN}"

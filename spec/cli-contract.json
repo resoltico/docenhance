@@ -36,7 +36,6 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "Required; a new result directory",
-      "methods": "",
       "description": "Paths must be well-formed UTF-8 and are never normalized or repaired. Relative effects bind to the operation's initial working directory; reported spelling is retained. Windows drive-relative publication paths are rejected. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced.",
       "binding": "output_directory"
     },
@@ -46,7 +45,6 @@
       "scope": "P",
       "group": "Geometry arguments",
       "domain": "0; 0|90|180|270",
-      "methods": "G02",
       "description": "Exact clockwise quarter-turn after metadata orientation on continuous output; binary PNG keeps its stored-sample metadata policy. Accept only the literal values 0, 90, 180 or 270. Protection masks match metadata-oriented, pre-rotation dimensions and rotate identically. Odd quarter-turns swap X/Y resolution without interpolation or added margins.",
       "binding": "rotate"
     },
@@ -56,7 +54,6 @@
       "scope": "P",
       "group": "Output arguments",
       "domain": "preserve; preserve|gray|bw",
-      "methods": "",
       "description": "Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output defaults to no enhancement filter and is verified before publication. Explicit stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Gray converts linear luminance; bw explicitly activates stored-sample binarization. JPEG and TIFF/BigTIFF support preserve/gray only; bw requires grayscale PNG.",
       "binding": "output_mode"
     },
@@ -66,7 +63,6 @@
       "scope": "P",
       "group": "Output arguments",
       "domain": "auto; auto|8|16",
-      "methods": "",
       "description": "Continuous output only. Auto retains 16-bit source precision, otherwise 8. Explicit 16-to-8 reduction is reported; no precision fallback is used for resource limits.",
       "binding": "bit_depth"
     },
@@ -76,7 +72,6 @@
       "scope": "P",
       "group": "Output arguments",
       "domain": "white; white|black|reject",
-      "methods": "",
       "description": "Continuous output only. Composite source alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque.",
       "binding": "alpha"
     },
@@ -86,7 +81,6 @@
       "scope": "P",
       "group": "Output arguments",
       "domain": "embedded; embedded|srgb",
-      "methods": "",
       "description": "Continuous output only. Interpret supported cICP, compatible ICC, sRGB or gAMA/cHRM; otherwise report an sRGB assumption. srgb explicitly overrides color declarations, not integrity or orientation checks. Unsupported HDR/cICP is rejected by embedded policy.",
       "binding": "profile_policy"
     },
@@ -96,7 +90,6 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "sauvola for bw; otsu|fixed|sauvola",
-      "methods": "B01,B02,B03",
       "description": "Requires explicit --output-mode bw. B01/B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied.",
       "binding": "binarize"
     },
@@ -106,7 +99,6 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "0.50; finite `[0,1]`",
-      "methods": "B03",
       "description": "B03 only. Normalized grayscale threshold; black iff sample/255 <= T. Rejected for Sauvola.",
       "binding": "fixed_threshold"
     },
@@ -116,7 +108,6 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "31; odd integer `[3,4095]`",
-      "methods": "B02",
       "description": "B02 only. Centered square window with REFLECT_101 borders; a singleton dimension repeats its sample.",
       "binding": "sauvola_window"
     },
@@ -126,7 +117,6 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "0.2; finite `[0,1]`",
-      "methods": "B02",
       "description": "B02 only. Weight in T=m*(1+k*(s/(255*R)-1)), using population standard deviation in stored byte units.",
       "binding": "sauvola_k"
     },
@@ -136,7 +126,6 @@
       "scope": "P",
       "group": "Processing arguments",
       "domain": "0.5; finite `[1/255,1]`",
-      "methods": "B02",
       "description": "B02 only. Normalized deviation scale: 0.5 means 127.5 in byte units, not 128. Black iff sample <= T; no threshold rounding or clipping.",
       "binding": "sauvola_r"
     },
@@ -146,7 +135,6 @@
       "scope": "All commands",
       "group": "Presentation arguments",
       "domain": "False",
-      "methods": "",
       "description": "Render one JSON response on stdout and no diagnostic text on stderr. Flush the selected stream before returning. JSON exit_code describes the rendered command outcome; response-delivery failure can instead end the process with exit 5. Check both the response and process status. A missing/incomplete response or exit 5 does not prove that publication did not commit; do not retry blindly. Successful parsing uses the parsed flag only: a literal --json option value does not switch presentation. Syntax failure retains the exact-token JSON fallback before --. The default-valued spellings --json=true, --json= and --json={} also parse as flags; other value overrides are rejected. They do not select the exact-token fallback on syntax failure.",
       "binding": "json"
     },
@@ -156,7 +144,6 @@
       "scope": "All commands",
       "group": "Presentation arguments",
       "domain": "N/A",
-      "methods": "",
       "description": "Renders help and exits without opening input or creating output.",
       "binding": "help"
     },
@@ -166,7 +153,6 @@
       "scope": "Root only",
       "group": "Presentation arguments",
       "domain": "N/A",
-      "methods": "",
       "description": "Human-readable alias of `version`.",
       "binding": "root_version"
     },
@@ -176,7 +162,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "off; off|surface|auto|morph",
-      "methods": "I01,I02",
       "description": "Select explicit I01 surface or I02 morphological illumination for continuous preserve/gray. Auto remains I01 only.",
       "binding": "illumination"
     },
@@ -186,7 +171,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "1; finite [0,1]",
-      "methods": "I01,I02",
       "description": "Exponent applied to the illumination gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation.",
       "binding": "background_strength"
     },
@@ -196,7 +180,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "2; finite [1,4]",
-      "methods": "I01,I02",
       "description": "Maximum illumination multiplicative gain. One is an exact photometric no-op.",
       "binding": "background_max_gain"
     },
@@ -206,7 +189,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "source; source or finite [0.1,1]",
-      "methods": "I01,I02",
       "description": "Linear-light target. Source uses the fitted background nearest-rank 90th percentile, not forced paper white.",
       "binding": "background_target"
     },
@@ -216,7 +198,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "auto; auto or integer [8,512]",
-      "methods": "I01",
       "description": "Cell edge in post-geometry processing pixels. Auto is round(min(width,height)/24), clamped to [16,256]. Resource refusal never changes this value.",
       "binding": "background_cell"
     },
@@ -226,7 +207,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "0.90; finite [0.75,0.99]",
-      "methods": "I01",
       "description": "Nearest-rank quantile of all eligible cell samples; protected samples are excluded.",
       "binding": "background_quantile"
     },
@@ -236,7 +216,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "1; finite [0.1,20]",
-      "methods": "I01",
       "description": "Positive grid-Laplacian weight for fitting the logarithmic background.",
       "binding": "background_smooth"
     },
@@ -246,7 +225,6 @@
       "scope": "P",
       "group": "Illumination arguments",
       "domain": "auto; auto or integer [1,256]",
-      "methods": "I02",
       "description": "Square closing radius in post-geometry processing pixels. Auto rounds min(width,height)/50 and clamps to [8,128]; Gaussian sigma=max(0.5,radius/2).",
       "binding": "background_radius"
     },
@@ -256,7 +234,6 @@
       "scope": "P",
       "group": "Protection arguments",
       "domain": "Absent",
-      "methods": "I01,I02,D01,D02,C01,C02,C03,S01,R01",
       "description": "1-bit or 8-bit grayscale PNG mask matching metadata-oriented source dimensions before --rotate. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. Rotate identically with the source. The mask is validated even with all photometric stages disabled.",
       "binding": "protect_mask"
     },
@@ -266,7 +243,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "off; off|nlm|tvl1",
-      "methods": "D01,D02",
       "description": "Explicit NLM-L1 or full-field floating-point TV-L1 for continuous PNG/JPEG/TIFF after illumination. No binary denoising.",
       "binding": "denoise"
     },
@@ -276,7 +252,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "0.5; finite `[0,1]`",
-      "methods": "D01,D02",
       "description": "Blend once in perceptual luminance; zero preserves entering samples after source/mask validation.",
       "binding": "denoise_blend"
     },
@@ -286,7 +261,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "3; finite `[0.1,25]`",
-      "methods": "D01",
       "description": "NLM only. Equivalent 8-bit perceptual strength; native float strength is 257 times float(H). Higher strengths may remove marks.",
       "binding": "nlm_h"
     },
@@ -296,7 +270,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "7; odd integer `[3,15]`",
-      "methods": "D01",
       "description": "NLM only. Square patch width.",
       "binding": "nlm_patch"
     },
@@ -306,7 +279,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "21; odd integer `[7,41]`",
-      "methods": "D01",
       "description": "NLM only. Search at least patch; active processing requires fit in smaller post-geometry processing dimension.",
       "binding": "nlm_search"
     },
@@ -316,7 +288,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "1.5; finite `[0.05,20]`",
-      "methods": "D02",
       "description": "TV-L1 only. L1 fidelity weight; larger values mean less smoothing.",
       "binding": "tv_lambda"
     },
@@ -326,7 +297,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "150; integer `[10,1000]`",
-      "methods": "D02",
       "description": "TV-L1 only. Iteration cap; exhaustion retains a usable iterate and emits W_TV_ITERATION_LIMIT.",
       "binding": "tv_iterations"
     },
@@ -336,7 +306,6 @@
       "scope": "P",
       "group": "Denoising arguments",
       "domain": "0.00001; finite `[1e-8,1e-3]`",
-      "methods": "D02",
       "description": "TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iteration checkpoints, starting at iteration 20.",
       "binding": "tv_tolerance"
     },
@@ -346,7 +315,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "off; off|wiener",
-      "methods": "R01",
       "description": "Explicit R01 known-PSF regularized restoration after denoising and before contrast; continuous output only. No PSF estimation or authenticity claim.",
       "binding": "deblur"
     },
@@ -356,7 +324,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "Required for wiener; gaussian|motion|kernel",
-      "methods": "R01",
       "description": "PSF in the post-rotation processing frame. Kind-specific parameters are rejected for other kinds.",
       "binding": "psf"
     },
@@ -366,7 +333,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "1.0; finite [0.3,5]",
-      "methods": "R01",
       "description": "Gaussian standard deviation in pixels; radius ceil(3*sigma), float64 normalization.",
       "binding": "psf_sigma"
     },
@@ -376,7 +342,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "5.0; finite [1,31]",
-      "methods": "R01",
       "description": "Motion exposure segment length in pixels; equally weighted midpoint samples deposited bilinearly.",
       "binding": "psf_length"
     },
@@ -386,7 +351,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "0; finite [-180,180]",
-      "methods": "R01",
       "description": "Motion direction clockwise from positive x in y-down processing coordinates.",
       "binding": "psf_angle"
     },
@@ -396,7 +360,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "Required for kernel; well-formed UTF-8 path",
-      "methods": "R01",
       "description": "Raw nontransparent grayscale PNG coefficients, unsigned 8/16-bit, odd dimensions 3..129. Ignore profile/gamma and orientation; normalize positive sum and preserve off-center origin. Source is read-only.",
       "binding": "psf_file"
     },
@@ -406,7 +369,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "0.01; finite [1e-5,1]",
-      "methods": "R01",
       "description": "Positive regularizer in |H|^2+K, not a measured noise-to-signal ratio.",
       "binding": "wiener_k"
     },
@@ -416,7 +378,6 @@
       "scope": "P",
       "group": "Restoration arguments",
       "domain": "0.5; finite [0,1]",
-      "methods": "R01",
       "description": "Blend original linear luminance with the mean-preserving restored candidate before clamping. Zero still validates the complete PSF and options.",
       "binding": "deblur_blend"
     },
@@ -426,7 +387,6 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "off; off|levels|gamma|clahe",
-      "methods": "C01,C02,C03",
       "binding": "contrast",
       "description": "Explicit levels, gamma or CLAHE on continuous PNG/JPEG/TIFF after illumination and denoising."
     },
@@ -436,7 +396,6 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "1; finite `[0,1]`",
-      "methods": "C01,C02,C03",
       "binding": "contrast_blend",
       "description": "Blend once in perceptual luminance. Zero retains entering samples after source/mask validation."
     },
@@ -446,7 +405,6 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "0.5; finite `[0,10]` percent",
-      "methods": "C01",
       "binding": "levels_low",
       "description": "Levels only. Nearest-rank lower percentile among all unprotected perceptual samples."
     },
@@ -456,7 +414,6 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "99.5; finite `[90,100]` percent",
-      "methods": "C01",
       "binding": "levels_high",
       "description": "Levels only. Nearest-rank upper percentile, greater than low. A range below 1e-6 retains exact entering RGB."
     },
@@ -466,7 +423,6 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "1.2; finite `[0.25,4]`",
-      "methods": "C02",
       "binding": "gamma",
       "description": "Gamma only. f_new=f^G; above one darkens midtones. Endpoints and gamma one are exact identities."
     },
@@ -477,7 +433,6 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "8x8; each integer [2,32]",
-      "methods": "C03",
       "description": "CLAHE contextual columns and rows. Every tile must be at least 16 pixels in each direction."
     },
     {
@@ -487,7 +442,6 @@
       "scope": "P",
       "group": "Contrast arguments",
       "domain": "2; finite [1,8]",
-      "methods": "C03",
       "description": "CLAHE pre-redistribution clip multiplier relative to average eligible occupancy."
     },
     {
@@ -496,7 +450,6 @@
       "scope": "P",
       "group": "Sharpening arguments",
       "domain": "off; off|unsharp",
-      "methods": "S01",
       "description": "Explicit thresholded unsharp masking after contrast; never enabled by default.",
       "binding": "sharpen"
     },
@@ -506,7 +459,6 @@
       "scope": "P",
       "group": "Sharpening arguments",
       "domain": "0.8; finite [0.3,3]",
-      "methods": "S01",
       "description": "Gaussian standard deviation in pixels; radius ceil(3*sigma), REFLECT_101 borders.",
       "binding": "sharpen_sigma"
     },
@@ -516,7 +468,6 @@
       "scope": "P",
       "group": "Sharpening arguments",
       "domain": "0.5; finite [0,2]",
-      "methods": "S01",
       "description": "Soft-thresholded high-pass amplification; zero is an algebraic identity.",
       "binding": "sharpen_amount"
     },
@@ -526,7 +477,6 @@
       "scope": "P",
       "group": "Sharpening arguments",
       "domain": "1.0; finite [0,20]",
-      "methods": "S01",
       "description": "Soft threshold in equivalent 8-bit perceptual intensity points; divided by 255 internally.",
       "binding": "sharpen_threshold"
     }

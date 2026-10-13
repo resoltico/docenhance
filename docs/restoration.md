@@ -84,7 +84,7 @@ observed before and after each call, but a running native transform is not inter
 or maximum cancellation latency is promised. Native errors retain precedence over a concurrent
 stop request. The existing final precommit cutoff and truthful publication states remain in force.
 
-Responses and run records use format 12. Closed requests and observations include the PSF,
+Responses and run records follow the [current format authority](bundles.md#source-observations-and-format-compatibility). Closed requests and observations include the PSF,
 regularizer/blend, normalized coefficients, centroid, padding/FFT geometry, eligible/context
 counts, raw/blended excursions, charged preparation peak and explicit warnings. Only complete
 current records are accepted; older records have no reader or migration.
@@ -103,10 +103,7 @@ aligned external and native heap blocks directly, without adding those same exte
 The probe compares this observation to the declared reservation and injects each observed C++
 allocation failure, requiring resource errors, preserved source samples and full refunds. This
 bounded probe is evidence for those shapes and the pinned CPU path, not a universal peak-RSS limit.
-The caught allocation-exception warmup initializes runtime state outside the measured operation;
-on Darwin, LLDB identified first-throw exception TLS as a persistent 16-byte `calloc` allocation
-through `__cxa_get_globals`. No observed allocations are filtered, and every injected failure
-still requires zero retained observed heap bytes and a full charged-buffer refund.
+Warm-up initializes runtime allocation/exception bookkeeping outside the measured operation. No observed allocations are filtered; every injected failure must leave zero retained observed heap bytes and refund the charged reservation.
 
 The pinned CPU FFT factories require checked private ownership and dispatch corrections: each of the four 1D/2D
 contexts gains an owning `Ptr` before initialization. Stock raw-pointer factories leak a partially
@@ -122,7 +119,5 @@ uses precisely that reviewed copy. Content hashes bind identity; the allocation-
 separately proves cleanup behavior at the exercised failure positions.
 
 The zero-byte `fuzz/regressions/restoration/native-dispatch-abi` reproducer is intentional: an empty
-harness seed still prepares and executes restoration. Instrumented upstream dependencies exposed
-the function-type mismatch on that first seed. Keep the input empty; appending explanatory bytes
-would alter the retained finding. Native dispatch checks also exercise all six float32/float64
+harness seed still prepares and executes restoration. Keep that input empty; its regression exercises native dispatch even without encoded harness data. Appending explanatory bytes changes the test input. Native dispatch checks also exercise all six float32/float64
 kernel alternatives against analytic impulse/DC expectations under dependency instrumentation.

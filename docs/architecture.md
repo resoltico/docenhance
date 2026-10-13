@@ -70,8 +70,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
 
 Only `de_bundle` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
-OpenCV core/photo serve D01 and R01 through `de_opencv`; other unused imaging packages remain in the
-native probe. The bundle field-mapping interface explicitly exposes nlohmann JSON to the report layer under
+OpenCV core/photo serve D01 and R01 through `de_opencv`; production-adapter controls and native closure audits verify the selected libraries. The bundle field-mapping interface explicitly exposes nlohmann JSON to the report layer under
 the manifest's `interface_packages` permission; processing and numerical interfaces use project types. The executable-only `entry` layer
 explicitly declares that it has no public header directory; it is not a fake reusable library.
 
@@ -140,7 +139,7 @@ Malformed/truncated data, strict CRC failures and refused allocations are regres
 ## Exclusive publication
 
 Filesystem effects bind relative paths before callbacks; admitted/report spelling remains intact.
-The [filesystem design and challenge](filesystem-identity-audit.md) records native object leases,
+[Bundle ownership](bundles.md) requires native object leases,
 opened-handle admission and deterministic namespace mutation cases. Staging retains at most one
 root and 64 entry leases. Native publication ownership stays in I/O; one complete host validator
 serves before and after commit, with no separate partial-record reopen or observation enum.
@@ -223,7 +222,7 @@ unit or unanswered matcher is a failure, never an empty success result.
 
 Strict compiler warnings, clang-tidy, file-size limits, formatting, Ruff, mypy and reviewed local
 suppression identities remain enforced. Suppressions name a specific unavoidable boundary and its
-reason; no blanket waiver or historical-grandfathering path is introduced.
+reason; no blanket waiver or grandfathering path is introduced.
 
 ## Single sources of truth and verification
 
@@ -233,7 +232,7 @@ The top-level CMake project owns versioning. `deps/lock.json` owns source identi
 reporting and both capability schema branches. Response-envelope version comes from the response
 schema template. `spec/method-contract.json` owns all implemented method identities, including I02 and D01;
 the generated descriptors feed typed method values and serialization, with compiled alternatives
-checked against the reviewed catalog. Method-option attribution is checked in both directions.
+checked against the reviewed catalog. Method-option attribution derives solely from reviewed method arguments; authored CLI-option attribution is rejected.
 These contracts generate descriptors, reference docs and
 fuzz dictionaries. `spec/command-response.schema.json` owns the response template; reviewed method
 identities generate its closed alternatives into `schemas/command-response.schema.json`. The run-record template in `spec/run-record.schema.json` shares conversion/illumination report
@@ -242,10 +241,10 @@ are shipped. The real Draft 2020-12 validator checks executable output, emitted 
 negative fixtures; the bounded typed record reader additionally validates cross-field relationships. The executable catalog is
 built from actual method variant alternatives and must equal the reviewed catalog at compile time.
 
-Required PR jobs cover structural/reference checks, seven native execution lanes including both macOS 15 minimum lanes, libFuzzer,
+Required PR jobs cover structural/reference checks, seven native execution lanes including both macOS 15 minimum lanes, both libFuzzer and AFL++,
 and independent ASan/UBSan and TSan suites. Scheduled campaigns use CTest's authoritative target
-registration, including box-mean, rather than a second shell list. Native sanitizer presets instrument first-party code. The isolated PNG fuzz build additionally
-instruments pinned libjpeg/libpng/zlib/LCMS and verifies the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
+registration, including box-mean, rather than a second shell list. Native sanitizer presets instrument first-party code. Isolated fuzz builds additionally
+instrument the selected JPEG/TIFF/PNG/zlib/Little CMS and OpenCV closure and verify the actual archive symbols; see [fuzzing](fuzzing.md). Documentation records current guarantees
 and limits, rather than claiming that every platform or future method already passed.
 
 ## Cooperative cancellation
@@ -263,15 +262,17 @@ measures I01 surfaces and I02 morphology fields without codec/native types or fi
 immutable model, oriented protection mask and downstream quantizer. `de_io` keeps exclusive
 ownership of encoding/verification/publication. There is no plugin or generic recipe framework.
 
-`ProcessFailure` is an application result envelope with a core error and one optional typed `StageObservations` aggregate. Selected untouched stages are `not_started`;
-attempted incomplete stages fail without erasing completed earlier facts. The processing port has closed binary and continuous success alternatives. Continuous success
-carries conversion, illumination and denoising observations together; the application still checks
+`ProcessFailure` is an application result envelope with a core error and one optional typed `StageObservations` aggregate. Selected untouched stages have progress `not_started` and unresolved effect;
+attempted families retain preparing/prepared/evaluating progress on failure without erasing
+completed earlier facts. A delegated read error preserves its upstream failed/evaluating owner
+and the unresolved/preparing consumer. The processing port has closed binary and continuous success alternatives. Continuous success
+carries conversion and the five-family stage aggregate together; the application still checks
 verification and agreement with the admitted request. The report consumes that same continuous
 result rather than a second copied representation. Publication selects binary or continuous artwork together with its matching operation;
 continuous artwork requires the borrowed converter, mask and stage-observation owners.
 Record facts derive from that single selection rather than independently configured fields. Successful continuous
-results require complete matching illumination diagnostics;
-`complete` describes the numerical stage, not a later publication outcome. The generated schema
+results require complete matching observations for all five families;
+`progress` records preparation and once-only application observation, independently of publication. The generated schema
 and executable catalog distinguish method families. [Illumination](illumination.md) owns the exact
 mathematics, resource phases, separate design QA and verification obligations.
 
@@ -319,22 +320,19 @@ Relocated package inspection compares the tested executable, reviewed schemas/sp
 locked-source license inventory byte-for-byte, checks OS-only native imports and exercises every
 advertised method. A source SPDX inventory remains explicitly separate from binary composition or
 legal clearance. Source release archives snapshot one resolved committed Git tree; local workspace
-changes cannot silently enter release contents. See [the verification/artifact audit](verification-artifacts-audit.md).
+changes cannot silently enter release contents. [Package verification](build.md#complete-execution-and-package-evidence) owns the required artifact comparisons.
 
-The [simplicity/change-coupling audit](architecture-simplicity-audit.md) records the separate
-design challenges. CLI storage transfer has no parallel option maps or handwritten assignment list;
+CLI storage transfer has no parallel option maps or handwritten assignment list;
 application admission retains all domain rules. Prepared illumination is returned as an owned
 optional value and remains live through every row consumer.
 Generated files are rewritten only when their expected bytes change, so ordinary metadata
 changes do not invalidate unrelated native translation units through timestamp churn.
 
-The [execution/state/ownership audit](execution-ownership-audit.md) records deterministic ASan,
-native-handle, contradictory-return and sustained-allocation-refusal counterexamples. Directory
+Directory
 access requires an active owner and confined entry names. CLI resource fallbacks allocate nothing;
 rendering remains separately fallible.
 
-The [architecture boundary review](architecture-boundaries-audit.md) assesses source/build evidence,
-method change coupling, private headers, restriction authority and the I/O interface separation.
+[Quality](quality.md) requires independent source/compiler evidence, private-header isolation and exact restriction/exception permissions.
 
 ## Exact geometry before photometric execution
 

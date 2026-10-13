@@ -4,11 +4,16 @@
 
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
+#include "docenhance/image/source.hpp"
+#include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/surface.hpp"
+#include "surface_detail.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <span>
 #include <variant>
 
 namespace docenhance::methods {
@@ -50,10 +55,67 @@ bool disabled(const IlluminationReport& r) {
 }
 bool unmeasured(const IlluminationReport& r) {
     return !r.cell && !r.solver && !r.measurements && r.cells == 0 && r.evaluated_samples == 0 &&
-           r.changed_samples == 0 && r.min_gain == 1 && r.max_gain == 1;
+           r.changed_samples == 0 && r.min_gain == 1 && r.max_gain == 1 &&
+           !r.background_reference &&
+           std::ranges::all_of(r.predicates, [](const auto& value) { return !value; });
+}
+bool fitted_model(const IlluminationReport& r) {
+    return r.solver && r.measurements && r.cell && r.background_reference && r.measured_cells != 0;
 }
 bool fitted(const IlluminationReport& r) {
-    return r.solver && r.measurements && r.cell && r.evaluated_samples == r.eligible_samples;
+    return fitted_model(r) && r.evaluated_samples == r.eligible_samples;
+}
+bool failed_surface(const IlluminationReport& report) {
+    if (report.status != IlluminationStatus::failed) {
+        return true;
+    }
+    if (report.reason == IlluminationReason::processing_failure) {
+        return true;
+    }
+    if (!report.requested || report.progress != StageProgress::preparing) {
+        return false;
+    }
+    const auto& parameters = std::get<SurfaceParameters>(*report.requested);
+    const auto minimum =
+        std::min(surface_minimum_samples, report.eligible_samples + report.protected_samples);
+    if (parameters.mode != SurfaceMode::explicit_surface || parameters.strength == 0 ||
+        parameters.max_gain == 1 || report.eligible_samples == 0) {
+        return false;
+    }
+    if (report.reason == IlluminationReason::insufficient_samples) {
+        return report.eligible_samples < minimum && unmeasured(report);
+    }
+    if (report.reason != IlluminationReason::insufficient_cells || !report.cell ||
+        report.cells == 0) {
+        return false;
+    }
+    const double coverage = static_cast<double>(report.measured_cells) / report.cells;
+    const auto decision = report.predicates.front();
+    return report.eligible_samples >= minimum && !report.solver && !report.measurements &&
+           coverage < surface_explicit_coverage && decision && !*decision &&
+           std::ranges::all_of(
+               std::span{report.predicates}.subspan(1), [](const auto& value) { return !value; });
+}
+bool skipped(const IlluminationReport& r, const SurfaceParameters& parameters) {
+    if (parameters.mode != SurfaceMode::automatic || r.evaluated_samples != 0) {
+        return false;
+    }
+    switch (r.reason) {
+    case IlluminationReason::automatic_predicates:
+        return fitted_model(r) &&
+               std::ranges::any_of(r.predicates, [](const auto& p) { return p && !*p; });
+    case IlluminationReason::insufficient_samples: {
+        return r.eligible_samples != 0 &&
+               r.eligible_samples <
+                   std::min(surface_minimum_samples, r.eligible_samples + r.protected_samples) &&
+               unmeasured(r);
+    }
+    case IlluminationReason::insufficient_cells:
+        return r.cell && r.cells != 0 && !r.solver && !r.measurements &&
+               r.predicates.front() == false;
+    default:
+        return false;
+    }
 }
 bool reason_agrees(const IlluminationReport& r) {
     if (!r.requested) {
@@ -62,28 +124,25 @@ bool reason_agrees(const IlluminationReport& r) {
     const auto& p = std::get<SurfaceParameters>(*r.requested);
     switch (r.status) {
     case IlluminationStatus::applied:
-        return r.reason == IlluminationReason::none && r.solver && r.measurements && r.cell &&
-               r.changed_samples != 0;
+        return r.reason == IlluminationReason::none && fitted(r) && p.strength != 0 &&
+               p.max_gain != 1 && r.changed_samples != 0 &&
+               r.evaluated_samples == r.eligible_samples;
     case IlluminationStatus::skipped:
-        return p.mode == SurfaceMode::automatic &&
-               (r.reason == IlluminationReason::insufficient_samples ||
-                r.reason == IlluminationReason::insufficient_cells ||
-                r.reason == IlluminationReason::automatic_predicates) &&
-               r.evaluated_samples == 0;
+        return skipped(r, p);
     case IlluminationStatus::no_change:
         switch (r.reason) {
         case IlluminationReason::zero_strength:
-            return p.strength == 0 && unmeasured(r);
+            return r.eligible_samples != 0 && p.strength == 0 && unmeasured(r);
         case IlluminationReason::unit_gain:
-            return p.max_gain == 1 && unmeasured(r);
+            return r.eligible_samples != 0 && p.strength != 0 && p.max_gain == 1 && unmeasured(r);
         case IlluminationReason::no_eligible_samples:
             return r.eligible_samples == 0 && unmeasured(r);
         case IlluminationReason::no_effect:
-            return fitted(r) && r.changed_samples == 0;
+            return p.strength != 0 && p.max_gain != 1 && fitted(r) && r.changed_samples == 0;
         default:
             return false;
         }
-    case IlluminationStatus::not_started:
+    case IlluminationStatus::unresolved:
     case IlluminationStatus::disabled:
     case IlluminationStatus::failed:
         return false;
@@ -104,25 +163,49 @@ bool grid_agrees(const IlluminationReport& r, image::Extent extent) {
     const auto grid = surface_grid(extent, *method);
     return grid && grid->cell == *r.cell && std::uint64_t{grid->columns} * grid->rows == r.cells;
 }
-} // namespace
-bool valid_illumination(const IlluminationReport& report, image::Extent extent, bool protection) {
-    if (report.requested && std::holds_alternative<MorphologyParameters>(*report.requested)) {
-        return valid_morphology_report(report, extent, protection);
-    }
-    if (report.morphology) {
+bool application_facts(const IlluminationReport& r) {
+    return (r.evaluated_samples != 0 || (r.min_gain == 1 && r.max_gain == 1)) &&
+           r.eligible_samples <= image::source_pixels_max &&
+           r.protected_samples <= image::source_pixels_max - r.eligible_samples &&
+           r.measured_cells <= r.cells && r.dark_cells <= r.cells - r.measured_cells &&
+           r.changed_samples <= r.evaluated_samples &&
+           r.gain_capped_samples <= r.evaluated_samples &&
+           r.saturated_samples <= r.evaluated_samples &&
+           r.evaluated_samples <= r.eligible_samples && std::isfinite(r.min_gain) &&
+           std::isfinite(r.max_gain) && r.min_gain >= 1 && r.max_gain >= r.min_gain &&
+           r.max_gain <= illumination_gain_limit;
+}
+bool surface_shape(const IlluminationReport& r) {
+    if (r.requested && !Surface::create(std::get<SurfaceParameters>(*r.requested))) {
         return false;
     }
-    const auto& r = report;
-    if (r.measured_cells > r.cells || r.dark_cells > r.cells - r.measured_cells ||
-        r.changed_samples > r.evaluated_samples || r.gain_capped_samples > r.evaluated_samples ||
-        r.saturated_samples > r.evaluated_samples || r.evaluated_samples > r.eligible_samples ||
-        !std::isfinite(r.min_gain) || !std::isfinite(r.max_gain) || r.min_gain < 1 ||
-        r.max_gain < r.min_gain || r.max_gain > illumination_gain_limit) {
+    if (r.cell && (*r.cell < Surface::min_cell || *r.cell > Surface::max_cell || r.cells == 0 ||
+                   (r.requested && std::get<SurfaceParameters>(*r.requested).cell &&
+                    r.cell != std::get<SurfaceParameters>(*r.requested).cell))) {
         return false;
     }
-    if (r.solver && (!std::isfinite(r.solver->residual) || !std::isfinite(r.solver->tolerance) ||
-                     r.solver->residual < 0 || r.solver->tolerance <= 0 ||
-                     r.solver->residual > r.solver->tolerance)) {
+    return true;
+}
+bool fitted_facts(const IlluminationReport& report) {
+    if (!report.measurements) {
+        return true;
+    }
+    if (report.requested) {
+        const auto& parameters = std::get<SurfaceParameters>(*report.requested);
+        if (parameters.target && report.measurements->target != *parameters.target) {
+            return false;
+        }
+    }
+    auto expected = report;
+    static_cast<void>(surface_eligible(expected));
+    return expected.predicates == report.predicates;
+}
+bool surface_values(const IlluminationReport& r) {
+    if (r.solver &&
+        (!std::isfinite(r.solver->residual) || !std::isfinite(r.solver->tolerance) ||
+         r.solver->residual < 0 || r.solver->tolerance < 0 ||
+         (r.progress != StageProgress::preparing && r.solver->tolerance == 0) ||
+         (r.progress != StageProgress::preparing && r.solver->residual > r.solver->tolerance))) {
         return false;
     }
     if (r.measurements &&
@@ -133,12 +216,48 @@ bool valid_illumination(const IlluminationReport& report, image::Extent extent, 
         (!unit(*r.background_reference) || *r.background_reference == 0)) {
         return false;
     }
-    if (!protection && r.protected_samples != 0) {
-        return false;
-    }
     if (r.requested && r.max_gain > std::get<SurfaceParameters>(*r.requested).max_gain) {
         return false;
     }
-    return reason_agrees(r) && grid_agrees(r, extent);
+    return true;
+}
+} // namespace
+bool valid_illumination_observations(const IlluminationReport& report) {
+    if (!application_facts(report) || !valid_progress(report)) {
+        return false;
+    }
+    if (report.requested && std::holds_alternative<MorphologyParameters>(*report.requested)) {
+        return valid_progress(report) && valid_morphology_observations(report);
+    }
+    if (report.morphology) {
+        return false;
+    }
+    const auto& r = report;
+    if (!surface_shape(r) || !surface_values(r) || !fitted_facts(r) || !failed_surface(r)) {
+        return false;
+    }
+    if ((r.progress == StageProgress::prepared || r.progress == StageProgress::evaluating) &&
+        !fitted_model(r)) {
+        return false;
+    }
+    if (!valid_progress(r)) {
+        return false;
+    }
+    if (!r.complete()) {
+        return !r.requested || r.status == IlluminationStatus::failed ||
+               (r.status == IlluminationStatus::unresolved &&
+                (r.progress == StageProgress::preparing || (r.cell && r.solver && r.measurements)));
+    }
+    return reason_agrees(r);
+}
+bool valid_illumination(const IlluminationReport& r, image::Extent extent, bool protection) {
+    if (!r.complete() || !valid_illumination_observations(r) ||
+        (!protection && r.protected_samples != 0)) {
+        return false;
+    }
+    if (r.requested && std::holds_alternative<MorphologyParameters>(*r.requested)) {
+        return valid_morphology_report(r, extent, protection);
+    }
+    return grid_agrees(r, extent);
 }
 } // namespace docenhance::methods

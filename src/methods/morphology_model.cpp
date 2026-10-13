@@ -9,6 +9,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "morphology_detail.hpp"
 
 #include <algorithm>
@@ -141,7 +142,12 @@ core::Result<image::Plane<double>> prepare_field(MorphologyContext context) {
 core::Result<MorphologyModel>
 MorphologyModel::prepare(IlluminationInput input, const Morphology& method, core::Budget& budget,
                          const core::Cancellation& cancellation, IlluminationReport& report) {
-    report = {.status = IlluminationStatus::failed, .requested = method.parameters()};
+    report = {
+        .status = IlluminationStatus::failed,
+        .progress = StageProgress::preparing,
+        .reason = IlluminationReason::processing_failure,
+        .requested = method.parameters(),
+    };
     if (cancellation.requested(core::Checkpoint::measurement)) {
         return core::cancelled();
     }
@@ -168,7 +174,7 @@ MorphologyModel::prepare(IlluminationInput input, const Morphology& method, core
         if (p.strength == 0) {
             report.reason = IlluminationReason::zero_strength;
         }
-        report.complete = true;
+        report.progress = methods::StageProgress::completed;
         return MorphologyModel{extent, {}, method, 0, false};
     }
     constexpr std::uint64_t minimum_samples = 16;
@@ -193,8 +199,9 @@ MorphologyModel::prepare(IlluminationInput input, const Morphology& method, core
     }
     const double target = p.target.value_or(report.morphology->background_q90);
     report.morphology->target = target;
-    report.status = IlluminationStatus::no_change;
-    report.reason = IlluminationReason::no_effect;
+    report.status = IlluminationStatus::unresolved;
+    report.reason = IlluminationReason::none;
+    report.progress = StageProgress::prepared;
     return MorphologyModel{extent, std::move(*field), method, target, true};
 }
 core::Result<double> MorphologyModel::background(std::uint32_t x, std::uint32_t y) const {

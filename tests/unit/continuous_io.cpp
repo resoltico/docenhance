@@ -159,7 +159,7 @@ TEST_CASE("I01 failed output verification retains completed stage accounting and
         publish_png_fixture(utf8_spelling(directory.path / "output"), altered, budget);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
-    CHECK(report.complete);
+    CHECK(report.complete());
     CHECK(report.status == methods::IlluminationStatus::applied);
     CHECK(report.evaluated_samples == 64);
     CHECK(report.changed_samples == 64);
@@ -191,7 +191,7 @@ TEST_CASE("I01 cancellation in application versus verification preserves stage t
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(result.error().publication == core::Publication::not_published);
-        CHECK(report.complete == (phase == core::Checkpoint::verification));
+        CHECK(report.complete() == (phase == core::Checkpoint::verification));
         const std::uint64_t expected_count = phase == core::Checkpoint::verification ? 64U : 0U;
         CHECK(report.evaluated_samples == expected_count);
         CHECK(empty_directory(directory.path));

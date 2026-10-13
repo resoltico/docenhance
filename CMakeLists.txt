@@ -3,7 +3,7 @@
 cmake_minimum_required(VERSION 4.4)
 include(cmake/BuildPolicy.cmake)
 # The single source of the application version; tools/project_version.py reads it from here.
-project(DocEnhance VERSION 0.7.0 DESCRIPTION "Local, CPU-only document image restoration" LANGUAGES C CXX)
+project(DocEnhance VERSION 0.8.0 DESCRIPTION "Local, CPU-only document image restoration" LANGUAGES C CXX)
 # All first-party targets use headers and translation units, not CXX_MODULES file sets.
 # Avoid implicit GCC module-scanner flags in compile commands consumed by Clang tooling.
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)

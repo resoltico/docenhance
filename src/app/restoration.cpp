@@ -11,6 +11,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 
 #include <expected>
@@ -113,11 +114,10 @@ bool partial_restoration(const methods::RestorationReport& r, const ProcessReque
     if (!methods::valid_restoration_observations(r)) {
         return false;
     }
-    return r.complete
+    return r.complete()
                ? methods::valid_restoration(
                      r, std::get<app::ContinuousPlan>(request.plan()).photometric.restoration)
-               : (!r.requested || (r.status == methods::RestorationStatus::failed &&
-                                   r.reason == methods::RestorationReason::processing_failure));
+               : methods::valid_progress(r);
 }
 bool restoration_prefix(const methods::RestorationReport& r, image::Orientation orientation,
                         image::QuarterTurn rotation,

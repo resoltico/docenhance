@@ -46,16 +46,11 @@ A separate reconstruction traversal establishes D01 working-space effects and co
 publication; equal final encoded bytes do not erase a genuine working-space modification.
 No-op denoising must still complete preceding illumination during the normal output traversal.
 
-Stage reports distinguish disabled, no_change, applied and failed, with complete separate from
-publication. Failure preserves completed earlier stages, partial counts and the actual error.
-Selected but unreached D01 has incomplete failed observations, never a fictional completed prefix.
-Success admission checks requested settings, complete reports and consistent counts. Numeric
-status does not promise publication, delivery, meaning or authenticity.
+The [stage lifecycle contract](bundles.md#stage-progress-and-numerical-disposition) separates progress, numerical status and publication. Selected unreached D01 remains unresolved and unstarted. Preparation or application failure retains actual work, earlier observations and the real error; a propagated upstream failure does not invent a local failure. Disabled/identity decisions can finish while illumination remains prepared, and the final observing traversal still completes active illumination before continuous success. No numerical status promises publication, delivery, meaning or authenticity.
 
 ## Tiles, native memory and work
 
-Use sequential 256 x 256 central output tiles. The original blueprint's 512 is deliberately reduced:
-with maximum halo r = (search-1)/2 + (patch-1)/2 = 27, native input is at most 310 x 310.
+Use sequential 256 x 256 central output tiles. With maximum halo r = (search-1)/2 + (patch-1)/2 = 27, native input is at most 310 x 310.
 Exterior samples use REFLECT_101 of the global Q plane, including corners; retain only centers.
 Native's own padded border is beyond every retained output's dependency domain.
 
@@ -85,8 +80,8 @@ The existing final precommit cutoff and truthful publication reconciliation rema
 
 ## Records and verification
 
-New production records use version 13, with a closed denoising request and execution report; new
-responses use schema version 13. Only the current record format is accepted; obsolete formats are refused, with no migration.
+The [current record and response contracts](bundles.md#source-observations-and-format-compatibility)
+include a closed denoising request and execution report. Only the current record format is accepted; obsolete formats are refused, with no migration.
 The current format requires
 source decoding, full output verification and matching complete stage observations. Binary records
 carry explicit disabled denoising. Writer, complete reader, generated schemas and public response
@@ -97,7 +92,7 @@ completed native calls; a failed attempted call does not manufacture a reservati
 
 ## Required evidence
 
-The [composition audit](numerical-composition-audit.md) adds an independently written direct-window
+Composition verification uses an independently written direct-window
 integer NLM-L1 oracle and complete executable composition checks. It includes native distance
 binning, binary32 strength arithmetic, fixed weights/cutoff and integer weighted-mean rounding,
 without reusing rolling sums or native calls. Its producer-mutation control demonstrates that
@@ -143,7 +138,7 @@ parallel-backend code overrides its compile-time log setting, so explicit silent
 required; no per-request thread setting or diagnostic global mutation is performed. Source digests
 bind the audited denoising/parallel behavior as well as the Mat ownership override.
 
-See [resource observations](denoising-resource-observations.md) for measured payloads, RSS and
+Use the development resource measurement tools described in [build](build.md) to observe payloads, RSS and
 runtime. NLM's noise family assumes approximately additive white Gaussian noise in the perceptual
 scalar plane; admission does not certify that a source meets that model.
 

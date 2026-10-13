@@ -7,6 +7,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/opencv/nlm.hpp"
 
 #include <algorithm>
@@ -176,7 +177,7 @@ TEST_CASE("Completed D01 observations cannot exceed the continuous charged-buffe
     const auto method = methods::Nlm::create().value();
     methods::DenoisingReport report{
         .status = methods::DenoiseStatus::applied,
-        .complete = true,
+        .progress = methods::StageProgress::completed,
         .requested = method.parameters(),
         .native_h = methods::nlm_native_strength(method.parameters()),
         .eligible_samples = 1,

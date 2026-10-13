@@ -7,6 +7,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "sharpen_reference.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
@@ -130,7 +131,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
                                                            .threshold = threshold,
                                                        });
     reconstruct(*model, source, report, entering, expected);
-    report.complete = true;
+    report.progress = methods::StageProgress::completed;
     report.status = report.changed_samples == 0 ? methods::SharpenStatus::no_change
                                                 : methods::SharpenStatus::applied;
     report.reason = report.changed_samples == 0 ? methods::SharpenReason::no_effect

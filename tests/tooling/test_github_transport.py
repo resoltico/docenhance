@@ -4,15 +4,19 @@
 
 from __future__ import annotations
 
+import json
+import os
 import subprocess
 import sys
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from tools_path import ROOT
 
 from changelog import ReleaseError
 from github_release_api import GitHubAPI, run
+from release_publication import Artifact
 
 
 class GitHubTransportTests(unittest.TestCase):
@@ -55,3 +59,29 @@ class GitHubTransportTests(unittest.TestCase):
             self.assertRaises(ReleaseError),
         ):
             api.tag_commit("v0.5.0")
+
+    def test_conflicting_ambient_host_and_repository_cannot_redirect_upload(self) -> None:
+        """Host-qualified argv and contained child environment retain credential handling."""
+        with patch("github_release_api.shutil.which", return_value=sys.executable):
+            api = GitHubAPI("example/project")
+        with patch("github_release_api.run") as execute:
+            api.upload("v0.7.0", Artifact(Path("archive.tar.gz"), "sha256:" + "a" * 64, 1))
+            self.assertEqual(
+                execute.call_args.args[0][-2:], ["--repo", "github.com/example/project"]
+            )
+        with patch.dict(
+            os.environ, {"GH_HOST": "wrong.invalid", "GH_REPO": "wrong/repo", "GH_TOKEN": "fixture"}
+        ):
+            observed = json.loads(
+                run(
+                    [
+                        sys.executable,
+                        "-c",
+                        (
+                            "import os,json; keys=('GH_HOST','GH_REPO','GH_TOKEN'); "
+                            "print(json.dumps({k:os.environ.get(k) for k in keys}))"
+                        ),
+                    ]
+                )
+            )
+        self.assertEqual(observed, {"GH_HOST": None, "GH_REPO": None, "GH_TOKEN": "fixture"})

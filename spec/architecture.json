@@ -76,15 +76,6 @@
         "opencv2/"
       ]
     },
-    "leptonica": {
-      "targets": [
-        "DE::leptonica"
-      ],
-      "headers": [
-        "leptonica/",
-        "allheaders.h"
-      ]
-    },
     "lcms": {
       "targets": [
         "DE::lcms"

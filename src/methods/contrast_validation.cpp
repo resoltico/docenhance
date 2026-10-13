@@ -7,6 +7,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/contrast.hpp"
+#include "docenhance/methods/progress.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -77,8 +78,20 @@ bool valid_measurement(const ContrastReport& r) {
     }
     return true;
 }
+bool preparation_agrees(const ContrastReport& report) {
+    if (report.status == ContrastStatus::failed &&
+        report.reason != ContrastReason::processing_failure) {
+        return false;
+    }
+    return (report.progress != StageProgress::prepared &&
+            report.progress != StageProgress::evaluating) ||
+           valid_measurement(report);
+}
 } // namespace
 bool valid_contrast_observations(const ContrastReport& r) {
+    if (!valid_progress(r)) {
+        return false;
+    }
     if (static_cast<unsigned>(r.status) > static_cast<unsigned>(ContrastStatus::failed) ||
         static_cast<unsigned>(r.reason) >
             static_cast<unsigned>(ContrastReason::processing_failure) ||
@@ -89,7 +102,7 @@ bool valid_contrast_observations(const ContrastReport& r) {
         r.clipped_low_samples > r.evaluated_samples ||
         r.clipped_high_samples > r.evaluated_samples - r.clipped_low_samples ||
         r.preparation_charge_peak > core::continuous_processing_budget ||
-        (r.complete && r.status == ContrastStatus::failed)) {
+        (r.complete() && r.status == ContrastStatus::failed)) {
         return false;
     }
     if (!r.requested) {
@@ -98,6 +111,9 @@ bool valid_contrast_observations(const ContrastReport& r) {
                r.preparation_charge_peak == 0 && empty_application(r);
     }
     if (!parameters(*r.requested) || r.status == ContrastStatus::disabled) {
+        return false;
+    }
+    if (!preparation_agrees(r)) {
         return false;
     }
     const auto* const clahe = std::get_if<ClaheParameters>(&*r.requested);
@@ -129,7 +145,7 @@ bool valid_contrast_observations(const ContrastReport& r) {
     return v.high - v.low >= levels_minimum_range || empty_application(r);
 }
 bool valid_contrast(const ContrastReport& r, const Contrast& method) {
-    if (!r.complete || !valid_contrast_observations(r)) {
+    if (!r.complete() || !valid_contrast_observations(r)) {
         return false;
     }
     const bool matches = std::visit(

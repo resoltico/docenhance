@@ -7,6 +7,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/sharpening.hpp"
 
 #include <algorithm>
@@ -100,14 +101,42 @@ core::Result<void> gather(image::LinearSource& source, image::PlaneView<double> 
     }
     return {};
 }
+core::Result<void> blur(image::PlaneView<double> field, image::PlaneView<double> work, double sigma,
+                        const core::Cancellation& cancellation) {
+    constexpr std::uint32_t maximum_radius = 9;
+    std::array<double, (2 * maximum_radius) + 1> coefficients{};
+    const auto radius = static_cast<std::uint32_t>(std::ceil(3 * sigma));
+    const auto weights = std::span<double>{coefficients}.first((2 * radius) + 1);
+    double normalization = 0;
+    for (std::uint32_t k = 0; k < weights.size(); ++k) {
+        const auto offset = static_cast<double>(k) - radius;
+        weights.subspan(k, 1).front() = std::exp(-(offset * offset) / (2 * sigma * sigma));
+        normalization += weights.subspan(k, 1).front();
+    }
+    auto horizontal = image::gaussian_pass(
+        field.as_const(), work,
+        {.weights = weights, .normalization = normalization, .horizontal = true}, cancellation);
+    if (!horizontal) {
+        return std::unexpected(horizontal.error());
+    }
+    auto vertical = image::gaussian_pass(
+        work.as_const(), field,
+        {.weights = weights, .normalization = normalization, .horizontal = false}, cancellation);
+    if (!vertical) {
+        return std::unexpected(vertical.error());
+    }
+    return {};
+}
 } // namespace
 core::Result<SharpenModel> SharpenModel::prepare(image::LinearSource& source,
                                                  image::PlaneView<const std::uint8_t> mask,
                                                  const Unsharp& method, const SharpenExecution& e) {
     auto& r = e.report.get();
     r = {};
+    r.progress = StageProgress::preparing;
     r.requested = method.parameters();
     r.status = SharpenStatus::failed;
+    r.reason = SharpenReason::processing_failure;
     if (e.cancellation.requested(core::Checkpoint::measurement)) {
         return core::cancelled();
     }
@@ -119,7 +148,7 @@ core::Result<SharpenModel> SharpenModel::prepare(image::LinearSource& source,
         r.status = SharpenStatus::no_change;
         r.reason = method.parameters().amount == 0 ? SharpenReason::zero_amount
                                                    : SharpenReason::no_eligible_samples;
-        r.complete = true;
+        r.progress = methods::StageProgress::completed;
         return SharpenModel{source.extent(), method, {}};
     }
     const auto extent = source.extent();
@@ -139,29 +168,13 @@ core::Result<SharpenModel> SharpenModel::prepare(image::LinearSource& source,
     if (!measured) {
         return std::unexpected(measured.error());
     }
-    constexpr std::uint32_t maximum_radius = 9;
-    std::array<double, (2 * maximum_radius) + 1> coefficients{};
-    const auto sigma = method.parameters().sigma;
-    const auto radius = static_cast<std::uint32_t>(std::ceil(3 * sigma));
-    const auto weights = std::span<double>{coefficients}.first((2 * radius) + 1);
-    double normalization = 0;
-    for (std::uint32_t k = 0; k < weights.size(); ++k) {
-        const auto offset = static_cast<double>(k) - radius;
-        weights.subspan(k, 1).front() = std::exp(-(offset * offset) / (2 * sigma * sigma));
-        normalization += weights.subspan(k, 1).front();
+    auto blurred = blur(field->view(), work->view(), method.parameters().sigma, e.cancellation);
+    if (!blurred) {
+        return std::unexpected(blurred.error());
     }
-    auto horizontal = image::gaussian_pass(
-        field->view().as_const(), work->view(),
-        {.weights = weights, .normalization = normalization, .horizontal = true}, e.cancellation);
-    if (!horizontal) {
-        return std::unexpected(horizontal.error());
-    }
-    auto vertical = image::gaussian_pass(
-        work->view().as_const(), field->view(),
-        {.weights = weights, .normalization = normalization, .horizontal = false}, e.cancellation);
-    if (!vertical) {
-        return std::unexpected(vertical.error());
-    }
+    r.status = SharpenStatus::unresolved;
+    r.reason = SharpenReason::none;
+    r.progress = StageProgress::prepared;
     return SharpenModel{extent, method, std::move(*field)};
 }
 } // namespace docenhance::methods

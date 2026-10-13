@@ -34,8 +34,8 @@ double nlm_native_strength(const NlmParameters& p) noexcept {
 }
 std::string_view status_name(DenoiseStatus s) noexcept {
     switch (s) {
-    case DenoiseStatus::not_started:
-        return "not_started";
+    case DenoiseStatus::unresolved:
+        return "unresolved";
     case DenoiseStatus::disabled:
         return "disabled";
     case DenoiseStatus::no_change:
@@ -129,7 +129,7 @@ bool valid_denoising(const DenoisingReport& r, const Denoising& requested) {
         return false;
     }
     const auto* const method = std::get_if<Nlm>(&requested);
-    if (!r.complete || r.status == DenoiseStatus::failed ||
+    if (!r.complete() || r.status == DenoiseStatus::failed ||
         r.changed_samples > r.corrected_samples || r.corrected_samples > r.evaluated_samples ||
         r.evaluated_samples > r.eligible_samples) {
         return false;

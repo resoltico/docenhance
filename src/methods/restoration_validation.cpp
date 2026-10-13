@@ -5,6 +5,7 @@
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/source.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 
 #include <algorithm>
@@ -21,14 +22,24 @@ bool empty_application(const RestorationReport& r) {
            r.raw_low_samples == 0 && r.raw_high_samples == 0 && r.blended_low_samples == 0 &&
            r.blended_high_samples == 0;
 }
+bool usable_model(const RestorationReport& r) {
+    if (r.progress != StageProgress::prepared && r.progress != StageProgress::evaluating) {
+        return true;
+    }
+    return r.psf && r.native_calls == restoration_native_calls && r.padded_mean &&
+           r.context_samples == r.eligible_samples + r.protected_samples &&
+           r.native_reserved_bytes != 0;
+}
 bool valid_requested_state(const RestorationReport& r) {
-    if ((r.status != RestorationStatus::failed && r.status != RestorationStatus::no_change &&
-         r.status != RestorationStatus::applied) ||
-        (!r.complete && (r.status != RestorationStatus::failed ||
-                         r.reason != RestorationReason::processing_failure)) ||
-        (r.complete && r.status == RestorationStatus::applied &&
+    if ((r.status != RestorationStatus::unresolved && r.status != RestorationStatus::failed &&
+         r.status != RestorationStatus::no_change && r.status != RestorationStatus::applied) ||
+        (!r.complete() &&
+         ((r.status == RestorationStatus::failed &&
+           r.reason != RestorationReason::processing_failure) ||
+          (r.status == RestorationStatus::unresolved && r.reason != RestorationReason::none))) ||
+        (r.complete() && r.status == RestorationStatus::applied &&
          r.reason != RestorationReason::none) ||
-        (r.complete && r.status == RestorationStatus::no_change &&
+        (r.complete() && r.status == RestorationStatus::no_change &&
          r.reason != RestorationReason::zero_blend &&
          r.reason != RestorationReason::no_eligible_samples &&
          r.reason != RestorationReason::no_effect)) {
@@ -80,6 +91,9 @@ bool canonical_psf(const WienerParameters& p, const ResolvedPsf& psf) {
     return true;
 }
 bool valid_restoration_observations(const RestorationReport& r) {
+    if (!valid_progress(r)) {
+        return false;
+    }
     if (r.eligible_samples > image::source_pixels_max ||
         r.protected_samples > image::source_pixels_max - r.eligible_samples ||
         r.context_samples > r.eligible_samples + r.protected_samples ||
@@ -91,7 +105,7 @@ bool valid_restoration_observations(const RestorationReport& r) {
         r.native_calls > restoration_native_calls ||
         r.native_reserved_bytes > core::continuous_processing_budget ||
         r.preparation_charge_peak > core::continuous_processing_budget ||
-        (r.complete && r.status == RestorationStatus::failed)) {
+        (r.complete() && r.status == RestorationStatus::failed)) {
         return false;
     }
     if (!r.requested) {
@@ -117,6 +131,9 @@ bool valid_restoration_observations(const RestorationReport& r) {
     }
     if (r.padded_mean &&
         (!std::isfinite(*r.padded_mean) || *r.padded_mean < 0 || *r.padded_mean > 1)) {
+        return false;
+    }
+    if (!usable_model(r)) {
         return false;
     }
     return r.evaluated_samples == 0 ||
@@ -149,7 +166,7 @@ bool valid_restoration_extent(const RestorationReport& r, image::Extent extent) 
            (r.context_samples == 0 || r.preparation_charge_peak >= charge->peak);
 }
 bool valid_restoration(const RestorationReport& r, const Restoration& method) {
-    if (!r.complete || !valid_restoration_observations(r)) {
+    if (!r.complete() || !valid_restoration_observations(r)) {
         return false;
     }
     const auto* const selected = std::get_if<Wiener>(&method);

@@ -55,18 +55,14 @@ class MethodMetadataTests(unittest.TestCase):
             {"arguments": "--binarize"},
         ):
             with self.subTest(change=change), self.assertRaises(ValueError):
-                method_metadata.implemented(
-                    [self.entry() | change], [{"name": "--binarize", "methods": "B02"}]
-                )
+                method_metadata.implemented([self.entry() | change], [{"name": "--binarize"}])
 
     def test_duplicate_ids_and_selectors_are_rejected(self) -> None:
         """Neither an ID nor an implemented selector can refer to two methods."""
         entry = self.entry()
         for second in (entry, entry | {"id": "B03"}):
             with self.subTest(second=second), self.assertRaises(ValueError):
-                method_metadata.implemented(
-                    [entry, second], [{"name": "--binarize", "methods": "B02"}]
-                )
+                method_metadata.implemented([entry, second], [{"name": "--binarize"}])
         with self.assertRaises(ValueError):
             method_metadata.implemented([entry | {"classification": "planned"}], [])
 
@@ -74,9 +70,7 @@ class MethodMetadataTests(unittest.TestCase):
         """Planned method arguments need not be CLI capabilities and never enter the catalog."""
         active, planned = self.entry(), self.entry() | {"id": "B01", "classification": "planned"}
         planned["arguments"] = ["--future-option"]
-        result = method_metadata.implemented(
-            [active, planned], [{"name": "--binarize", "methods": "B02"}]
-        )
+        result = method_metadata.implemented([active, planned], [{"name": "--binarize"}])
         self.assertEqual(result, [active])
         header = method_metadata.render_catalog(result)
         self.assertIn('"B02"', header)
@@ -90,7 +84,7 @@ class MethodMetadataTests(unittest.TestCase):
             "classification": "implemented-automatic",
             "arguments": [],
         }
-        options = [{"name": "--binarize", "methods": "B02"}]
+        options = [{"name": "--binarize"}]
         self.assertEqual(
             method_metadata.implemented([self.entry(), automatic], options), [self.entry()]
         )
@@ -149,7 +143,7 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
@@ -190,7 +184,7 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,
@@ -236,7 +230,7 @@ class MethodMetadataTests(unittest.TestCase):
                 "parameters": {"sigma": 0.8, "amount": 0.5, "threshold": 1},
                 "status": "no_change",
                 "reason": "no_eligible_samples",
-                "complete": True,
+                "progress": "completed",
                 "representation": "float64",
                 "pre_clamp": None,
                 "clipped_fraction": None,
@@ -267,18 +261,16 @@ class MethodMetadataTests(unittest.TestCase):
                 ):
                     self.assertFalse(validator.is_valid(report | {"method": method}))
 
-    def test_option_attribution_is_bidirectional(self) -> None:
-        """Unknown, duplicated, missing and contradictory method attributions fail."""
-        for attribution in ("", "B03", "B02,B02", "B02,B99"):
-            with self.subTest(attribution=attribution), self.assertRaises(ValueError):
-                method_metadata.implemented(
-                    [self.entry()], [{"name": "--binarize", "methods": attribution}]
-                )
+    def test_option_attribution_has_one_authority(self) -> None:
+        """Arguments derive attribution and obsolete authored relations are refused."""
+        options = [{"name": "--binarize"}, {"name": "--extra"}]
+        active = method_metadata.implemented([self.entry()], options)
+        self.assertEqual(
+            method_metadata.attributed_options(options, active),
+            [{"name": "--binarize", "methods": "B02"}, {"name": "--extra", "methods": ""}],
+        )
         with self.assertRaises(ValueError):
-            method_metadata.implemented(
-                [self.entry()],
-                [{"name": "--binarize", "methods": "B02"}, {"name": "--extra", "methods": "B02"}],
-            )
+            method_metadata.implemented([self.entry()], [{"name": "--binarize", "methods": "B02"}])
 
     def test_format_support_requires_complete_unique_admission(self) -> None:
         """No absent, duplicate or loosely typed format policy can generate capabilities."""

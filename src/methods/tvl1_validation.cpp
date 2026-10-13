@@ -4,6 +4,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/tvl1.hpp"
 
 #include <cmath>
@@ -37,8 +38,18 @@ bool checkpoint_consistent(const Tvl1Report& s, const Tvl1Parameters& p) noexcep
     const bool passed = s.primal_update <= p.tolerance && s.dual_update <= p.tolerance;
     return passed == (s.passing_checkpoints != 0);
 }
+bool valid_state(const DenoisingReport& report) {
+    if (report.status == DenoiseStatus::failed &&
+        report.reason != DenoiseReason::processing_failure) {
+        return false;
+    }
+    return valid_progress(report);
+}
 } // namespace
 bool valid_tvl1_observations(const DenoisingReport& r) {
+    if (!valid_state(r)) {
+        return false;
+    }
     if (!r.requested || !std::holds_alternative<Tvl1Parameters>(*r.requested) || r.native_h != 0 ||
         r.native_calls != 0 || r.native_reserved_peak != 0 || r.status == DenoiseStatus::disabled ||
         r.preparation_charge_peak > core::continuous_processing_budget) {
@@ -49,9 +60,13 @@ bool valid_tvl1_observations(const DenoisingReport& r) {
         return false;
     }
     if (!r.tvl1) {
-        return !r.complete;
+        return r.progress == StageProgress::preparing || r.progress == StageProgress::not_started;
     }
     const auto& s = *r.tvl1;
+    if ((r.progress == StageProgress::prepared || r.progress == StageProgress::evaluating) &&
+        (!s.stop || !s.objective_start || !s.objective_end || s.field_bytes == 0)) {
+        return false;
+    }
     constexpr std::uint64_t workspace_planes = 5;
     constexpr auto transfer_bytes =
         std::uint64_t{image::linear_block_pixels} * image::rgb_channels * sizeof(double);
@@ -74,7 +89,7 @@ bool valid_tvl1_observations(const DenoisingReport& r) {
            stopping(s, p) && checkpoint_consistent(s, p);
 }
 bool valid_tvl1_report(const DenoisingReport& r, const Tvl1& method) {
-    if (!r.complete || !r.requested || !r.tvl1 || !valid_tvl1_observations(r) ||
+    if (!r.complete() || !r.requested || !r.tvl1 || !valid_tvl1_observations(r) ||
         *r.requested != DenoisingParameters{method.parameters()} ||
         r.status == DenoiseStatus::failed) {
         return false;

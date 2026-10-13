@@ -125,7 +125,7 @@ void read_states(const RecordJson& v, methods::RestorationReport& r) {
             r.reason = reason;
         }
     }
-    r.complete = record_boolean(record_field(v, "complete"));
+    r.progress = read_progress(record_field(v, "progress"));
 }
 } // namespace
 core::Result<void> validate_restoration_claims(const RecordJson& document, DeclaredBundle& d,

@@ -197,7 +197,7 @@ TEST_CASE("Contrast cancellation during application retains truthful partial obs
         auto report = initial;
         const CheckpointStop observe{core::Checkpoint::processing,
                                      std::numeric_limits<std::size_t>::max()};
-        host::ContrastedSource source{{.source = input, .mask = {}, .prepared = false},
+        host::ContrastedSource source{{.source = input, .mask = {}, .prefix_observed = false},
                                       &*model,
                                       report,
                                       observe.cancellation()};
@@ -209,12 +209,14 @@ TEST_CASE("Contrast cancellation during application retains truthful partial obs
     for (std::size_t allowed = 0; allowed < visits; ++allowed) {
         auto report = initial;
         const CheckpointStop stop{core::Checkpoint::processing, allowed};
-        host::ContrastedSource source{
-            {.source = input, .mask = {}, .prepared = false}, &*model, report, stop.cancellation()};
+        host::ContrastedSource source{{.source = input, .mask = {}, .prefix_observed = false},
+                                      &*model,
+                                      report,
+                                      stop.cancellation()};
         auto result = host::assess_contrast(source, budget, stop.cancellation(), report);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
-        CHECK(!report.complete);
+        CHECK(!report.complete());
         CHECK(methods::valid_contrast_observations(report));
         CHECK(budget.used() == resident);
     }

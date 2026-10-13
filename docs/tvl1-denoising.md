@@ -3,8 +3,7 @@
 D02 is an explicit alternative selected by `--denoise tvl1`; denoising defaults to off.
 It follows the selected immutable illumination operation, before optional restoration, contrast and sharpening and final quantization.
 Use the existing post-geometry linear-RGB converter in frame F (currently C) and sRGB perceptual luminance f=E(Y).
-The current double-precision working contract supersedes the blueprint's float32 frame proposal:
-input, primal, extrapolated primal and two dual planes use float64, with float64 reductions.
+Input, primal, extrapolated primal and two dual planes use float64, with float64 reductions.
 There is no integer analysis plane or eight-bit bottleneck.
 
 ## Reviewed design
@@ -47,21 +46,16 @@ Do not rerun the solver or double-count reconstruction observations.
 
 Cancellation is explicit execution control: observe once per iteration and at bounded intervals
 inside transfers, gradient/projection, adjoint/proximal, objective and reconstruction passes.
-Discard partial buffers and preserve genuine-error precedence, completed illumination observations
+Discard partial buffers and preserve genuine-error precedence, actual earlier-stage observations, including prepared illumination
 and the existing publication cutoff. Iteration exhaustion is a reported usable iterate, not a
 numerical failure or false tolerance claim. Failed stages retain bounded partial observations.
 
 Typed denoising alternatives and parameter variants derive the runtime catalog. D01 native fields
-remain specific to NLM; D02 solver fields cannot be mixed with native observations. Closed response
-and record contracts use version 13 and refuse obsolete versions. No package or layer
+remain specific to NLM; D02 solver fields cannot be mixed with native observations. The [current response
+and record contracts](bundles.md#source-observations-and-format-compatibility) refuse obsolete versions. No package or layer
 edge is added: pure TV math belongs to de_methods and the existing host composes execution.
 
 ## Separate challenge and evidence obligations
-
-The separate preimplementation experiment verified adjoint errors below 1e-10, exact agreement
-between simultaneous and two-pass iterations, and constant/short-cap boundaries. Its seeded
-32x32 noisy objective decreased from 42.33581846380465 to 31.21734715406113 after 400 iterations,
-correctly retaining iteration_limit. Runtime tests extend that experiment.
 
 Check the adjoint by independent edge scattering, including 1x1, one-row/one-column and non-square
 fields. Compare simultaneous double-buffer reference iterations against the two-pass implementation;

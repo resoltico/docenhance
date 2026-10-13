@@ -9,6 +9,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "stub_verifier.hpp"
 
 #include <array>
@@ -150,15 +151,15 @@ app::PublishedContinuous geometry_observation() {
     value.conversion.output = value.conversion.source;
     value.conversion.assumed_transfer = true;
     value.conversion.verified = true;
-    value.stages.illumination.complete = true;
+    value.stages.illumination.progress = methods::StageProgress::completed;
     value.stages.illumination.eligible_samples = 4;
-    value.stages.contrast.complete = true;
+    value.stages.contrast.progress = methods::StageProgress::completed;
     value.stages.contrast.eligible_samples = 4;
-    value.stages.sharpening.complete = true;
+    value.stages.sharpening.progress = methods::StageProgress::completed;
     value.stages.sharpening.eligible_samples = 4;
-    value.stages.restoration.complete = true;
+    value.stages.restoration.progress = methods::StageProgress::completed;
     value.stages.restoration.eligible_samples = 4;
-    value.stages.denoising.complete = true;
+    value.stages.denoising.progress = methods::StageProgress::completed;
     value.stages.denoising.eligible_samples = 4;
     return value;
 }

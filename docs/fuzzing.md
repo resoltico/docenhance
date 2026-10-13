@@ -209,9 +209,9 @@ the harness performs no source-file I/O.
 ## Sharpening sRGB-boundary regression
 
 The independently computed sharpening reference is perceptual, but reconstructed source
-samples are linear RGB. The two committed AFL++ regressions from run 38043256044
+samples are linear RGB. The committed AFL++ regressions
 exercise the discontinuity at the published piecewise sRGB transfer threshold.
-The oracle now decodes the expected perceptual candidate to linear space (retaining
+The oracle decodes the expected perceptual candidate to linear space (retaining
 exact input for a no-op) and compares all three RGB channels. No production transfer
-constants or numeric tolerances were relaxed. On mutation, replay, field/refund checks
+constants or numeric tolerances may be relaxed. On mutation, replay, field/refund checks
 and direct two-dimensional Gaussian verification remain required.

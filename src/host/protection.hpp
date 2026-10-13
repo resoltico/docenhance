@@ -7,6 +7,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/illumination.hpp"
 #include "run_publication.hpp"
 
 #include <cstdint>
@@ -18,6 +19,10 @@ struct Protection {
     image::Plane<std::uint8_t> supplied;
     std::optional<MaskFacts> facts;
 };
+[[nodiscard]] core::Result<void>
+disabled_protection_observations(image::PlaneView<const std::uint8_t> protection,
+                                 image::Extent extent, const core::Cancellation& cancellation,
+                                 methods::IlluminationReport& report);
 [[nodiscard]] core::Result<Protection> load_protection(const app::ProcessRequest& request,
                                                        const color::Converter& converter,
                                                        core::Budget& budget,

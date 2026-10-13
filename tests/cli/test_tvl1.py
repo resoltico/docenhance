@@ -269,7 +269,7 @@ def composition_and_record(exe: Path, root: Path) -> None:
             "composition fixture must exercise an active TV correction",
         )
         expect(
-            report["illumination"]["complete"]
+            report["illumination"]["progress"] == "completed"
             and report["illumination"]["application"]["evaluated_samples"] == len(fixture.pixels),
             "illumination counted once before TV",
         )

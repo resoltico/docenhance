@@ -1,6 +1,6 @@
 # Argument contract
 
-> Generated from `spec/cli-contract.json` by `tools/generate_spec.py`. These are the arguments the command line parses and documents today. See [current CLI behavior](cli.md) and [status](status.md) for supported behavior.
+> Generated from `spec/cli-contract.json` and method attribution in `spec/method-contract.json` by `tools/generate_spec.py`. These are the arguments the command line parses and documents today. See [current CLI behavior](cli.md) and [status](status.md) for supported behavior.
 
 P = process.
 
@@ -194,7 +194,7 @@ Square closing radius in post-geometry processing pixels. Auto rounds min(width,
 
 1-bit or 8-bit grayscale PNG mask matching metadata-oriented source dimensions before --rotate. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. Rotate identically with the source. The mask is validated even with all photometric stages disabled.
 
-**Applicable methods:** I01,I02,D01,D02,C01,C02,C03,S01,R01.
+**Applicable methods:** C01,C02,C03,D01,D02,I01,I02,R01,S01.
 
 ## `--denoise METHOD`
 

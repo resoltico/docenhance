@@ -176,17 +176,6 @@
       "DOCENHANCE_OPENCV_TYPED_DFT_DISPATCH": true,
       "DOCENHANCE_OPENCV_DXT_SHA256": "d762a38bcb0dffd5fc1e202e906272e8d0906c42e6e799fefb00531d5ee30e95"
     },
-    "leptonica": {
-      "BUILD_PROG": false,
-      "SW_BUILD": false,
-      "ENABLE_ZLIB": false,
-      "ENABLE_PNG": false,
-      "ENABLE_GIF": false,
-      "ENABLE_JPEG": false,
-      "ENABLE_TIFF": false,
-      "ENABLE_WEBP": false,
-      "ENABLE_OPENJPEG": false
-    },
     "lcms": {
       "LCMS2_BUILD_SHARED": false,
       "LCMS2_BUILD_STATIC": true,

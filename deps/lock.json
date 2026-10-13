@@ -80,21 +80,6 @@
       "scope": "runtime-candidate"
     },
     {
-      "name": "leptonica",
-      "version": "1.87.0",
-      "transport": "git",
-      "repository": "https://github.com/DanBloomberg/leptonica.git",
-      "ref": "refs/tags/1.87.0",
-      "object": "13275a278eb55b5746e33f95fbf5a2c8f604b3ab",
-      "object_type": "commit",
-      "license": "BSD-2-Clause",
-      "license_files": [
-        "leptonica-license.txt"
-      ],
-      "verification_url": "https://api.github.com/repos/DanBloomberg/leptonica/git/ref/tags/1.87.0",
-      "scope": "runtime-candidate"
-    },
-    {
       "name": "lcms",
       "version": "lcms2.19.1",
       "transport": "git",

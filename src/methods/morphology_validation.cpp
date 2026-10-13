@@ -6,6 +6,7 @@
 #include "docenhance/image/source.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "morphology_detail.hpp"
 
 #include <algorithm>
@@ -45,8 +46,46 @@ bool prepared(const MorphologyMeasurements& m, MorphologyParameters p, image::Ex
            m.background_min <= m.background_q10 && m.background_q10 <= m.background_q50 &&
            m.background_q50 <= m.background_q90 && m.background_q90 <= m.background_max;
 }
+bool pending_model(const IlluminationReport& r, const MorphologyMeasurements& m) {
+    if (r.progress == StageProgress::prepared || r.progress == StageProgress::evaluating) {
+        return m.target && m.analysis_fill && m.field_bytes != 0 && m.count != 0;
+    }
+    return true;
+}
+bool phase_agrees(const IlluminationReport& r, MorphologyParameters p,
+                  const MorphologyMeasurements& m) {
+    if (!pending_model(r, m)) {
+        return false;
+    }
+    if (!r.complete()) {
+        return true;
+    }
+    if (p.strength == 0 || p.max_gain == 1 || r.eligible_samples == 0) {
+        auto reason = IlluminationReason::no_eligible_samples;
+        if (p.max_gain == 1) {
+            reason = IlluminationReason::unit_gain;
+        }
+        if (p.strength == 0) {
+            reason = IlluminationReason::zero_strength;
+        }
+        return r.status == IlluminationStatus::no_change && r.reason == reason && untouched(r, m);
+    }
+    const bool disposition =
+        r.changed_samples == 0
+            ? r.status == IlluminationStatus::no_change && r.reason == IlluminationReason::no_effect
+            : r.status == IlluminationStatus::applied && r.reason == IlluminationReason::none;
+    return r.evaluated_samples == r.eligible_samples && m.target && m.analysis_fill &&
+           m.field_bytes != 0 && m.count != 0 && disposition;
+}
 } // namespace
 bool valid_morphology_observations(const IlluminationReport& r) {
+    if (r.status == IlluminationStatus::failed &&
+        r.reason != IlluminationReason::processing_failure) {
+        return false;
+    }
+    if (!valid_progress(r)) {
+        return false;
+    }
     if (!r.requested || !std::holds_alternative<MorphologyParameters>(*r.requested) || r.cell ||
         r.cells != 0 || r.measured_cells != 0 || r.dark_cells != 0 || r.solver || r.measurements ||
         r.background_reference ||
@@ -62,9 +101,12 @@ bool valid_morphology_observations(const IlluminationReport& r) {
         return false;
     }
     if (!r.morphology) {
-        return !r.complete;
+        return r.progress == StageProgress::preparing || r.progress == StageProgress::not_started;
     }
     const auto& m = *r.morphology;
+    if (!phase_agrees(r, p, m)) {
+        return false;
+    }
     constexpr std::uint32_t support_sigmas = 3;
     constexpr auto maximum_stride =
         (image::source_pixels_max + morphology_lattice_extent - 1) / morphology_lattice_extent;
@@ -84,7 +126,7 @@ bool valid_morphology_observations(const IlluminationReport& r) {
            m.preparation_charge_peak <= core::continuous_processing_budget;
 }
 bool valid_morphology_report(const IlluminationReport& r, image::Extent extent, bool protection) {
-    if (!r.complete || !r.requested || !r.morphology || !valid_morphology_observations(r)) {
+    if (!r.complete() || !r.requested || !r.morphology || !valid_morphology_observations(r)) {
         return false;
     }
     const auto p = std::get<MorphologyParameters>(*r.requested);

@@ -4,6 +4,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/io/digest.hpp"
 #include "docenhance/io/paths.hpp"
 #include "docenhance/io/png.hpp"
 #include "docenhance/io/publication.hpp"
@@ -270,5 +271,15 @@ TEST_CASE("A recorded name keeps the bytes the path was admitted with", "[io]") 
     CHECK(io::file_name(admitted) == admitted);
     // A path that names no file at all is reported as it was given, not as an empty name.
     CHECK(io::file_name("").empty());
+}
+} // namespace docenhance::tests
+
+namespace docenhance::tests {
+TEST_CASE("Digest adapter matches the SHA-256 abc known answer", "[io][digest]") {
+    constexpr std::array<std::byte, 3> input{std::byte{'a'}, std::byte{'b'}, std::byte{'c'}};
+    const auto identity = io::identify(input);
+    REQUIRE(identity);
+    CHECK(identity->bytes == input.size());
+    CHECK(identity->sha256 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
 }
 } // namespace docenhance::tests

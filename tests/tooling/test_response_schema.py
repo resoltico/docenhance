@@ -19,7 +19,7 @@ SCHEMA = json.loads((ROOT / "schemas/command-response.schema.json").read_text(en
 def methods_response() -> dict[str, Any]:
     """Return one complete, valid response for mutation tests."""
     return {
-        "schema_version": 13,
+        "schema_version": 14,
         "command": "methods",
         "version": "0.2.0",
         "exit_code": 0,
@@ -49,7 +49,11 @@ class ResponseSchemaTests(unittest.TestCase):
         validator = Draft202012Validator(SCHEMA)
         validator.validate(response)
         for family in ("illumination", "denoising", "restoration", "contrast", "sharpening"):
-            for field, value in (("complete", True), ("eligible_samples", 1)):
+            for field, value in (
+                ("progress", "completed"),
+                ("eligible_samples", 1),
+                ("complete", True),
+            ):
                 altered = copy.deepcopy(response)
                 altered[family][field] = value
                 with self.subTest(family=family, field=field):
@@ -75,6 +79,8 @@ class ResponseSchemaTests(unittest.TestCase):
             {"schema_version": 9},
             {"schema_version": 10},
             {"schema_version": 11},
+            {"schema_version": 12},
+            {"schema_version": 13},
             {"exit_code": True},
             {"methods": [{"id": "B03", "method_version": True}]},
             {"methods": [{"id": "B03", "method_version": 1, "invented": 1}]},
@@ -95,7 +101,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_publication_uncertainty_is_distinct(self) -> None:
         """Unknown publication has one error code and may not claim a safe retry."""
         response = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "process",
             "version": "0.2.0",
             "exit_code": 7,
@@ -111,7 +117,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_unimplemented_capability_never_starts_publication(self) -> None:
         """An unavailable processing branch has exit four and no execution effects."""
         response = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "process",
             "version": "0.6.0",
             "exit_code": 4,
@@ -128,7 +134,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_integrity_failure_can_retain_known_publication(self) -> None:
         """A failed postcommit inspection cannot erase an observed successful rename."""
         response = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 5,
@@ -143,7 +149,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_help_options_are_typed(self) -> None:
         """Every option item has the complete closed descriptor shape."""
         response = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "root",
             "version": "0.2.0",
             "exit_code": 0,
@@ -157,7 +163,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_cancellation_cannot_claim_completion_or_uncertainty(self) -> None:
         """Cancellation has its own status; ambiguous publication is a different outcome."""
         response = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 130,
@@ -184,7 +190,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_readonly_and_discovery_failures_cannot_claim_publication(self) -> None:
         """Only processing failures can describe staging, commit or uncertainty."""
         response: dict[str, Any] = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "verify",
             "version": "0.5.0",
             "exit_code": 3,
@@ -205,7 +211,7 @@ class ResponseSchemaTests(unittest.TestCase):
     def test_verification_success_requires_bounded_confined_identity(self) -> None:
         """Empty/unbounded inventories, zero identities and escaping paths are refused."""
         response: dict[str, Any] = {
-            "schema_version": 13,
+            "schema_version": 14,
             "command": "verify",
             "version": "0.5.0",
             "exit_code": 0,

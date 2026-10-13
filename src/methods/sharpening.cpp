@@ -32,8 +32,8 @@ core::Result<double> unsharp_candidate(double f, double blurred, const Unsharp& 
 }
 std::string_view status_name(SharpenStatus v) noexcept {
     switch (v) {
-    case SharpenStatus::not_started:
-        return "not_started";
+    case SharpenStatus::unresolved:
+        return "unresolved";
     case SharpenStatus::disabled:
         return "disabled";
     case SharpenStatus::no_change:

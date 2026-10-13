@@ -131,7 +131,7 @@ def stop_process(process: subprocess.Popen[bytes], *, graceful: bool) -> None:
 def owned_process(
     command: list[str],
     env: dict[str, str],
-    output: IO[bytes] | IO[str] | None,
+    output: IO[bytes] | IO[str] | tuple[IO[bytes], IO[bytes]] | None,
     *,
     cwd: Path | None = None,
     graceful: bool = False,
@@ -143,8 +143,8 @@ def owned_process(
             with startup_interrupts():
                 process = subprocess.Popen(
                     command,
-                    stdout=output,
-                    stderr=subprocess.STDOUT,
+                    stdout=output[0] if isinstance(output, tuple) else output,
+                    stderr=output[1] if isinstance(output, tuple) else subprocess.STDOUT,
                     env=env,
                     cwd=cwd,
                     start_new_session=os.name == "posix",

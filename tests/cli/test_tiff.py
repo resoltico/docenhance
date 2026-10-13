@@ -280,7 +280,8 @@ def metadata_and_pipeline(exe: Path, root: Path) -> None:
             "7",
         )
         expect(
-            response["illumination"]["complete"] and response["denoising"]["complete"],
+            response["illumination"]["progress"] == "completed"
+            and response["denoising"]["progress"] == "completed",
             "TIFF composes selected illumination and D01 with verified PNG publication",
         )
     refused(exe, root, source.encoded(), "E_NOT_IMPLEMENTED", "--output-mode", "bw")

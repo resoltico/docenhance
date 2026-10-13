@@ -8,7 +8,6 @@ import contextlib
 import copy
 import hashlib
 import io
-import json
 import sys
 import tempfile
 import unittest
@@ -19,70 +18,20 @@ from unittest.mock import patch
 import tools_path
 
 from jsonschema import ValidationError
+from quality_fixtures import freeze, healthy_plan
 
-from document_quality import SCHEMA, adjudicate, frozen_digest, validate_plan
+import evaluate_document_quality as evaluator
+from document_quality import adjudicate, frozen_digest, validate_plan
 from evaluate_document_quality import (
     check_comparator,
-    confined,
     evaluate,
     fidelity,
     main,
     replay_options,
 )
-
-
-def healthy_plan(count: int = 10) -> dict[str, Any]:
-    """Construct synthetic unanimous scores with adequate per-class paired sign evidence."""
-    classes = json.loads(SCHEMA.read_bytes())["$defs"]["classes"]["items"]["enum"]
-    corpus, assessments = [], []
-    for number in range(count):
-        name = str(number)
-        corpus.append(
-            {
-                "id": name,
-                "document_id": name,
-                "path": f"{name}.png",
-                "sha256": hashlib.sha256(name.encode()).hexdigest(),
-                "permission": {
-                    "source": "synthetic control",
-                    "basis": "first-party",
-                    "evidence": "fixture source",
-                    "curator": "test",
-                },
-                "split": "heldout",
-                "classes": classes,
-            }
-        )
-        assessments.append(
-            {
-                "sample": name,
-                "options": [],
-                "baseline_options": [],
-                "baseline": f"b-{name}",
-                "candidate": f"c-{name}",
-                "replicate": f"r-{name}",
-                "reviews": [
-                    {
-                        "reviewer": reviewer,
-                        "blind_pair": name,
-                        "delta": 1,
-                        "harms": [],
-                        "uncertain": False,
-                        "rationale": "synthetic score",
-                    }
-                    for reviewer in ("a", "b", "c")
-                ],
-            }
-        )
-    return {
-        "protocol_version": 1,
-        "source_commit": "a" * 40,
-        "executable_sha256": "b" * 64,
-        "frozen_corpus_sha256": frozen_digest(corpus),
-        "panel": [{"id": reviewer, "independent": True} for reviewer in ("a", "b", "c")],
-        "corpus": corpus,
-        "assessments": assessments,
-    }
+from quality_collection import BundleChecks, collect
+from quality_evidence import confined
+from quality_replay import ReplayObservation
 
 
 class DocumentQualityTests(unittest.TestCase):
@@ -112,18 +61,22 @@ class DocumentQualityTests(unittest.TestCase):
             with self.subTest(change=change):
                 plan = copy.deepcopy(healthy_plan())
                 if change == "permission":
-                    del plan["corpus"][0]["permission"]
+                    del plan["protocol"]["corpus"][0]["permission"]
                 elif change == "split":
-                    plan["corpus"][0]["split"] = "tuning"
+                    plan["protocol"]["corpus"][0]["split"] = "tuning"
                 elif change == "identity":
-                    plan["corpus"][0]["sha256"] = plan["corpus"][1]["sha256"]
-                    plan["frozen_corpus_sha256"] = frozen_digest(plan["corpus"])
+                    plan["protocol"]["corpus"][0]["sha256"] = plan["protocol"]["corpus"][1][
+                        "sha256"
+                    ]
+                    plan["protocol"]["frozen_corpus_sha256"] = frozen_digest(
+                        plan["protocol"]["corpus"]
+                    )
                 elif change == "reviewer":
                     plan["assessments"][0]["reviews"][0]["reviewer"] = "invented"
                 elif change == "coverage":
                     plan["assessments"].pop()
                 elif change == "panel":
-                    plan["panel"][0]["independent"] = False
+                    plan["protocol"]["panel"][0]["independent"] = False
                 else:
                     plan["assessments"][0]["reviews"][0]["blind_pair"] = "different"
                 with self.assertRaises((ValueError, ValidationError)):
@@ -132,18 +85,21 @@ class DocumentQualityTests(unittest.TestCase):
     def test_small_or_missing_class_cannot_establish_benefit(self) -> None:
         """Synthetic positive scores with insufficient independent pages still abstain."""
         plan = healthy_plan()
-        plan["corpus"] = plan["corpus"][:1]
+        plan["protocol"]["corpus"] = plan["protocol"]["corpus"][:1]
         plan["assessments"] = plan["assessments"][:1]
-        plan["frozen_corpus_sha256"] = frozen_digest(plan["corpus"])
+        plan["protocol"]["pages"] = plan["protocol"]["pages"][:1]
+        freeze(plan)
         self.assertEqual(adjudicate(plan)["decision"], "abstain")
 
     def test_derived_physical_page_cannot_leak_or_inflate_holdout(self) -> None:
         """Re-encoded/cropped bytes remain the same physical document across partitions."""
         for split in ("heldout", "tuning"):
             plan = healthy_plan()
-            plan["corpus"][1]["document_id"] = plan["corpus"][0]["document_id"]
-            plan["corpus"][1]["split"] = split
-            plan["frozen_corpus_sha256"] = frozen_digest(plan["corpus"])
+            plan["protocol"]["corpus"][1]["document_id"] = plan["protocol"]["corpus"][0][
+                "document_id"
+            ]
+            plan["protocol"]["corpus"][1]["split"] = split
+            freeze(plan)
             with self.assertRaisesRegex(ValueError, "physical document"):
                 validate_plan(plan)
 
@@ -180,36 +136,75 @@ class DocumentQualityTests(unittest.TestCase):
                 confined(root, "redirect")
 
     def test_artifact_agreement_cannot_invent_the_comparator(self) -> None:
-        """A verified-looking baseline must also agree with actual unenhanced replay."""
-        plan = healthy_plan()
+        """A forged peer fails replay without erasing successes or later intended pages."""
+        plan = healthy_plan(2)
         record: dict[str, Any] = {
             field: {}
             for field in ("source", "request", "execution", "protection", "output", "build")
         }
+        record["record"] = {"run": "a" * 32}
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
-            executable = root / "binary"
-            executable.write_bytes(b"test executable identity")
-            plan["executable_sha256"] = hashlib.sha256(executable.read_bytes()).hexdigest()
-            for sample in plan["corpus"]:
+            for sample in plan["protocol"]["corpus"]:
                 (root / sample["path"]).write_text(sample["id"])
+            for page in plan["protocol"]["pages"]:
+                for role in ("candidate", "baseline", "replicate"):
+                    page["commands"][role][0] = "binary"
+                    folder = root / page["commands"][role][4]
+                    folder.mkdir()
+                    (folder / "run.json").write_text("{}")
             for assessment in plan["assessments"]:
-                for name in ("candidate", "baseline", "replicate"):
-                    (root / assessment[name]).mkdir()
-            for field in ("output", "protection", "source"):
-                false_baseline = copy.deepcopy(record)
-                false_baseline[field] = {"sha256": "invented"}
-                with (
-                    self.subTest(field=field),
-                    patch("evaluate_document_quality.read_bundle", return_value=record),
-                    patch("evaluate_document_quality.fidelity"),
-                    patch(
-                        "evaluate_document_quality.replay", side_effect=[record, false_baseline]
-                    ) as run,
-                    self.assertRaisesRegex(ValueError, "Frozen baseline differs"),
-                ):
-                    evaluate(plan, root, executable)
-                self.assertEqual(run.call_count, 2)
+                for role in ("candidate", "baseline", "replicate"):
+                    destination = assessment[role]["bundle"]
+                    assessment[role]["execution"]["response"] = {
+                        "record": {
+                            "run": "a" * 32,
+                            "sha256": hashlib.sha256(b"{}").hexdigest(),
+                            "bytes": 2,
+                        },
+                        "output": str(Path(destination) / "result.png"),
+                    }
+            originals = [copy.deepcopy(record) for _ in range(6)]
+            repeats = [copy.deepcopy(record) for _ in range(6)]
+            for index, (original, repeated) in enumerate(zip(originals, repeats, strict=True)):
+                original["record"]["run"] = f"{index + 1:032x}"
+                repeated["record"]["run"] = f"{index + 7:032x}"
+            repeats[1]["protection"] = {"sha256": "different-mask"}
+            for index, assessment in enumerate(plan["assessments"]):
+                for number, role in enumerate(("candidate", "baseline", "replicate")):
+                    assessment[role]["execution"]["response"]["record"]["run"] = originals[
+                        3 * index + number
+                    ]["record"]["run"]
+            attempts = [
+                ReplayObservation(value, {"argv": [], "response": {"record": value["record"]}})
+                for value in repeats
+            ]
+            with (
+                patch("quality_collection.execution_evidence"),
+                patch("evaluate_document_quality.read_bundle", side_effect=originals),
+                patch("evaluate_document_quality.fidelity"),
+                patch(
+                    "evaluate_document_quality.replay",
+                    side_effect=attempts,
+                ) as run,
+            ):
+                assessed, evidence = collect(
+                    plan,
+                    root,
+                    BundleChecks(
+                        Path("binary"),
+                        {},
+                        evaluator.read_bundle,
+                        evaluator.replay,
+                        evaluator.fidelity,
+                    ),
+                )
+            self.assertEqual(run.call_count, 6)
+            self.assertEqual(len(evidence), 2)
+            self.assertEqual(evidence[0]["roles"]["candidate"]["outcome"], "completed")
+            self.assertIn("Frozen baseline differs", evidence[0]["roles"]["baseline"]["errors"][0])
+            self.assertEqual(evidence[1]["roles"]["baseline"]["outcome"], "completed")
+            self.assertEqual(adjudicate(assessed)["decision"], "abstain")
 
     def test_report_publication_cannot_overwrite_source_or_prior_evidence(self) -> None:
         """A real exclusive file write rejects collisions and preserves existing bytes."""
@@ -252,7 +247,7 @@ class DocumentQualityTests(unittest.TestCase):
         for prefix in ("", "./"):
             plan = healthy_plan()
             item = plan["assessments"][0]
-            item["replicate"] = prefix + item["candidate"]
+            item["replicate"]["bundle"] = prefix + item["candidate"]["bundle"]
             with self.assertRaisesRegex(ValueError, "distinct bundle directories"):
                 validate_plan(plan)
         candidate: dict[str, Any] = {

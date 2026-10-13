@@ -5,6 +5,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
 
 #include <cstdint>
@@ -88,7 +89,7 @@ struct Tvl1Report {
     std::uint64_t field_bytes = 0;
     bool operator==(const Tvl1Report&) const = default;
 };
-enum class DenoiseStatus { not_started, disabled, no_change, applied, failed };
+enum class DenoiseStatus { unresolved, disabled, no_change, applied, failed };
 enum class DenoiseReason { none, zero_blend, no_eligible_samples, no_effect, processing_failure };
 inline constexpr std::uint32_t nlm_tile_width = 256;
 inline constexpr std::uint32_t nlm_native_extent =
@@ -96,7 +97,10 @@ inline constexpr std::uint32_t nlm_native_extent =
 struct DenoisingReport {
     DenoiseStatus status = DenoiseStatus::disabled;
     DenoiseReason reason = DenoiseReason::none;
-    bool complete = false;
+    StageProgress progress = StageProgress::not_started;
+    [[nodiscard]] bool complete() const noexcept {
+        return progress == StageProgress::completed;
+    }
     std::optional<DenoisingParameters> requested = std::nullopt;
     std::optional<Tvl1Report> tvl1 = std::nullopt;
     double native_h = 0;

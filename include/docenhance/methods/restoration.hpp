@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/reviewed_methods.hpp"
 
 #include <array>
@@ -96,7 +97,7 @@ struct ResolvedPsf {
     std::optional<PsfIdentity> source_identity = std::nullopt;
     bool operator==(const ResolvedPsf&) const = default;
 };
-enum class RestorationStatus { not_started, disabled, no_change, applied, failed };
+enum class RestorationStatus { unresolved, disabled, no_change, applied, failed };
 enum class RestorationReason {
     none,
     zero_blend,
@@ -107,7 +108,10 @@ enum class RestorationReason {
 struct RestorationReport {
     RestorationStatus status = RestorationStatus::disabled;
     RestorationReason reason = RestorationReason::none;
-    bool complete = false;
+    StageProgress progress = StageProgress::not_started;
+    [[nodiscard]] bool complete() const noexcept {
+        return progress == StageProgress::completed;
+    }
     std::optional<WienerParameters> requested = std::nullopt;
     std::optional<ResolvedPsf> psf = std::nullopt;
     std::uint32_t guard = 0;

@@ -11,6 +11,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/progress.hpp"
 #include "linear_fixture.hpp"
 #include "morphology_reference.hpp"
 
@@ -145,14 +146,16 @@ TEST_CASE("I02 no-ops and all-black statistics do not manufacture changes", "[mo
     for (unsigned y = 0; y < extent.height; ++y) {
         REQUIRE(model->apply({.row = y, .first = 0}, source.row(y), {}, report, {}));
     }
-    report.complete = true;
+    report.progress = methods::StageProgress::completed;
+    report.status = methods::IlluminationStatus::no_change;
+    report.reason = methods::IlluminationReason::no_effect;
     CHECK(methods::valid_illumination(report, extent, false));
     const auto entering_charge = budget.used();
     const auto zero = methods::Morphology::create({.strength = 0, .radius = 256}).value();
     auto inactive = methods::MorphologyModel::prepare({source, {}}, zero, budget, {}, report);
     REQUIRE(inactive);
     CHECK(!inactive->active());
-    CHECK(report.complete);
+    CHECK(report.complete());
     CHECK(observations(report).field_bytes == 0);
     CHECK(budget.used() == entering_charge);
 }
@@ -276,5 +279,19 @@ TEST_CASE("I02 fallback samples only the first eligible pixel and refuses inadeq
                                                            options(), budget, {}, report);
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::method_inapplicable);
+}
+TEST_CASE("Prepared I02 retains default gains until application observation", "[morphology]") {
+    core::Budget budget{morphology_budget};
+    LinearFixture source{budget, {.width = 8, .height = 8}};
+    source.fill(0.5);
+    methods::IlluminationReport report;
+    const auto model =
+        methods::MorphologyModel::prepare({source, {}}, options(), budget, {}, report);
+    REQUIRE(model);
+    REQUIRE(model->active());
+    CHECK(methods::valid_illumination_observations(report));
+    report.min_gain = report.max_gain = 2;
+    CHECK(report.evaluated_samples == 0);
+    CHECK(!methods::valid_illumination_observations(report));
 }
 } // namespace docenhance::tests

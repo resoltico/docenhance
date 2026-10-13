@@ -27,6 +27,13 @@ def validate_arguments(entry: dict[str, Any], known: set[str]) -> None:
         raise ValueError(msg)
 
 
+def reject_authored_attribution(options: list[dict[str, Any]]) -> None:
+    """Only generated descriptors may carry per-option method attribution."""
+    if any("methods" in option for option in options):
+        message = "CLI authoring options cannot carry obsolete method attribution"
+        raise ValueError(message)
+
+
 def implemented(
     entries: list[dict[str, Any]], options: list[dict[str, Any]]
 ) -> list[dict[str, Any]]:
@@ -34,6 +41,7 @@ def implemented(
     ids: set[str] = set()
     selectors: set[str] = set()
     known = {option["name"] for option in options}
+    reject_authored_attribution(options)
     active = []
     for entry in entries:
         identity = entry.get("id", "")
@@ -88,23 +96,23 @@ def implemented(
     if not active:
         msg = "The executable must declare at least one implemented method"
         raise ValueError(msg)
-    validate_attribution(options, active, {entry["id"] for entry in active})
     return active
 
 
-def validate_attribution(
-    options: list[dict[str, Any]], active: list[dict[str, Any]], ids: set[str]
-) -> None:
-    """Require both reviewed views of method-option applicability to agree."""
-    for option in options:
-        declared = option.get("methods", "").split(",") if option.get("methods") else []
-        if len(set(declared)) != len(declared) or any(identity not in ids for identity in declared):
-            msg = f"{option['name']}: invalid method attribution"
-            raise ValueError(msg)
-        for entry in active:
-            if (entry["id"] in declared) != (option["name"] in entry["arguments"]):
-                msg = f"{option['name']}: attribution disagrees with {entry['id']} arguments"
-                raise ValueError(msg)
+def attributed_options(
+    options: list[dict[str, Any]], active: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
+    """Derive method attribution from the sole authored argument relations."""
+    reject_authored_attribution(options)
+    return [
+        option
+        | {
+            "methods": ",".join(
+                sorted(entry["id"] for entry in active if option["name"] in entry["arguments"])
+            )
+        }
+        for option in options
+    ]
 
 
 def support_matrix(support: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -65,7 +65,7 @@ def kernels_and_numerics(exe: Path, root: Path) -> None:
         check_pixels(require_output(out), expected)
         report = response["restoration"]
         expect(
-            report["complete"] and report["native_calls"] == TRANSFORM_CALLS,
+            report["progress"] == "completed" and report["native_calls"] == TRANSFORM_CALLS,
             "three completed native transforms",
         )
         expect(report["evaluated_samples"] == len(values), "observations counted once")

@@ -6,45 +6,32 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import importlib
 import json
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 from typing import Any
 
-from jsonschema import ValidationError
+from jsonschema import Draft202012Validator, ValidationError
 
-from document_quality import BUNDLE_ROLES, ROOT, adjudicate, validate_plan
+from document_quality import (
+    ROOT,
+    adjudicate,
+    frozen_digest,
+    read_json,
+    validate_plan,
+    validator,
+)
+from quality_collection import SEMANTIC_FACTS, BundleChecks, collect
+from quality_evidence import admit, command_options, confined, digest, evidence_error
+from quality_protocol import BUNDLE_ROLES
+from quality_replay import ReplayObservation, execute_replay
 
 # Independent first-party PNG decoder already used by the numerical/product references.
 sys.path.insert(0, str(ROOT / "tests/cli"))
+MIN_PROCESS_ARGV = 6
 decode_output = importlib.import_module("continuous_fixtures").decode_output
-SEMANTIC_FACTS = ("source", "request", "execution", "protection", "output", "build")
-
-
-def digest(path: Path) -> str:
-    """Hash actual bytes, including the source, executable and final evidence document."""
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
-
-
-def confined(root: Path, name: str) -> Path:
-    """Evaluation reads only ordinary relative inputs in its separately governed asset root."""
-    path = root / name
-    if (
-        Path(name).is_absolute()
-        or ".." in Path(name).parts
-        or not path.resolve().is_relative_to(root)
-    ):
-        message = "Evaluation path escapes its corpus root"
-        raise ValueError(message)
-    if any(part.is_symlink() for part in (path, *path.parents)):
-        message = "Evaluation evidence must not redirect through symbolic links"
-        raise ValueError(message)
-    return path
 
 
 def read_bundle(executable: Path, directory: Path, source: str) -> dict[str, Any]:
@@ -52,14 +39,20 @@ def read_bundle(executable: Path, directory: Path, source: str) -> dict[str, Any
     result = subprocess.run(
         [str(executable), "verify", str(directory), "--json"],
         capture_output=True,
-        text=True,
         check=True,
         timeout=120,
     )
-    response = json.loads(result.stdout)
-    record: dict[str, Any] = json.loads((directory / "run.json").read_bytes())
+    response = read_json(result.stdout)
+    record = read_json((directory / "run.json").read_bytes())
+    for name, value in (("command-response", response), ("run-record", record)):
+        Draft202012Validator(
+            read_json((ROOT / f"schemas/{name}.schema.json").read_bytes())
+        ).validate(value)
     if (
         result.stderr
+        or response.get("command") != "verify"
+        or response.get("run") != record["record"]["run"]
+        or response.get("recorded") != record["record"]["recorded"]
         or response.get("establishes") != "artifacts_agree_with_record"
         or record["source"]["sha256"] != source
     ):
@@ -84,31 +77,14 @@ def replay_options(options: list[str], root: Path) -> None:
             confined(root, options[i + 1])
 
 
-def replay(executable: Path, source: Path, root: Path, options: list[str]) -> dict[str, Any]:
-    """Execute frozen settings; agreeing records alone do not prove this binary produced them."""
+def replay(command: list[str], root: Path) -> ReplayObservation:
+    """Copy admitted full argv and substitute only its owned output-destination value."""
+    if len(command) < MIN_PROCESS_ARGV:
+        message = "Replay requires a complete frozen process command"
+        raise ValueError(message)
+    _, options = command_options(command, command[2], Path(command[0]))
     replay_options(options, root)
-    with tempfile.TemporaryDirectory(prefix="docenhance-quality-replay-") as temporary:
-        output = Path(temporary) / "candidate"
-        result = subprocess.run(
-            [
-                str(executable),
-                "process",
-                str(source),
-                "--out-dir",
-                str(output),
-                *options,
-                "--json",
-            ],
-            cwd=root,
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=600,
-        )
-        if result.stderr or json.loads(result.stdout).get("publication") != "completed":
-            message = "Frozen candidate replay did not complete"
-            raise ValueError(message)
-        return read_bundle(executable, output, digest(source))
+    return execute_replay(command, root, read_bundle)
 
 
 def check_comparator(candidate: dict[str, Any], baseline: dict[str, Any]) -> None:
@@ -158,6 +134,9 @@ def fidelity(root: Path, assessment: dict[str, Any], records: dict[str, Any]) ->
             message = "Comparator must contain no photometric enhancement"
             raise ValueError(message)
     protection = candidate["protection"]
+    if protection != baseline["protection"]:
+        message = "Candidate and comparator protection masks differ"
+        raise ValueError(message)
     if protection is not None:
         mask = decode_output(
             (confined(root, assessment["candidate"]) / protection["stored"]["path"]).read_bytes()
@@ -183,65 +162,30 @@ def fidelity(root: Path, assessment: dict[str, Any], records: dict[str, Any]) ->
 def evaluate(plan: dict[str, Any], root: Path, executable: Path) -> dict[str, Any]:
     """Validate all provenance and real bundle boundaries before scoring external human evidence."""
     validate_plan(plan)
-    if digest(executable) != plan["executable_sha256"]:
-        message = "Executable differs from the reviewed evaluation identity"
-        raise ValueError(message)
-    for sample in plan["corpus"]:
-        if digest(confined(root, sample["path"])) != sample["sha256"]:
-            message = "Source input changed after corpus freezing"
-            raise ValueError(message)
-    samples = {sample["id"]: sample for sample in plan["corpus"]}
-    evidence = []
-    for assessment in plan["assessments"]:
-        directories = [confined(root, assessment[name]) for name in BUNDLE_ROLES]
-        identities = [path.stat() for path in directories]
-        if len({(item.st_dev, item.st_ino) for item in identities}) != len(BUNDLE_ROLES):
-            message = "Evaluation bundles alias the same physical directory"
-            raise ValueError(message)
-        records = {
-            name: read_bundle(
-                executable,
-                confined(root, assessment[name]),
-                samples[assessment["sample"]]["sha256"],
-            )
-            for name in BUNDLE_ROLES
-        }
-        fidelity(root, assessment, records)
-        source = confined(root, samples[assessment["sample"]]["path"])
-        for name, option_field in (
-            ("candidate", "options"),
-            ("baseline", "baseline_options"),
-            ("replicate", "options"),
-        ):
-            actual = replay(executable, source, root, assessment[option_field])
-            if any(actual[field] != records[name][field] for field in SEMANTIC_FACTS):
-                message = f"Frozen {name} differs from actual processing by the selected executable"
-                raise ValueError(message)
-        actual = records["candidate"]
-        evidence.append(
-            {
-                "sample": assessment["sample"],
-                "options": assessment["options"],
-                "baseline_options": assessment["baseline_options"],
-                "source": actual["source"],
-                "request": actual["request"],
-                "build": actual["build"],
-                "output": actual["output"],
-                "records": {
-                    name: digest(confined(root, assessment[name]) / "run.json") for name in records
-                },
-            }
-        )
-    report = adjudicate(plan)
+    build = admit(plan, root, executable, replay_options)
+    assessed, evidence = collect(
+        plan, root, BundleChecks(executable, build, read_bundle, replay, fidelity)
+    )
+    prior = {
+        page["sample"]: [
+            review for revision in page["prior_reviews"] for review in revision["reviews"]
+        ]
+        for page in evidence
+    }
+    report = adjudicate(assessed, prior)
     report.update(
         {
             "executable_sha256": digest(executable),
-            "frozen_corpus_sha256": plan["frozen_corpus_sha256"],
-            "clearance": "curator assertions; requires independent rights review",
-            "build_commit_binding": "external reviewed build provenance; digest verified locally",
+            "frozen_corpus_sha256": plan["protocol"]["frozen_corpus_sha256"],
+            "clearance": "curator assertions; requires independent rights and reviewer review",
+            "build_commit_binding": (
+                "independently referenced build provenance; byte identity verified locally"
+            ),
             "evidence": evidence,
         }
     )
+    report["report_sha256"] = frozen_digest(report)
+    validator("report").validate(report)
     return report
 
 
@@ -254,14 +198,14 @@ def main() -> int:
     args = parser.parse_args()
     try:
         report = evaluate(
-            json.loads(args.manifest.read_bytes()),
+            read_json(args.manifest.read_bytes()),
             args.manifest.parent.resolve(),
             args.executable.resolve(),
         )
         with args.out.open("x", encoding="utf-8") as stream:
             stream.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
-    except (OSError, ValueError, ValidationError, subprocess.SubprocessError) as error:
-        print(f"Document-quality evidence refused: {error}", file=sys.stderr)
+    except (OSError, ValueError, TypeError, ValidationError, subprocess.SubprocessError) as error:
+        print(f"Document-quality evidence refused: {evidence_error(error)}", file=sys.stderr)
         return 1
     return 0 if report["decision"] == "accepted" else 1
 

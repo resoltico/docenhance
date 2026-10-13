@@ -21,6 +21,9 @@ template <typename Element>
 [[nodiscard]] Element& surface_at(std::span<Element> values, std::size_t index) noexcept {
     return values.subspan(index, 1).front();
 }
+inline constexpr std::uint64_t surface_minimum_samples = 16;
+inline constexpr double surface_explicit_coverage = 0.25;
+inline constexpr double surface_automatic_coverage = 0.60;
 inline constexpr unsigned surface_iteration_limit = 500;
 inline constexpr double surface_relative_tolerance = 1e-8;
 inline constexpr std::uint32_t surface_poll_interval = 256;

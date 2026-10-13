@@ -55,8 +55,8 @@ core::Result<double> gamma_candidate(double f, const Gamma& method) {
 }
 std::string_view status_name(ContrastStatus v) noexcept {
     switch (v) {
-    case ContrastStatus::not_started:
-        return "not_started";
+    case ContrastStatus::unresolved:
+        return "unresolved";
     case ContrastStatus::disabled:
         return "disabled";
     case ContrastStatus::no_change:
