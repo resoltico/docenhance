@@ -1001,7 +1001,7 @@
       "occurrences": 1
     },
     "tools/advisory_review.py:advisory/OSV-2023-444@ce6a2f23bc78f99918e1ad7c11ccf80978f6d0fc9ff6e9caef10fcf32414dd7f": {
-      "explanation": "The exact reviewed OpenCV source match concerns JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory evidence (all fields except a validated modified timestamp) invalidates the review. This is not a blanket OpenCV vulnerability exception.",
+      "explanation": "The exact reviewed OpenCV source and schema-version-1.9.1 advisory evidence concern JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory evidence (all fields except a validated modified timestamp) invalidates the review. This is not a blanket OpenCV vulnerability exception.",
       "occurrences": 1
     },
     "tools/advisory_review.py:advisory/OSV-2026-1068@7990bf9379c25b021d7d42fb163b28eff6d93b9d367bcf8e0b9b93fe6f9ffeeb": {
