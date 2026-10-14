@@ -25,6 +25,7 @@ from test_evidence import EvidenceError
 
 NATIVE_BUDGET = 1740
 
+
 CHILD = """
 import json, os, signal, socket, subprocess, sys
 role, host, port = sys.argv[1:4]

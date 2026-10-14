@@ -23,6 +23,15 @@ harness. Both engines use the declared maximum input length and a per-input time
 manifest target is registered exactly once, with the expected runner, identity and duration.
 Disabled or skippable harnesses are rejected. It explicitly passes the worker count to that child
 CTest invocation; outer CTest `--parallel` is not mistaken for child parallelism.
+After a failed harness, CTest stops launching new targets; already running targets finish and
+the incomplete campaign remains failed with its findings and diagnostic evidence retained.
+
+For local iteration after a complete fuzz configuration and dependency build, rebuild one changed
+harness and its actual linked libraries with `cmake --build out/fuzz/app --target de_fuzz_cli --parallel 2`.
+Run it against the committed seeds and regressions with `python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/app/fuzz-work --seconds 5`.
+Use the corresponding `fuzz-afl` build and `--engine afl` for AFL++. This focused run creates
+its own evidence and is a fast diagnostic, not a complete campaign or a substitute for the
+required full workflow when CLI parsing changes.
 
 `DE_FUZZ_JOBS` defaults to two and admits one through four. Select four only with sufficient
 CPU and memory: four libFuzzer workers can each reach its 2 GiB RSS ceiling, requiring
@@ -60,9 +69,19 @@ Nothing recursively deletes, reuses or replaces a prior run directory. Seeds and
 copied by SHA-256 content identity, with every original path and size recorded in `corpus-index.json`.
 Different bytes with the same filename remain distinct. Equal bytes may deduplicate, but both
 origins stay recorded. Symlink and nonregular corpus entries are rejected rather than followed.
+Staging admits at most 4,096 origins and 32 MiB of distinct input bytes. Before a standalone run
+starts, its work parent must have room for another 256 MiB within a 1.5 GiB threshold. A campaign
+reserves 256 MiB for each of up to four concurrent targets, leaving at least 512 MiB within that
+threshold for retained earlier runs. During execution, allocated work is checked every five seconds;
+exceeding 256 MiB for one run or 1.5 GiB for the work parent stops the owned engine and records an
+incomplete run without deleting findings. These are cooperative stop thresholds, not hard disk quotas:
+growth between checks or a host kill can overshoot them. A filesystem quota or bounded ephemeral
+volume is required for a hard limit. Build trees, dependency caches and separately packaged evidence
+are outside the work-parent threshold and are never silently pruned.
 
 Reports retain the binary and manifest hashes, command arguments, requested duration, execution
-count, engine exit, elapsed time and finding paths. Full engine logs and actual reproducers remain
+count, engine exit, elapsed time and finding paths. Engine logs retain up to 1 MiB of their first and
+last output with an omitted-byte count; actual reproducers remain
 beside the reports. After the owned engine processes join, a completed run with no findings
 removes only its own staged/generated corpus and AFL queue scratch. The seed-origin index,
 statistics, logs and result records remain; committed seeds and regressions are never removed.

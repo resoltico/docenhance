@@ -91,6 +91,29 @@ class FuzzManifestTests(unittest.TestCase):
 class CorpusTests(unittest.TestCase):
     """Same-name inputs, prior run evidence and invalid source entries have explicit treatment."""
 
+    def test_staging_budget_refuses_excess_before_engine_launch(self) -> None:
+        """Many individually valid inputs cannot silently fill a new work directory."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for kind, data in (("corpus", b"abc"), ("regressions", b"def")):
+                directory = root / "fuzz" / kind / "probe"
+                directory.mkdir(parents=True)
+                (directory / "input").write_bytes(data)
+            run = fuzz_execution.Run(
+                fuzz_manifest.Target("probe", "probe.cpp", ("de_core",), 3),
+                Path(sys.executable),
+                "libfuzzer",
+                1,
+                root,
+            )
+            work = fuzz_execution.new_directory(root / "work", "probe-")
+            with (
+                patch.object(fuzz_execution, "MAX_STAGED_INPUT_BYTES", 5),
+                self.assertRaisesRegex(fuzz_manifest.FuzzError, "Staged corpus exceeds 5"),
+            ):
+                fuzz_execution.stage_corpus(run, work)
+            self.assertEqual({path.read_bytes() for path in (work / "corpus").iterdir()}, {b"abc"})
+
     def test_same_name_different_bytes_and_equal_bytes_preserve_origins(self) -> None:
         """Content-addressing prevents overwrites and retains provenance when deduplicating."""
         with tempfile.TemporaryDirectory() as temporary:

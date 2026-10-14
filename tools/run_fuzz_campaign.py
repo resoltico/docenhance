@@ -29,6 +29,7 @@ from fuzz_manifest import (
     target_timeout,
     targets,
 )
+from fuzz_storage import MAX_RUN_DISK_BYTES, admit_work_parent
 from process_execution import bounded_process
 from test_evidence import complete_junit
 
@@ -136,7 +137,12 @@ def complete_reports(directory: Path, expected: set[str], build: Path, seconds: 
 def campaign(args: argparse.Namespace) -> int:
     """Claim new evidence storage, validate selection, execute and reconcile all outcomes."""
     build = args.build.resolve()
-    directory = new_directory(build / "fuzz-work", "campaign-")
+    try:
+        admit_work_parent(build / "fuzz-work", args.jobs * MAX_RUN_DISK_BYTES)
+        directory = new_directory(build / "fuzz-work", "campaign-")
+    except (OSError, FuzzError) as exc:
+        print(f"FAIL: fuzz campaign admission: {exc}")
+        return 1
     report: dict[str, Any] = {"passed": False, "seconds": args.seconds, "jobs": args.jobs}
     write_json(directory / "campaign.json", report)
     try:
@@ -151,6 +157,7 @@ def campaign(args: argparse.Namespace) -> int:
             str(build),
             "--parallel",
             str(args.jobs),
+            "--stop-on-failure",
             "--output-on-failure",
             "--no-tests=error",
             "--output-junit",

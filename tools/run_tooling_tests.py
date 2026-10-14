@@ -22,6 +22,9 @@ if TYPE_CHECKING:
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_JOBS = 2
+# Real process-group cleanup controls deliberately wait through their production grace period.
+# Start this long module immediately so the other isolated worker can cover the remaining tests.
+LONG_MODULE = "test_process_execution"
 
 
 def cases(suite: unittest.TestSuite) -> Iterator[unittest.TestCase]:
@@ -84,7 +87,9 @@ def run(directory: Path, jobs: int = MAX_JOBS) -> bool:
     ):
         print(f"Tooling discovery differs: expected {sorted(expected)}, got {sorted(actual)}")
         return False
-    items = [(directory, name) for name in sorted(expected)]
+    items = [
+        (directory, name) for name in sorted(expected, key=lambda name: (name != LONG_MODULE, name))
+    ]
     # Spawn on every platform: test patches, imports and globals must not cross worker boundaries.
     with ProcessPoolExecutor(
         max_workers=min(jobs, len(items)),

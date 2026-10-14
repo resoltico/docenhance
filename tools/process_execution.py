@@ -8,7 +8,9 @@ import contextlib
 import os
 import signal
 import subprocess
+import threading
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,6 +20,75 @@ if TYPE_CHECKING:
     from typing import IO
 
 REAP_RACE_SECONDS = 0.1
+MIN_CAPTURE_BYTES = 2
+
+
+@dataclass(frozen=True)
+class CapturePolicy:
+    """A bounded diagnostic stream and a cooperating workspace stop check."""
+
+    log_limit_bytes: int
+    monitor: Callable[[], None]
+    interval: float = 5
+
+
+def _capture_bounded(source: IO[bytes], destination: IO[bytes], limit: int) -> None:
+    """Retain startup and final diagnostics without storing repetitive progress forever."""
+    head_limit = limit // 2
+    tail_limit = limit - head_limit
+    head = 0
+    tail = bytearray()
+    total = 0
+    while data := os.read(source.fileno(), 65536):
+        total += len(data)
+        first = data[: max(0, head_limit - head)]
+        if first:
+            destination.write(first)
+            destination.flush()
+            head += len(first)
+        tail.extend(data[len(first) :])
+        if len(tail) > tail_limit:
+            del tail[: len(tail) - tail_limit]
+    if total > limit:
+        destination.write(f"\n[engine output omitted: {total - limit} bytes]\n".encode("ascii"))
+    destination.write(tail)
+    destination.flush()
+
+
+def _capture_or_drain(
+    pipe: IO[bytes],
+    stream: IO[bytes],
+    limit: int,
+    failures: list[OSError | ValueError | RuntimeError],
+) -> None:
+    """Report a capture failure while keeping the pipe live until group shutdown."""
+    try:
+        _capture_bounded(pipe, stream, limit)
+    except (OSError, ValueError, RuntimeError) as exc:
+        failures.append(exc)
+        with contextlib.suppress(OSError):
+            while os.read(pipe.fileno(), 65536):
+                pass
+
+
+def _wait_monitored(
+    process: subprocess.Popen[bytes],
+    command: list[str],
+    timeout: float,
+    monitor: Callable[[], None],
+    interval: float,
+) -> int:
+    """Check owned work while the subprocess runs; a refusal unwinds its process group."""
+    deadline = time.monotonic() + timeout
+    while True:
+        monitor()
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, timeout)
+        try:
+            return process.wait(timeout=min(interval, remaining))
+        except subprocess.TimeoutExpired:
+            continue
 
 
 def interrupted(_signum: int, _frame: FrameType | None) -> None:
@@ -131,7 +202,7 @@ def stop_process(process: subprocess.Popen[bytes], *, graceful: bool) -> None:
 def owned_process(
     command: list[str],
     env: dict[str, str],
-    output: IO[bytes] | IO[str] | tuple[IO[bytes], IO[bytes]] | None,
+    output: IO[bytes] | IO[str] | tuple[IO[bytes], IO[bytes]] | int | None,
     *,
     cwd: Path | None = None,
     graceful: bool = False,
@@ -174,3 +245,49 @@ def bounded_process(
     output = log.open("wb") if log is not None else contextlib.nullcontext(None)
     with output as stream, owned_process(command, env, stream, graceful=graceful) as process:
         return process.wait(timeout=timeout)
+
+
+def bounded_capture(
+    command: list[str], env: dict[str, str], log: Path, timeout: float, policy: CapturePolicy
+) -> int:
+    """Run an owned engine while capping logs and checking its workspace."""
+    if policy.log_limit_bytes < MIN_CAPTURE_BYTES or policy.interval <= 0:
+        message = "Invalid bounded capture policy"
+        raise ValueError(message)
+    with log.open("wb") as stream:
+        reader: threading.Thread | None = None
+        source: IO[bytes] | None = None
+        failures: list[OSError | ValueError | RuntimeError] = []
+
+        def check_capture() -> None:
+            if failures:
+                message = "Engine output capture failed"
+                raise OSError(message) from failures[0]
+            policy.monitor()
+
+        try:
+            with owned_process(command, env, subprocess.PIPE) as process:
+                if process.stdout is None:
+                    message = "Owned process has no output pipe"
+                    raise RuntimeError(message)
+                source = process.stdout
+                reader = threading.Thread(
+                    target=_capture_or_drain,
+                    args=(source, stream, policy.log_limit_bytes, failures),
+                    daemon=True,
+                )
+                reader.start()
+                result = _wait_monitored(process, command, timeout, check_capture, policy.interval)
+        finally:
+            if reader is not None:
+                reader.join(timeout=10)
+                if reader.is_alive():
+                    message = "Engine output reader did not finish"
+                    raise RuntimeError(message)
+            if source is not None:
+                source.close()
+        if failures:
+            message = "Engine output capture failed"
+            raise OSError(message) from failures[0]
+        policy.monitor()
+        return result
