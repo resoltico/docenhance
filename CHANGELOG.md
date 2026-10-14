@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Internal
 
+- Add a public technical document-image corpus with image-specific CC0 evidence, source and retrieval identities, separate embedded-profile and metadata licenses, and a provenance/reuse guide linked from the README. Corpus admission excludes unclear or incompatible redistribution terms; these varied inputs are not a representative held-out evaluation or evidence of natural-document improvement.
+
 - Deep checks now run each Friday at 22:00 Europe/Riga rather than daily; source-release admission requires exact-commit CI and source/package checks, independently of that recurring campaign.
 
 ## [0.8.0] - 2026-10-14

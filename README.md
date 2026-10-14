@@ -130,6 +130,14 @@ holders of individual files; dependencies retain their own licenses. See
 [licensing and distribution](docs/licensing.md) and [third-party notices](THIRD_PARTY_NOTICES.md)
 for scope, attribution and distributor obligations.
 
+The public document corpus has separate rights: scan imagery is **CC0-1.0**, embedded colour
+profiles retain the **ICC profile license**, and Getty catalogue metadata is **CC-BY-4.0**.
+These assets are not relicensed under MPL; a complete JPEG is not exclusively public domain.
+See [corpus provenance and reuse](docs/corpus.md) for item credits, direct source links,
+retrieval times, byte identities, license notices and the limits of this small technical corpus.
+The corpus accompanies the source repository and source archives; native validation packages
+include the guide, without the images. Neither institution endorses DocEnhance.
+
 Explicit luminance denoising composes after illumination and before final quantization:
 
 ```sh

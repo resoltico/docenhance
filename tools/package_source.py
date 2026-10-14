@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Create a deterministic first-party source archive; never include downloaded dependencies."""
+"""Archive committed project sources and licensed corpus assets, excluding acquired dependencies."""
 
 from __future__ import annotations
 

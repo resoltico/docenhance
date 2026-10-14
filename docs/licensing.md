@@ -22,6 +22,19 @@ software or the copied upstream notices. The inventory records its actual creati
 tool creator, not the binary build time or a claim that the maintainer personally prepared it.
 Neither this document nor the declared-source SPDX inventory establishes legal or patent clearance.
 
+Historical scan imagery in the [public corpus](corpus.md) is CC0-1.0. Each JPEG's embedded ICC-owned
+color profile has separate permissive terms, so its complete license expression is
+`CC0-1.0 AND LicenseRef-ICC-Profile`. Preserve the original profile's identification and copyright
+tags; modified profiles must satisfy the ICC license's identification-removal and
+non-misrepresentation requirements. The terms are retained in
+`corpus/licenses/LicenseRef-ICC-Profile.md`.
+
+Retained provenance records have their own terms: Smithsonian metadata is CC0-1.0; Getty collection
+text and metadata are CC-BY-4.0. The corpus manifest, per-file notices and retained legal codes
+identify component licenses and attribution. These upstream assets are separate from MPL-covered
+first-party work. Corpus admission and redistribution are governed by the linked policy; corpus
+assets ship with source archives, while native validation packages include the guide only.
+
 ## Distributor obligations
 
 Read [MPL sections 3.1–3.4](https://www.mozilla.org/en-US/MPL/2.0/), including the notice-preservation
