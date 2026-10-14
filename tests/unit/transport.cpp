@@ -79,20 +79,26 @@ TEST_CASE("Invalid invocations never reach processing", "[cli]") {
           static_cast<int>(core::ExitCode::invocation));
 }
 TEST_CASE("A required string value can consume the option marker before a JSON flag", "[cli]") {
-    CapturingProcessor processor;
-    std::ostringstream out;
-    std::ostringstream err;
-    const auto args = std::to_array<const char*>(
+    const auto bare = std::to_array<const char*>(
         {"docenhance", "process", "input.png", "--out-dir", "--", "--json"});
-    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
-          static_cast<int>(core::ExitCode::processing));
-    if (!processor.received.has_value()) {
-        FAIL("The admitted request did not reach processing");
-        return;
-    }
-    CHECK(processor.received->output_directory() == "--");
-    CHECK(out.str().starts_with('{'));
-    CHECK(err.str().empty());
+    const auto joined = std::to_array<const char*>(
+        {"docenhance", "process", "input.png", "--out-dir=", "--", "--json"});
+    const auto check_case = [](std::span<const char* const> args) {
+        CapturingProcessor processor;
+        std::ostringstream out;
+        std::ostringstream err;
+        CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
+              static_cast<int>(core::ExitCode::processing));
+        if (!processor.received.has_value()) {
+            FAIL("The admitted request did not reach processing");
+            return;
+        }
+        CHECK(processor.received->output_directory() == "--");
+        CHECK(out.str().starts_with('{'));
+        CHECK(err.str().empty());
+    };
+    check_case(bare);
+    check_case(joined);
 }
 TEST_CASE("A JSON-looking required value does not select JSON presentation", "[cli]") {
     CountingProcessor processor;
@@ -103,6 +109,22 @@ TEST_CASE("A JSON-looking required value does not select JSON presentation", "[c
     CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
           static_cast<int>(core::ExitCode::invocation));
     CHECK(processor.calls == 0);
+    CHECK(out.str().empty());
+    CHECK(err.str().starts_with("E_"));
+}
+TEST_CASE("An empty joined assignment consumes the next JSON-looking value", "[cli]") {
+    CapturingProcessor processor;
+    std::ostringstream out;
+    std::ostringstream err;
+    const auto args =
+        std::to_array<const char*>({"docenhance", "process", "input.png", "--out-dir=", "--json"});
+    CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
+          static_cast<int>(core::ExitCode::processing));
+    if (!processor.received.has_value()) {
+        FAIL("The admitted request did not reach processing");
+        return;
+    }
+    CHECK(processor.received->output_directory() == "--json");
     CHECK(out.str().empty());
     CHECK(err.str().starts_with("E_"));
 }

@@ -109,7 +109,7 @@ struct JsonRoles {
 JsonRoles json_roles(const std::vector<std::string>& args) {
     JsonRoles roles;
     // Independent role walk uses the reviewed catalog, not the CLI parser. A string option's
-    // next token is its value; an equals value does not consume another token. Syntax failure
+    // next token is its value; an empty joined value also needs the next token. Syntax failure
     // can deliberately select JSON more broadly. Joined flags use the reviewed default spellings.
     const auto option_tokens =
         args | std::views::drop(1) |
@@ -136,7 +136,9 @@ JsonRoles json_roles(const std::vector<std::string>& args) {
         }
         pending_value =
             std::ranges::any_of(docenhance::contract::option_catalog, [&arg](const auto& option) {
-                return arg == option.name && !option.metavar.empty();
+                return !option.metavar.empty() &&
+                       (arg == option.name || (arg.size() == option.name.size() + 1 &&
+                                               arg.starts_with(option.name) && arg.back() == '='));
             });
     }
     return roles;
