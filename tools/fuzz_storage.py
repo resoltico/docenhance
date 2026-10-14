@@ -36,7 +36,8 @@ def occupied_bytes(root: Path) -> int:
         raise FuzzError(message)
 
     def fail_walk(error: OSError) -> None:
-        raise error
+        if not isinstance(error, FileNotFoundError):
+            raise error
 
     total = 0
     for base, directories, files in os.walk(root, followlinks=False, onerror=fail_walk):
