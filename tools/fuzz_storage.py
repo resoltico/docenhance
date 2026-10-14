@@ -10,8 +10,8 @@ from pathlib import Path
 
 from fuzz_manifest import FuzzError
 
-MAX_RUN_DISK_BYTES = 128 * 1024 * 1024
-MAX_WORK_PARENT_BYTES = 1024 * 1024 * 1024
+MAX_RUN_DISK_BYTES = 256 * 1024 * 1024
+MAX_WORK_PARENT_BYTES = 1536 * 1024 * 1024
 
 
 def entry_bytes(path: Path, *, directory: bool) -> int:
