@@ -109,7 +109,7 @@ struct JsonRoles {
 JsonRoles json_roles(const std::vector<std::string>& args) {
     JsonRoles roles;
     // Independent role walk uses the reviewed catalog, not the CLI parser. A string option's
-    // next token is its value; an equals value does not consume another token. Syntax failure
+    // next token is its value; an empty joined value also needs the next token. Syntax failure
     // can deliberately select JSON more broadly. Joined flags use the reviewed default spellings.
     const auto option_tokens =
         args | std::views::drop(1) |
@@ -118,12 +118,12 @@ JsonRoles json_roles(const std::vector<std::string>& args) {
         std::ranges::any_of(option_tokens, [](const std::string& arg) { return arg == "--json"; });
     bool pending_value = false;
     for (const auto& arg : args | std::views::drop(1)) {
-        if (arg == "--") {
-            break;
-        }
         if (pending_value) {
             pending_value = false;
             continue;
+        }
+        if (arg == "--") {
+            break;
         }
         if (arg == "--json") {
             roles.exact_flag = true;
@@ -136,7 +136,9 @@ JsonRoles json_roles(const std::vector<std::string>& args) {
         }
         pending_value =
             std::ranges::any_of(docenhance::contract::option_catalog, [&arg](const auto& option) {
-                return arg == option.name && !option.metavar.empty();
+                return !option.metavar.empty() &&
+                       (arg == option.name || (arg.size() == option.name.size() + 1 &&
+                                               arg.starts_with(option.name) && arg.back() == '='));
             });
     }
     return roles;
@@ -147,10 +149,12 @@ void check_json_roles(const std::vector<std::string>& args, const Outcome& outco
     if (roles.syntax_failure) {
         require(outcome.code == exit_invocation && json_mode == roles.fallback,
                 "known syntax errors use only the exact-token JSON fallback");
+        return;
     }
-    // Syntax failure uses only an exact raw token. Successful syntax can also admit CLI11's
-    // default-valued flag spellings; argument exit 2 alone cannot distinguish syntax/admission.
-    if (roles.exact_flag || (roles.flag && outcome.code != exit_invocation)) {
+    // Syntax failure uses only an exact raw token. A consumed value can be "--", so a later
+    // parsed flag may lie beyond the raw fallback boundary. Exit 2 alone cannot distinguish
+    // syntax failure from refused admission; explicit transport tests cover both presentations.
+    if ((roles.exact_flag && roles.fallback) || (roles.flag && outcome.code != exit_invocation)) {
         require(json_mode, "a parsed JSON flag selects JSON output");
     }
     if (json_mode) {

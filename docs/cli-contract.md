@@ -26,7 +26,7 @@ P = process.
 
 **Window values.** Decimal digits only; odd integer in [3,4095]. No sign, whitespace, fraction or exponent.
 
-**Tokens values.** String options consume their next token as a value even when it looks like an option; --out-dir --json and --out-dir=--json both name the literal directory --json. On successful parsing only a parsed --json flag selects JSON presentation. An additional --json selects JSON independently. After --, tokens are operands. On syntax failure, an exact --json token before -- selects the JSON diagnostic fallback, even if that token might have been intended as a value; failed syntax never executes processing.
+**Tokens values.** String options consume their next token as a value even when it looks like an option; an empty joined assignment such as --out-dir= also consumes the next token. --out-dir --json, --out-dir= --json and --out-dir=--json all name the literal directory --json. On successful parsing only a parsed --json flag selects JSON presentation. An additional --json selects JSON independently. An unconsumed -- ends option parsing; following tokens are operands. On syntax failure, an exact --json token before -- selects the JSON diagnostic fallback, even if that token might have been intended as a value; failed syntax never executes processing.
 
 ## `--out-dir DIRECTORY`
 
