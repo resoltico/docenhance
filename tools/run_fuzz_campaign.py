@@ -151,6 +151,7 @@ def campaign(args: argparse.Namespace) -> int:
             str(build),
             "--parallel",
             str(args.jobs),
+            "--stop-on-failure",
             "--output-on-failure",
             "--no-tests=error",
             "--output-junit",

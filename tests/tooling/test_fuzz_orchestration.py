@@ -109,6 +109,40 @@ class CampaignOrchestrationTests(unittest.TestCase):
             self.assertFalse(report["passed"])
             self.assertEqual(report["error"], "client reaches host")
 
+    def test_failed_harness_stops_unstarted_work_and_retains_failed_evidence(self) -> None:
+        """A finding can end a long campaign early without being reported as complete."""
+        ctest = shutil.which("ctest")
+        if ctest is None:
+            self.fail("Install the pinned build tools before running orchestration tests")
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            make_ctest_tree(
+                root,
+                """
+                import os, pathlib, sys
+                if sys.argv[1] == "a":
+                    raise SystemExit(77)
+                (pathlib.Path(os.environ["DE_FUZZ_RUN_ROOT"]) / "b.started").touch()
+                """,
+            )
+            with (root / "CTestTestfile.cmake").open("a", encoding="utf-8") as tests:
+                tests.write("set_tests_properties(fuzz-a PROPERTIES PROCESSORS 2)\n")
+            args = argparse.Namespace(build=root, ctest=ctest, seconds=1, jobs=2)
+            with (
+                patch("run_fuzz_campaign.registration", return_value={"a", "b"}),
+                patch("run_fuzz_campaign.inspect_archives", return_value={}),
+                patch("run_fuzz_campaign.client_violations", return_value=[]),
+            ):
+                self.assertEqual(run_fuzz_campaign.campaign(args), 1)
+            campaigns = list((root / "fuzz-work").glob("campaign-*"))
+            self.assertEqual(len(campaigns), 1)
+            self.assertFalse((campaigns[0] / "b.started").exists())
+            report = json.loads((campaigns[0] / "campaign.json").read_text())
+            self.assertFalse(report["passed"])
+            self.assertNotEqual(report["exit_code"], 0)
+            self.assertIn("--stop-on-failure", report["command"])
+            self.assertTrue((campaigns[0] / "ctest.xml").is_file())
+
     def test_invalid_cli_duration_does_not_claim_a_workspace(self) -> None:
         """Duration zero fails before any engine or evidence directory can be created."""
         with tempfile.TemporaryDirectory() as temporary:

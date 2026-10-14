@@ -23,6 +23,15 @@ harness. Both engines use the declared maximum input length and a per-input time
 manifest target is registered exactly once, with the expected runner, identity and duration.
 Disabled or skippable harnesses are rejected. It explicitly passes the worker count to that child
 CTest invocation; outer CTest `--parallel` is not mistaken for child parallelism.
+After a failed harness, CTest stops launching new targets; already running targets finish and
+the incomplete campaign remains failed with its findings and diagnostic evidence retained.
+
+For local iteration after a complete fuzz configuration and dependency build, rebuild one changed
+harness and its actual linked libraries with `cmake --build out/fuzz/app --target de_fuzz_cli --parallel 2`.
+Run it against the committed seeds and regressions with `python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/app/fuzz-work --seconds 5`.
+Use the corresponding `fuzz-afl` build and `--engine afl` for AFL++. This focused run creates
+its own evidence and is a fast diagnostic, not a complete campaign or a substitute for the
+required full workflow when CLI parsing changes.
 
 `DE_FUZZ_JOBS` defaults to two and admits one through four. Select four only with sufficient
 CPU and memory: four libFuzzer workers can each reach its 2 GiB RSS ceiling, requiring
