@@ -15,7 +15,7 @@ import os
 import sys
 from pathlib import Path
 
-from fuzz_execution import Run, execute
+from fuzz_execution import Run, admit_work_parent, execute
 from fuzz_manifest import DEFAULT_SECONDS, FuzzError, duration, targets
 
 
@@ -34,6 +34,8 @@ def main() -> int:
     # The campaign owns a fresh parent; independently invoked targets use their explicit --work.
     work = Path(os.environ.get("DE_FUZZ_RUN_ROOT", str(args.work))).resolve()
     try:
+        if "DE_FUZZ_RUN_ROOT" not in os.environ:
+            admit_work_parent(work)
         run = Run(declared[args.target], args.binary.resolve(), args.engine, args.seconds)
         directory = execute(run, work)
         report = json.loads((directory / "result.json").read_text(encoding="utf-8"))

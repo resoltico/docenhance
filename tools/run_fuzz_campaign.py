@@ -16,7 +16,7 @@ from typing import Any
 
 from architecture import ArchitectureError, load_manifest
 from architecture_build import client_violations
-from fuzz_execution import new_directory, write_json
+from fuzz_execution import MAX_RUN_DISK_BYTES, admit_work_parent, new_directory, write_json
 from fuzz_instrumentation import inspect_archives
 from fuzz_manifest import (
     DEFAULT_JOBS,
@@ -136,7 +136,12 @@ def complete_reports(directory: Path, expected: set[str], build: Path, seconds: 
 def campaign(args: argparse.Namespace) -> int:
     """Claim new evidence storage, validate selection, execute and reconcile all outcomes."""
     build = args.build.resolve()
-    directory = new_directory(build / "fuzz-work", "campaign-")
+    try:
+        admit_work_parent(build / "fuzz-work", args.jobs * MAX_RUN_DISK_BYTES)
+        directory = new_directory(build / "fuzz-work", "campaign-")
+    except (OSError, FuzzError) as exc:
+        print(f"FAIL: fuzz campaign admission: {exc}")
+        return 1
     report: dict[str, Any] = {"passed": False, "seconds": args.seconds, "jobs": args.jobs}
     write_json(directory / "campaign.json", report)
     try:

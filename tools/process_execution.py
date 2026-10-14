@@ -8,7 +8,9 @@ import contextlib
 import os
 import signal
 import subprocess
+import threading
 import time
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,6 +20,61 @@ if TYPE_CHECKING:
     from typing import IO
 
 REAP_RACE_SECONDS = 0.1
+MIN_CAPTURE_BYTES = 2
+
+
+@dataclass(frozen=True)
+class CapturePolicy:
+    """A bounded diagnostic stream and a cooperating workspace stop check."""
+
+    log_limit_bytes: int
+    monitor: Callable[[], None]
+    interval: float = 5
+
+
+def _capture_bounded(source: IO[bytes], destination: IO[bytes], limit: int) -> None:
+    """Retain startup and final diagnostics without storing repetitive progress forever."""
+    head_limit = limit // 2
+    tail_limit = limit - head_limit
+    head = 0
+    tail = bytearray()
+    total = 0
+    while data := source.read1(65536):
+        total += len(data)
+        first = data[: max(0, head_limit - head)]
+        if first:
+            destination.write(first)
+            destination.flush()
+            head += len(first)
+        tail.extend(data[len(first) :])
+        if len(tail) > tail_limit:
+            del tail[: len(tail) - tail_limit]
+    if total > limit:
+        destination.write(
+            f"\n[engine output omitted: {total - limit} bytes]\n".encode("ascii")
+        )
+    destination.write(tail)
+    destination.flush()
+
+
+def _wait_monitored(
+    process: subprocess.Popen[bytes],
+    command: list[str],
+    timeout: float,
+    monitor: Callable[[], None],
+    interval: float,
+) -> int:
+    """Check owned work while the subprocess runs; a refusal unwinds its process group."""
+    deadline = time.monotonic() + timeout
+    while True:
+        monitor()
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise subprocess.TimeoutExpired(command, timeout)
+        try:
+            return process.wait(timeout=min(interval, remaining))
+        except subprocess.TimeoutExpired:
+            continue
 
 
 def interrupted(_signum: int, _frame: FrameType | None) -> None:
@@ -174,3 +231,46 @@ def bounded_process(
     output = log.open("wb") if log is not None else contextlib.nullcontext(None)
     with output as stream, owned_process(command, env, stream, graceful=graceful) as process:
         return process.wait(timeout=timeout)
+
+
+def bounded_capture(
+    command: list[str], env: dict[str, str], log: Path, timeout: float, policy: CapturePolicy
+) -> int:
+    """Run an owned engine while capping logs and checking its workspace."""
+    if policy.log_limit_bytes < MIN_CAPTURE_BYTES or policy.interval <= 0:
+        message = "Invalid bounded capture policy"
+        raise ValueError(message)
+    with log.open("wb") as stream:
+        reader: threading.Thread | None = None
+        source: IO[bytes] | None = None
+        failures: list[OSError | ValueError | RuntimeError] = []
+
+        def capture(pipe: IO[bytes]) -> None:
+            try:
+                _capture_bounded(pipe, stream, policy.log_limit_bytes)
+            except (OSError, ValueError, RuntimeError) as exc:
+                failures.append(exc)
+
+        try:
+            with owned_process(command, env, subprocess.PIPE) as process:
+                if process.stdout is None:
+                    message = "Owned process has no output pipe"
+                    raise RuntimeError(message)
+                source = process.stdout
+                reader = threading.Thread(target=capture, args=(source,), daemon=True)
+                reader.start()
+                result = _wait_monitored(
+                    process, command, timeout, policy.monitor, policy.interval
+                )
+        finally:
+            if reader is not None:
+                reader.join(timeout=10)
+                if reader.is_alive():
+                    message = "Engine output reader did not finish"
+                    raise RuntimeError(message)
+            if source is not None:
+                source.close()
+        if failures:
+            message = "Engine output capture failed"
+            raise OSError(message) from failures[0]
+        return result

@@ -18,10 +18,15 @@ from pathlib import Path
 from typing import Any
 
 from fuzz_manifest import ENGINE_GRACE, MAX_SECONDS, ROOT, FuzzError, Target, positive, settings
-from process_execution import bounded_process
+from process_execution import CapturePolicy, bounded_capture
 
 PER_INPUT_SECONDS = 5
 MEMORY_LIMIT_MIB = 2048
+MAX_ENGINE_LOG_BYTES = 1024 * 1024
+MAX_RUN_DISK_BYTES = 128 * 1024 * 1024
+MAX_WORK_PARENT_BYTES = 1024 * 1024 * 1024
+MAX_STAGED_INPUT_BYTES = 32 * 1024 * 1024
+MAX_CORPUS_ORIGINS = 4096
 EXECUTIONS = re.compile(r"^stat::number_of_executed_units:\s*(\d+)\s*$", re.MULTILINE)
 
 
@@ -49,11 +54,59 @@ def new_directory(root: Path, prefix: str) -> Path:
     return Path(tempfile.mkdtemp(prefix=prefix, dir=root))
 
 
+def entry_bytes(path: Path, *, directory: bool) -> int:
+    """Inspect one racing engine entry without following or counting foreign links."""
+    try:
+        state = path.lstat()
+    except FileNotFoundError:
+        return 0  # An engine may remove or rename a queue item during the scan.
+    valid = stat.S_ISDIR(state.st_mode) if directory else stat.S_ISREG(state.st_mode)
+    if not valid:
+        message = f"Unsafe fuzz work entry: {path}"
+        raise FuzzError(message)
+    return getattr(state, "st_blocks", (state.st_size + 511) // 512) * 512
+
+
+def occupied_bytes(root: Path) -> int:
+    """Measure allocated owned work without following links into foreign storage."""
+    if not root.exists() and not root.is_symlink():
+        return 0
+    if root.is_symlink() or not root.is_dir():
+        message = f"Unsafe fuzz work root: {root}"
+        raise FuzzError(message)
+
+    def fail_walk(error: OSError) -> None:
+        raise error
+
+    total = 0
+    for base, directories, files in os.walk(root, followlinks=False, onerror=fail_walk):
+        total += entry_bytes(Path(base), directory=True)
+        for name in directories:
+            entry_bytes(Path(base) / name, directory=True)
+        for name in files:
+            total += entry_bytes(Path(base) / name, directory=False)
+    return total
+
+
+def admit_work_parent(work: Path, reserve_bytes: int = MAX_RUN_DISK_BYTES) -> None:
+    """Refuse silent accumulation of previous runs; never discard their evidence."""
+    consumed = occupied_bytes(work)
+    if consumed + reserve_bytes > MAX_WORK_PARENT_BYTES:
+        message = (
+            f"Fuzz work parent uses {consumed} bytes plus {reserve_bytes} reserved, "
+            f"above {MAX_WORK_PARENT_BYTES}; "
+            "review and remove obsolete run evidence before starting another campaign"
+        )
+        raise FuzzError(message)
+
+
 def stage_corpus(run: Run, directory: Path) -> Path:
     """Content-address bytes while retaining every seed/regression origin in an index."""
     corpus = directory / "corpus"
     corpus.mkdir()
     origins = []
+    staged = set()
+    staged_bytes = 0
     for kind in ("corpus", "regressions"):
         source = run.root / "fuzz" / kind / run.target.name
         if source.is_symlink() or not source.is_dir():
@@ -71,7 +124,14 @@ def stage_corpus(run: Run, directory: Path) -> Path:
                 msg = f"Corpus entry grew beyond its bound: {path}"
                 raise FuzzError(msg)
             digest = hashlib.sha256(data).hexdigest()
-            (corpus / digest).write_bytes(data)
+            positive(len(origins) + 1, MAX_CORPUS_ORIGINS, "corpus origin count")
+            if digest not in staged:
+                if staged_bytes + len(data) > MAX_STAGED_INPUT_BYTES:
+                    message = f"Staged corpus exceeds {MAX_STAGED_INPUT_BYTES} bytes"
+                    raise FuzzError(message)
+                (corpus / digest).write_bytes(data)
+                staged.add(digest)
+                staged_bytes += len(data)
             origins.append(
                 {
                     "origin": path.relative_to(run.root).as_posix(),
@@ -240,6 +300,8 @@ def execute(run: Run, work: Path) -> Path:
         "exit_code": None,
         "executions": 0,
         "findings": [],
+        "disk_stop_bytes": MAX_RUN_DISK_BYTES,
+        "log_limit_bytes": MAX_ENGINE_LOG_BYTES,
         "manifest_sha256": hashlib.sha256(
             (run.root / "fuzz/targets.json").read_bytes()
         ).hexdigest(),
@@ -252,8 +314,29 @@ def execute(run: Run, work: Path) -> Path:
         report["command"] = command
         write_json(directory / "result.json", report)
         engine_started = time.monotonic()
-        report["exit_code"] = bounded_process(
-            command, environment(run), directory / "engine.log", run.seconds + ENGINE_GRACE
+
+        def check_disk() -> None:
+            consumed = occupied_bytes(directory)
+            if consumed > MAX_RUN_DISK_BYTES:
+                message = (
+                    f"Fuzz run uses {consumed} bytes, above the "
+                    f"{MAX_RUN_DISK_BYTES}-byte disk stop threshold"
+                )
+                raise FuzzError(message)
+            cumulative = occupied_bytes(work)
+            if cumulative > MAX_WORK_PARENT_BYTES:
+                message = (
+                    f"Fuzz work parent uses {cumulative} bytes, above the "
+                    f"{MAX_WORK_PARENT_BYTES}-byte disk stop threshold"
+                )
+                raise FuzzError(message)
+
+        report["exit_code"] = bounded_capture(
+            command,
+            environment(run),
+            directory / "engine.log",
+            run.seconds + ENGINE_GRACE,
+            CapturePolicy(MAX_ENGINE_LOG_BYTES, check_disk),
         )
         report["engine_elapsed_seconds"] = time.monotonic() - engine_started
         if report["exit_code"] != 0:
@@ -265,7 +348,7 @@ def execute(run: Run, work: Path) -> Path:
         ):
             report["scratch_removed"] = remove_successful_scratch(directory, run.engine)
             report["passed"] = True
-    except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
         report["findings"] = engine_findings(run, directory)
         if "error" in report:
             report["statistics_error"] = str(exc)
