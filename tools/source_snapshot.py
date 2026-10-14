@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Read one committed first-party tree as immutable blobs, never ambient worktree contents."""
+"""Read one committed repository tree as immutable blobs, never ambient worktree contents."""
 
 from __future__ import annotations
 

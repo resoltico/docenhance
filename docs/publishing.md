@@ -64,6 +64,6 @@ substitute for those observations. Source-only validation artifacts do not annou
 binary release.
 
 Measured natural-document readability/no-harm claims additionally require the independent
-[cleared held-out protocol](document-quality.md). Technical Flickr pilots, synthetic references
-and bundle verification are not blinded human evaluation. Missing corpus coverage or reviewers
+[cleared held-out protocol](document-quality.md). The [public technical corpus](corpus.md), synthetic
+references and bundle verification are not blinded human evaluation. Missing corpus coverage or reviewers
 blocks those claims; do not hide missing evidence behind a green engineering workflow.

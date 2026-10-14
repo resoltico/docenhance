@@ -11,6 +11,7 @@ Documentation describes the current implementation, contracts, requirements and 
 | Layer graph and allowed edges | `spec/architecture.json` | [architecture](architecture.md) |
 | Command syntax and method classification | `spec/cli-contract.json`, `spec/method-contract.json` | [CLI contract](cli-contract.md), [methods](methods.md) |
 | Response and record shapes | `spec/command-response.schema.json`, `spec/run-record.schema.json` | [bundles](bundles.md), [CLI behavior](cli.md) |
+| Public corpus admission and rights | `docs/corpus.md`; `corpus/manifest.json` owns item provenance | [corpus](corpus.md), [licensing](licensing.md) |
 | Document-quality protocol and report | `spec/document-quality.schema.json` | [quality evaluation](document-quality.md) |
 | Release narrative | `CHANGELOG.md` | [publishing](publishing.md) |
 
@@ -19,6 +20,9 @@ Documentation describes the current implementation, contracts, requirements and 
 Start with [status](status.md), then [architecture](architecture.md) and [design decisions](decisions.md). [Build](build.md), [quality](quality.md) and [fuzzing](fuzzing.md) describe required verification. Execution evidence must identify the actual commit, executable, platform, inputs and result; a documented command is not evidence that it ran.
 
 [Foundation design](foundation-design.md) describes admitted plans and lifecycle ownership. [Foundation review](foundation-qa.md) lists acceptance conditions. [Document-quality evaluation](document-quality.md) governs independent cleared held-out evidence separately from engineering correctness.
+
+The [public corpus](corpus.md) documents image acquisition, source-specific rights and the boundary
+between technical inputs and independent human quality evidence.
 
 ## Representation and method guides
 

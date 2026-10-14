@@ -8,18 +8,15 @@ independent held-out review. A successful processing command alone cannot establ
 
 ## Governed corpus and frozen experiment
 
-Keep natural images in a separately governed asset directory, outside the public source tree.
+The [public corpus policy](corpus.md) governs source-image admission, provenance and redistribution;
+`corpus/manifest.json` identifies the included inputs and their separate licenses. Keep evaluation
+plans, outputs and reviews in a governed experiment directory.
 `spec/document-quality.schema.json` defines the closed evaluation manifest. Preserve each input's
 original bytes, source URL, institution/creator, rights basis, evidence and named curator. Permission
 fields are attestations requiring independent rights review, not a legal warranty inferred from a
-hash. Do not include private user documents, credentials or uncleared third-party material.
-
-An institutional Flickr Commons item may be a candidate when its individual rights label and
-institution policy support the intended evaluation use. Retain both pages with retrieval date and
-digests. Exclude all-rights-reserved or contradictory items. “No known copyright restrictions” is
-an institutional assessment, not a universal public-domain guarantee; see [Flickr's explanation](https://www.flickr.org/programs/flickr-commons/no-known-copyright-restrictions-how-it-works/).
-Attribution, catalogue references and any purpose restrictions stay with the asset. Never stamp the
-project's MPL license onto corpus images or upstream material.
+hash or an automated acquisition assessment. Do not include private user documents, credentials or
+uncleared third-party material. An image's publication in the technical corpus does not establish
+its admission to a frozen held-out evaluation.
 
 The closed plan and report use protocol version 2; obsolete shapes are refused. Freeze one
 `protocol` object before opening held-out outputs. Its SHA-256 binds source/build/executable
@@ -137,9 +134,9 @@ fresh execution/review against the same locked holdout, with the prior results r
 
 ## Current evidence boundary
 
-No human panel has been furnished for this redesign. Historical Flickr items can support actual
-technical processing, deterministic repetition, resource and preservation pilots, but these pilots
-are not blinded readability evaluations or a representative corpus. Missing class coverage or human
-reviews blocks measured natural-document/no-harm release claims. Correctness CI can pass while that
+No human panel has been furnished for this redesign. The [public technical corpus](corpus.md) can
+support processing, deterministic repetition and preservation checks; it does not constitute a
+blinded readability evaluation or representative coverage. Missing class coverage or human reviews
+blocks measured natural-document/no-harm release claims. Correctness CI can pass while that
 product-quality evidence remains incomplete. Reports must identify this distinction explicitly.
 
