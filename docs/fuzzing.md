@@ -28,7 +28,7 @@ CTest invocation; outer CTest `--parallel` is not mistaken for child parallelism
 CPU and memory: four libFuzzer workers can each reach its 2 GiB RSS ceiling, requiring
 headroom beyond 8 GiB for runtimes and the host. AFL++ has no equivalent RSS cap. Campaign timeout is computed from the
 actual target count, full execution waves, per-target watchdog time and reporting allowance. The
-nightly workflow checks the plan against its available campaign budget before starting builds;
+weekly workflow checks the plan against its available campaign budget before starting builds;
 a growing target set cannot silently omit work or overrun a hand-maintained aggregate timeout.
 
 The runner bounds its engine subprocess independently of CTest. Each engine owns a separate process
@@ -72,9 +72,9 @@ the run and preserve records and any remaining scratch; an unlink failure can le
 cleanup. Earlier run directories are never automatically pruned.
 The inherited environment and credentials are never exported. Review any new
 finding, minimize it deliberately, then commit the regression; a successful campaign never edits
-its own repository corpus. Both engines run short required PR campaigns and longer nightly
+its own repository corpus. Both engines run short required PR campaigns and longer weekly
 campaigns. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
-the artifact uploader cannot accept directly. PR artifacts are retained for seven days, and nightly
+the artifact uploader cannot accept directly. PR artifacts are retained for seven days, and weekly
 campaign artifacts for 30 days, including failed runs. Each archive includes a manifest binding
 the engine and exact source commit; absent or incomplete campaigns are explicitly labeled rather
 than receiving synthetic empty directories. Missing required upload bytes fail CI. Saved crash

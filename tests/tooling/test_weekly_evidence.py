@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Synthetic negative controls for nightly evidence and fail-closed findings."""
+"""Synthetic negative controls for weekly evidence and fail-closed findings."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ from package_fuzz_evidence import archive_evidence, describe
 from triage_fuzz_findings import triage
 
 
-class NightlyEvidenceTests(unittest.TestCase):
+class WeeklyEvidenceTests(unittest.TestCase):
     """Fake campaign metadata must never be mistaken for full engine work."""
 
     def test_missing_and_partial_campaign_cannot_be_reported_complete(self) -> None:

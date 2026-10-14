@@ -25,7 +25,7 @@ without links or duplicate names.
 The cache is local working state, not source control and not a second authority. See the [build
 guide](build.md#acquisition-is-a-separate-phase) for concurrency and recovery rules.
 
-Quality-gate and nightly CI restore only the `archives`, `sources` and `receipts` directories
+Quality-gate and weekly CI restore only the `archives`, `sources` and `receipts` directories
 inside `.cache/deps` with an exact OS-specific key bound to the source lock and
 acquisition/verification implementation. There are no prefix-match restore keys.
 Acquisition still runs unconditionally: restored Git release objects, archive digests and complete
@@ -95,7 +95,7 @@ and the relocated-package smoke test. Never accept an update merely because its 
 
 ## Advisory observations
 
-Run `python tools/check_advisories.py` after acquisition. The independent nightly job runs the
+Run `python tools/check_advisories.py` after acquisition. The independent weekly job runs the
 same command. It verifies cached sources, queries [OSV](https://google.github.io/osv.dev/post-v1-query/)
 using peeled Git commits, follows bounded pagination and refuses failed or malformed observations.
 The TIFF archive uses an OSS-Fuzz package-version query, whose coverage is narrower than an exact
@@ -126,7 +126,7 @@ CI may reuse these verified analysis tools; each application/dependency build st
 own native build tree. Reusing a compiler installation is not proof of binary reproducibility.
 
 
-The nightly OSV job also writes a source-bound JSON observation report, including the
+The weekly OSV job also writes a source-bound JSON observation report, including the
 lock and feature-policy hashes, exact finding-evidence fingerprints and an explicit
 incomplete/failure state when OSV queries cannot finish. Artifacts are retained for
 30 days. Neither a reviewed exclusion nor an empty OSV result means a vulnerability

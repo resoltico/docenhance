@@ -4,6 +4,10 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Internal
+
+- Deep checks now run each Friday at 22:00 Europe/Riga rather than daily; source-release admission requires exact-commit CI and source/package checks, independently of that recurring campaign.
+
 ## [0.8.0] - 2026-10-14
 
 ### Added

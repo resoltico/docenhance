@@ -123,7 +123,7 @@ dependency.
 cmake --workflow --preset sanitize
 ```
 
-The sanitizer preset requires the pinned LLVM clang on Linux and macOS, and instruments **first-party code**, not the whole dependency graph; it makes no claim of complete codec instrumentation. Every AddressSanitizer or UndefinedBehaviorSanitizer report is fatal, so undefined behavior fails a test instead of printing and continuing, and the build adds implicit-conversion, bounds and hardened standard-library checks. Both sanitizer presets run independently over the whole suite in required PR jobs and in the nightly workflow.
+The sanitizer preset requires the pinned LLVM clang on Linux and macOS, and instruments **first-party code**, not the whole dependency graph; it makes no claim of complete codec instrumentation. Every AddressSanitizer or UndefinedBehaviorSanitizer report is fatal, so undefined behavior fails a test instead of printing and continuing, and the build adds implicit-conversion, bounds and hardened standard-library checks. Both sanitizer presets run independently over the whole suite in required PR jobs and in the weekly workflow.
 
 ## The tools
 
@@ -169,14 +169,14 @@ python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli 
 python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 600
 ```
 
-AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with both libFuzzer and AFL++. The nightly workflow runs both engines for 30 minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
+AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with both libFuzzer and AFL++. The weekly workflow runs both engines for 30 minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
 
-The public Ubuntu quality and nightly jobs explicitly select four concurrent fuzz targets.
+The public Ubuntu quality and weekly jobs explicitly select four concurrent fuzz targets.
 [GitHub's runner specification](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
 provides four cores and 16 GB for those runners; four libFuzzer processes each retain the 2 GiB
 RSS/malloc ceilings, leaving room for runtime and operating-system overhead. AFL++ retains its
 ASan-compatible settings and finite harness allocations, without an equivalent RSS-limit claim.
-Local campaigns default to two workers. Each PR target still receives 60 seconds and each nightly
+Local campaigns default to two workers. Each PR target still receives 60 seconds and each weekly
 target 1,800 seconds; planning and CTest use the same selected concurrency and retain complete
 per-target execution evidence. Workload admission precedes compiler installation and the build.
 

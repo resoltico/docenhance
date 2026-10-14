@@ -67,9 +67,29 @@ class WorkflowIntegrityTests(unittest.TestCase):
         """Current source, platform, compiler, engine and aggregate routes agree."""
         self.assertEqual(integrity_errors(self.root), [])
 
+    def test_weekly_riga_schedule_is_exact(self) -> None:
+        """One Friday evening trigger follows Riga daylight saving time."""
+        path = ".github/workflows/weekly.yml"
+        document = workflow(self.root / path)
+        self.assertEqual(document["name"], "Weekly deep checks")
+        self.assertEqual(set(document["on"]), {"schedule", "workflow_dispatch"})
+        self.assertEqual(
+            document["on"]["workflow_dispatch"]["inputs"]["seconds"]["default"], "1800"
+        )
+        self.assertEqual(
+            document["on"]["schedule"], [{"cron": "0 22 * * 5", "timezone": "Europe/Riga"}]
+        )
+        for old, new in (
+            ("0 22 * * 5", "0 22 * * *"),
+            ("0 22 * * 5", "0 21 * * 5"),
+            ("timezone: Europe/Riga", "timezone: UTC"),
+        ):
+            with self.subTest(old=old, new=new):
+                self.assert_mutation_refused(path, old, new, "Weekly schedule")
+
     def test_source_cache_identity_and_payload(self) -> None:
         """Restores cannot include binaries, writer claims or fallback identities."""
-        for name in ("ci.yml", "nightly.yml"):
+        for name in ("ci.yml", "weekly.yml"):
             for old, new in (
                 (".cache/deps/archives", ".cache/deps"),
                 (".cache/deps/sources", "out/release/prefix"),
@@ -89,7 +109,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
     def test_alternate_cache_actions_are_refused(self) -> None:
         """Combined cache actions cannot restore binaries or save automatic partial state."""
         for action in ("actions/cache/restore", "actions/cache", "Actions/Cache"):
-            for name in ("ci.yml", "nightly.yml"):
+            for name in ("ci.yml", "weekly.yml"):
                 with self.subTest(action=action, name=name):
                     self.assert_mutation_refused(
                         f".github/workflows/{name}",
@@ -105,7 +125,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
 
     def test_source_cache_cannot_bypass_verification(self) -> None:
         """Cache hits still acquire; failed or unfinished acquisition cannot be saved."""
-        for name in ("ci.yml", "nightly.yml"):
+        for name in ("ci.yml", "weekly.yml"):
             for old, new in (
                 (
                     "      - run: cmake -P cmake/AcquireDependencies.cmake",
@@ -158,7 +178,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
         """Each expensive execution exports the real bounded CPU count before using it."""
         for filename, jobs in (
             ("ci.yml", ("structural", "native", "fuzz", "sanitize")),
-            ("nightly.yml", ("sanitize", "campaign")),
+            ("weekly.yml", ("sanitize", "campaign")),
         ):
             document = workflow(ROOT / ".github/workflows" / filename)
             for name in jobs:
@@ -193,7 +213,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
 
     def test_fuzz_parallelism_and_complete_execution(self) -> None:
         """Planning and configuration agree, and all campaigns still execute CTest."""
-        for filename in ("ci.yml", "nightly.yml"):
+        for filename in ("ci.yml", "weekly.yml"):
             for old, new in (
                 ("--jobs 4 --job-budget", "--jobs 2 --job-budget"),
                 ("-DDE_FUZZ_JOBS=4", "-DDE_FUZZ_JOBS=2"),
@@ -213,11 +233,11 @@ class WorkflowIntegrityTests(unittest.TestCase):
             install = commands.index("python tools/install_llvm.py --fuzzing")
             self.assertLess(plan, install)
 
-    def test_nightly_concurrency_and_evidence_are_mandatory(self) -> None:
+    def test_weekly_concurrency_and_evidence_are_mandatory(self) -> None:
         """Changes to queuing, error-on-missing and forensic retention must fail."""
         for old, new, diagnostic in (
-            ("queue: max", "queue: single", "Nightly concurrency"),
-            ("cancel-in-progress: false", "cancel-in-progress: true", "Nightly concurrency"),
+            ("queue: max", "queue: single", "Weekly concurrency"),
+            ("cancel-in-progress: false", "cancel-in-progress: true", "Weekly concurrency"),
             (
                 "name: Upload source-bound advisory observations",
                 "name: Silently ignore advisory evidence",
@@ -241,7 +261,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
             ),
         ):
             with self.subTest(old=old):
-                self.assert_mutation_refused(".github/workflows/nightly.yml", old, new, diagnostic)
+                self.assert_mutation_refused(".github/workflows/weekly.yml", old, new, diagnostic)
         self.assert_mutation_refused(
             ".github/workflows/ci.yml",
             "retention-days: 7",
@@ -257,7 +277,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
             ("      - run: python tools/deps.py fetch", "      - run: echo acquired"),
         ):
             with self.subTest(new=new):
-                self.assert_mutation_refused(".github/workflows/nightly.yml", old, new, "Required")
+                self.assert_mutation_refused(".github/workflows/weekly.yml", old, new, "Required")
 
     def test_comments_echo_condition_and_optional_steps(self) -> None:
         """No mention of the aggregate can substitute for its unconditional execution."""
@@ -319,7 +339,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
                 "python tools/run_fuzz_campaign.py --plan",
                 "echo python tools/run_fuzz_campaign.py --plan",
             ),
-            ("nightly.yml", "ctest --preset", "echo ctest --preset"),
+            ("weekly.yml", "ctest --preset", "echo ctest --preset"),
         ):
             with self.subTest(name=name, old=old):
                 self.assert_mutation_refused(

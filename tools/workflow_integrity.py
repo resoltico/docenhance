@@ -94,12 +94,12 @@ def sanitizer_job(document: dict[str, Any], major: str) -> None:
         raise ValueError(msg)
 
 
-def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
+def fuzz_job(document: dict[str, Any], major: str, *, weekly: bool) -> None:
     """Both engines execute the complete campaign; comments cannot pin their compiler."""
-    job = required_job(document, "campaign" if nightly else "fuzz")
+    job = required_job(document, "campaign" if weekly else "fuzz")
     require_strategy(job, fuzz_matrix(major))
     required_step(job, "python tools/install_build_tools.py")
-    seconds = '"$SECONDS_PER_TARGET"' if nightly else "60"
+    seconds = '"$SECONDS_PER_TARGET"' if weekly else "60"
     command = (
         "cmake --preset ${{ matrix.preset }} "
         f"-DDE_FUZZ_SECONDS={seconds} -DDE_FUZZ_JOBS=4\n"
@@ -116,7 +116,7 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
         "python tools/install_aflplusplus.py\necho core | sudo tee /proc/sys/kernel/core_pattern",
         "matrix.engine == 'afl'",
     )
-    budget = "19800" if nightly else "2400"
+    budget = "19800" if weekly else "2400"
     required_step(
         job,
         f"python tools/run_fuzz_campaign.py --plan --seconds {seconds} "
@@ -138,14 +138,11 @@ def fuzz_job(document: dict[str, Any], major: str, *, nightly: bool) -> None:
     )
     upload = require_evidence_upload(
         job,
-        name="Upload campaign evidence" if nightly else "Upload fuzz evidence",
+        name="Upload campaign evidence" if weekly else "Upload fuzz evidence",
         path="out/${{ matrix.preset }}/fuzz-evidence.tar.gz",
-        artifact=(
-            "campaign-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}"
-            if nightly
-            else "fuzz-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}"
-        ),
-        days=30 if nightly else 7,
+        artifact=("campaign" if weekly else "fuzz")
+        + "-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}",
+        days=30 if weekly else 7,
     )
     steps = job["steps"]
     if not (
@@ -196,7 +193,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     required_step(native, "cmake --workflow --preset release", "runner.os != 'Windows'")
     required_step(native, "./tools/ci_windows.ps1", "runner.os == 'Windows'")
     required_step(native, NATIVE_SMOKE, "runner.os != 'Windows'")
-    fuzz_job(document, major, nightly=False)
+    fuzz_job(document, major, weekly=False)
     sanitizer_job(document, major)
     aggregate_job(document)
 
@@ -225,14 +222,18 @@ def hook_errors(root: Path) -> list[str]:
     return []
 
 
-def nightly_workflow(document: dict[str, Any], major: str) -> None:
-    """Require queued nightly runs, strict OSV observations and complete fuzz/sanitizer coverage."""
+def weekly_workflow(document: dict[str, Any], major: str) -> None:
+    """Require a weekly local schedule, strict OSV review and full fuzz/sanitizer coverage."""
+    schedule = [{"cron": "0 22 * * 5", "timezone": "Europe/Riga"}]
+    if document.get("on", {}).get("schedule") != schedule:
+        message = "Weekly schedule must be Friday 22:00 Europe/Riga"
+        raise ValueError(message)
     if document.get("concurrency") != {
-        "group": "nightly-${{ github.workflow }}-${{ github.ref }}",
+        "group": "weekly-${{ github.workflow }}-${{ github.ref }}",
         "cancel-in-progress": "false",
         "queue": "max",
     }:
-        message = "Nightly concurrency must retain complete pending runs"
+        message = "Weekly concurrency must retain complete pending runs"
         raise ValueError(message)
     advisories = required_job(document, "advisories")
     source_cache(advisories, required_step(advisories, "python tools/deps.py fetch"))
@@ -250,7 +251,7 @@ def nightly_workflow(document: dict[str, Any], major: str) -> None:
         message = "Advisory evidence must be uploaded after observation"
         raise ValueError(message)
     sanitizer_job(document, major)
-    fuzz_job(document, major, nightly=True)
+    fuzz_job(document, major, weekly=True)
 
 
 def integrity_errors(root: Path) -> list[str]:
@@ -259,12 +260,11 @@ def integrity_errors(root: Path) -> list[str]:
         errors = hook_errors(root)
     except (yaml.YAMLError, ValueError, TypeError, KeyError, AttributeError) as error:
         errors = [f".pre-commit-config.yaml: {error}"]
-    major = str(json.loads((root / "deps/tools.json").read_text())["clang_tidy"]["version"]).split(
-        "."
-    )[0]
+    tools = json.loads((root / "deps/tools.json").read_text())
+    major = str(tools["clang_tidy"]["version"]).split(".")[0]
     directory = root / ".github/workflows"
     paths = sorted([*directory.glob("*.yml"), *directory.glob("*.yaml")])
-    if {path.name for path in paths} != {"ci.yml", "nightly.yml", "source.yml"}:
+    if {path.name for path in paths} != {"ci.yml", "weekly.yml", "source.yml"}:
         errors.append("Workflow inventory must retain the three reviewed execution contracts")
     for path in paths:
         try:
@@ -272,8 +272,8 @@ def integrity_errors(root: Path) -> list[str]:
             errors.extend(f"{path.name}: {error}" for error in action_errors(document))
             if path.name == "ci.yml":
                 quality_workflow(document, major)
-            elif path.name == "nightly.yml":
-                nightly_workflow(document, major)
+            elif path.name == "weekly.yml":
+                weekly_workflow(document, major)
             elif path.name == "source.yml":
                 required_step(required_job(document, "source"), SOURCE_GATE)
                 source = document["jobs"]["source"]
