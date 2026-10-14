@@ -11,7 +11,7 @@ them from there exactly as it would from the root.
 
 Two workflow families are checked in:
 
-- **Quality gates** and **Nightly deep checks** acquire locked dependencies and run native builds,
+- **Quality gates** and **Weekly deep checks** acquire locked dependencies and run native builds,
   tests, sanitizers and fuzzing. They create packages only for in-run smoke tests; they upload no
   development binaries and create no GitHub releases.
 - **Package source archive** runs source-level integrity, formatting, lint/type and tooling checks,
@@ -26,8 +26,9 @@ native, sanitizer, or fuzzing job fails, is skipped, or is cancelled. Linear his
 force pushes and branch deletion are prohibited. Private vulnerability reporting is enabled, and
 the security policy names it as the reporting channel.
 
-The **Nightly deep checks** workflow runs both fuzz engines and the sanitizer suite outside pull
-requests. `.github/CODEOWNERS` must name the current maintainer before any required-owner review
+The **Weekly deep checks** workflow runs both fuzz engines and the sanitizer suite each Friday at
+22:00 Europe/Riga, independent of source publication. Manual dispatch remains available for
+investigating findings. `.github/CODEOWNERS` must name the current maintainer before any required-owner review
 rule is enabled; do not enable a rule that cannot be satisfied.
 
 Actions are pinned to reviewed commit identifiers, and Dependabot proposes Action updates only;

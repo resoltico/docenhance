@@ -77,7 +77,8 @@ Fix findings instead of weakening guards, relaxing evidence, hiding skips or cla
 Keep running checks' inputs stable or isolated. Inspect changes and artifacts after meaningful
 operations. Follow changes through callers, generated files, packaging, test discovery, CI and docs.
 Use protected reviewed PRs; merge only after fully green latest-head required checks, then verify
-actual main, postmerge CI and qualifying nightly/source/package evidence. Report exact commits,
+actual main, postmerge CI and source/package evidence. The weekly deep checks provide ongoing
+coverage and are not a source-release prerequisite. Report exact commits,
 commands, platforms, outcomes and concrete external blockers; authored CI is not execution evidence.
 
 `docs/document-quality.md` and `spec/document-quality.schema.json` govern independent held-out
