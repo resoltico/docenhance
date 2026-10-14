@@ -289,4 +289,5 @@ def bounded_capture(
         if failures:
             message = "Engine output capture failed"
             raise OSError(message) from failures[0]
+        policy.monitor()
         return result

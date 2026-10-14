@@ -17,6 +17,31 @@ import process_execution
 class BoundedLogTests(unittest.TestCase):
     """Capture limits keep failure diagnostics while discarding repetitive progress."""
 
+    def test_final_monitor_observes_bytes_written_before_normal_exit(self) -> None:
+        """A short engine cannot evade disk admission between periodic polls."""
+        with tempfile.TemporaryDirectory() as temporary:
+            log = Path(temporary) / "engine.log"
+            checks = 0
+            expected = b"x" * 100
+
+            def refuse_final() -> None:
+                nonlocal checks
+                checks += 1
+                if checks > 1 and log.stat().st_size >= len(expected):
+                    message = "final disk threshold exceeded"
+                    raise ValueError(message)
+
+            command = [sys.executable, "-c", "import os; os.write(1, b'x' * 100)"]
+            with self.assertRaisesRegex(ValueError, "final disk threshold exceeded"):
+                process_execution.bounded_capture(
+                    command,
+                    dict(os.environ),
+                    log,
+                    5,
+                    process_execution.CapturePolicy(1024, refuse_final),
+                )
+            self.assertEqual(log.read_bytes(), expected)
+
     def test_head_tail_survive_without_unbounded_log_growth(self) -> None:
         """The first and last bytes survive a noisy completed subprocess."""
         with tempfile.TemporaryDirectory() as temporary:
