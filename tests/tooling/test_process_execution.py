@@ -75,6 +75,27 @@ class BoundedLogTests(unittest.TestCase):
                 )
             self.assertEqual(log.read_bytes(), b"finding-tail")
 
+    def test_log_writer_failure_stops_engine_without_pipe_deadlock(self) -> None:
+        """A failed capture drains until the supervisor kills and joins the child."""
+        with tempfile.TemporaryDirectory() as temporary:
+            log = Path(temporary) / "engine.log"
+            command = [sys.executable, "-c", "import os, time; os.write(1, b'x'); time.sleep(5)"]
+            with (
+                patch.object(
+                    process_execution,
+                    "_capture_bounded",
+                    side_effect=OSError("synthetic log write failure"),
+                ),
+                self.assertRaisesRegex(OSError, "Engine output capture failed"),
+            ):
+                process_execution.bounded_capture(
+                    command,
+                    dict(os.environ),
+                    log,
+                    6,
+                    process_execution.CapturePolicy(1024, lambda: None, 0.02),
+                )
+
 CHILD = """
 import json, os, signal, socket, subprocess, sys
 role, host, port = sys.argv[1:4]

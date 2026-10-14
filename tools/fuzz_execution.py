@@ -104,7 +104,7 @@ def stage_corpus(run: Run, directory: Path) -> Path:
     """Content-address bytes while retaining every seed/regression origin in an index."""
     corpus = directory / "corpus"
     corpus.mkdir()
-    origins = []
+    origins: list[dict[str, str | int]] = []
     staged = set()
     staged_bytes = 0
     for kind in ("corpus", "regressions"):

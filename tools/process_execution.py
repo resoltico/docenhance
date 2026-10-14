@@ -39,7 +39,7 @@ def _capture_bounded(source: IO[bytes], destination: IO[bytes], limit: int) -> N
     head = 0
     tail = bytearray()
     total = 0
-    while data := source.read1(65536):
+    while data := os.read(source.fileno(), 65536):
         total += len(data)
         first = data[: max(0, head_limit - head)]
         if first:
@@ -55,6 +55,22 @@ def _capture_bounded(source: IO[bytes], destination: IO[bytes], limit: int) -> N
         )
     destination.write(tail)
     destination.flush()
+
+
+def _capture_or_drain(
+    pipe: IO[bytes],
+    stream: IO[bytes],
+    limit: int,
+    failures: list[OSError | ValueError | RuntimeError],
+) -> None:
+    """Report a capture failure while keeping the pipe live until group shutdown."""
+    try:
+        _capture_bounded(pipe, stream, limit)
+    except (OSError, ValueError, RuntimeError) as exc:
+        failures.append(exc)
+        with contextlib.suppress(OSError):
+            while os.read(pipe.fileno(), 65536):
+                pass
 
 
 def _wait_monitored(
@@ -188,7 +204,7 @@ def stop_process(process: subprocess.Popen[bytes], *, graceful: bool) -> None:
 def owned_process(
     command: list[str],
     env: dict[str, str],
-    output: IO[bytes] | IO[str] | tuple[IO[bytes], IO[bytes]] | None,
+    output: IO[bytes] | IO[str] | tuple[IO[bytes], IO[bytes]] | int | None,
     *,
     cwd: Path | None = None,
     graceful: bool = False,
@@ -245,11 +261,11 @@ def bounded_capture(
         source: IO[bytes] | None = None
         failures: list[OSError | ValueError | RuntimeError] = []
 
-        def capture(pipe: IO[bytes]) -> None:
-            try:
-                _capture_bounded(pipe, stream, policy.log_limit_bytes)
-            except (OSError, ValueError, RuntimeError) as exc:
-                failures.append(exc)
+        def check_capture() -> None:
+            if failures:
+                message = "Engine output capture failed"
+                raise OSError(message) from failures[0]
+            policy.monitor()
 
         try:
             with owned_process(command, env, subprocess.PIPE) as process:
@@ -257,10 +273,14 @@ def bounded_capture(
                     message = "Owned process has no output pipe"
                     raise RuntimeError(message)
                 source = process.stdout
-                reader = threading.Thread(target=capture, args=(source,), daemon=True)
+                reader = threading.Thread(
+                    target=_capture_or_drain,
+                    args=(source, stream, policy.log_limit_bytes, failures),
+                    daemon=True,
+                )
                 reader.start()
                 result = _wait_monitored(
-                    process, command, timeout, policy.monitor, policy.interval
+                    process, command, timeout, check_capture, policy.interval
                 )
         finally:
             if reader is not None:
