@@ -101,7 +101,10 @@ class CorpusTests(unittest.TestCase):
                 (directory / "input").write_bytes(data)
             run = fuzz_execution.Run(
                 fuzz_manifest.Target("probe", "probe.cpp", ("de_core",), 3),
-                Path(sys.executable), "libfuzzer", 1, root,
+                Path(sys.executable),
+                "libfuzzer",
+                1,
+                root,
             )
             work = fuzz_execution.new_directory(root / "work", "probe-")
             with (

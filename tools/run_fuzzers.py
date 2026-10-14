@@ -15,8 +15,9 @@ import os
 import sys
 from pathlib import Path
 
-from fuzz_execution import Run, admit_work_parent, execute
+from fuzz_execution import Run, execute
 from fuzz_manifest import DEFAULT_SECONDS, FuzzError, duration, targets
+from fuzz_storage import admit_work_parent
 
 
 def main() -> int:

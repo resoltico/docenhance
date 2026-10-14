@@ -50,9 +50,7 @@ def _capture_bounded(source: IO[bytes], destination: IO[bytes], limit: int) -> N
         if len(tail) > tail_limit:
             del tail[: len(tail) - tail_limit]
     if total > limit:
-        destination.write(
-            f"\n[engine output omitted: {total - limit} bytes]\n".encode("ascii")
-        )
+        destination.write(f"\n[engine output omitted: {total - limit} bytes]\n".encode("ascii"))
     destination.write(tail)
     destination.flush()
 
@@ -279,9 +277,7 @@ def bounded_capture(
                     daemon=True,
                 )
                 reader.start()
-                result = _wait_monitored(
-                    process, command, timeout, check_capture, policy.interval
-                )
+                result = _wait_monitored(process, command, timeout, check_capture, policy.interval)
         finally:
             if reader is not None:
                 reader.join(timeout=10)

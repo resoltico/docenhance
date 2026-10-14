@@ -19,10 +19,13 @@ from unittest.mock import patch
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from process_execution import CapturePolicy
+
 from tools_path import ROOT
 
 import fuzz_execution
 import fuzz_manifest
+import fuzz_storage
 
 sys.path.insert(0, str(ROOT / "tests/product_failures"))
 from failure_audit import Audit
@@ -43,16 +46,16 @@ class FuzzExecutionTests(unittest.TestCase):
             previous.parent.mkdir()
             previous.write_bytes(b"retained evidence")
             with (
-                patch.object(fuzz_execution, "MAX_WORK_PARENT_BYTES", 1),
+                patch.object(fuzz_storage, "MAX_WORK_PARENT_BYTES", 1),
                 self.assertRaisesRegex(fuzz_manifest.FuzzError, "above 1"),
             ):
-                fuzz_execution.admit_work_parent(root)
+                fuzz_storage.admit_work_parent(root)
             self.assertEqual(previous.read_bytes(), b"retained evidence")
             outside = root / "outside"
             outside.mkdir()
             (root / "linked").symlink_to(outside, target_is_directory=True)
             with self.assertRaisesRegex(fuzz_manifest.FuzzError, "Unsafe fuzz work entry"):
-                fuzz_execution.occupied_bytes(root)
+                fuzz_storage.occupied_bytes(root)
 
     def test_disk_stop_keeps_failure_artifact_and_incomplete_result(self) -> None:
         """A stopped engine cannot pass; exact crash bytes and log remain available."""
@@ -60,15 +63,18 @@ class FuzzExecutionTests(unittest.TestCase):
             work = Path(temporary)
 
             def exceeded(
-                command: list[str], env: dict[str, str], log: Path, timeout: int,
-                policy: fuzz_execution.CapturePolicy,
+                command: list[str],
+                env: dict[str, str],
+                log: Path,
+                timeout: int,
+                policy: CapturePolicy,
             ) -> int:
                 del command, env, timeout
                 log.write_bytes(b"startup\n...\ncrash tail")
                 crashes = log.parent / "afl/default/crashes"
                 crashes.mkdir(parents=True)
                 (crashes / "id_000000").write_bytes(b"exact failing input")
-                with patch.object(fuzz_execution, "MAX_RUN_DISK_BYTES", 1):
+                with patch.object(fuzz_storage, "MAX_RUN_DISK_BYTES", 1):
                     policy.monitor()
                 return 0
 
@@ -152,13 +158,14 @@ class FuzzExecutionTests(unittest.TestCase):
 
     def test_missing_statistics_preserve_engine_exit_and_finding_files(self) -> None:
         """A startup refusal cannot be hidden behind an absent statistics file."""
+
         def refusal(result_code: int) -> Callable[..., int]:
             def refused(
                 command: list[str],
                 env: dict[str, str],
                 log: Path,
                 timeout: int,
-                policy: fuzz_execution.CapturePolicy,
+                policy: CapturePolicy,
             ) -> int:
                 del command, env, timeout, policy
                 log.write_text("synthetic startup refusal\n")
@@ -195,8 +202,12 @@ class FuzzScratchTests(unittest.TestCase):
     """Completed input scratch is disposable; provenance and failure evidence are not."""
 
     def fixture_engine(
-        self, command: list[str], env: dict[str, str], log: Path, timeout: int,
-        policy: fuzz_execution.CapturePolicy,
+        self,
+        command: list[str],
+        env: dict[str, str],
+        log: Path,
+        timeout: int,
+        policy: CapturePolicy,
     ) -> int:
         """Write explicitly synthetic positive work and queued bytes, not a native fuzz result."""
         del command, env, timeout, policy
@@ -235,13 +246,14 @@ class FuzzScratchTests(unittest.TestCase):
 
     def test_findings_and_cleanup_errors_cannot_pass(self) -> None:
         """A finding keeps exact scratch; cleanup failure remains visible with records intact."""
+
         def engine_for(*, finding_case: bool) -> Callable[..., int]:
             def engine(
                 command: list[str],
                 env: dict[str, str],
                 log: Path,
                 timeout: int,
-                policy: fuzz_execution.CapturePolicy,
+                policy: CapturePolicy,
             ) -> int:
                 result = self.fixture_engine(command, env, log, timeout, policy)
                 if finding_case:
