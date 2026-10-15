@@ -9,6 +9,7 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "morphology_detail.hpp"
 
@@ -20,11 +21,7 @@
 #include <utility>
 namespace docenhance::methods {
 core::Result<Morphology> Morphology::create(MorphologyParameters p) {
-    if (!std::isfinite(p.strength) || p.strength < 0 || p.strength > 1 ||
-        !std::isfinite(p.max_gain) || p.max_gain < 1 || p.max_gain > illumination_gain_limit ||
-        (p.target &&
-         (!std::isfinite(*p.target) || *p.target < illumination_min_target || *p.target > 1)) ||
-        (p.radius && (*p.radius < min_radius || *p.radius > max_radius))) {
+    if (!valid_parameters(p)) {
         return core::failure(core::ErrorCode::argument, "Invalid I02 morphological parameters");
     }
     return Morphology{p};

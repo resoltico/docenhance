@@ -3,6 +3,7 @@
 #include "denoising.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -36,29 +37,29 @@ constexpr std::size_t model_budget = std::size_t{16} * 1024 * 1024;
 app::Invocation model_request(Family family) {
     app::Invocation request;
     request.command = app::Command::process;
-    request.subject = "input.png";
-    request.output_directory = "output";
+    request.operands = {"input.png"};
+    request.option(app::OptionId::out_dir) = "output";
     switch (family) {
     case Family::illumination:
-        request.illumination = "surface";
-        request.background_target = "1";
+        request.option(app::OptionId::illumination) = "surface";
+        request.option(app::OptionId::background_target) = "1";
         break;
     case Family::nlm:
-        request.denoise = "nlm";
+        request.option(app::OptionId::denoise) = "nlm";
         break;
     case Family::tvl1:
-        request.denoise = "tvl1";
+        request.option(app::OptionId::denoise) = "tvl1";
         break;
     case Family::restoration:
-        request.deblur = "wiener";
-        request.psf = "gaussian";
+        request.option(app::OptionId::deblur) = "wiener";
+        request.option(app::OptionId::psf) = "gaussian";
         break;
     case Family::gamma:
-        request.contrast = "gamma";
-        request.gamma = "2";
+        request.option(app::OptionId::contrast) = "gamma";
+        request.option(app::OptionId::gamma) = "2";
         break;
     case Family::sharpening:
-        request.sharpen = "unsharp";
+        request.option(app::OptionId::sharpen) = "unsharp";
         break;
     }
     return request;

@@ -4,6 +4,7 @@
 
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -12,6 +13,7 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/methods/sauvola.hpp"
 #include "require.hpp"
 #include "sauvola_reference.hpp"
@@ -41,10 +43,10 @@ exec::Scheduler schedule(unsigned workers) {
 app::Invocation request(const std::string& selector) {
     app::Invocation value;
     value.command = app::Command::process;
-    value.subject = "input.png";
-    value.output_directory = "output";
-    value.output_mode = "bw";
-    value.binarize = selector;
+    value.operands = {"input.png"};
+    value.option(app::OptionId::out_dir) = "output";
+    value.option(app::OptionId::output_mode) = "bw";
+    value.option(app::OptionId::binarize) = selector;
     return value;
 }
 class SuccessfulProcessor final : public app::Processor {
@@ -146,7 +148,8 @@ TEST_CASE("Method values cannot contain invalid parameters", "[binarization]") {
          }) {
         CHECK(!methods::Sauvola::create({.r = r}));
     }
-    REQUIRE(methods::Sauvola::create({.window = 4095, .k = 0, .r = methods::Sauvola::min_r}));
+    REQUIRE(
+        methods::Sauvola::create({.window = 4095, .k = 0, .r = methods::sauvola_r_domain.minimum}));
     REQUIRE(methods::Sauvola::create({.window = 3, .k = 1, .r = 1}));
 }
 TEST_CASE("Application admits only options belonging to the selected method", "[app]") {
@@ -162,38 +165,38 @@ TEST_CASE("Application admits only options belonging to the selected method", "[
     auto outcome = app::dispatch(value, processor, verifier);
     CHECK(std::string(std::get<app::Processed>(outcome.payload).method.id) == "B02");
     CHECK(processor.calls == 1);
-    value.fixed_threshold = "";
+    value.option(app::OptionId::fixed_threshold) = "";
     CHECK(!app::prepare_process(value));
-    value.fixed_threshold = "0.5";
+    value.option(app::OptionId::fixed_threshold) = "0.5";
     CHECK(!app::prepare_process(value));
     value = request("fixed");
-    value.sauvola_k = "0.2";
+    value.option(app::OptionId::sauvola_k) = "0.2";
     outcome = app::dispatch(value, processor, verifier);
     CHECK(std::holds_alternative<app::Failure>(outcome.payload));
     CHECK(processor.calls == 1);
-    value.sauvola_k.reset();
-    value.sauvola_window = "";
+    value.option(app::OptionId::sauvola_k).reset();
+    value.option(app::OptionId::sauvola_window) = "";
     CHECK(!app::prepare_process(value));
-    value.sauvola_window.reset();
-    value.sauvola_r = "0.5";
+    value.option(app::OptionId::sauvola_window).reset();
+    value.option(app::OptionId::sauvola_r) = "0.5";
     CHECK(!app::prepare_process(value));
 }
 TEST_CASE("Window grammar and explicitly empty numeric options are rejected", "[app]") {
     auto value = request("sauvola");
     for (const auto* const spelling :
          {"", "-3", "+3", "3.0", "3e0", " 3", "3 ", "0", "2", "4096", "4294967296"}) {
-        value.sauvola_window = spelling;
+        value.option(app::OptionId::sauvola_window) = spelling;
         CHECK(!app::prepare_process(value));
     }
-    value.sauvola_window = "0003";
+    value.option(app::OptionId::sauvola_window) = "0003";
     REQUIRE(app::prepare_process(value));
-    value.sauvola_k = "";
+    value.option(app::OptionId::sauvola_k) = "";
     CHECK(!app::prepare_process(value));
-    value.sauvola_k.reset();
-    value.sauvola_r = "";
+    value.option(app::OptionId::sauvola_k).reset();
+    value.option(app::OptionId::sauvola_r) = "";
     CHECK(!app::prepare_process(value));
     value = request("fixed");
-    value.fixed_threshold = "";
+    value.option(app::OptionId::fixed_threshold) = "";
     CHECK(!app::prepare_process(value));
 }
 TEST_CASE("Sauvola agrees with direct windows across borders and strip seams", "[sauvola]") {
@@ -290,7 +293,7 @@ TEST_CASE("Otsu publication observations match the admitted method", "[app][otsu
         } else if (change == 2) {
             value->threshold_bin = 2046;
         } else {
-            selected.binarize = "sauvola";
+            selected.option(app::OptionId::binarize) = "sauvola";
         }
         SuccessfulProcessor processor;
         processor.otsu = value;

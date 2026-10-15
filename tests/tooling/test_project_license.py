@@ -34,7 +34,15 @@ class ProjectLicenseTests(unittest.TestCase):
 
     def test_generated_declarations_use_current_license(self) -> None:
         """Generated declarations and checked headers agree on the current terms."""
-        self.assertIn("SPDX-License-Identifier: MPL-2.0", generate_spec.HEADER_PREAMBLE)
+        headers = [
+            (path, text)
+            for path, text in generate_spec.outputs().items()
+            if path.suffix in {".hpp", ".cpp"}
+        ]
+        self.assertTrue(headers)
+        for path, text in headers:
+            with self.subTest(path=path):
+                self.assertIn("SPDX-License-Identifier: MPL-2.0", "\n".join(text.splitlines()[:4]))
         self.assertEqual(check_project.LICENSE_TAG, "SPDX-License-Identifier: MPL-2.0")
         self.assertIn("MPL-2.0-licensed", "\n".join(license_inventory.NOTICE_PREAMBLE))
 

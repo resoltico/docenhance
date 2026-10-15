@@ -104,7 +104,7 @@ def refusal(
 ) -> dict[str, Any]:
     """Retain actual raw response bytes; synthetic statuses model known CLI refusals."""
     response = {
-        "schema_version": 14,
+        "schema_version": 15,
         "command": "process",
         "version": "0.7.0",
         "exit_code": exit_code,

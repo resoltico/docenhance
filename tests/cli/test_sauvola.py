@@ -10,6 +10,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+from contract_reference import reviewed_methods
 from grayscale import read_image, write_image
 from test_cli import call_json, expect
 
@@ -143,7 +144,10 @@ def discovery_cases(exe: Path) -> None:
     """Capabilities come from executable method types, including selected-method discovery."""
     for identity in ("B02", "B03"):
         response = call_json(exe, ["methods", identity, "--json"])
-        expect(response["methods"] == [{"id": identity, "method_version": 1}], "selected method")
+        expect(
+            response["methods"] == [m for m in reviewed_methods() if m["id"] == identity],
+            "selected method",
+        )
 
 
 def illumination_case(exe: Path, root: Path) -> None:

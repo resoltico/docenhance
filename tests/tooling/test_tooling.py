@@ -9,7 +9,6 @@ import io
 import json
 import os
 import shutil
-import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -27,10 +26,11 @@ import generate_spec
 import package_source
 import project_version
 import repo_hygiene
+from parameter_contract import merged_options
 
 EXECUTABLE_MODE = 0o755
 LOCKED_DEPENDENCIES = frozenset(
-    {"zlib", "jpeg", "png", "tiff", "opencv", "lcms", "cli11", "json", "picosha2", "catch2"}
+    {"zlib", "jpeg", "png", "tiff", "opencv", "lcms", "json", "picosha2", "catch2"}
 )
 MIN_CLANG_TIDY_MAJOR = 23
 
@@ -229,63 +229,31 @@ class ContractTests(unittest.TestCase):
         """A retired edition or an unknown field cannot be accepted and silently ignored."""
         contract = json.loads((ROOT / "spec/cli-contract.json").read_text())
         for fields in ({"contract_version": "8.0"}, {"invented": True}):
-            with self.subTest(fields=fields), self.assertRaises(generate_spec.ContractError):
-                generate_spec.render_header(contract | fields, 3, 16)
+            with self.subTest(fields=fields), self.assertRaises(ValueError):
+                merged_options(
+                    contract | fields, json.loads((ROOT / "spec/method-contract.json").read_text())
+                )
 
-    def test_option_binding_requires_one_valid_typed_member(self) -> None:
-        """A missing, injected or duplicate storage binding cannot generate parser metadata."""
+    def test_option_identity_and_obsolete_bindings_are_refused(self) -> None:
+        """The hard break refuses old bindings; current canonical option identities stay unique."""
         original = json.loads((ROOT / "spec/cli-contract.json").read_text())
-        for value in (None, "x; injected", original["options"][1]["binding"]):
+        methods = json.loads((ROOT / "spec/method-contract.json").read_text())
+        for value in (None, "x; injected", "help"):
             contract = json.loads(json.dumps(original))
             contract["options"][0]["binding"] = value
-            with self.subTest(value=value), self.assertRaises(generate_spec.ContractError):
-                generate_spec.render_header(contract, 3, 16)
-
-    def test_compiler_rejects_incorrect_binding_types_and_missing_members(self) -> None:
-        """Compile the actual header, then challenge its member identity and flag/value guard."""
-        compiler = shutil.which("clang++") or shutil.which("c++")
-        self.assertIsNotNone(compiler, "The declared C++ compiler is a tooling prerequisite")
-        if compiler is None:
-            msg = "No C++ compiler is available"
-            raise RuntimeError(msg)
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            headers = root / "docenhance/app"
-            headers.mkdir(parents=True)
-            shutil.copyfile(
-                ROOT / "include/docenhance/app/invocation.hpp", headers / "invocation.hpp"
-            )
-            source = root / "binding.cpp"
-            source.write_text('#include "docenhance/app/cli_contract.hpp"\n')
-            original = (ROOT / "include/docenhance/app/cli_contract.hpp").read_text()
-            for member, expected in (("help", 0), ("output_directory", 1), ("absent_member", 1)):
-                (headers / "cli_contract.hpp").write_text(
-                    original.replace(
-                        ".binding = &Invocation::help", f".binding = &Invocation::{member}", 1
-                    )
-                )
-                result = subprocess.run(
-                    [compiler, "-std=c++23", "-fsyntax-only", "-I", str(root), str(source)],
-                    capture_output=True,
-                    text=True,
-                    check=False,
-                    timeout=30,
-                )
-                with self.subTest(member=member):
-                    if expected == 0:
-                        self.assertEqual(result.returncode, 0, result.stderr)
-                    else:
-                        self.assertNotEqual(result.returncode, 0)
-                        self.assertIn(
-                            "Option spelling" if member == "output_directory" else member,
-                            result.stderr,
-                        )
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                merged_options(contract, methods)
+        contract = json.loads(json.dumps(original))
+        contract["options"][1]["name"] = contract["options"][0]["name"]
+        with self.assertRaises(ValueError):
+            merged_options(contract, methods)
 
     def test_regeneration_touches_only_changed_contract_outputs(self) -> None:
         """Changing help prose updates its two consumers without rebuilding unrelated metadata."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             shutil.copytree(ROOT / "spec", root / "spec")
+            shutil.copy2(ROOT / ".clang-format", root / ".clang-format")
             with (
                 patch.object(generate_spec, "ROOT", root),
                 patch("sys.argv", ["generate_spec.py"]),
@@ -300,7 +268,7 @@ class ContractTests(unittest.TestCase):
                 self.assertTrue(all(path.stat().st_mtime_ns == epoch for path in paths))
                 source = root / "spec/cli-contract.json"
                 contract = json.loads(source.read_text())
-                contract["options"][0]["description"] = "Changed help description."
+                contract["options"][0]["summary"] = "Changed help description."
                 source.write_text(json.dumps(contract))
                 self.assertEqual(generate_spec.main(), 0)
                 changed = {
@@ -310,7 +278,7 @@ class ContractTests(unittest.TestCase):
                 }
                 self.assertEqual(
                     changed,
-                    {"include/docenhance/app/cli_contract.hpp", "docs/cli-contract.md"},
+                    {"include/docenhance/app/options.hpp", "docs/cli-reference.md"},
                 )
 
     def test_clang_tidy_is_strict(self) -> None:

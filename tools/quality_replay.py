@@ -67,7 +67,8 @@ def execute_replay(
     directory = Path(tempfile.mkdtemp(prefix="quality-replay-", dir=root))
     output = directory / "candidate"
     argv = command.copy()
-    argv[argv.index("--out-dir") + 1] = str(output)
+    output_index = command[3:-1:2].index("--out-dir") * 2 + 4
+    argv[output_index] = str(output)
     source = root / command[2]
     executable = Path(command[0])
     attempt: dict[str, Any] = {

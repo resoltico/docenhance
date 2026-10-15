@@ -5,9 +5,8 @@
 #include "continuous.hpp"
 #include "contrast.hpp"
 #include "denoising.hpp"
-#include "docenhance/app/cli_contract.hpp"
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/core/result.hpp"
@@ -92,7 +91,27 @@ std::string_view diagnostic(const core::Error& error) noexcept {
 Json capability_fields(const app::Capabilities& capabilities) {
     Json methods = Json::array();
     for (const auto& method : capabilities.methods) {
-        methods.push_back({{"id", method.id}, {"method_version", method.method_version}});
+        Json selectors = Json::array();
+        for (const auto selector : method.selectors) {
+            selectors.push_back(selector);
+        }
+        Json parameters = Json::array();
+        for (const auto& parameter : method.parameters) {
+            parameters.push_back({
+                {"option", parameter.option},
+                {"kind", parameter.kind},
+                {"domain", parameter.domain},
+                {"description", parameter.description},
+            });
+        }
+        methods.push_back({
+            {"id", method.id},
+            {"method_version", method.method_version},
+            {"name", method.name},
+            {"family", method.family},
+            {"selectors", std::move(selectors)},
+            {"parameters", std::move(parameters)},
+        });
     }
     Json formats = Json::array();
     Json support = Json::array();
@@ -159,11 +178,7 @@ Output text_form(const app::Outcome& outcome) {
                     .err = {},
                 };
             } else if constexpr (std::is_same_v<Payload, app::Methods>) {
-                std::string text;
-                for (const auto& method : payload.capabilities.methods) {
-                    text += std::string(method.id) + " " + std::string(method.selector) + "\n";
-                }
-                return {.out = std::move(text), .err = {}};
+                return {.out = methods_text(payload.capabilities.methods), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 return {.out = "Wrote " + payload.output + "\n", .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::PublishedContinuous>) {

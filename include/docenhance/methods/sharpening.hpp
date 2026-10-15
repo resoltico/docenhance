@@ -8,8 +8,9 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -19,20 +20,8 @@
 #include <utility>
 #include <variant>
 namespace docenhance::methods {
-inline constexpr double unsharp_default_sigma = 0.8;
-inline constexpr double unsharp_default_amount = 0.5;
-struct UnsharpParameters {
-    double sigma = unsharp_default_sigma;
-    double amount = unsharp_default_amount;
-    double threshold = 1;
-    bool operator==(const UnsharpParameters&) const = default;
-};
 class Unsharp {
   public:
-    static constexpr double minimum_sigma = 0.3;
-    static constexpr double maximum_sigma = 3;
-    static constexpr double maximum_amount = 2;
-    static constexpr double maximum_threshold = 20;
     [[nodiscard]] static core::Result<Unsharp> create(UnsharpParameters p = {});
     [[nodiscard]] UnsharpParameters parameters() const noexcept {
         return parameters_;

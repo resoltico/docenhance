@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Generate reviewed identities, checked against executable variant registration at compile time."""
+"""Derive closed response discovery and persistent method identities from implemented families."""
 
 from __future__ import annotations
 
@@ -9,177 +9,42 @@ import json
 import re
 from typing import TYPE_CHECKING, Any
 
+from method_catalog import catalog_entries, catalog_projection, metadata_headers
+from parameter_values import invalid
+
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-def validate_arguments(entry: dict[str, Any], known: set[str]) -> None:
-    """Validate the implemented method's declared CLI dependency set."""
-    identity = entry["id"]
-    arguments = entry.get("arguments")
-    if not isinstance(arguments, list) or not all(
-        isinstance(arg, str) and arg in known for arg in arguments
-    ):
-        msg = f"{identity}: implemented arguments must exist in the command contract"
-        raise ValueError(msg)
-    if len(set(arguments)) != len(arguments):
-        msg = f"{identity}: method arguments must be unique"
-        raise ValueError(msg)
-
-
-def reject_authored_attribution(options: list[dict[str, Any]]) -> None:
-    """Only generated descriptors may carry per-option method attribution."""
-    if any("methods" in option for option in options):
-        message = "CLI authoring options cannot carry obsolete method attribution"
-        raise ValueError(message)
-
-
-def implemented(
-    entries: list[dict[str, Any]], options: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Validate identity uniqueness and option references before generating C++ or schemas."""
-    ids: set[str] = set()
-    selectors: set[str] = set()
-    known = {option["name"] for option in options}
-    reject_authored_attribution(options)
-    active = []
-    for entry in entries:
-        identity = entry.get("id", "")
-        version = entry.get("method_version")
-        if (
-            not isinstance(identity, str)
-            or not re.fullmatch(r"[A-Z][0-9]{2}", identity)
-            or identity in ids
-        ):
-            msg = "Method IDs must be unique letter/two-digit identifiers"
-            raise ValueError(msg)
-        ids.add(identity)
-        if type(version) is not int or version < 1:
-            msg = f"{identity}: method_version must be a positive integer"
-            raise ValueError(msg)
-        if "status" in entry or entry.get("classification") not in {
-            "implemented-selectable",
-            "implemented-automatic",
-            "planned",
-        }:
-            msg = f"{identity}: unknown capability classification"
-            raise ValueError(msg)
-        if entry["classification"] != "implemented-selectable":
-            if entry["classification"] == "implemented-automatic" and (
-                entry.get("selector") is not None or entry.get("arguments") != []
-            ):
-                msg = f"{identity}: automatic capabilities have no selector or options"
-                raise ValueError(msg)
-            continue
-        if entry.get("family") not in {
-            "binarization",
-            "illumination",
-            "denoising",
-            "restoration",
-            "contrast",
-            "sharpening",
-            "geometry",
-        }:
-            msg = f"{identity}: implemented methods require an executable family"
-            raise ValueError(msg)
-        selector = entry.get("selector", "")
-        if (
-            not isinstance(selector, str)
-            or not re.fullmatch(r"[a-z][a-z0-9_]*", selector)
-            or selector in selectors
-        ):
-            msg = f"{identity}: implemented selectors must be unique C++ identifiers"
-            raise ValueError(msg)
-        selectors.add(selector)
-        validate_arguments(entry, known)
-        active.append(entry)
-    if not active:
-        msg = "The executable must declare at least one implemented method"
-        raise ValueError(msg)
-    return active
-
-
-def attributed_options(
-    options: list[dict[str, Any]], active: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Derive method attribution from the sole authored argument relations."""
-    reject_authored_attribution(options)
-    return [
-        option
-        | {
-            "methods": ",".join(
-                sorted(entry["id"] for entry in active if option["name"] in entry["arguments"])
-            )
-        }
-        for option in options
-    ]
-
-
-def support_matrix(support: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Validate reviewed format admission and derive its wire representation."""
+def support_matrix(formats: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Keep reviewed format/mode admission exact; do not manufacture additional modes."""
     names: set[str] = set()
     matrix = []
-    for item in support:
-        name = item.get("format")
+    for item in formats:
+        name, modes = item.get("format"), item.get("modes")
         if (
-            set(item) != {"format", "binary"}
+            set(item) != {"format", "modes"}
             or not isinstance(name, str)
             or re.fullmatch(r"[a-z][a-z0-9]*", name) is None
             or name in names
-            or type(item["binary"]) is not bool
+            or modes not in (["preserve", "gray"], ["preserve", "gray", "bw"])
         ):
-            msg = "Input support requires unique formats and explicit binary admission"
-            raise ValueError(msg)
+            invalid("Formats require unique names and complete ordered mode admission")
         names.add(name)
-        matrix.append(
-            {
-                "format": name,
-                "output_modes": ["preserve", "gray", *(["bw"] if item["binary"] else [])],
-            }
-        )
+        matrix.append({"format": name, "output_modes": modes})
     if not matrix:
-        msg = "Input support must not be empty"
-        raise ValueError(msg)
+        invalid("Format admission must not be empty")
     return matrix
-
-
-def render_catalog(active: list[dict[str, Any]]) -> str:
-    """Emit descriptors only, not an algorithm implementation or a runtime registration bypass."""
-    text = (
-        "// SPDX-FileCopyrightText: 2026 Ervins Strauhmanis\n"
-        "// SPDX-License-Identifier: MPL-2.0\n"
-        "// Generated from spec/method-contract.json by tools/generate_spec.py.\n"
-        "#pragma once\n"
-        '#include "docenhance/methods/catalog.hpp"\n\n'
-        "#include <array>\n\nnamespace docenhance::methods {\n"
-    )
-    for entry in active:
-        text += (
-            f"inline constexpr ImplementedMethod {entry['selector']}_descriptor{{\n"
-            f"    .id = {json.dumps(entry['id'])},\n"
-            f"    .method_version = {entry['method_version']}U,\n"
-            f"    .selector = {json.dumps(entry['selector'])},\n}};\n"
-        )
-    descriptors = ", ".join(f"{entry['selector']}_descriptor" for entry in active)
-    call = f"std::to_array<ImplementedMethod>({{{descriptors}}});"
-    line_width = 100
-    if len(call) + 4 > line_width:
-        text += "inline constexpr auto reviewed_methods = std::to_array<ImplementedMethod>({\n"
-        text += "".join(f"    {entry['selector']}_descriptor,\n" for entry in active)
-        text += "});\n"
-    else:
-        text += "inline constexpr auto reviewed_methods =\n    " + call + "\n"
-    return text + "} // namespace docenhance::methods\n"
 
 
 def metadata_outputs(
     root: Path,
-    entries: list[dict[str, Any]],
+    families: list[dict[str, Any]],
     options: list[dict[str, Any]],
-    support: list[dict[str, Any]],
+    formats: list[dict[str, Any]],
 ) -> dict[Path, str]:
-    """Produce reviewed descriptors and closed method/version schema alternatives together."""
-    active = implemented(entries, options)
+    """Discovery is rich metadata; existing run-record method identities remain id/version."""
+    active = catalog_entries(families, options)
     schema = json.loads((root / "spec/command-response.schema.json").read_text(encoding="utf-8"))
     schema["description"] = (
         "Generated from spec/command-response.schema.json and "
@@ -237,14 +102,19 @@ def metadata_outputs(
                 if alternative["properties"]["id"]["const"] in admitted
             ],
         }
-    matrix = support_matrix(support)
+    matrix = support_matrix(formats)
     for branch in schema["oneOf"]:
         if "methods" in branch.get("properties", {}):
-            branch["properties"]["methods"].update(maxItems=len(active), uniqueItems=True)
+            branch["properties"]["methods"].update(
+                items={"$ref": "#/$defs/catalog_entry"}, maxItems=len(active), uniqueItems=True
+            )
             branch["properties"]["input_support"] = {"const": matrix}
             branch["properties"]["supported_formats"] = {
                 "const": [item["format"] for item in matrix]
             }
+    schema["$defs"]["catalog_entry"] = {
+        "oneOf": [{"const": catalog_projection(entry)} for entry in active]
+    }
     record = json.loads((root / "spec/run-record.schema.json").read_text(encoding="utf-8"))
     record["description"] = (
         "Generated from spec/run-record.schema.json, spec/command-response.schema.json "
@@ -291,7 +161,7 @@ def metadata_outputs(
         },
     )
     return {
-        root / "include/docenhance/methods/reviewed_methods.hpp": render_catalog(active),
+        **metadata_headers(root, active),
         root / "schemas/command-response.schema.json": json.dumps(schema, indent=2) + "\n",
         root / "schemas/run-record.schema.json": json.dumps(record, indent=2) + "\n",
     }

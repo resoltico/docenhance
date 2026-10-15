@@ -3,6 +3,7 @@
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/codec/png_stream.hpp"
 #include "docenhance/core/cancellation.hpp"
@@ -132,7 +133,7 @@ TEST_CASE(
     invocation.command = app::Command::verify;
     REQUIRE(app::dispatch(invocation, processor, verifier, control).exit_code() ==
             core::ExitCode::invocation);
-    invocation.subject = "absent";
+    invocation.operands = {"absent"};
     const auto outcome = app::dispatch(invocation, processor, verifier, control);
     REQUIRE(outcome.exit_code() == core::ExitCode::cancelled);
     REQUIRE(std::get<app::Failure>(outcome.payload).error.publication ==

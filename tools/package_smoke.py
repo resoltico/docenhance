@@ -25,9 +25,11 @@ from binary_hardening import errors as hardening_errors
 from deps import ROOT, safe_extract
 from documentation import local_link_errors
 from hardening_compilation import errors as compilation_errors
+from method_catalog import catalog_entries, catalog_projection
 from method_metadata import support_matrix
 from package_inspection import binary_identity, contents, differences, expected_files, imports
 from package_selection import current_package
+from parameter_contract import merged_options
 from project_version import project_version
 
 
@@ -174,14 +176,12 @@ def smoke(root: Path, owner: Path) -> list[str]:
     ):
         failures.append("Packaged build identity disagrees with current sources")
     contract = json.loads((ROOT / "spec/method-contract.json").read_bytes())
+    cli = json.loads((ROOT / "spec/cli-contract.json").read_bytes())
     expected = [
-        {"id": m["id"], "method_version": m["method_version"]}
-        for m in contract["methods"]
-        if m["classification"] == "implemented-selectable"
+        catalog_projection(method)
+        for method in catalog_entries(contract["families"], merged_options(cli, contract))
     ]
-    if version["methods"] != expected or version["input_support"] != support_matrix(
-        json.loads((ROOT / "spec/cli-contract.json").read_bytes())["input_support"]
-    ):
+    if version["methods"] != expected or version["input_support"] != support_matrix(cli["formats"]):
         failures.append("Packaged capability matrix disagrees with supported admission")
     if not failures:
         exercise(exe, root)

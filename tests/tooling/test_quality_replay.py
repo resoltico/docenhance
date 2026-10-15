@@ -37,7 +37,7 @@ class QualityReplayTests(unittest.TestCase):
         """A real subprocess's failed status cannot erase its confirmed publication response."""
         self.assertTrue((ROOT / "tools/quality_replay.py").is_file())
         response = {
-            "schema_version": 14,
+            "schema_version": 15,
             "command": "process",
             "version": "0.7.0",
             "exit_code": 5,
@@ -120,7 +120,7 @@ class QualityReplayTests(unittest.TestCase):
                 output.mkdir()
                 ref = write_reference(output, "run.json", record)
                 response = {
-                    "schema_version": 14,
+                    "schema_version": 15,
                     "command": "process",
                     "version": "0.7.0",
                     "exit_code": 0,
@@ -153,6 +153,58 @@ class QualityReplayTests(unittest.TestCase):
             self.assertEqual(captured[0], expected)
             self.assertEqual(command[8], "./old//")
             self.assertEqual(observed.attempt["argv"], expected)
+
+    def test_option_looking_asset_does_not_redirect_output_substitution(self) -> None:
+        """Only the output pair changes; an earlier identical asset value keeps its identity."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            (root / "source").write_bytes(b"synthetic input")
+            asset = root / "--out-dir"
+            asset.write_bytes(b"synthetic mask")
+            command = [
+                sys.executable,
+                "process",
+                "source",
+                "--protect-mask",
+                "--out-dir",
+                "--out-dir",
+                "original",
+                "--json",
+            ]
+            original = command.copy()
+            captured: list[list[str]] = []
+
+            @contextlib.contextmanager
+            def controlled(
+                argv: list[str],
+                env: dict[str, str],
+                streams: tuple[IO[bytes], IO[bytes]],
+                *,
+                cwd: Path | None = None,
+            ) -> Iterator[SimpleNamespace]:
+                del env
+                self.assertEqual(cwd, root)
+                captured.append(argv.copy())
+                output = Path(argv[6])
+                self.assertTrue(output.is_absolute() and output.is_relative_to(root))
+                output.mkdir()
+                (output / "retained").write_bytes(b"uncertain effect")
+                streams[0].write(b'{"incomplete":')
+                yield SimpleNamespace(wait=lambda **_kwargs: 0)
+
+            with patch("quality_replay.owned_process", controlled):
+                observed = replay(command, root)
+            self.assertEqual(len(captured), 1)
+            expected = original.copy()
+            expected[6] = captured[0][6]
+            self.assertEqual(captured[0], expected)
+            self.assertEqual(command, original)
+            self.assertEqual(observed.attempt["argv"], expected)
+            self.assertEqual(asset.read_bytes(), b"synthetic mask")
+            self.assertEqual((root / "source").read_bytes(), b"synthetic input")
+            self.assertEqual(observed.attempt["publication"], "unknown")
+            self.assertIsNone(observed.record)
+            self.assertEqual((Path(expected[6]) / "retained").read_bytes(), b"uncertain effect")
 
     def test_timeout_and_oversized_response_preserve_unknown_effects_once(self) -> None:
         """Deterministic wait refusal and bounded parsing retain complete raw stream identities."""

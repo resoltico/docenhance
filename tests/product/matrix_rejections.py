@@ -4,9 +4,7 @@
 
 from __future__ import annotations
 
-import json
-
-from audit_paths import ROOT
+from contract_reference import reviewed_options
 from matrix_types import STAGES, Case, stage_options
 
 INVALID = {
@@ -90,17 +88,20 @@ def scalar_rejections() -> list[Case]:
 
 def rejection_cases() -> list[Case]:
     """Every public valued option must reject explicit emptiness before any input I/O."""
-    contract = json.loads((ROOT / "spec/cli-contract.json").read_text())
     cases = []
-    for option in contract["options"]:
-        if option["scope"] == "P" and option["metavar"] and option["name"] != "--out-dir":
-            name = option["name"].removeprefix("--")
+    for descriptor in reviewed_options():
+        if (
+            "process" in descriptor["scope"]
+            and descriptor["metavar"]
+            and descriptor["name"] != "--out-dir"
+        ):
+            name = descriptor["name"].removeprefix("--")
             cases.append(
                 Case(
                     "empty-" + name,
                     "rejection",
                     "shaded",
-                    (option["name"], ""),
+                    (descriptor["name"], ""),
                     exit_code=2,
                     error="E_ARGUMENT",
                 )

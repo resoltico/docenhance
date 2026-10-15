@@ -9,6 +9,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -23,7 +24,7 @@
 namespace docenhance::methods {
 namespace {
 constexpr std::uint64_t white = 255;
-constexpr std::uint64_t largest_window = Sauvola::max_window;
+constexpr std::uint64_t largest_window = sauvola_window_domain.maximum;
 constexpr std::uint64_t largest_area = largest_window * largest_window;
 static_assert(largest_area <=
               std::numeric_limits<std::uint64_t>::max() / largest_area / (white * white));

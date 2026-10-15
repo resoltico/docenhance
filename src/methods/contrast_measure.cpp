@@ -90,7 +90,7 @@ core::Result<LevelsRange> measure_levels(image::LinearSource& source,
         return std::unexpected(sorted.error());
     }
     const auto p = method.parameters();
-    constexpr double percent_scale = Levels::maximum_high;
+    constexpr double percent_scale = 100;
     auto lo = image::nearest_rank_index(values.size(), p.low / percent_scale);
     auto hi = image::nearest_rank_index(values.size(), p.high / percent_scale);
     if (!lo) {

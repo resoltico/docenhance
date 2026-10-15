@@ -6,7 +6,8 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
-#include "docenhance/methods/reviewed_methods.hpp"
+#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/parameters.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -16,8 +17,8 @@
 namespace docenhance::methods {
 class FixedThreshold {
   public:
-    static constexpr double default_threshold = 0.5;
-    [[nodiscard]] static core::Result<FixedThreshold> create(double threshold = default_threshold);
+    [[nodiscard]] static core::Result<FixedThreshold>
+    create(double threshold = FixedThresholdParameters{}.threshold);
     [[nodiscard]] double threshold() const noexcept {
         return threshold_;
     }
@@ -29,19 +30,8 @@ class FixedThreshold {
     explicit FixedThreshold(double threshold) noexcept : threshold_(threshold) {}
     double threshold_;
 };
-struct SauvolaParameters {
-    std::uint32_t window = 31;
-    double k = 0.2;
-    double r = 0.5;
-};
 class Sauvola {
   public:
-    static constexpr std::uint32_t default_window = SauvolaParameters{}.window;
-    static constexpr std::uint32_t min_window = 3;
-    static constexpr std::uint32_t max_window = 4095;
-    static constexpr double default_k = SauvolaParameters{}.k;
-    static constexpr double default_r = SauvolaParameters{}.r;
-    static constexpr double min_r = 1.0 / 255.0;
     [[nodiscard]] static core::Result<Sauvola> create(SauvolaParameters parameters = {});
     [[nodiscard]] std::uint32_t window() const noexcept {
         return parameters_.window;

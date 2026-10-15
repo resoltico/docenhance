@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/opencv/restoration.hpp"
 #include "linear_fixture.hpp"
@@ -16,8 +17,25 @@
 #include <cstdint>
 #include <limits>
 #include <span>
+#include <stdexcept>
 #include <utility>
 namespace docenhance::tests {
+namespace {
+struct ThrowingPsfPath {
+    explicit operator methods::FilePsf() const {
+        throw std::runtime_error("Injected PSF path construction failure");
+    }
+};
+} // namespace
+TEST_CASE("Wiener admission refuses a deterministically valueless PSF") {
+    methods::WienerParameters parameters;
+    CHECK_THROWS_AS(parameters.psf.emplace<methods::FilePsf>(ThrowingPsfPath{}),
+                    std::runtime_error);
+    REQUIRE(parameters.psf.valueless_by_exception());
+    CHECK(!methods::valid_parameters(parameters));
+    const auto refused = methods::Wiener::create(std::move(parameters));
+    CHECK(!refused);
+}
 TEST_CASE("Wiener admission rejects nonfinite options and invalid PSF identities") {
     for (const auto k : {0.0, 1e-6, 1.01, std::numeric_limits<double>::infinity()}) {
         CHECK(!methods::Wiener::create({.psf = methods::GaussianPsf{}, .k = k}));

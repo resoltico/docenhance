@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/app/cli_contract.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/values.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/catalog.hpp"
@@ -168,26 +168,24 @@ inline void capabilities_cases() {
     require(!out_dir.scope.contains(app::Command::root), "--out-dir is not a root option");
     require(std::ranges::count(app::option_catalog, "--rotate", &app::OptionDescriptor::name) == 1,
             "rotation option is declared once");
-    require(std::ranges::any_of(
-                app::option_catalog,
-                [](const app::OptionDescriptor& option) {
-                    const auto* const binding =
-                        std::get_if<decltype(&app::Invocation::rotate)>(&option.binding);
-                    return option.name == "--rotate" &&
-                           option.scope.contains(app::Command::process) &&
-                           !option.scope.contains(app::Command::methods) &&
-                           !option.scope.contains(app::Command::root) && binding != nullptr &&
-                           *binding == &app::Invocation::rotate;
-                }),
-            "rotation is process-only and binds its typed value member");
+    require(std::ranges::any_of(app::option_catalog,
+                                [](const app::OptionDescriptor& option) {
+                                    return option.name == "--rotate" &&
+                                           option.scope.contains(app::Command::process) &&
+                                           !option.scope.contains(app::Command::methods) &&
+                                           !option.scope.contains(app::Command::root) &&
+                                           option.id == app::OptionId::rotate &&
+                                           option.kind == app::ValueKind::choice;
+                                }),
+            "rotation is process-only and owns its generated choice identity");
     require(app::CommandSet::all().contains(app::Command::version), "every command is in all");
     require(!app::CommandSet{}.contains(app::Command::root), "an empty scope holds nothing");
     require(!app::command_usage(app::Command::process).empty(), "every command has a usage line");
     require(
-        methods::implemented_methods().size() == 13 &&
+        methods::implemented_methods().size() == 12 &&
             methods::implemented_methods().front().id == "I01" &&
-            methods::implemented_methods().back().id == "G02",
-        "The compiled capability list includes the completed photometric, binary and G02 methods");
+            methods::implemented_methods().back().id == "B03",
+        "The compiled catalog lists processing methods; common geometry stays outside discovery");
     const core::Error not_implemented{
         .code = core::ErrorCode::not_implemented,
         .message = "not ready",

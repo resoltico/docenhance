@@ -8,11 +8,11 @@
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/tvl1.hpp"
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -20,10 +20,7 @@
 #include <utility>
 namespace docenhance::methods {
 core::Result<Tvl1> Tvl1::create(Tvl1Parameters p) {
-    if (!std::isfinite(p.lambda) || p.lambda < minimum_lambda || p.lambda > maximum_lambda ||
-        p.iterations < minimum_iterations || p.iterations > maximum_iterations ||
-        !std::isfinite(p.tolerance) || p.tolerance < minimum_tolerance ||
-        p.tolerance > maximum_tolerance || !std::isfinite(p.blend) || p.blend < 0 || p.blend > 1) {
+    if (!valid_parameters(p)) {
         return core::failure(core::ErrorCode::argument,
                              "Invalid TV-L1 fidelity, iteration cap, tolerance or blend");
     }

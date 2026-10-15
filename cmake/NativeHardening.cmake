@@ -45,7 +45,7 @@ function(de_dependency_flags name output)
     if(language STREQUAL "CXX" AND name MATCHES "^(zlib|jpeg|png|lcms)$")
       continue()
     endif()
-    if(name MATCHES "^(cli11|json|picosha2)$" OR
+    if(name MATCHES "^(json|picosha2)$" OR
        (language STREQUAL "C" AND name STREQUAL "catch2"))
       continue()
     endif()

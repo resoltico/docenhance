@@ -1,7 +1,7 @@
 {
-  "schema_version": 14,
+  "schema_version": 15,
   "command": "process",
-  "version": "0.7.0",
+  "version": "0.9.0",
   "exit_code": 3,
   "error": {
     "code": "E_INPUT",
@@ -10,6 +10,7 @@
   "publication": "not_started",
   "illumination": {
     "status": "unresolved",
+    "progress": "not_started",
     "reason": "none",
     "method": {
       "id": "I01",
@@ -52,8 +53,7 @@
       "max_gain": 1.0,
       "gain_capped_fraction": null,
       "saturated_fraction": null
-    },
-    "progress": "not_started"
+    }
   },
   "denoising": {
     "method": {
@@ -68,6 +68,7 @@
     },
     "status": "unresolved",
     "reason": "none",
+    "progress": "not_started",
     "analysis_depth": 16,
     "distance": "L1",
     "representation": "uint16",
@@ -83,8 +84,7 @@
     "changed_samples": 0,
     "native_calls": 0,
     "native_reserved_peak": 0,
-    "preparation_charge_peak": 0,
-    "progress": "not_started"
+    "preparation_charge_peak": 0
   },
   "restoration": {
     "method": {
@@ -101,6 +101,7 @@
     },
     "status": "unresolved",
     "reason": "none",
+    "progress": "not_started",
     "representation": "float32",
     "psf": null,
     "guard": 0,
@@ -124,8 +125,7 @@
     "preparation_charge_peak": 0,
     "warnings": [
       "W_RESTORATION_INFERENCE"
-    ],
-    "progress": "not_started"
+    ]
   },
   "contrast": {
     "method": {
@@ -140,6 +140,7 @@
     },
     "status": "unresolved",
     "reason": "none",
+    "progress": "not_started",
     "representation": "float64",
     "levels": null,
     "eligible_samples": 0,
@@ -153,8 +154,7 @@
     "clipped_high_samples": 0,
     "clipped_low_fraction": null,
     "clipped_high_fraction": null,
-    "preparation_charge_peak": 0,
-    "progress": "not_started"
+    "preparation_charge_peak": 0
   },
   "sharpening": {
     "method": {
@@ -168,6 +168,7 @@
     },
     "status": "unresolved",
     "reason": "none",
+    "progress": "not_started",
     "representation": "float64",
     "pre_clamp": null,
     "eligible_samples": 0,
@@ -182,7 +183,6 @@
     "preparation_charge_peak": 0,
     "warnings": [
       "W_SHARPENING"
-    ],
-    "progress": "not_started"
+    ]
   }
 }

@@ -43,14 +43,15 @@ de_library(de_methods LAYER methods
           methods/tvl1_objective.cpp methods/tvl1_model.cpp methods/tvl1_apply.cpp methods/tvl1_validation.cpp
   HEADERS "${DE_INCLUDE}/methods/box_mean.hpp" "${DE_INCLUDE}/methods/catalog.hpp"
           "${DE_INCLUDE}/methods/fixed_threshold.hpp" "${DE_INCLUDE}/methods/binarization.hpp"
-          "${DE_INCLUDE}/methods/stages.hpp" "${DE_INCLUDE}/methods/otsu.hpp" "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/reviewed_methods.hpp"
+          "${DE_INCLUDE}/methods/stages.hpp" "${DE_INCLUDE}/methods/otsu.hpp" "${DE_INCLUDE}/methods/sauvola.hpp" "${DE_INCLUDE}/methods/method_catalog.hpp"
+          "${DE_INCLUDE}/methods/method_parameter_metadata.hpp" "${DE_INCLUDE}/methods/parameters.hpp" "${DE_INCLUDE}/methods/parameter_domains.hpp"
           "${DE_INCLUDE}/methods/restoration.hpp" "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/sharpening.hpp" "${DE_INCLUDE}/methods/contrast.hpp" "${DE_INCLUDE}/methods/progress.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp" "${DE_INCLUDE}/methods/tvl1.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
-  SOURCES app/values.cpp app/stage_observations.cpp app/verification_observations.cpp app/restoration.cpp app/restoration.hpp app/observations.cpp app/observations.hpp app/denoising.cpp app/sharpening.cpp app/sharpening.hpp app/contrast.cpp app/contrast.hpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
+  SOURCES app/admission.cpp app/admission.hpp app/plan.cpp app/plan.hpp app/parameter_bindings.hpp app/values.cpp app/stage_observations.cpp app/verification_observations.cpp app/observations.cpp app/observations.hpp app/dispatch.cpp app/verify.cpp app/process.cpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
           "${DE_INCLUDE}/app/verify.hpp" "${DE_INCLUDE}/app/invocation.hpp"
-          "${DE_INCLUDE}/app/values.hpp" "${DE_INCLUDE}/app/cli_contract.hpp"
+          "${DE_INCLUDE}/app/values.hpp" "${DE_INCLUDE}/app/options.hpp"
   LINKS de_core de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_record LAYER record
@@ -64,8 +65,8 @@ de_library(de_report LAYER report
   SOURCES report/help.cpp report/help.hpp report/restoration.cpp report/restoration.hpp report/render.cpp report/continuous.cpp report/continuous.hpp report/illumination.cpp report/denoising.cpp report/sharpening.cpp report/sharpening.hpp report/contrast.cpp report/contrast.hpp report/denoising.hpp report/illumination.hpp HEADERS "${DE_INCLUDE}/report/render.hpp"
   LINKS de_app de_record de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_cli LAYER cli
-  SOURCES cli/run.cpp cli/failures.hpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
-  LINKS de_app de_core de_report CLI11::CLI11)
+  SOURCES cli/run.cpp cli/tokenize.cpp cli/failures.hpp HEADERS "${DE_INCLUDE}/cli/run.hpp" "${DE_INCLUDE}/cli/tokenize.hpp"
+  LINKS de_app de_core de_report)
 
 de_library(de_codec LAYER codec
   SOURCES codec/exif.cpp codec/exif.hpp codec/jpeg_context.cpp codec/jpeg_context.hpp

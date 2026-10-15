@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/values.hpp"
 
-#include "docenhance/app/cli_contract.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 

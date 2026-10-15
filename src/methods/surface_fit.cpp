@@ -7,6 +7,8 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "surface_detail.hpp"
@@ -122,7 +124,7 @@ core::Result<void> exclude_dark_cells(image::PlaneView<double> work, Illuminatio
     }
     const double reference = *selected;
     report.background_reference = std::exp(reference);
-    const double floor = reference - std::log(illumination_gain_limit);
+    const double floor = reference - std::log(background_max_gain_domain.maximum);
     for (std::size_t i = 0; i < weights.size(); ++i) {
         if (surface_at(weights, i) > 0 && surface_at(logs, i) < floor) {
             surface_at(weights, i) = 0;

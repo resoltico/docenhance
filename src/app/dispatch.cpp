@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
 
-#include "docenhance/app/cli_contract.hpp"
+#include "admission.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/core/cancellation.hpp"
@@ -144,14 +145,16 @@ Outcome verify(const app::Invocation& invocation, Verifier& verifier,
 
 Outcome dispatch(const app::Invocation& invocation, Processor& processor, Verifier& verifier,
                  const core::Cancellation& cancellation) {
-    if (!app::CommandSet::all().contains(invocation.command)) {
-        auto refused = failure(
-            invocation, {.code = core::ErrorCode::argument, .message = "Unknown command value"});
-        refused.command = app::Command::root;
+    if (auto checked = validate_invocation(invocation); !checked) {
+        auto refused = failure(invocation, std::move(checked.error()));
+        if (!CommandSet::all().contains(invocation.command)) {
+            refused.command = Command::root;
+        }
         return refused;
     }
-    const bool bare_root = invocation.command == app::Command::root && !invocation.root_version;
-    if (invocation.help || bare_root) {
+    const bool bare_root =
+        invocation.command == app::Command::root && !invocation.contains(OptionId::version);
+    if (invocation.contains(OptionId::help) || bare_root) {
         // The root command is the only one that lists the other commands.
         return succeeded(invocation, Help{
                                          .list_commands = invocation.command == app::Command::root,
@@ -164,7 +167,7 @@ Outcome dispatch(const app::Invocation& invocation, Processor& processor, Verifi
     if (invocation.command == app::Command::verify) {
         return verify(invocation, verifier, cancellation);
     }
-    if (invocation.command == app::Command::version || invocation.root_version) {
+    if (invocation.command == app::Command::version || invocation.contains(OptionId::version)) {
         auto outcome = succeeded(invocation, Version{
                                                  .capabilities = capabilities(),
                                              });
@@ -173,13 +176,13 @@ Outcome dispatch(const app::Invocation& invocation, Processor& processor, Verifi
     }
     if (invocation.command == app::Command::methods) {
         auto available = capabilities();
-        if (!invocation.subject.empty()) {
-            const auto selected = std::ranges::find(available.methods, invocation.subject,
+        if (!invocation.operands.empty()) {
+            const auto selected = std::ranges::find(available.methods, invocation.operands.front(),
                                                     &methods::ImplementedMethod::id);
             if (selected == available.methods.end()) {
                 return not_implemented(invocation,
-                                       "No selectable method with this ID is available; "
-                                       "see docs/methods.md for automatic capabilities and plans");
+                                       "No implemented method with this ID is available; "
+                                       "see docs/methods.md and docs/roadmap.md");
             }
             available.methods = available.methods.subspan(
                 static_cast<std::size_t>(selected - available.methods.begin()), 1);

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/core/cancellation.hpp"
@@ -10,6 +11,7 @@
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/stages.hpp"
@@ -66,9 +68,9 @@ class ReturningVerifier final : public app::Verifier {
 app::Invocation invocation(bool binary) {
     app::Invocation value;
     value.command = app::Command::process;
-    value.subject = "input.png";
-    value.output_directory = "output";
-    value.output_mode = binary ? "bw" : "preserve";
+    value.operands = {"input.png"};
+    value.option(app::OptionId::out_dir) = "output";
+    value.option(app::OptionId::output_mode) = binary ? "bw" : "preserve";
     return value;
 }
 app::PublishedContinuous continuous(bool black = false) {
@@ -193,7 +195,7 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
               core::Publication::unknown);
     }
     auto native_request = invocation(false);
-    native_request.denoise = "nlm";
+    native_request.option(app::OptionId::denoise) = "nlm";
     auto impossible_native = continuous();
     auto& native = impossible_native.stages.denoising;
     native.requested = methods::NlmParameters{};
@@ -210,7 +212,7 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
     CHECK(error(app::dispatch(native_request, wrong_extent, verifier)).publication ==
           core::Publication::unknown);
     auto request = invocation(false);
-    request.illumination = "surface";
+    request.option(app::OptionId::illumination) = "surface";
     methods::IlluminationReport wrong;
     wrong.requested = methods::SurfaceParameters{.strength = 0.5};
     wrong.status = methods::IlluminationStatus::failed;
@@ -233,7 +235,7 @@ TEST_CASE("Readonly returns and exceptions cannot claim publication or fabricate
     RejectingProcessor processor;
     app::Invocation request;
     request.command = app::Command::verify;
-    request.subject = "bundle";
+    request.operands = {"bundle"};
     const app::Verified valid{
         .directory = "bundle",
         .run = std::string(32, 'a'),
@@ -307,7 +309,7 @@ TEST_CASE("I02 failure observations reject foreign fields and invalid scalar dom
           "[app][morphology]") {
     UnusedVerifier verifier;
     auto request = invocation(false);
-    request.illumination = "morph";
+    request.option(app::OptionId::illumination) = "morph";
     const methods::MorphologyParameters parameters;
     const methods::IlluminationReport report{
         .status = methods::IlluminationStatus::failed,

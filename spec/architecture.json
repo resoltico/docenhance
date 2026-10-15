@@ -48,14 +48,6 @@
     "fuzz/cli.cpp": "cli"
   },
   "packages": {
-    "CLI11": {
-      "targets": [
-        "CLI11::CLI11"
-      ],
-      "headers": [
-        "CLI/"
-      ]
-    },
     "nlohmann_json": {
       "targets": [
         "nlohmann_json::nlohmann_json"
@@ -220,15 +212,13 @@
     },
     "cli": {
       "target": "de_cli",
-      "summary": "CLI11 syntax adapter, process streams and exit status",
+      "summary": "Owned argument tokenizer, process streams and exit status",
       "uses": [
         "core",
         "app",
         "report"
       ],
-      "external": [
-        "CLI11"
-      ],
+      "external": [],
       "may_catch": true,
       "allow_headers": [
         "iostream"

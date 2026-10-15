@@ -1,498 +1,221 @@
 {
-  "schema_version": 12,
-  "value_grammar": {
-    "decimal": "Finite decimal, optionally in scientific notation: an optional leading '-', digits with an optional '.', then an optional exponent 'e' or 'E' with an optional '+' or '-' and one or more digits. No leading '+', whitespace, hexadecimal, infinity, NaN, or trailing characters. The value must be finite and inside the option's documented range; the decimal point is '.' in every locale. Conversion overflow, subnormal results and nonzero magnitudes rounded to zero are rejected; signed zero is admitted.",
-    "window": "Decimal digits only; odd integer in [3,4095]. No sign, whitespace, fraction or exponent.",
-    "tokens": "String options consume their next token as a value even when it looks like an option; an empty joined assignment such as --out-dir= also consumes the next token. --out-dir --json, --out-dir= --json and --out-dir=--json all name the literal directory --json. On successful parsing only a parsed --json flag selects JSON presentation. An additional --json selects JSON independently. An unconsumed -- ends option parsing; following tokens are operands. On syntax failure, an exact --json token before -- selects the JSON diagnostic fallback, even if that token might have been intended as a value; failed syntax never executes processing."
+  "$comment": "Commands, request and execution options, presentation flags and the value grammar. Method options are owned by spec/method-contract.json; the generator merges both into one option table and rejects name collisions.",
+  "schema_version": 13,
+  "grammar": {
+    "tokens": "docenhance [--help] [--json] | docenhance --version (no arguments renders help, exit 0) | docenhance COMMAND [OPERAND|OPTION]... . Only tokens beginning with '--' name options; '-', '-h' and '-input.png' are operands. OPTION is --NAME VALUE, --NAME=VALUE or a flag --NAME. A separated valued option always consumes the next token, including '--'; joined empty values stay empty and consume no later token. Flags given '=VALUE', unknown/repeated options, missing option values and extra operands are syntax errors. An unconsumed '--' ends options; later tokens are operands. Missing required operands and invalid option values belong to application admission, not tokenization. Only on syntax failure, an exact raw '--json' token before the first raw '--' selects JSON error rendering. Successful syntax uses parsed flag roles, including application refusals. Arguments must be well-formed UTF-8.",
+    "decimal": "Finite decimal: optional leading '-', digits with an optional decimal point or a point followed by digits, and an optional exponent [eE][+-]?digits. No leading '+', whitespace, hexadecimal, infinity or NaN. Overflow, subnormal results and non-zero magnitudes rounded to zero are rejected; '.' in every locale.",
+    "integer": "ASCII decimal digits only (leading zeros allowed); no sign, whitespace, fraction or exponent.",
+    "grid": "Two integers joined by a lower-case 'x', for example 8x8.",
+    "path": "Non-empty well-formed UTF-8 without NUL; never normalized or repaired."
   },
   "commands": {
     "root": {
-      "usage": "docenhance COMMAND [OPTIONS]",
-      "scope_symbol": null
+      "usage": "docenhance [--help] [--json] | docenhance --version",
+      "operands": 0
     },
     "process": {
-      "usage": "docenhance process INPUT --out-dir DIRECTORY [--output-mode preserve|gray|bw] [OPTIONS]",
-      "scope_symbol": "P",
-      "description": "Admit static PNG, bounded 8-bit baseline/progressive Huffman JPEG or bounded single-page TIFF/BigTIFF by signature. Continuous preserve/gray defaults to representation without enhancement; explicitly selected stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Binary processing retains its stored 1/2/4/8-bit nontransparent grayscale PNG contract. All PNG paths reject animation and trailing container bytes."
+      "usage": "docenhance process INPUT --out-dir DIRECTORY [OPTIONS]",
+      "operands": 1,
+      "summary": "Process one PNG, JPEG or single-page TIFF/BigTIFF page and publish a new bundle directory."
     },
     "verify": {
       "usage": "docenhance verify DIRECTORY [--json]",
-      "scope_symbol": null,
-      "description": "Validate the complete supported run record, closed artifact inventory and observable PNG properties without executing the recorded request."
+      "operands": 1,
+      "summary": "Check that a bundle's artifacts agree with its run record without executing anything."
     },
     "methods": {
       "usage": "docenhance methods [ID] [--json]",
-      "scope_symbol": null
+      "operands": [
+        0,
+        1
+      ],
+      "summary": "List the implemented methods and their parameter domains."
     },
     "version": {
       "usage": "docenhance version [--json]",
-      "scope_symbol": null
+      "operands": 0,
+      "summary": "Report the build, platform, compiler and dependency-lock identity."
     }
   },
   "options": [
     {
       "name": "--out-dir",
       "metavar": "DIRECTORY",
-      "scope": "P",
-      "group": "Processing arguments",
-      "domain": "Required; a new result directory",
-      "description": "Paths must be well-formed UTF-8 and are never normalized or repaired. Relative effects bind to the operation's initial working directory; reported spelling is retained. Windows drive-relative publication paths are rejected. Parent must exist. Publish result.png into a new directory only after complete processing. Existing destinations are never replaced.",
-      "binding": "output_directory"
-    },
-    {
-      "name": "--rotate",
-      "metavar": "DEGREES",
-      "scope": "P",
-      "group": "Geometry arguments",
-      "domain": "0; 0|90|180|270",
-      "description": "Exact clockwise quarter-turn after metadata orientation on continuous output; binary PNG keeps its stored-sample metadata policy. Accept only the literal values 0, 90, 180 or 270. Protection masks match metadata-oriented, pre-rotation dimensions and rotate identically. Odd quarter-turns swap X/Y resolution without interpolation or added margins.",
-      "binding": "rotate"
+      "scope": [
+        "process"
+      ],
+      "group": "Output",
+      "kind": "path",
+      "required": true,
+      "summary": "New result directory; its parent must exist and it is never replaced."
     },
     {
       "name": "--output-mode",
       "metavar": "MODE",
-      "scope": "P",
-      "group": "Output arguments",
-      "domain": "preserve; preserve|gray|bw",
-      "description": "Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output defaults to no enhancement filter and is verified before publication. Explicit stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Gray converts linear luminance; bw explicitly activates stored-sample binarization. JPEG and TIFF/BigTIFF support preserve/gray only; bw requires grayscale PNG.",
-      "binding": "output_mode"
+      "scope": [
+        "process"
+      ],
+      "group": "Output",
+      "kind": "choice",
+      "values": [
+        "preserve",
+        "gray",
+        "bw"
+      ],
+      "default": "preserve",
+      "summary": "Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output defaults to no enhancement filter and is verified before publication. Explicit stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Gray converts linear luminance; bw explicitly activates stored-sample binarization. JPEG and TIFF/BigTIFF support preserve/gray only; bw requires grayscale PNG."
     },
     {
       "name": "--bit-depth",
       "metavar": "DEPTH",
-      "scope": "P",
-      "group": "Output arguments",
-      "domain": "auto; auto|8|16",
-      "description": "Continuous output only. Auto retains 16-bit source precision, otherwise 8. Explicit 16-to-8 reduction is reported; no precision fallback is used for resource limits.",
-      "binding": "bit_depth"
+      "scope": [
+        "process"
+      ],
+      "group": "Output",
+      "kind": "choice",
+      "values": [
+        "auto",
+        "8",
+        "16"
+      ],
+      "default": "auto",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ],
+      "summary": "Continuous output depth; auto keeps 16-bit source precision, otherwise 8."
     },
     {
       "name": "--alpha",
       "metavar": "MODE",
-      "scope": "P",
-      "group": "Output arguments",
-      "domain": "white; white|black|reject",
-      "description": "Continuous output only. Composite source alpha over white or black in linear light; reject refuses any non-opaque pixel. Output is opaque.",
-      "binding": "alpha"
+      "scope": [
+        "process"
+      ],
+      "group": "Interpretation",
+      "kind": "choice",
+      "values": [
+        "white",
+        "black",
+        "reject"
+      ],
+      "default": "white",
+      "summary": "Composite alpha over white or black in linear light, or reject any non-opaque pixel.",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ]
     },
     {
       "name": "--profile-policy",
       "metavar": "POLICY",
-      "scope": "P",
-      "group": "Output arguments",
-      "domain": "embedded; embedded|srgb",
-      "description": "Continuous output only. Interpret supported cICP, compatible ICC, sRGB or gAMA/cHRM; otherwise report an sRGB assumption. srgb explicitly overrides color declarations, not integrity or orientation checks. Unsupported HDR/cICP is rejected by embedded policy.",
-      "binding": "profile_policy"
+      "scope": [
+        "process"
+      ],
+      "group": "Interpretation",
+      "kind": "choice",
+      "values": [
+        "embedded",
+        "srgb"
+      ],
+      "default": "embedded",
+      "summary": "Interpret supported colour declarations, or override them with sRGB.",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ]
     },
     {
-      "name": "--binarize",
-      "metavar": "METHOD",
-      "scope": "P",
-      "group": "Processing arguments",
-      "domain": "sauvola for bw; otsu|fixed|sauvola",
-      "description": "Requires explicit --output-mode bw. B01/B02/B03 use stored 1/2/4/8-bit grayscale PNG samples without transparency and output 8-bit black/white; no color or gamma conversion is applied.",
-      "binding": "binarize"
-    },
-    {
-      "name": "--fixed-threshold",
-      "metavar": "T",
-      "scope": "P",
-      "group": "Processing arguments",
-      "domain": "0.50; finite `[0,1]`",
-      "description": "B03 only. Normalized grayscale threshold; black iff sample/255 <= T. Rejected for Sauvola.",
-      "binding": "fixed_threshold"
-    },
-    {
-      "name": "--sauvola-window",
-      "metavar": "PIXELS",
-      "scope": "P",
-      "group": "Processing arguments",
-      "domain": "31; odd integer `[3,4095]`",
-      "description": "B02 only. Centered square window with REFLECT_101 borders; a singleton dimension repeats its sample.",
-      "binding": "sauvola_window"
-    },
-    {
-      "name": "--sauvola-k",
-      "metavar": "K",
-      "scope": "P",
-      "group": "Processing arguments",
-      "domain": "0.2; finite `[0,1]`",
-      "description": "B02 only. Weight in T=m*(1+k*(s/(255*R)-1)), using population standard deviation in stored byte units.",
-      "binding": "sauvola_k"
-    },
-    {
-      "name": "--sauvola-r",
-      "metavar": "R",
-      "scope": "P",
-      "group": "Processing arguments",
-      "domain": "0.5; finite `[1/255,1]`",
-      "description": "B02 only. Normalized deviation scale: 0.5 means 127.5 in byte units, not 128. Black iff sample <= T; no threshold rounding or clipping.",
-      "binding": "sauvola_r"
-    },
-    {
-      "name": "--json",
-      "metavar": "",
-      "scope": "All commands",
-      "group": "Presentation arguments",
-      "domain": "False",
-      "description": "Render one JSON response on stdout and no diagnostic text on stderr. Flush the selected stream before returning. JSON exit_code describes the rendered command outcome; response-delivery failure can instead end the process with exit 5. Check both the response and process status. A missing/incomplete response or exit 5 does not prove that publication did not commit; do not retry blindly. Successful parsing uses the parsed flag only: a literal --json option value does not switch presentation. Syntax failure retains the exact-token JSON fallback before --. The default-valued spellings --json=true, --json= and --json={} also parse as flags; other value overrides are rejected. They do not select the exact-token fallback on syntax failure.",
-      "binding": "json"
-    },
-    {
-      "name": "--help",
-      "metavar": "",
-      "scope": "All commands",
-      "group": "Presentation arguments",
-      "domain": "N/A",
-      "description": "Renders help and exits without opening input or creating output.",
-      "binding": "help"
-    },
-    {
-      "name": "--version",
-      "metavar": "",
-      "scope": "Root only",
-      "group": "Presentation arguments",
-      "domain": "N/A",
-      "description": "Human-readable alias of `version`.",
-      "binding": "root_version"
-    },
-    {
-      "name": "--illumination",
-      "metavar": "MODE",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "off; off|surface|auto|morph",
-      "description": "Select explicit I01 surface or I02 morphological illumination for continuous preserve/gray. Auto remains I01 only.",
-      "binding": "illumination"
-    },
-    {
-      "name": "--background-strength",
-      "metavar": "A",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "1; finite [0,1]",
-      "description": "Exponent applied to the illumination gain; 1 corrects the fitted background fully within the gain cap. Zero is an exact photometric no-op after parameter and mask validation.",
-      "binding": "background_strength"
-    },
-    {
-      "name": "--background-max-gain",
-      "metavar": "G",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "2; finite [1,4]",
-      "description": "Maximum illumination multiplicative gain. One is an exact photometric no-op.",
-      "binding": "background_max_gain"
-    },
-    {
-      "name": "--background-target",
-      "metavar": "TARGET",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "source; source or finite [0.1,1]",
-      "description": "Linear-light target. Source uses the fitted background nearest-rank 90th percentile, not forced paper white.",
-      "binding": "background_target"
-    },
-    {
-      "name": "--background-cell",
-      "metavar": "SIZE",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "auto; auto or integer [8,512]",
-      "description": "Cell edge in post-geometry processing pixels. Auto is round(min(width,height)/24), clamped to [16,256]. Resource refusal never changes this value.",
-      "binding": "background_cell"
-    },
-    {
-      "name": "--background-quantile",
-      "metavar": "Q",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "0.90; finite [0.75,0.99]",
-      "description": "Nearest-rank quantile of all eligible cell samples; protected samples are excluded.",
-      "binding": "background_quantile"
-    },
-    {
-      "name": "--background-smooth",
-      "metavar": "BETA",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "1; finite [0.1,20]",
-      "description": "Positive grid-Laplacian weight for fitting the logarithmic background.",
-      "binding": "background_smooth"
-    },
-    {
-      "name": "--background-radius",
-      "metavar": "RADIUS",
-      "scope": "P",
-      "group": "Illumination arguments",
-      "domain": "auto; auto or integer [1,256]",
-      "description": "Square closing radius in post-geometry processing pixels. Auto rounds min(width,height)/50 and clamps to [8,128]; Gaussian sigma=max(0.5,radius/2).",
-      "binding": "background_radius"
+      "name": "--rotate",
+      "metavar": "DEGREES",
+      "scope": [
+        "process"
+      ],
+      "group": "Geometry",
+      "kind": "choice",
+      "values": [
+        "0",
+        "90",
+        "180",
+        "270"
+      ],
+      "default": "0",
+      "summary": "Exact clockwise quarter-turn; continuous input follows metadata orientation, bw rotates stored samples."
     },
     {
       "name": "--protect-mask",
       "metavar": "PATH",
-      "scope": "P",
-      "group": "Protection arguments",
-      "domain": "Absent",
-      "description": "1-bit or 8-bit grayscale PNG mask matching metadata-oriented source dimensions before --rotate. Nonzero protects. Any alpha must be fully opaque; mask orientation must be normal. Rotate identically with the source. The mask is validated even with all photometric stages disabled.",
-      "binding": "protect_mask"
+      "scope": [
+        "process"
+      ],
+      "group": "Protection",
+      "kind": "path",
+      "summary": "1/8-bit grey PNG in metadata-oriented source dimensions; non-zero samples are never changed by photometric stages.",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ]
     },
     {
-      "name": "--denoise",
-      "metavar": "METHOD",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "off; off|nlm|tvl1",
-      "description": "Explicit NLM-L1 or full-field floating-point TV-L1 for continuous PNG/JPEG/TIFF after illumination. No binary denoising.",
-      "binding": "denoise"
+      "name": "--json",
+      "metavar": "",
+      "scope": [
+        "root",
+        "process",
+        "verify",
+        "methods",
+        "version"
+      ],
+      "group": "Presentation",
+      "kind": "flag",
+      "summary": "Render one JSON response on stdout and nothing on stderr."
     },
     {
-      "name": "--denoise-blend",
-      "metavar": "A",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "0.5; finite `[0,1]`",
-      "description": "Blend once in perceptual luminance; zero preserves entering samples after source/mask validation.",
-      "binding": "denoise_blend"
+      "name": "--help",
+      "metavar": "",
+      "scope": [
+        "root",
+        "process",
+        "verify",
+        "methods",
+        "version"
+      ],
+      "group": "Presentation",
+      "kind": "flag",
+      "summary": "Render help without opening input or creating output."
     },
     {
-      "name": "--nlm-h",
-      "metavar": "H",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "3; finite `[0.1,25]`",
-      "description": "NLM only. Equivalent 8-bit perceptual strength; native float strength is 257 times float(H). Higher strengths may remove marks.",
-      "binding": "nlm_h"
-    },
-    {
-      "name": "--nlm-patch",
-      "metavar": "PIXELS",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "7; odd integer `[3,15]`",
-      "description": "NLM only. Square patch width.",
-      "binding": "nlm_patch"
-    },
-    {
-      "name": "--nlm-search",
-      "metavar": "PIXELS",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "21; odd integer `[7,41]`",
-      "description": "NLM only. Search at least patch; active processing requires fit in smaller post-geometry processing dimension.",
-      "binding": "nlm_search"
-    },
-    {
-      "name": "--tv-lambda",
-      "metavar": "LAMBDA",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "1.5; finite `[0.05,20]`",
-      "description": "TV-L1 only. L1 fidelity weight; larger values mean less smoothing.",
-      "binding": "tv_lambda"
-    },
-    {
-      "name": "--tv-iterations",
-      "metavar": "N",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "150; integer `[10,1000]`",
-      "description": "TV-L1 only. Iteration cap; exhaustion retains a usable iterate and emits W_TV_ITERATION_LIMIT.",
-      "binding": "tv_iterations"
-    },
-    {
-      "name": "--tv-tolerance",
-      "metavar": "EPS",
-      "scope": "P",
-      "group": "Denoising arguments",
-      "domain": "0.00001; finite `[1e-8,1e-3]`",
-      "description": "TV-L1 only. Both primal and dual update tolerances at two consecutive ten-iteration checkpoints, starting at iteration 20.",
-      "binding": "tv_tolerance"
-    },
-    {
-      "name": "--deblur",
-      "metavar": "METHOD",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "off; off|wiener",
-      "description": "Explicit R01 known-PSF regularized restoration after denoising and before contrast; continuous output only. No PSF estimation or authenticity claim.",
-      "binding": "deblur"
-    },
-    {
-      "name": "--psf",
-      "metavar": "KIND",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "Required for wiener; gaussian|motion|kernel",
-      "description": "PSF in the post-rotation processing frame. Kind-specific parameters are rejected for other kinds.",
-      "binding": "psf"
-    },
-    {
-      "name": "--psf-sigma",
-      "metavar": "SIGMA",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "1.0; finite [0.3,5]",
-      "description": "Gaussian standard deviation in pixels; radius ceil(3*sigma), float64 normalization.",
-      "binding": "psf_sigma"
-    },
-    {
-      "name": "--psf-length",
-      "metavar": "LENGTH",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "5.0; finite [1,31]",
-      "description": "Motion exposure segment length in pixels; equally weighted midpoint samples deposited bilinearly.",
-      "binding": "psf_length"
-    },
-    {
-      "name": "--psf-angle",
-      "metavar": "ANGLE",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "0; finite [-180,180]",
-      "description": "Motion direction clockwise from positive x in y-down processing coordinates.",
-      "binding": "psf_angle"
-    },
-    {
-      "name": "--psf-file",
-      "metavar": "PATH",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "Required for kernel; well-formed UTF-8 path",
-      "description": "Raw nontransparent grayscale PNG coefficients, unsigned 8/16-bit, odd dimensions 3..129. Ignore profile/gamma and orientation; normalize positive sum and preserve off-center origin. Source is read-only.",
-      "binding": "psf_file"
-    },
-    {
-      "name": "--wiener-k",
-      "metavar": "K",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "0.01; finite [1e-5,1]",
-      "description": "Positive regularizer in |H|^2+K, not a measured noise-to-signal ratio.",
-      "binding": "wiener_k"
-    },
-    {
-      "name": "--deblur-blend",
-      "metavar": "A",
-      "scope": "P",
-      "group": "Restoration arguments",
-      "domain": "0.5; finite [0,1]",
-      "description": "Blend original linear luminance with the mean-preserving restored candidate before clamping. Zero still validates the complete PSF and options.",
-      "binding": "deblur_blend"
-    },
-    {
-      "name": "--contrast",
-      "metavar": "METHOD",
-      "scope": "P",
-      "group": "Contrast arguments",
-      "domain": "off; off|levels|gamma|clahe",
-      "binding": "contrast",
-      "description": "Explicit levels, gamma or CLAHE on continuous PNG/JPEG/TIFF after illumination and denoising."
-    },
-    {
-      "name": "--contrast-blend",
-      "metavar": "A",
-      "scope": "P",
-      "group": "Contrast arguments",
-      "domain": "1; finite `[0,1]`",
-      "binding": "contrast_blend",
-      "description": "Blend once in perceptual luminance. Zero retains entering samples after source/mask validation."
-    },
-    {
-      "name": "--levels-low",
-      "metavar": "P",
-      "scope": "P",
-      "group": "Contrast arguments",
-      "domain": "0.5; finite `[0,10]` percent",
-      "binding": "levels_low",
-      "description": "Levels only. Nearest-rank lower percentile among all unprotected perceptual samples."
-    },
-    {
-      "name": "--levels-high",
-      "metavar": "P",
-      "scope": "P",
-      "group": "Contrast arguments",
-      "domain": "99.5; finite `[90,100]` percent",
-      "binding": "levels_high",
-      "description": "Levels only. Nearest-rank upper percentile, greater than low. A range below 1e-6 retains exact entering RGB."
-    },
-    {
-      "name": "--gamma",
-      "metavar": "G",
-      "scope": "P",
-      "group": "Contrast arguments",
-      "domain": "1.2; finite `[0.25,4]`",
-      "binding": "gamma",
-      "description": "Gamma only. f_new=f^G; above one darkens midtones. Endpoints and gamma one are exact identities."
-    },
-    {
-      "name": "--clahe-grid",
-      "binding": "clahe_grid",
-      "metavar": "CxR",
-      "scope": "P",
-      "group": "Contrast arguments",
-      "domain": "8x8; each integer [2,32]",
-      "description": "CLAHE contextual columns and rows. Every tile must be at least 16 pixels in each direction."
-    },
-    {
-      "name": "--clahe-clip",
-      "binding": "clahe_clip",
-      "metavar": "C",
-      "scope": "P",
-      "group": "Contrast arguments",
-      "domain": "2; finite [1,8]",
-      "description": "CLAHE pre-redistribution clip multiplier relative to average eligible occupancy."
-    },
-    {
-      "name": "--sharpen",
-      "metavar": "METHOD",
-      "scope": "P",
-      "group": "Sharpening arguments",
-      "domain": "off; off|unsharp",
-      "description": "Explicit thresholded unsharp masking after contrast; never enabled by default.",
-      "binding": "sharpen"
-    },
-    {
-      "name": "--sharpen-sigma",
-      "metavar": "S",
-      "scope": "P",
-      "group": "Sharpening arguments",
-      "domain": "0.8; finite [0.3,3]",
-      "description": "Gaussian standard deviation in pixels; radius ceil(3*sigma), REFLECT_101 borders.",
-      "binding": "sharpen_sigma"
-    },
-    {
-      "name": "--sharpen-amount",
-      "metavar": "A",
-      "scope": "P",
-      "group": "Sharpening arguments",
-      "domain": "0.5; finite [0,2]",
-      "description": "Soft-thresholded high-pass amplification; zero is an algebraic identity.",
-      "binding": "sharpen_amount"
-    },
-    {
-      "name": "--sharpen-threshold",
-      "metavar": "T",
-      "scope": "P",
-      "group": "Sharpening arguments",
-      "domain": "1.0; finite [0,20]",
-      "description": "Soft threshold in equivalent 8-bit perceptual intensity points; divided by 255 internally.",
-      "binding": "sharpen_threshold"
+      "name": "--version",
+      "metavar": "",
+      "scope": [
+        "root"
+      ],
+      "group": "Presentation",
+      "kind": "flag",
+      "summary": "Human-readable alias of the version command."
     }
   ],
-  "input_support": [
+  "formats": [
     {
       "format": "png",
-      "binary": true
+      "modes": [
+        "preserve",
+        "gray",
+        "bw"
+      ]
     },
     {
       "format": "jpeg",
-      "binary": false
+      "modes": [
+        "preserve",
+        "gray"
+      ]
     },
     {
       "format": "tiff",
-      "binary": false
+      "modes": [
+        "preserve",
+        "gray"
+      ]
     }
   ]
 }

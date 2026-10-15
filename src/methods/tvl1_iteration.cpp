@@ -3,7 +3,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/methods/tvl1.hpp"
 #include "tvl1_operators.hpp"
 
@@ -104,8 +104,8 @@ core::Result<double> primal_pass(Tvl1Field f, double lambda,
 } // namespace
 core::Result<Tvl1Updates> tvl1_iteration(Tvl1Field field, double lambda,
                                          const core::Cancellation& cancellation) {
-    if (!storage(field) || !std::isfinite(lambda) || lambda < Tvl1::minimum_lambda ||
-        lambda > Tvl1::maximum_lambda) {
+    if (!storage(field) || !std::isfinite(lambda) || lambda < tv_lambda_domain.minimum ||
+        lambda > tv_lambda_domain.maximum) {
         return core::failure(core::ErrorCode::argument,
                              "Invalid TV-L1 iteration storage or fidelity");
     }

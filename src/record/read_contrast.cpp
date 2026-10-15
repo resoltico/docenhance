@@ -6,6 +6,8 @@
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/record/fields.hpp"
 #include "docenhance/record/inventory.hpp"
 #include "docenhance/record/record.hpp"
@@ -44,10 +46,10 @@ core::Result<methods::Contrast> selected_method(const RecordJson& value) {
     }
     if (id == methods::Clahe::descriptor().id) {
         auto method = methods::Clahe::create({
-            .grid_columns = static_cast<std::uint32_t>(
-                record_integer(record_field(p, "grid_columns"), methods::clahe_maximum_grid)),
-            .grid_rows = static_cast<std::uint32_t>(
-                record_integer(record_field(p, "grid_rows"), methods::clahe_maximum_grid)),
+            .grid_columns = static_cast<std::uint32_t>(record_integer(
+                record_field(p, "grid_columns"), methods::clahe_grid_columns_domain.maximum)),
+            .grid_rows = static_cast<std::uint32_t>(record_integer(
+                record_field(p, "grid_rows"), methods::clahe_grid_columns_domain.maximum)),
             .clip = record_number(record_field(p, "clip")),
             .blend = record_number(record_field(p, "blend")),
         });
@@ -94,7 +96,8 @@ core::Result<methods::ContrastReport> observations(const RecordJson& v,
     r.progress = read_progress(record_field(v, "progress"));
     r.identity_tiles = static_cast<std::uint32_t>(
         record_integer(record_field(v, "identity_tiles"),
-                       std::uint64_t{methods::clahe_maximum_grid} * methods::clahe_maximum_grid));
+                       std::uint64_t{methods::clahe_grid_columns_domain.maximum} *
+                           methods::clahe_grid_columns_domain.maximum));
     const auto& range = record_field(v, "levels");
     if (!range.is_null()) {
         r.levels = methods::LevelsRange{

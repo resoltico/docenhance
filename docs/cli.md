@@ -44,7 +44,9 @@ Wrong-method, wrong-operation and explicitly empty values fail admission before 
 owned sibling staging and atomically publishes without replacement after encoding and closing
 succeed; binary and continuous output are independently verified before commit. Publication uncertainty is not hidden; see [architecture](architecture.md).
 
-`docenhance methods` reports I01, I02, D01, D02, C01, C02, C03, S01, R01, B01, B02, B03 and G02. `methods ID` selects one entry.
+`docenhance methods` lists implemented processing methods with names, families, selectors and
+parameter domains. `methods ID` selects one entry. Metadata orientation and exact quarter-turns
+are common geometry operations, rather than selectable catalog entries.
 `version --json` reports the complete executable method list and `png`/`jpeg`/`tiff` as input formats.
 Help, version and capability discovery do not invoke the image-processing host. Human help
 shows reviewed defaults and value domains alongside each option. The continuous pipeline is
@@ -147,11 +149,14 @@ CLI tokens and admitted paths must be well-formed UTF-8, with no embedded path N
 are not normalized or repaired. Invalid diagnostic text alone gets an explanatory fallback.
 String option values retain their token role: `--out-dir --json` and `--out-dir=--json` both
 name the literal directory `--json` and produce human text. Add a separately parsed `--json`
-flag to select JSON. The default-valued spellings `--json=true`, `--json=` and `--json={}` also parse as
-flags, but do not trigger the exact-token syntax-failure fallback. Other flag overrides are refused.
-After `--`, tokens are operands; put options before that delimiter.
+flag to select JSON. Flags with `=VALUE`, including an empty value, are syntax errors.
+A joined empty string value remains empty: `--out-dir= --json` leaves the JSON flag separate
+and fails output-path admission. A separated valued option always consumes its next token,
+including `--`. An unconsumed `--` ends option parsing. Single-dash tokens such as `-`, `-h`
+and `-input.png` are ordinary operands, with no short-option or stdin meaning.
 Only syntax failure uses the exact `--json` token before `--` as a diagnostic fallback, even if
-it might have been intended as a value. Syntax failures never start processing.
+it might have been intended as a value. Syntax failures never start processing. Missing required operands are application refusals after
+successful tokenization, so they use parsed JSON roles. Root flags cannot precede a command.
 
 The `tests/cli/test_sauvola.py` in the source distribution cover admission, decoding, method
 execution, published samples, selected discovery and response conformance together.

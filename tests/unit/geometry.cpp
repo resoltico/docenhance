@@ -5,6 +5,7 @@
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
@@ -167,10 +168,10 @@ void check_rotation_observation(bool binary, unsigned degrees, unsigned observed
     UnusedVerifier verifier;
     app::Invocation request;
     request.command = app::Command::process;
-    request.subject = "input.png";
-    request.output_directory = "output";
-    request.output_mode = binary ? "bw" : "preserve";
-    request.rotate = std::to_string(degrees);
+    request.operands = {"input.png"};
+    request.option(app::OptionId::out_dir) = "output";
+    request.option(app::OptionId::output_mode) = binary ? "bw" : "preserve";
+    request.option(app::OptionId::rotate) = std::to_string(degrees);
     const auto turn = required_turn(observed);
     app::ProcessResult published;
     if (binary) {

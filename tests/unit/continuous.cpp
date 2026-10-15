@@ -4,6 +4,7 @@
 
 #include "cancellation_probe.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/color/converter.hpp"
@@ -52,21 +53,20 @@ std::vector<std::uint8_t> continuous_fixture() {
 } // namespace
 TEST_CASE("Continuous admission is distinct from binary method admission", "[continuous][app]") {
     static_assert(!std::is_default_constructible_v<image::Continuous>);
-    app::Invocation invocation{
-        .command = app::Command::process,
-        .subject = "input.png",
-        .output_directory = "output",
-    };
+    app::Invocation invocation;
+    invocation.command = app::Command::process;
+    invocation.operands = {"input.png"};
+    invocation.option(app::OptionId::out_dir) = "output";
     const auto admitted = app::prepare_process(invocation);
     REQUIRE(admitted);
     REQUIRE(std::holds_alternative<app::ContinuousPlan>(admitted->plan()));
     CHECK(std::get<app::ContinuousPlan>(admitted->plan()).operation.parameters().mode ==
           image::ToneMode::preserve);
-    invocation.binarize = "fixed";
+    invocation.option(app::OptionId::binarize) = "fixed";
     CHECK(!app::prepare_process(invocation));
-    invocation.output_mode = "bw";
+    invocation.option(app::OptionId::output_mode) = "bw";
     CHECK(app::prepare_process(invocation));
-    invocation.bit_depth = "auto";
+    invocation.option(app::OptionId::bit_depth) = "auto";
     CHECK(!app::prepare_process(invocation));
 }
 TEST_CASE("Every 16-bit gray level survives the no-filter sRGB path", "[continuous][precision]") {

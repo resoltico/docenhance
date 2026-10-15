@@ -13,7 +13,6 @@
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
-#include "docenhance/methods/geometry.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/restoration.hpp"

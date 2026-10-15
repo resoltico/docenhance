@@ -4,7 +4,7 @@
 
 `ProcessRequest` privately owns `BinaryPlan | ContinuousPlan`. Binary plans contain validated binarization and exact rotation. Continuous plans contain representation, the fixed photometric sequence, B-frame protection and exact rotation. Paths are shared request data; cancellation is separate execution control. Borrowing requires a live lvalue owner. Moves consume the source path; valueless or moved-from requests fail before I/O.
 
-The fixed order is geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Models, preparation, source consumption and native boundaries differ by family. There is no generic recipe/DAG engine or plugin registry. Runtime selectable catalogs come from actual method types; reviewed classification distinguishes selectable, automatic and planned methods. G01 is automatic metadata orientation, G02 is selectable, and G03–G05 are not executable capabilities.
+The fixed order is geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Models, preparation, source consumption and native boundaries differ by family. There is no generic recipe/DAG engine or plugin registry. Runtime catalogs come from actual method types, with parameter domains and selectors declared in `spec/method-contract.json` and projected into [method metadata](methods.md). G01 metadata orientation and explicit G02 quarter-turn rotation belong to the common image/request geometry contract, outside that catalog. G03–G05 are not executable capabilities.
 
 ## Progress and numerical disposition
 

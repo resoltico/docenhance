@@ -7,6 +7,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "stub_verifier.hpp"
 
 #include <array>
@@ -81,8 +82,6 @@ TEST_CASE("Invalid invocations never reach processing", "[cli]") {
 TEST_CASE("A required string value can consume the option marker before a JSON flag", "[cli]") {
     const auto bare = std::to_array<const char*>(
         {"docenhance", "process", "input.png", "--out-dir", "--", "--json"});
-    const auto joined = std::to_array<const char*>(
-        {"docenhance", "process", "input.png", "--out-dir=", "--", "--json"});
     const auto check_case = [](std::span<const char* const> args) {
         CapturingProcessor processor;
         std::ostringstream out;
@@ -98,7 +97,6 @@ TEST_CASE("A required string value can consume the option marker before a JSON f
         CHECK(err.str().empty());
     };
     check_case(bare);
-    check_case(joined);
 }
 TEST_CASE("A JSON-looking required value does not select JSON presentation", "[cli]") {
     CountingProcessor processor;
@@ -112,21 +110,35 @@ TEST_CASE("A JSON-looking required value does not select JSON presentation", "[c
     CHECK(out.str().empty());
     CHECK(err.str().starts_with("E_"));
 }
-TEST_CASE("An empty joined assignment consumes the next JSON-looking value", "[cli]") {
+TEST_CASE("An empty joined assignment retains the following JSON flag", "[cli]") {
     CapturingProcessor processor;
     std::ostringstream out;
     std::ostringstream err;
     const auto args =
         std::to_array<const char*>({"docenhance", "process", "input.png", "--out-dir=", "--json"});
     CHECK(cli::run(args, {.processor = processor, .verifier = verifier}, out, err) ==
-          static_cast<int>(core::ExitCode::processing));
-    if (!processor.received.has_value()) {
-        FAIL("The admitted request did not reach processing");
-        return;
+          static_cast<int>(core::ExitCode::invocation));
+    CHECK(!processor.received.has_value());
+    CHECK(out.str().starts_with('{'));
+    CHECK(out.str().contains("E_ARGUMENT"));
+    CHECK(out.str().contains("not_started"));
+    CHECK(err.str().empty());
+}
+TEST_CASE("Known syntax failures retain raw JSON fallback", "[cli]") {
+    for (const auto arguments : {
+             std::to_array<const char*>({"docenhance", "process", "--wat", "--json"}),
+             std::to_array<const char*>({"\xff", "process", "--out-dir", "--json"}),
+         }) {
+        CountingProcessor processor;
+        std::ostringstream out;
+        std::ostringstream err;
+        CHECK(cli::run(arguments, {.processor = processor, .verifier = verifier}, out, err) == 2);
+        CHECK(processor.calls == 0);
+        CHECK(out.str().starts_with('{'));
+        CHECK(out.str().contains("E_ARGUMENT"));
+        CHECK(out.str().contains("not_started"));
+        CHECK(err.str().empty());
     }
-    CHECK(processor.received->output_directory() == "--json");
-    CHECK(out.str().empty());
-    CHECK(err.str().starts_with("E_"));
 }
 TEST_CASE("Consumed and unconsumed markers keep admission and syntax presentation distinct",
           "[cli]") {

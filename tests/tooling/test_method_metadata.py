@@ -6,116 +6,66 @@ from __future__ import annotations
 
 import copy
 import json
-import shutil
-import tempfile
 import unittest
-from pathlib import Path
 from typing import Any
-from unittest.mock import patch
 
 from tools_path import ROOT
 
 from jsonschema import Draft202012Validator
+from parameter_fixtures import contracts
 
 import generate_spec
 import method_metadata
+from parameter_contract import merged_options
 
 
 class MethodMetadataTests(unittest.TestCase):
     """Reject identity/selector drift and schema payloads with invented method versions."""
 
-    @staticmethod
-    def entry() -> dict[str, Any]:
-        """Return a minimal implemented method for independent generator-negative cases."""
-        return {
-            "id": "B02",
-            "selector": "sauvola",
-            "family": "binarization",
-            "method_version": 1,
-            "classification": "implemented-selectable",
-            "arguments": ["--binarize"],
-        }
-
-    def test_bad_identity_and_option_declarations_are_rejected(self) -> None:
-        """An authoring flag or typo alone cannot silently extend the generated capabilities."""
-        for change in (
+    def test_authored_method_taxonomy_and_bad_identities_are_refused(self) -> None:
+        """No authoring flag can advertise a planned or malformed executable identity."""
+        changes: tuple[dict[str, Any], ...] = (
             {"id": ""},
-            {"id": 2},
             {"id": "bad"},
-            {"family": "unsupported"},
-            {"method_version": True},
-            {"method_version": 0},
-            {"method_version": 1.5},
-            {"classification": "available"},
+            {"version": True},
+            {"version": 0},
+            {"classification": "planned"},
             {"status": "implemented"},
-            {"selector": ""},
-            {"selector": "a-b"},
-            {"arguments": ["--absent"]},
-            {"arguments": ["--output-mode", "bw", "--binarize", "--binarize"]},
-            {"arguments": "--binarize"},
-        ):
-            with self.subTest(change=change), self.assertRaises(ValueError):
-                method_metadata.implemented([self.entry() | change], [{"name": "--binarize"}])
-
-    def test_duplicate_ids_and_selectors_are_rejected(self) -> None:
-        """Neither an ID nor an implemented selector can refer to two methods."""
-        entry = self.entry()
-        for second in (entry, entry | {"id": "B03"}):
-            with self.subTest(second=second), self.assertRaises(ValueError):
-                method_metadata.implemented([entry, second], [{"name": "--binarize"}])
-        with self.assertRaises(ValueError):
-            method_metadata.implemented([entry | {"classification": "planned"}], [])
-
-    def test_only_implemented_entries_generate_descriptors(self) -> None:
-        """Planned method arguments need not be CLI capabilities and never enter the catalog."""
-        active, planned = self.entry(), self.entry() | {"id": "B01", "classification": "planned"}
-        planned["arguments"] = ["--future-option"]
-        result = method_metadata.implemented([active, planned], [{"name": "--binarize"}])
-        self.assertEqual(result, [active])
-        header = method_metadata.render_catalog(result)
-        self.assertIn('"B02"', header)
-        self.assertNotIn('"B01"', header)
-
-    def test_automatic_capabilities_have_no_selector_or_option_attribution(self) -> None:
-        """G01 is implemented automatically without manufacturing selectable descriptors."""
-        automatic = {
-            "id": "G01",
-            "method_version": 1,
-            "classification": "implemented-automatic",
-            "arguments": [],
-        }
-        options = [{"name": "--binarize"}]
-        self.assertEqual(
-            method_metadata.implemented([self.entry(), automatic], options), [self.entry()]
+            {"selectors": {}},
+            {"selectors": {"bad-selector": {}}},
+            {"selectors": {"wiener": {"mode": "planned"}}},
         )
-        for change in ({"selector": "orientation"}, {"arguments": ["--binarize"]}):
+        for change in changes:
+            cli, methods = contracts()
+            methods["families"][0]["methods"][0].update(change)
             with self.subTest(change=change), self.assertRaises(ValueError):
-                method_metadata.implemented([self.entry(), automatic | change], options)
-        with self.assertRaises(ValueError):
-            method_metadata.implemented(
-                [self.entry(), automatic], [{"name": "--binarize", "methods": "B02,G01"}]
-            )
+                merged_options(cli, methods)
 
-    def test_authoring_format_and_derived_roadmap_refuse_stale_contracts(self) -> None:
-        """Root format breaks cleanly; the roadmap cannot retain a second capability inventory."""
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            shutil.copytree(ROOT / "spec", root / "spec")
-            with patch.object(generate_spec, "ROOT", root):
-                outputs = generate_spec.outputs()
-                roadmap = outputs[root / "docs/roadmap.md"]
-                self.assertIn("G01: Metadata orientation (implemented-automatic)", roadmap)
-                self.assertIn("`tiff` input: preserve, gray", roadmap)
-                self.assertNotIn("Add TIFF", roadmap)
-                source = root / "spec/method-contract.json"
-                contract = json.loads(source.read_bytes())
-                for change in ({"schema_version": 1}, {"status": "implemented"}):
-                    source.write_text(json.dumps(contract | change))
-                    with (
-                        self.subTest(change=change),
-                        self.assertRaises(generate_spec.ContractError),
-                    ):
-                        generate_spec.outputs()
+    def test_discovery_metadata_is_closed_without_enriching_record_identity(self) -> None:
+        """A current method exposes its domains, while v14 records retain id/version only."""
+        generated = generate_spec.outputs()
+        response = json.loads(generated[ROOT / "schemas/command-response.schema.json"])
+        record = json.loads(generated[ROOT / "schemas/run-record.schema.json"])
+        identity = {"id": "R01", "method_version": 1}
+        for schema in (response, record):
+            validator = Draft202012Validator(
+                {"$defs": schema["$defs"], "$ref": "#/$defs/restoration_method"}
+            )
+            validator.validate(identity)
+            self.assertFalse(validator.is_valid(identity | {"name": "invented"}))
+        validator = Draft202012Validator(response["$defs"]["catalog_entry"])
+        entry = next(
+            item["const"]
+            for item in response["$defs"]["catalog_entry"]["oneOf"]
+            if item["const"]["id"] == "I01"
+        )
+        validator.validate(entry)
+        self.assertEqual(entry["selectors"], ["surface", "auto"])
+        self.assertFalse(validator.is_valid(identity))
+        self.assertFalse(validator.is_valid(entry | {"parameters": []}))
+        self.assertFalse(validator.is_valid(entry | {"method_version": 2}))
+        self.assertFalse(validator.is_valid(entry | {"invented": True}))
+        self.assertNotIn(ROOT / "docs/roadmap.md", generated)
 
     def test_otsu_observations_are_closed_and_shared_with_records(self) -> None:
         """Both schemas derive one bounded fit shape and reject impossible fallback facts."""
@@ -143,7 +93,7 @@ class MethodMetadataTests(unittest.TestCase):
         schema = json.loads((ROOT / "schemas/command-response.schema.json").read_text())
         validator = Draft202012Validator(schema)
         response = {
-            "schema_version": 14,
+            "schema_version": 15,
             "command": "process",
             "version": "0.3.0",
             "exit_code": 0,
@@ -184,11 +134,17 @@ class MethodMetadataTests(unittest.TestCase):
         del missing["method_version"]
         self.assertFalse(validator.is_valid(missing))
         capabilities: dict[str, Any] = {
-            "schema_version": 14,
+            "schema_version": 15,
             "command": "methods",
             "version": "0.3.0",
             "exit_code": 0,
-            "methods": [{"id": "B02", "method_version": 1}],
+            "methods": [
+                next(
+                    item["const"]
+                    for item in schema["$defs"]["catalog_entry"]["oneOf"]
+                    if item["const"]["id"] == "B02"
+                )
+            ],
             "supported_formats": ["png", "jpeg", "tiff"],
             "input_support": [
                 {"format": "png", "output_modes": ["preserve", "gray", "bw"]},
@@ -261,37 +217,30 @@ class MethodMetadataTests(unittest.TestCase):
                 ):
                     self.assertFalse(validator.is_valid(report | {"method": method}))
 
-    def test_option_attribution_has_one_authority(self) -> None:
-        """Arguments derive attribution and obsolete authored relations are refused."""
-        options = [{"name": "--binarize"}, {"name": "--extra"}]
-        active = method_metadata.implemented([self.entry()], options)
-        self.assertEqual(
-            method_metadata.attributed_options(options, active),
-            [{"name": "--binarize", "methods": "B02"}, {"name": "--extra", "methods": ""}],
-        )
-        with self.assertRaises(ValueError):
-            method_metadata.implemented([self.entry()], [{"name": "--binarize", "methods": "B02"}])
-
     def test_format_support_requires_complete_unique_admission(self) -> None:
         """No absent, duplicate or loosely typed format policy can generate capabilities."""
         for support in (
             [],
             [{"format": "png"}],
-            [{"format": "png", "binary": 1}],
-            [{"format": "png", "binary": True}] * 2,
+            [{"format": "png", "modes": ["preserve", "invented"]}],
+            [{"format": "png", "modes": ["preserve", "gray"]}] * 2,
         ):
             with self.subTest(support=support), self.assertRaises(ValueError):
                 method_metadata.support_matrix(support)
 
     def test_denoising_schema_follows_reviewed_identity_and_selection(self) -> None:
         """Changing the reviewed D01 version updates both schemas; off cannot carry settings."""
-        methods = json.loads((ROOT / "spec/method-contract.json").read_text())["methods"]
+        families = json.loads((ROOT / "spec/method-contract.json").read_text())["families"]
         contract = json.loads((ROOT / "spec/cli-contract.json").read_text())
-        for entry in methods:
-            if entry["id"] == "D01":
-                entry["method_version"] = 2
+        for family in families:
+            for entry in family["methods"]:
+                if entry["id"] == "D01":
+                    entry["version"] = 2
         outputs = method_metadata.metadata_outputs(
-            ROOT, methods, contract["options"], contract["input_support"]
+            ROOT,
+            families,
+            merged_options(contract, {"schema_version": 3, "families": families}),
+            contract["formats"],
         )
         request: dict[str, Any] = {
             "method": {"id": "D01", "method_version": 2},

@@ -3,6 +3,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -30,7 +31,7 @@ core::Result<void> apply_illumination_pixel(std::span<double> rgb, double backgr
         background > 1 || !std::isfinite(gain.target) || gain.target < 0 || gain.target > 1 ||
         !std::isfinite(gain.strength) || gain.strength < 0 || gain.strength > 1 ||
         !std::isfinite(gain.max_gain) || gain.max_gain < 1 ||
-        gain.max_gain > illumination_gain_limit) {
+        gain.max_gain > background_max_gain_domain.maximum) {
         return core::failure(core::ErrorCode::argument, "Invalid illumination application values");
     }
     const image::Rgb original{

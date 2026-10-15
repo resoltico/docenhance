@@ -6,7 +6,7 @@ precedence over this file. Flag unresolved conflicts; preserve unrelated work.
 ## Understand and design
 
 Read `docs/status.md`, `docs/architecture.md`, `docs/decisions.md` and relevant reviewed `spec/`
-contracts before editing. The generated roadmap is an index, not executable admission. For
+contracts before editing. The roadmap is planning information, not executable admission. For
 substantial changes, design first, then challenge the design in a distinct skeptical pass with
 counterexamples, implement the simplest single solution, and verify healthy and negative cases.
 
@@ -24,8 +24,9 @@ invent future method implementations, successful copies, plugin registries or ge
 
 - `spec/architecture.json` owns the layer graph, direct links, external packages and exception/API
   permissions. Update it only for a genuine design change. Targets link exactly what their files use.
-- `spec/cli-contract.json` owns syntax and format admission; `spec/method-contract.json` owns the
-  closed selectable/automatic/planned taxonomy. Runtime selectable catalogs come from actual types.
+- `spec/cli-contract.json` owns syntax and format admission; `spec/method-contract.json` owns
+  implemented method parameters and selector domains. Runtime catalogs come from actual types;
+  common geometry belongs to image/request contracts. See `docs/methods.md` for generated metadata.
 - `spec/command-response.schema.json` and `spec/run-record.schema.json` own current wire templates.
   Regenerate affected outputs with `python tools/generate_spec.py`; reject obsolete forms.
 - `CMakeLists.txt` owns version. `deps/lock.json` owns immutable sources; `deps/features.json` owns

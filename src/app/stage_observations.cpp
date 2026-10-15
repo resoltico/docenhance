@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/geometry.hpp"
+#include "docenhance/image/raster.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
@@ -171,4 +174,43 @@ bool valid_failure(const ProcessFailure& value, const ProcessRequest& request) {
            valid_counted_masks(*value.stages) && valid_consumption(*value.stages);
 }
 
+bool partial_restoration(const methods::RestorationReport& r, const ProcessRequest& request) {
+    const auto* const method = std::get_if<methods::Wiener>(
+        &std::get<app::ContinuousPlan>(request.plan()).photometric.restoration);
+    if (method != nullptr ? (!r.requested || *r.requested != method->parameters())
+                          : r.requested.has_value()) {
+        return false;
+    }
+    if (!methods::valid_restoration_observations(r)) {
+        return false;
+    }
+    return r.complete()
+               ? methods::valid_restoration(
+                     r, std::get<app::ContinuousPlan>(request.plan()).photometric.restoration)
+               : methods::valid_progress(r);
+}
+bool restoration_prefix(const methods::RestorationReport& r, image::Orientation orientation,
+                        image::QuarterTurn rotation,
+                        const methods::IlluminationReport& illumination,
+                        const methods::DenoisingReport& denoising) {
+    return r.after_transform_warning ==
+           (r.requested.has_value() &&
+            (orientation != image::Orientation::normal() || rotation.degrees() != 0 ||
+             illumination.changed_samples != 0 || denoising.changed_samples != 0));
+}
+bool partial_sharpen(const methods::SharpenReport& r, const ProcessRequest& request) {
+    const auto* const method = std::get_if<methods::Unsharp>(
+        &std::get<app::ContinuousPlan>(request.plan()).photometric.sharpening);
+    if (method != nullptr ? (!r.requested || *r.requested != method->parameters())
+                          : r.requested.has_value()) {
+        return false;
+    }
+    if (!methods::valid_sharpen_observations(r)) {
+        return false;
+    }
+    return r.complete()
+               ? methods::valid_sharpen(
+                     r, std::get<app::ContinuousPlan>(request.plan()).photometric.sharpening)
+               : methods::valid_progress(r);
+}
 } // namespace docenhance::app

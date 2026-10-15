@@ -7,6 +7,7 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "sauvola_reference.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
@@ -40,11 +41,12 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     const double r = (1.0 + byte_at(bytes, 4)) / (byte_scale + 1.0);
     // Clamp to the declared one-quantum floor, never a value outside the typed domain.
     const auto method =
-        methods::Sauvola::create({
-                                     .window = window,
-                                     .k = k,
-                                     .r = r < methods::Sauvola::min_r ? methods::Sauvola::min_r : r,
-                                 })
+        methods::Sauvola::create(
+            {
+                .window = window,
+                .k = k,
+                .r = r < methods::sauvola_r_domain.minimum ? methods::sauvola_r_domain.minimum : r,
+            })
             .value();
     core::Budget budget{budget_limit};
     auto source = image::Plane<std::uint8_t>::allocate(budget, width, height).value();

@@ -14,12 +14,11 @@
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/tvl1.hpp"
-#include "restoration.hpp"
-#include "sharpening.hpp"
 
 #include <cmath>
 #include <cstdint>

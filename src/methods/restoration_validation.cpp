@@ -5,6 +5,7 @@
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/source_facts.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 
@@ -118,7 +119,7 @@ bool valid_restoration_observations(const RestorationReport& r) {
     if (!valid_requested_state(r)) {
         return false;
     }
-    if (!valid_wiener_parameters(*r.requested) || r.status == RestorationStatus::disabled ||
+    if (!valid_parameters(*r.requested) || r.status == RestorationStatus::disabled ||
         !r.inference_warning || (r.psf && !canonical_psf(*r.requested, *r.psf))) {
         return false;
     }

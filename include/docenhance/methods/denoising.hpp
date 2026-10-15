@@ -5,31 +5,15 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <cstdint>
 #include <optional>
 #include <string_view>
 #include <variant>
 namespace docenhance::methods {
-inline constexpr double nlm_default_h = 3;
-inline constexpr std::uint32_t nlm_default_patch = 7;
-inline constexpr std::uint32_t nlm_default_search = 21;
-inline constexpr double denoising_default_blend = 0.5;
-inline constexpr double nlm_min_h = 0.1;
-inline constexpr double nlm_max_h = 25;
-inline constexpr std::uint32_t nlm_min_patch = 3;
-inline constexpr std::uint32_t nlm_max_patch = 15;
-inline constexpr std::uint32_t nlm_min_search = 7;
-inline constexpr std::uint32_t nlm_max_search = 41;
-struct NlmParameters {
-    double h = nlm_default_h;
-    std::uint32_t patch = nlm_default_patch;
-    std::uint32_t search = nlm_default_search;
-    double blend = denoising_default_blend;
-    bool operator==(const NlmParameters&) const = default;
-};
 class Nlm {
   public:
     [[nodiscard]] static core::Result<Nlm> create(NlmParameters parameters = {});
@@ -45,24 +29,8 @@ class Nlm {
     NlmParameters parameters_;
 };
 struct DenoisingOff {};
-inline constexpr double tvl1_default_lambda = 1.5;
-inline constexpr std::uint32_t tvl1_default_iterations = 150;
-inline constexpr double tvl1_default_tolerance = 1e-5;
-struct Tvl1Parameters {
-    double lambda = tvl1_default_lambda;
-    std::uint32_t iterations = tvl1_default_iterations;
-    double tolerance = tvl1_default_tolerance;
-    double blend = denoising_default_blend;
-    bool operator==(const Tvl1Parameters&) const = default;
-};
 class Tvl1 {
   public:
-    static constexpr double minimum_lambda = 0.05;
-    static constexpr double maximum_lambda = 20;
-    static constexpr std::uint32_t minimum_iterations = 10;
-    static constexpr std::uint32_t maximum_iterations = 1000;
-    static constexpr double minimum_tolerance = 1e-8;
-    static constexpr double maximum_tolerance = 1e-3;
     [[nodiscard]] static core::Result<Tvl1> create(Tvl1Parameters parameters = {});
     [[nodiscard]] Tvl1Parameters parameters() const noexcept {
         return parameters_;
@@ -93,7 +61,7 @@ enum class DenoiseStatus { unresolved, disabled, no_change, applied, failed };
 enum class DenoiseReason { none, zero_blend, no_eligible_samples, no_effect, processing_failure };
 inline constexpr std::uint32_t nlm_tile_width = 256;
 inline constexpr std::uint32_t nlm_native_extent =
-    nlm_tile_width + nlm_max_patch + nlm_max_search - 2;
+    nlm_tile_width + nlm_patch_domain.maximum + nlm_search_domain.maximum - 2;
 struct DenoisingReport {
     DenoiseStatus status = DenoiseStatus::disabled;
     DenoiseReason reason = DenoiseReason::none;

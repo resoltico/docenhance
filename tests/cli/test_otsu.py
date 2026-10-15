@@ -13,6 +13,7 @@ from collections import Counter
 from pathlib import Path
 
 from continuous_fixtures import GRAY_ALPHA, RGB, Fixture
+from contract_reference import reviewed_methods
 from grayscale import read_image, write_image
 from test_cli import call_json, expect
 from test_sauvola import command
@@ -166,7 +167,9 @@ def main() -> None:
     """Execute independent references and contract failures against the built production binary."""
     exe = Path(sys.argv[1]).resolve()
     response = call_json(exe, ["methods", "B01", "--json"])
-    expect(response["methods"] == [{"id": "B01", "method_version": 1}], "B01 discovery")
+    expect(
+        response["methods"] == [m for m in reviewed_methods() if m["id"] == "B01"], "B01 discovery"
+    )
     with tempfile.TemporaryDirectory(prefix="docenhance-otsu-") as temporary:
         root = Path(temporary)
         fallback = sample_cases(exe, root)

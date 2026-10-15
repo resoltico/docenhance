@@ -6,6 +6,7 @@
 #include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/record/fields.hpp"
 #include "docenhance/record/inventory.hpp"

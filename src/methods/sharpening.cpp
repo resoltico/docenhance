@@ -3,16 +3,14 @@
 #include "docenhance/methods/sharpening.hpp"
 
 #include "docenhance/core/result.hpp"
+#include "docenhance/methods/parameters.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <string_view>
 namespace docenhance::methods {
 core::Result<Unsharp> Unsharp::create(UnsharpParameters p) {
-    if (!std::isfinite(p.sigma) || p.sigma < Unsharp::minimum_sigma ||
-        p.sigma > Unsharp::maximum_sigma || !std::isfinite(p.amount) || p.amount < 0 ||
-        p.amount > Unsharp::maximum_amount || !std::isfinite(p.threshold) || p.threshold < 0 ||
-        p.threshold > Unsharp::maximum_threshold) {
+    if (!valid_parameters(p)) {
         return core::failure(core::ErrorCode::argument, "Invalid unsharp parameters");
     }
     return Unsharp{p};

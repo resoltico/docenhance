@@ -521,6 +521,16 @@
         {
           "properties": {
             "id": {
+              "const": "B01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
               "const": "B02"
             },
             "method_version": {
@@ -532,16 +542,6 @@
           "properties": {
             "id": {
               "const": "B03"
-            },
-            "method_version": {
-              "const": 1
-            }
-          }
-        },
-        {
-          "properties": {
-            "id": {
-              "const": "B01"
             },
             "method_version": {
               "const": 1

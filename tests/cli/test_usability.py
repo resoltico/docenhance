@@ -6,11 +6,11 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
+from argv_assertions import invoke, root_cases
 from continuous_fixtures import RGBA, Fixture
 from test_cli import call_json, expect
 
@@ -38,29 +38,12 @@ VALUE_CASES = (
     (("--sharpen", "unsharp"), "--sharpen-amount", "3", "[0,2]"),
     (("--output-mode", "bw", "--binarize", "fixed"), "--fixed-threshold", "128", "[0,1]"),
     (("--output-mode", "bw"), "--sauvola-window", "4", "[3,4095]"),
-    ((), "--bit-depth", "12", "auto|8|16"),
-    ((), "--alpha", "noop", "white|black|reject"),
-    ((), "--profile-policy", "assume", "embedded|srgb"),
+    ((), "--bit-depth", "12", "auto | 8 | 16"),
+    ((), "--alpha", "noop", "white | black | reject"),
+    ((), "--profile-policy", "assume", "embedded | srgb"),
     (("--contrast", "gamma"), "--levels-low", "0.5", "--contrast levels"),
     (("--illumination", "morph"), "--background-cell", "16", "surface or auto"),
 )
-
-
-def invoke(exe: Path, args: list[str], root: Path, code: int) -> subprocess.CompletedProcess[str]:
-    """Observe both streams and process status without inferring effects from missing responses."""
-    result = subprocess.run(
-        [str(exe), *args],
-        cwd=root,
-        text=True,
-        encoding="utf-8",
-        capture_output=True,
-        timeout=30,
-        check=False,
-    )
-    expect(
-        result.returncode == code, f"{args}: {result.returncode}: {result.stdout} {result.stderr}"
-    )
-    return result
 
 
 def help_cases(exe: Path, root: Path) -> None:
@@ -72,8 +55,8 @@ def help_cases(exe: Path, root: Path) -> None:
     for name, tokens in (
         ("--sauvola-window", ("31", "odd integer", "[3,4095]")),
         ("--gamma", ("1.2", "finite", "[0.25,4]")),
-        ("--alpha", ("white; white|black|reject",)),
-        ("--out-dir", ("Required; a new result directory",)),
+        ("--alpha", ("white; white | black | reject",)),
+        ("--out-dir", ("required;", "New result directory", "never replaced")),
     ):
         entry = text.split("\n" + name + " ", 1)[1].split("\n--", 1)[0]
         entry = " ".join(entry.split())
@@ -84,8 +67,14 @@ def help_cases(exe: Path, root: Path) -> None:
         "help descriptions/domain lines wrap within 96 columns",
     )
     for flag in ("--json=true", "--json=", "--json={}"):
-        call_json(exe, ["version", flag])
-        call_json(exe, ["process", "not-opened.png", flag], 2)
+        for arguments in (["version", flag], ["process", "not-opened.png", flag]):
+            refusal = invoke(exe, arguments, root, 2)
+            expect(
+                not refusal.stdout and "E_ARGUMENT:" in refusal.stderr,
+                "joined flag values are syntax failures without an exact JSON token",
+            )
+            response = call_json(exe, [*arguments, "--json"], 2)
+            expect(response["publication"] == "not_started", "joined flag refuses before effects")
         refusal = invoke(exe, ["version", flag, "--wat"], root, 2)
         expect(
             not refusal.stdout and "E_ARGUMENT:" in refusal.stderr,
@@ -117,6 +106,27 @@ def value_cases(exe: Path, root: Path, source: Path) -> None:
         for token in (name, domain, f'"{value}"'):
             expect(token in response["error"]["message"], f"JSON diagnostic omitted {token}")
         expect(not target.exists(), "invalid values have no publication")
+    for index, (options, requirements) in enumerate(
+        (
+            (["--psf-sigma", "1"], ("--deblur wiener", "--psf gaussian")),
+            (
+                ["--output-mode", "bw", "--psf-sigma", "1"],
+                ("--output-mode preserve or gray", "--deblur wiener", "--psf gaussian"),
+            ),
+            (["--deblur", "wiener", "--psf", "motion", "--psf-sigma", "1"], ("--psf gaussian",)),
+        )
+    ):
+        target = root / f"prerequisites-{index}"
+        response = call_json(
+            exe, ["process", str(source), "--out-dir", str(target), *options, "--json"], 2
+        )
+        expect(response["publication"] == "not_started", "prerequisites refuse before effects")
+        for requirement in requirements:
+            expect(
+                requirement in response["error"]["message"],
+                f"missing actionable prerequisite: {requirement}",
+            )
+        expect(not target.exists(), "unsatisfied prerequisites publish nothing")
     for value in ("1\n2", '1"2', "1\\2"):
         response = call_json(
             exe,
@@ -177,6 +187,7 @@ def role_cases(exe: Path, root: Path, source: Path) -> None:
         ("delimiter-failure", ["version", "--", "--json"], False),
         ("delimiter-extra", ["process", str(source), "--out-dir", "result", "--", "--json"], False),
         ("repeat", ["version", "--json", "--json"], True),
+        ("joined-empty", ["process", str(source), "--gamma=", "--json"], True),
     ):
         cwd = root / name
         cwd.mkdir()
@@ -344,6 +355,7 @@ def main() -> int:
             ).encoded()
         )
         original = source.read_bytes()
+        root_cases(exe, root)
         help_cases(exe, root)
         value_cases(exe, root, source)
         role_cases(exe, root, source)

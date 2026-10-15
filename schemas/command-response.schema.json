@@ -12,7 +12,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 14
+      "const": 15
     },
     "command": {
       "enum": [
@@ -85,10 +85,10 @@
         "methods": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/method"
+            "$ref": "#/$defs/catalog_entry"
           },
           "minItems": 1,
-          "maxItems": 13,
+          "maxItems": 12,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -155,10 +155,10 @@
         "methods": {
           "type": "array",
           "items": {
-            "$ref": "#/$defs/method"
+            "$ref": "#/$defs/catalog_entry"
           },
           "minItems": 1,
-          "maxItems": 13,
+          "maxItems": 12,
           "uniqueItems": true
         },
         "supported_formats": {
@@ -1135,6 +1135,16 @@
         {
           "properties": {
             "id": {
+              "const": "R01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          }
+        },
+        {
+          "properties": {
+            "id": {
               "const": "C01"
             },
             "method_version": {
@@ -1175,7 +1185,7 @@
         {
           "properties": {
             "id": {
-              "const": "R01"
+              "const": "B01"
             },
             "method_version": {
               "const": 1
@@ -1196,26 +1206,6 @@
           "properties": {
             "id": {
               "const": "B03"
-            },
-            "method_version": {
-              "const": 1
-            }
-          }
-        },
-        {
-          "properties": {
-            "id": {
-              "const": "B01"
-            },
-            "method_version": {
-              "const": 1
-            }
-          }
-        },
-        {
-          "properties": {
-            "id": {
-              "const": "G02"
             },
             "method_version": {
               "const": 1
@@ -1229,6 +1219,20 @@
         {
           "properties": {
             "method": {
+              "const": "B01"
+            },
+            "method_version": {
+              "const": 1
+            }
+          },
+          "required": [
+            "method",
+            "method_version"
+          ]
+        },
+        {
+          "properties": {
+            "method": {
               "const": "B02"
             },
             "method_version": {
@@ -1244,20 +1248,6 @@
           "properties": {
             "method": {
               "const": "B03"
-            },
-            "method_version": {
-              "const": 1
-            }
-          },
-          "required": [
-            "method",
-            "method_version"
-          ]
-        },
-        {
-          "properties": {
-            "method": {
-              "const": "B01"
             },
             "method_version": {
               "const": 1
@@ -5215,6 +5205,406 @@
             "method_version": {
               "const": 1
             }
+          }
+        }
+      ]
+    },
+    "catalog_entry": {
+      "oneOf": [
+        {
+          "const": {
+            "id": "I01",
+            "method_version": 1,
+            "name": "Quantile log-surface illumination",
+            "family": "illumination",
+            "selectors": [
+              "surface",
+              "auto"
+            ],
+            "parameters": [
+              {
+                "option": "--background-strength",
+                "kind": "decimal",
+                "domain": "1; finite [0,1]",
+                "description": "Exponent applied to the illumination gain; 0 is an exact no-op."
+              },
+              {
+                "option": "--background-max-gain",
+                "kind": "decimal",
+                "domain": "2; finite [1,4]",
+                "description": "Largest multiplicative gain applied to any sample; 1 is an exact no-op."
+              },
+              {
+                "option": "--background-target",
+                "kind": "source_or_decimal",
+                "domain": "source; source | finite [0.1,1]",
+                "description": "Linear-light target; 'source' uses the fitted background's nearest-rank 90th percentile."
+              },
+              {
+                "option": "--background-cell",
+                "kind": "auto_or_integer",
+                "domain": "auto; auto | integer [8,512]",
+                "description": "Cell edge in processing pixels."
+              },
+              {
+                "option": "--background-quantile",
+                "kind": "decimal",
+                "domain": "0.90; finite [0.75,0.99]",
+                "description": "Nearest-rank quantile of eligible cell samples."
+              },
+              {
+                "option": "--background-smooth",
+                "kind": "decimal",
+                "domain": "1; finite [0.1,20]",
+                "description": "Grid-Laplacian weight of the logarithmic background fit."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "I02",
+            "method_version": 1,
+            "name": "Morphological illumination",
+            "family": "illumination",
+            "selectors": [
+              "morph"
+            ],
+            "parameters": [
+              {
+                "option": "--background-strength",
+                "kind": "decimal",
+                "domain": "1; finite [0,1]",
+                "description": "Exponent applied to the illumination gain; 0 is an exact no-op."
+              },
+              {
+                "option": "--background-max-gain",
+                "kind": "decimal",
+                "domain": "2; finite [1,4]",
+                "description": "Largest multiplicative gain applied to any sample; 1 is an exact no-op."
+              },
+              {
+                "option": "--background-target",
+                "kind": "source_or_decimal",
+                "domain": "source; source | finite [0.1,1]",
+                "description": "Linear-light target; 'source' uses the fitted background's nearest-rank 90th percentile."
+              },
+              {
+                "option": "--background-radius",
+                "kind": "auto_or_integer",
+                "domain": "auto; auto | integer [1,256]",
+                "description": "Square closing radius in processing pixels; Gaussian sigma = max(0.5, radius/2)."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "D01",
+            "method_version": 1,
+            "name": "NLM-L1 on 16-bit perceptual codes",
+            "family": "denoising",
+            "selectors": [
+              "nlm"
+            ],
+            "parameters": [
+              {
+                "option": "--denoise-blend",
+                "kind": "decimal",
+                "domain": "0.5; finite [0,1]",
+                "description": "Blend in perceptual luminance; 0 keeps entering samples."
+              },
+              {
+                "option": "--nlm-h",
+                "kind": "decimal",
+                "domain": "3; finite [0.1,25]",
+                "description": "Filter strength in equivalent 8-bit perceptual points; higher values may remove marks."
+              },
+              {
+                "option": "--nlm-patch",
+                "kind": "odd_integer",
+                "domain": "7; odd integer [3,15]",
+                "description": "Square patch width."
+              },
+              {
+                "option": "--nlm-search",
+                "kind": "odd_integer",
+                "domain": "21; odd integer [7,41]",
+                "description": "Square search width; at least the patch width."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "D02",
+            "method_version": 1,
+            "name": "Floating-point TV-L1",
+            "family": "denoising",
+            "selectors": [
+              "tvl1"
+            ],
+            "parameters": [
+              {
+                "option": "--denoise-blend",
+                "kind": "decimal",
+                "domain": "0.5; finite [0,1]",
+                "description": "Blend in perceptual luminance; 0 keeps entering samples."
+              },
+              {
+                "option": "--tv-lambda",
+                "kind": "decimal",
+                "domain": "1.5; finite [0.05,20]",
+                "description": "L1 fidelity weight; larger values smooth less."
+              },
+              {
+                "option": "--tv-iterations",
+                "kind": "integer",
+                "domain": "150; integer [10,1000]",
+                "description": "Iteration cap; exhaustion keeps the iterate and warns."
+              },
+              {
+                "option": "--tv-tolerance",
+                "kind": "decimal",
+                "domain": "1e-5; finite [1e-8,1e-3]",
+                "description": "Primal and dual update tolerance at two consecutive checkpoints."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "R01",
+            "method_version": 1,
+            "name": "Known-PSF regularized Fourier restoration",
+            "family": "restoration",
+            "selectors": [
+              "wiener"
+            ],
+            "parameters": [
+              {
+                "option": "--psf",
+                "kind": "choice",
+                "domain": "required; gaussian | motion | kernel",
+                "description": "Point-spread function model in the processing frame."
+              },
+              {
+                "option": "--psf-sigma",
+                "kind": "decimal",
+                "domain": "1; finite [0.3,5]",
+                "description": "Gaussian standard deviation in pixels."
+              },
+              {
+                "option": "--psf-length",
+                "kind": "decimal",
+                "domain": "5; finite [1,31]",
+                "description": "Motion segment length in pixels."
+              },
+              {
+                "option": "--psf-angle",
+                "kind": "decimal",
+                "domain": "0; finite [-180,180]",
+                "description": "Motion direction, degrees clockwise from +x in y-down coordinates."
+              },
+              {
+                "option": "--psf-file",
+                "kind": "path",
+                "domain": "required; well-formed UTF-8 path",
+                "description": "Grayscale PNG of raw non-negative coefficients, odd sides 3..129."
+              },
+              {
+                "option": "--wiener-k",
+                "kind": "decimal",
+                "domain": "0.01; finite [1e-5,1]",
+                "description": "Positive regularizer in |H|^2+K; not a measured noise ratio."
+              },
+              {
+                "option": "--deblur-blend",
+                "kind": "decimal",
+                "domain": "0.5; finite [0,1]",
+                "description": "Blend of entering and restored linear luminance before clamping."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "C01",
+            "method_version": 1,
+            "name": "Percentile levels",
+            "family": "contrast",
+            "selectors": [
+              "levels"
+            ],
+            "parameters": [
+              {
+                "option": "--contrast-blend",
+                "kind": "decimal",
+                "domain": "1; finite [0,1]",
+                "description": "Blend in perceptual luminance; 0 keeps entering samples."
+              },
+              {
+                "option": "--levels-low",
+                "kind": "decimal",
+                "domain": "0.5; finite [0,10]",
+                "description": "Nearest-rank lower percentile of unprotected perceptual samples."
+              },
+              {
+                "option": "--levels-high",
+                "kind": "decimal",
+                "domain": "99.5; finite [90,100]",
+                "description": "Nearest-rank upper percentile; greater than the lower one."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "C02",
+            "method_version": 1,
+            "name": "Gamma",
+            "family": "contrast",
+            "selectors": [
+              "gamma"
+            ],
+            "parameters": [
+              {
+                "option": "--contrast-blend",
+                "kind": "decimal",
+                "domain": "1; finite [0,1]",
+                "description": "Blend in perceptual luminance; 0 keeps entering samples."
+              },
+              {
+                "option": "--gamma",
+                "kind": "decimal",
+                "domain": "1.2; finite [0.25,4]",
+                "description": "f' = f^G; above 1 darkens midtones; 1 is an exact identity."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "C03",
+            "method_version": 1,
+            "name": "Masked floating-point CLAHE",
+            "family": "contrast",
+            "selectors": [
+              "clahe"
+            ],
+            "parameters": [
+              {
+                "option": "--contrast-blend",
+                "kind": "decimal",
+                "domain": "1; finite [0,1]",
+                "description": "Blend in perceptual luminance; 0 keeps entering samples."
+              },
+              {
+                "option": "--clahe-grid",
+                "kind": "grid",
+                "domain": "8x8; CxR, each integer [2,32]",
+                "description": "Contextual columns x rows; every tile at least 16 pixels per side."
+              },
+              {
+                "option": "--clahe-clip",
+                "kind": "decimal",
+                "domain": "2; finite [1,8]",
+                "description": "Pre-redistribution clip multiplier relative to mean occupancy."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "S01",
+            "method_version": 1,
+            "name": "Thresholded unsharp masking",
+            "family": "sharpening",
+            "selectors": [
+              "unsharp"
+            ],
+            "parameters": [
+              {
+                "option": "--sharpen-sigma",
+                "kind": "decimal",
+                "domain": "0.8; finite [0.3,3]",
+                "description": "Gaussian standard deviation in pixels."
+              },
+              {
+                "option": "--sharpen-amount",
+                "kind": "decimal",
+                "domain": "0.5; finite [0,2]",
+                "description": "Soft-thresholded high-pass gain; 0 is an exact identity."
+              },
+              {
+                "option": "--sharpen-threshold",
+                "kind": "decimal",
+                "domain": "1; finite [0,20]",
+                "description": "Soft threshold in equivalent 8-bit perceptual points."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "B01",
+            "method_version": 1,
+            "name": "Otsu",
+            "family": "binarization",
+            "selectors": [
+              "otsu"
+            ],
+            "parameters": []
+          }
+        },
+        {
+          "const": {
+            "id": "B02",
+            "method_version": 1,
+            "name": "Sauvola",
+            "family": "binarization",
+            "selectors": [
+              "sauvola"
+            ],
+            "parameters": [
+              {
+                "option": "--sauvola-window",
+                "kind": "odd_integer",
+                "domain": "31; odd integer [3,4095]",
+                "description": "Centred square window with REFLECT_101 borders."
+              },
+              {
+                "option": "--sauvola-k",
+                "kind": "decimal",
+                "domain": "0.2; finite [0,1]",
+                "description": "Weight in T = m*(1 + k*(s/R - 1))."
+              },
+              {
+                "option": "--sauvola-r",
+                "kind": "decimal",
+                "domain": "0.5; finite [1/255,1]",
+                "description": "Normalized deviation scale."
+              }
+            ]
+          }
+        },
+        {
+          "const": {
+            "id": "B03",
+            "method_version": 1,
+            "name": "Fixed threshold",
+            "family": "binarization",
+            "selectors": [
+              "fixed"
+            ],
+            "parameters": [
+              {
+                "option": "--fixed-threshold",
+                "kind": "decimal",
+                "domain": "0.5; finite [0,1]",
+                "description": "Black iff the normalized stored grayscale sample is at most T."
+              }
+            ]
           }
         }
       ]

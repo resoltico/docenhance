@@ -57,7 +57,7 @@ class QualityBoundaryTests(unittest.TestCase):
             record = {"record": {"run": "a" * 32}}
             ref = write_reference(output, "run.json", record)
             response = {
-                "schema_version": 14,
+                "schema_version": 15,
                 "command": "process",
                 "version": "0.7.0",
                 "exit_code": 0,

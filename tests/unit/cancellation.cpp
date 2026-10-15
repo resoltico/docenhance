@@ -5,6 +5,7 @@
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/cli/run.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -47,13 +48,13 @@ core::Cancellation stopped_token() {
     return core::Cancellation{source.get_token()};
 }
 app::Invocation invocation() {
-    return {
-        .command = app::Command::process,
-        .subject = "unopened.png",
-        .output_directory = "uncreated",
-        .output_mode = "bw",
-        .binarize = "fixed",
-    };
+    app::Invocation value;
+    value.command = app::Command::process;
+    value.operands = {"unopened.png"};
+    value.option(app::OptionId::out_dir) = "uncreated";
+    value.option(app::OptionId::output_mode) = "bw";
+    value.option(app::OptionId::binarize) = "fixed";
+    return value;
 }
 exec::Concurrency workers(unsigned count) {
     return exec::Concurrency::resolve(count, count, 0, 0).value();
@@ -89,10 +90,10 @@ TEST_CASE("Cancellation owns its stop state and prevents application effects", "
     const auto& error = std::get<app::Failure>(result.payload).error;
     CHECK(std::string(error.identifier()) == "E_CANCELLED");
     CHECK(error.publication == core::Publication::not_started);
-    request.binarize = "invalid";
+    request.option(app::OptionId::binarize) = "invalid";
     CHECK(app::dispatch(request, processor, verifier, cancellation).exit_code() ==
           core::ExitCode::invocation);
-    request.help = true;
+    request.option(app::OptionId::help).emplace();
     CHECK(app::dispatch(request, processor, verifier, cancellation).exit_code() ==
           core::ExitCode::success);
     CHECK(processor.calls == 0);

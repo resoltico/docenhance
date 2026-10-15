@@ -3,6 +3,7 @@
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -21,7 +22,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
-#include <string>
 #include <utility>
 namespace docenhance::tests {
 namespace {
@@ -47,8 +47,8 @@ class ObservedFailure final : public app::Processor {
 app::Invocation invocation() {
     app::Invocation request;
     request.command = app::Command::process;
-    request.subject = "input.png";
-    request.output_directory = "output";
+    request.operands = {"input.png"};
+    request.option(app::OptionId::out_dir) = "output";
     return request;
 }
 void check(const app::Invocation& request, methods::StageObservations stages, core::ErrorCode code,
@@ -87,11 +87,11 @@ TEST_CASE("Surface completed identity reasons retain their actual decision prior
     constexpr unsigned combinations = 3;
     for (unsigned combination = 0; combination < combinations; ++combination) {
         auto request = invocation();
-        request.illumination = "surface";
-        request.background_strength = combination < 2 ? "0" : "1";
-        request.background_max_gain = "1";
+        request.option(app::OptionId::illumination) = "surface";
+        request.option(app::OptionId::background_strength) = combination < 2 ? "0" : "1";
+        request.option(app::OptionId::background_max_gain) = "1";
         if (combination == 0) {
-            request.protect_mask = "mask.png";
+            request.option(app::OptionId::protect_mask) = "mask.png";
         }
         const auto admitted = app::prepare_process(request);
         REQUIRE(admitted);
@@ -110,7 +110,7 @@ TEST_CASE("Disabled protection cancellation cannot become a failed selected illu
     std::ranges::fill(mask.view().row(0), 1);
     const CheckpointStop stop{core::Checkpoint::measurement, 1};
     auto request = invocation();
-    request.protect_mask = "mask.png";
+    request.option(app::OptionId::protect_mask) = "mask.png";
     const auto admitted = app::prepare_process(request);
     REQUIRE(admitted);
     auto stages = app::initial_stages(std::get<app::ContinuousPlan>(admitted->plan()).photometric);

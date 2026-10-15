@@ -3,13 +3,13 @@
 ## Authority and composition
 
 The application owns meaning; adapters own effects. The command line parses syntax into
-`app::Invocation` through generated typed option bindings, retaining raw presence. `de_app` validates it and constructs a private-construction
+`app::Invocation` through an owned tokenizer and generated option identities, retaining raw presence. `de_app` validates it and constructs a private-construction
 `ProcessRequest` owning a closed `BinaryPlan | ContinuousPlan`. Only the continuous alternative owns the fixed
 photometric plan and protection policy. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
 production composition root: it supplies the concrete host to the CLI. On Windows it converts
 wide CRT arguments to UTF-8 before parsing; filesystem adapters use native wide paths.
-The CLI rejects malformed UTF-8 before handing any token to CLI11. Direct application admission
+The CLI rejects malformed UTF-8 before assigning any token role. Direct application admission
 independently validates input and output paths. Validation preserves byte spelling: no Unicode
 normalization or replacement is performed, and embedded NUL remains invalid in a path.
 
@@ -60,7 +60,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
 | `de_app` | `de_core`, `de_image`, `de_methods` | Command vocabulary, generated option descriptors, strict value parsers, validated use cases and execution ports |
 | `de_report` | `de_app`, `de_record`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
-| `de_cli` | `de_core`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
+| `de_cli` | `de_core`, `de_app`, `de_report` | Owned argument tokenizer, process streams and exit status |
 | `de_host` | `de_app`, `de_codec`, `de_color`, `de_core`, `de_exec`, `de_fs`, `de_image`, `de_methods`, `de_opencv`, `de_record` | Executes admitted requests using codecs, kernels and publication |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 | `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
@@ -69,7 +69,7 @@ checker reads it for include closure, API restrictions and this mechanically che
 | `de_codec` | `de_core`, `de_image` | PNG/JPEG/TIFF byte codecs, metadata and streaming PNG comparison |
 | `de_fs` | `de_codec`, `de_core`, `de_image` | Snapshots, digest, file-backed codec streams, owned staging, exclusive publication and bundle reading |
 
-Only `de_record` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_codec` uses libpng in production.
+Only `de_record` and `de_report` use nlohmann JSON; `de_codec` uses libpng in production.
 OpenCV core/photo serve D01 and R01 through `de_opencv`; production-adapter controls and native closure audits verify the selected libraries. The record field-mapping interface explicitly exposes nlohmann JSON to the report layer under
 the manifest's `interface_packages` permission; processing and numerical interfaces use project types. The executable-only `entry` layer
 explicitly declares that it has no public header directory; it is not a fake reusable library.
@@ -321,8 +321,9 @@ advertised method. A source SPDX inventory remains explicitly separate from bina
 legal clearance. Source release archives snapshot one resolved committed Git tree; local workspace
 changes cannot silently enter release contents. [Package verification](build.md#complete-execution-and-package-evidence) owns the required artifact comparisons.
 
-CLI storage transfer has no parallel option maps or handwritten assignment list;
-application admission retains all domain rules. Prepared illumination is returned as an owned
+Raw option storage is indexed by generated identity and retains explicit presence. Application
+admission parses supplied values by kind, checks applicability and required fields, then uses
+generated concrete bindings to construct the actual method records. Factories add cross-field rules. Prepared illumination is returned as an owned
 optional value and remains live through every row consumer.
 Generated files are rewritten only when their expected bytes change, so ordinary metadata
 changes do not invalidate unrelated native translation units through timestamp churn.
