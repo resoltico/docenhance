@@ -177,6 +177,7 @@ class EvidenceTests(unittest.TestCase):
                 "engine": "libfuzzer",
                 "seconds": 60,
                 "engine_elapsed_seconds": 61,
+                "libfuzzer_inited_executions": 0,
                 "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
                 "manifest_sha256": hashlib.sha256(
                     (ROOT / "fuzz/targets.json").read_bytes()
@@ -226,13 +227,15 @@ class EvidenceTests(unittest.TestCase):
                 fuzz_manifest.targets()[0], Path(sys.executable), "libfuzzer", 1
             )
             (root / "engine.log").write_text("PASS\n", encoding="utf-8")
-            self.assertEqual(fuzz_execution.engine_evidence(run, root), (0, []))
+            self.assertEqual(fuzz_execution.engine_evidence(run, root), (0, [], None, None))
             (root / "engine.log").write_text(
                 "stat::number_of_executed_units: 42\n", encoding="utf-8"
             )
-            self.assertEqual(fuzz_execution.engine_evidence(run, root), (42, []))
+            self.assertEqual(fuzz_execution.engine_evidence(run, root), (42, [], None, None))
             (root / "artifacts/crash").write_bytes(b"input")
-            self.assertEqual(fuzz_execution.engine_evidence(run, root), (42, ["artifacts/crash"]))
+            self.assertEqual(
+                fuzz_execution.engine_evidence(run, root), (42, ["artifacts/crash"], None, None)
+            )
 
     def test_watchdog_records_output_and_reaps_the_process(self) -> None:
         """The standalone runner is bounded even without an outer CTest timeout."""

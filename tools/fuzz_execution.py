@@ -26,6 +26,7 @@ MEMORY_LIMIT_MIB = 2048
 MAX_ENGINE_LOG_BYTES = 1024 * 1024
 MAX_STAGED_INPUT_BYTES = 32 * 1024 * 1024
 MAX_CORPUS_ORIGINS = 4096
+INITED = re.compile(r"^#([^ \t]*)[ \t]+INITED(?:[ \t].*)?$", re.MULTILINE)
 EXECUTIONS = re.compile(r"^stat::number_of_executed_units:\s*(\d+)\s*$", re.MULTILINE)
 
 
@@ -174,14 +175,26 @@ def engine_findings(run: Run, directory: Path) -> list[str]:
     return sorted({path.relative_to(directory).as_posix() for path in paths if path.is_file()})
 
 
-def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str]]:
+def native_integer(value: str) -> int | None:
+    """Refuse malformed exposure facts without losing independent execution evidence."""
+    try:
+        return int(value) if re.fullmatch(r"[0-9]+", value) else None
+    except ValueError:
+        return None
+
+
+def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str], int | None, int | None]:
     """Require positive native execution statistics and enumerate all recorded findings."""
     findings = engine_findings(run, directory)
+    native_runtime: int | None = None
+    initialized: int | None = None
     if run.engine == "libfuzzer":
         if not (directory / "artifacts").is_dir():
             msg = "Missing libFuzzer artifact directory"
             raise FuzzError(msg)
         text = (directory / "engine.log").read_text(encoding="utf-8", errors="replace")
+        markers = INITED.findall(text)
+        initialized = native_integer(markers[0]) if len(markers) == 1 else None
         counts = EXECUTIONS.findall(text)
         executions = int(counts[-1]) if counts else 0
     else:
@@ -193,9 +206,10 @@ def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str]]:
         )
         values = {key.strip(): value.strip() for key, value in values.items()}
         executions = int(values.get("execs_done", "0"))
+        native_runtime = native_integer(values.get("run_time", ""))
         if int(values.get("saved_crashes", "0")) or int(values.get("saved_hangs", "0")):
             findings.append("afl/default/fuzzer_stats")
-    return executions, sorted(set(findings))
+    return executions, sorted(set(findings)), native_runtime, initialized
 
 
 def completed(
@@ -250,8 +264,20 @@ def execute(run: Run, work: Path, *, disk_parent: Path) -> Path:
         report["engine_elapsed_seconds"] = time.monotonic() - engine_started
         if report["exit_code"] != 0:
             report["error"] = f"Fuzz engine exited with {report['exit_code']}; inspect engine.log"
-        executions, findings = engine_evidence(run, directory)
+        executions, findings, native_runtime, initialized = engine_evidence(run, directory)
         report.update(executions=executions, findings=findings)
+        if run.engine == "afl":
+            report["afl_run_time_seconds"] = native_runtime
+            if type(native_runtime) is not int or native_runtime < run.seconds:
+                field = "statistics_error" if "error" in report else "error"
+                report[field] = f"AFL native run_time must be an integer >= {run.seconds}s"
+                return directory
+        else:
+            report["libfuzzer_inited_executions"] = initialized
+            if type(initialized) is not int or initialized < 0 or executions <= initialized:
+                field = "statistics_error" if "error" in report else "error"
+                report[field] = "libFuzzer needs one valid INITED count and later executions"
+                return directory
         if completed(
             report["exit_code"], executions, findings, report["engine_elapsed_seconds"], run.seconds
         ):

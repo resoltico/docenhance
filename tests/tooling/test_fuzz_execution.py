@@ -130,16 +130,24 @@ class FuzzExecutionTests(unittest.TestCase):
                 output = root / "afl/default"
                 (output / kind).mkdir(parents=True)
                 stats = output / "fuzzer_stats"
-                stats.write_text("execs_done : 42\nsaved_crashes : 0\nsaved_hangs : 0\n")
-                executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+                stats.write_text(
+                    "execs_done : 42\nrun_time : 2\nsaved_crashes : 0\nsaved_hangs : 0\n"
+                )
+                executions, findings, _native_runtime, _initialized = (
+                    fuzz_execution.engine_evidence(self.run_spec(), root)
+                )
                 self.assertTrue(fuzz_execution.completed(0, executions, findings, 2, 1))
                 (output / kind / "id_000000").write_bytes(b"retained failing input")
-                executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+                executions, findings, _native_runtime, _initialized = (
+                    fuzz_execution.engine_evidence(self.run_spec(), root)
+                )
                 self.assertEqual(findings, [f"afl/default/{kind}/id_000000"])
                 self.assertFalse(fuzz_execution.completed(0, executions, findings, 2, 1))
                 (output / kind / "id_000000").unlink()
-                stats.write_text(f"execs_done : 42\nsaved_{kind} : 1\n")
-                executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+                stats.write_text(f"execs_done : 42\nrun_time : 2\nsaved_{kind} : 1\n")
+                executions, findings, _native_runtime, _initialized = (
+                    fuzz_execution.engine_evidence(self.run_spec(), root)
+                )
                 self.assertEqual(findings, ["afl/default/fuzzer_stats"])
                 self.assertFalse(fuzz_execution.completed(0, executions, findings, 2, 1))
 
@@ -149,11 +157,15 @@ class FuzzExecutionTests(unittest.TestCase):
             root = Path(temporary)
             output = root / "afl/default"
             output.mkdir(parents=True)
-            (output / "fuzzer_stats").write_text("execs_done : 0\n")
-            executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+            (output / "fuzzer_stats").write_text("execs_done : 0\nrun_time : 2\n")
+            executions, findings, _native_runtime, _initialized = fuzz_execution.engine_evidence(
+                self.run_spec(), root
+            )
             self.assertFalse(fuzz_execution.completed(0, executions, findings, 2, 1))
-            (output / "fuzzer_stats").write_text("execs_done : 42\n")
-            executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+            (output / "fuzzer_stats").write_text("execs_done : 42\nrun_time : 2\n")
+            executions, findings, _native_runtime, _initialized = fuzz_execution.engine_evidence(
+                self.run_spec(), root
+            )
             self.assertFalse(fuzz_execution.completed(1, executions, findings, 2, 1))
 
     def test_missing_statistics_preserve_engine_exit_and_finding_files(self) -> None:
@@ -211,14 +223,14 @@ class FuzzScratchTests(unittest.TestCase):
     ) -> int:
         """Write explicitly synthetic positive work and queued bytes, not a native fuzz result."""
         del command, env, timeout, policy
-        log.write_text("stat::number_of_executed_units: 42\n")
+        log.write_text("#1\tINITED cov: 1\nstat::number_of_executed_units: 42\n")
         (log.parent / "corpus/generated").write_bytes(b"successful mutation")
         queue = log.parent / "afl/default/queue"
         (queue / ".state").mkdir(parents=True)
         (queue / "id_000001").write_bytes(b"successful queue input")
         (queue / ".state/deterministic_done").write_bytes(b"queue state")
         (queue.parent / "fuzzer_stats").write_text(
-            "execs_done : 42\nsaved_crashes : 0\nsaved_hangs : 0\n"
+            "execs_done : 42\nrun_time : 2\nsaved_crashes : 0\nsaved_hangs : 0\n"
         )
         return 0
 

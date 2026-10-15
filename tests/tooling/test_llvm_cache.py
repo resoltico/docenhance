@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Only verified analysis executables persist after the temporary LLVM build."""
+"""Only verified analysis tools and builtin headers persist after the temporary LLVM build."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -22,7 +23,7 @@ import llvm_cache
 class LLVMCacheTests(unittest.TestCase):
     """Exercise cache payload ownership without compiling LLVM or fetching upstream bytes."""
 
-    def test_only_self_contained_tools_survive_the_build(self) -> None:
+    def test_only_tools_and_builtin_headers_survive_the_build(self) -> None:
         """Object files and source archives remain in the caller's temporary work directory."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -65,7 +66,12 @@ class LLVMCacheTests(unittest.TestCase):
             )
             for name in ("clang-tidy", "clang-query"):
                 self.assertEqual((target / "bin" / name).read_bytes(), name.encode())
-                self.assertTrue((target / "bin" / name).stat().st_mode & 0o111)
+                copied_mode = stat.S_IMODE((target / "bin" / name).stat().st_mode)
+                built_mode = stat.S_IMODE((work / "build/bin" / name).stat().st_mode)
+                self.assertEqual(copied_mode, built_mode)
+                # POSIX execution uses mode bits; Windows extensionless fixtures do not.
+                if os.name == "posix":
+                    self.assertTrue(copied_mode & 0o111)
             self.assertEqual((target / "lib/clang/23/include/stddef.h").read_bytes(), b"builtin")
             self.assertIn("clang-resource-headers", commands[2])
             configure = commands[1]

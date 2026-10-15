@@ -52,7 +52,13 @@ A passing campaign requires CTest success AND exactly one passing report per exp
 Each report requires engine exit zero, a positive native execution count, at least the requested
 engine wall time, and no saved findings. The coordinator independently rechecks duration, engine,
 actual binary/manifest identities and complete executed JUnit results, rather than trusting the
-runner-provided passed flag. Early successful exits are incomplete runs.
+runner-provided passed flag. AFL reports additionally retain its native `run_time`, a nonnegative integer that must reach the
+requested duration independently of process wall time. This clock excludes initial calibration;
+calibration time never supplies missing active-run exposure. libFuzzer reports require exactly one
+valid nonnegative `INITED` callback count in the retained native log and a strictly larger final
+execution count. This establishes post-initialization callbacks, not mutation-only seconds:
+libFuzzer's `max_total_time` includes seed initialization. Missing or ambiguous retained markers
+fail closed; neither coverage nor newly added corpus units need increase. Early successful exits are incomplete runs.
 Missing statistics, zero executions, missing/duplicate reports, timeouts and saved crashes/hangs
 are failures. JUnit and CTest logs are retained as evidence; target reports establish completion
 without trusting a decorative PASS line or treating skipped tests as successes.

@@ -132,7 +132,7 @@ class FuzzParentTests(unittest.TestCase):
             ) -> int:
                 del command, environment, timeout
                 policy.monitor()
-                log.write_text("stat::number_of_executed_units: 42\n")
+                log.write_text("#1\tINITED cov: 1\nstat::number_of_executed_units: 42\n")
                 return 0
 
             with (

@@ -52,8 +52,8 @@ class FuzzFailFastTests(unittest.TestCase):
     def test_saved_findings_abort_and_preserve_evidence(self) -> None:
         """A crash or hang fails before the time budget; no success cleanup occurs."""
         for engine, relative in (
-            ("afl", "afl/default/crashes/id:000000"),
-            ("afl", "afl/default/hangs/id:000000"),
+            ("afl", "afl/default/crashes/id_000000"),
+            ("afl", "afl/default/hangs/id_000000"),
             ("libfuzzer", "artifacts/crash-input"),
         ):
             with (

@@ -130,6 +130,21 @@ def complete_reports(directory: Path, expected: set[str], build: Path, seconds: 
             and math.isfinite(report["engine_elapsed_seconds"])
             and report["engine_elapsed_seconds"] >= seconds
             and report.get("engine") == configured_engine(build)
+            and (
+                report["engine"] != "afl"
+                or (
+                    type(report.get("afl_run_time_seconds")) is int
+                    and report["afl_run_time_seconds"] >= seconds
+                )
+            )
+            and (
+                report["engine"] != "libfuzzer"
+                or (
+                    type(report.get("libfuzzer_inited_executions")) is int
+                    and report["libfuzzer_inited_executions"] >= 0
+                    and report["executions"] > report["libfuzzer_inited_executions"]
+                )
+            )
             and report.get("manifest_sha256") == manifest_hash
             and report.get("binary_sha256") == binary_hashes[report["target"]]
             for report in reports
