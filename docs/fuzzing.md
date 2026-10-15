@@ -110,11 +110,9 @@ cleanup. Earlier run directories are never automatically pruned.
 The inherited environment and credentials are never exported. Review any new
 finding, minimize it deliberately, then commit the regression; a successful campaign never edits
 its own repository corpus. Both engines run required 15-second PR targets and 300-second weekly targets. Weekly
-manual runs may select up to 1,800 seconds per target. These defaults reduce scheduled engine
-time by 75% and 83% respectively against 60/1,800 seconds, with correspondingly less stochastic
-exploration; complete corpus replay, harness coverage and strict evidence admission remain required.
-For 23 targets and four workers, six waves require at least 90 seconds (PR) or 30 minutes
-(weekly) of engine time per job, before startup and reporting. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
+manual runs may select up to 1,800 seconds per target. Shorter runs explore fewer inputs; complete corpus replay,
+harness coverage and strict evidence admission remain required. The manifest-derived `--plan`
+output lists every target and computes the complete timeout from the selected concurrency and duration. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
 the artifact uploader cannot accept directly. PR artifacts are retained for seven days, and weekly
 campaign artifacts for 30 days, including failed runs. Each archive includes a manifest binding
 the engine and exact source commit; absent or incomplete campaigns are explicitly labeled rather
@@ -202,7 +200,7 @@ workload admission, so the added target must fit the configured campaign budget.
 The denoising harness invokes actual pinned CV_16U/L1 execution, compares global halos against a
 whole native call, checks correction identity and resource refunds. Isolated fuzz builds instrument
 OpenCV core/photo/imgproc alongside the codec archives; imported archive symbols establish actual
-ASan/UBSan and coverage presence. The required PR workload budget is 2400 seconds for the expanded
+ASan/UBSan and coverage presence. The required PR workload budget is 2400 seconds for the
 complete target set. Native assembly remains outside the instrumentation claim.
 
 Archive sanitizer/coverage symbols establish their presence in the actual imported archives.
@@ -218,21 +216,17 @@ It checks decoded/source agreement and allocation refunds on acceptance and refu
 
 The TV-L1 harness consumes dimensions and 16-bit sample selectors, compares simultaneous
 reference iterations with the production full-field dual/primal passes, and checks finite bounds.
-Its additional execution wave retains the full per-target PR budget and watchdog allowances.
 
 The contrast harness compares interruptible sample ordering and nearest ranks to independent
-sorting and scalar levels/gamma formulas. It extends the manifest to 20 targets, ten waves
-at the default two jobs or five at four jobs. Every target retains 60 seconds of engine work
-and the same watchdog allowances.
+sorting and scalar levels/gamma formulas.
 
 C03 additionally fuzzes charged contextual preparation, floating reconstruction, immutable replay
 and complete observation validation. CLI corpus seeds exercise grid admission and inactive private
 options. Deterministic unit probes enumerate preparation and application cancellation checkpoints.
 
-The S01 sharpening harness adds bounded Gaussian preparation, scalar soft-threshold comparison,
-immutable reconstruction replay and complete report validation. Twenty-one targets retain every
-per-target exposure interval; the campaign plan derives the required wave count and rejects an
-insufficient whole-job budget. CLI seeds cover sharpening admission and inactive private options.
+The S01 sharpening harness checks bounded Gaussian preparation, scalar soft-threshold comparison,
+immutable reconstruction replay and complete report validation. CLI seeds cover sharpening admission
+and inactive private options.
 
 The `otsu` harness compares fitted B01 observations against independently enumerated byte
 populations for every candidate bin, then checks exact output polarity and scratch refunds.

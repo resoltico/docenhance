@@ -162,7 +162,7 @@ python tools/deps.py fetch                   # acquire the complete reviewed sou
 CC=clang-23 CXX=clang++-23 cmake --workflow --preset fuzz
 ```
 
-On macOS, use `CC=$(brew --prefix llvm)/bin/clang CXX=$(brew --prefix llvm)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds the fuzz targets, CLI11/JSON, and sanitizer/coverage-instrumented PNG/zlib, then fuzzes every target for `DE_FUZZ_SECONDS` (default 60). For a separate bounded run with retained evidence:
+On macOS, use `CC=$(brew --prefix llvm)/bin/clang CXX=$(brew --prefix llvm)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds every harness and the instrumented native archive closure described in [fuzzing](fuzzing.md), then fuzzes every target for `DE_FUZZ_SECONDS` (local default 60). The following explicit manual runs retain their own evidence; they are not CI defaults:
 
 ```sh
 python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 1800
