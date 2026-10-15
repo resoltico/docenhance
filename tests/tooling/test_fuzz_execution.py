@@ -82,7 +82,7 @@ class FuzzExecutionTests(unittest.TestCase):
                 patch("fuzz_execution.shutil.which", return_value="/fixture/afl-fuzz"),
                 patch("fuzz_execution.bounded_capture", side_effect=exceeded),
             ):
-                directory = fuzz_execution.execute(self.run_spec(), work)
+                directory = fuzz_execution.execute(self.run_spec(), work, disk_parent=work)
             report = json.loads((directory / "result.json").read_text())
             self.assertFalse(report["passed"])
             self.assertIsNone(report["exit_code"])
@@ -130,16 +130,24 @@ class FuzzExecutionTests(unittest.TestCase):
                 output = root / "afl/default"
                 (output / kind).mkdir(parents=True)
                 stats = output / "fuzzer_stats"
-                stats.write_text("execs_done : 42\nsaved_crashes : 0\nsaved_hangs : 0\n")
-                executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+                stats.write_text(
+                    "execs_done : 42\nrun_time : 2\nsaved_crashes : 0\nsaved_hangs : 0\n"
+                )
+                executions, findings, _native_runtime, _initialized = (
+                    fuzz_execution.engine_evidence(self.run_spec(), root)
+                )
                 self.assertTrue(fuzz_execution.completed(0, executions, findings, 2, 1))
                 (output / kind / "id_000000").write_bytes(b"retained failing input")
-                executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+                executions, findings, _native_runtime, _initialized = (
+                    fuzz_execution.engine_evidence(self.run_spec(), root)
+                )
                 self.assertEqual(findings, [f"afl/default/{kind}/id_000000"])
                 self.assertFalse(fuzz_execution.completed(0, executions, findings, 2, 1))
                 (output / kind / "id_000000").unlink()
-                stats.write_text(f"execs_done : 42\nsaved_{kind} : 1\n")
-                executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+                stats.write_text(f"execs_done : 42\nrun_time : 2\nsaved_{kind} : 1\n")
+                executions, findings, _native_runtime, _initialized = (
+                    fuzz_execution.engine_evidence(self.run_spec(), root)
+                )
                 self.assertEqual(findings, ["afl/default/fuzzer_stats"])
                 self.assertFalse(fuzz_execution.completed(0, executions, findings, 2, 1))
 
@@ -149,11 +157,15 @@ class FuzzExecutionTests(unittest.TestCase):
             root = Path(temporary)
             output = root / "afl/default"
             output.mkdir(parents=True)
-            (output / "fuzzer_stats").write_text("execs_done : 0\n")
-            executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+            (output / "fuzzer_stats").write_text("execs_done : 0\nrun_time : 2\n")
+            executions, findings, _native_runtime, _initialized = fuzz_execution.engine_evidence(
+                self.run_spec(), root
+            )
             self.assertFalse(fuzz_execution.completed(0, executions, findings, 2, 1))
-            (output / "fuzzer_stats").write_text("execs_done : 42\n")
-            executions, findings = fuzz_execution.engine_evidence(self.run_spec(), root)
+            (output / "fuzzer_stats").write_text("execs_done : 42\nrun_time : 2\n")
+            executions, findings, _native_runtime, _initialized = fuzz_execution.engine_evidence(
+                self.run_spec(), root
+            )
             self.assertFalse(fuzz_execution.completed(1, executions, findings, 2, 1))
 
     def test_missing_statistics_preserve_engine_exit_and_finding_files(self) -> None:
@@ -183,7 +195,7 @@ class FuzzExecutionTests(unittest.TestCase):
                     patch("fuzz_execution.shutil.which", return_value="/fixture/afl-fuzz"),
                     patch("fuzz_execution.bounded_capture", side_effect=refusal(exit_code)),
                 ):
-                    directory = fuzz_execution.execute(self.run_spec(), work)
+                    directory = fuzz_execution.execute(self.run_spec(), work, disk_parent=work)
                 report = json.loads((directory / "result.json").read_text())
                 self.assertFalse(report["passed"])
                 self.assertEqual(report["exit_code"], exit_code)
@@ -211,14 +223,14 @@ class FuzzScratchTests(unittest.TestCase):
     ) -> int:
         """Write explicitly synthetic positive work and queued bytes, not a native fuzz result."""
         del command, env, timeout, policy
-        log.write_text("stat::number_of_executed_units: 42\n")
+        log.write_text("#1\tINITED cov: 1\nstat::number_of_executed_units: 42\n")
         (log.parent / "corpus/generated").write_bytes(b"successful mutation")
         queue = log.parent / "afl/default/queue"
         (queue / ".state").mkdir(parents=True)
         (queue / "id_000001").write_bytes(b"successful queue input")
         (queue / ".state/deterministic_done").write_bytes(b"queue state")
         (queue.parent / "fuzzer_stats").write_text(
-            "execs_done : 42\nsaved_crashes : 0\nsaved_hangs : 0\n"
+            "execs_done : 42\nrun_time : 2\nsaved_crashes : 0\nsaved_hangs : 0\n"
         )
         return 0
 
@@ -235,7 +247,7 @@ class FuzzScratchTests(unittest.TestCase):
                     patch("fuzz_execution.bounded_capture", side_effect=self.fixture_engine),
                     patch("fuzz_execution.time.monotonic", side_effect=[0, 0, 2, 3]),
                 ):
-                    directory = fuzz_execution.execute(run, work)
+                    directory = fuzz_execution.execute(run, work, disk_parent=work)
                 report = json.loads((directory / "result.json").read_text())
                 self.assertTrue(report["passed"])
                 self.assertFalse((directory / "corpus").exists())
@@ -276,11 +288,11 @@ class FuzzScratchTests(unittest.TestCase):
                     ),
                     patch("fuzz_execution.time.monotonic", side_effect=[0, 0, 2, 3]),
                     patch(
-                        "fuzz_execution.remove_successful_scratch",
+                        "fuzz_storage.remove_successful_scratch",
                         side_effect=PermissionError("owned scratch cleanup refused"),
                     ) as cleanup,
                 ):
-                    directory = fuzz_execution.execute(run, work)
+                    directory = fuzz_execution.execute(run, work, disk_parent=work)
                 report = json.loads((directory / "result.json").read_text())
                 self.assertFalse(report["passed"])
                 self.assertTrue((directory / "corpus-index.json").is_file())
@@ -312,14 +324,14 @@ class FuzzScratchTests(unittest.TestCase):
                     sentinel.write_bytes(b"outside owner")
                     (directory / "afl/default").symlink_to(external, target_is_directory=True)
                     with self.assertRaises(fuzz_manifest.FuzzError):
-                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                        fuzz_storage.remove_successful_scratch(directory, "afl")
                     self.assertEqual(sentinel.read_bytes(), b"outside owner")
                 elif mutation == "file-root":
                     queue = directory / "afl/default/queue"
                     queue.parent.mkdir()
                     queue.write_bytes(b"not a scratch directory")
                     with self.assertRaises(fuzz_manifest.FuzzError):
-                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                        fuzz_storage.remove_successful_scratch(directory, "afl")
                     self.assertEqual(queue.read_bytes(), b"not a scratch directory")
                 else:
                     special = directory / "afl/default/queue/.state/special"
@@ -344,7 +356,7 @@ class FuzzScratchTests(unittest.TestCase):
                         patch.object(Path, "lstat", unsupported),
                         self.assertRaises(fuzz_manifest.FuzzError),
                     ):
-                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                        fuzz_storage.remove_successful_scratch(directory, "afl")
                     self.assertTrue(special.is_file())
                 self.assertEqual((directory / "corpus/seed").read_bytes(), b"keep on refusal")
 

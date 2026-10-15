@@ -9,7 +9,6 @@ import json
 import os
 import re
 import shutil
-import stat
 import subprocess
 import tempfile
 import time
@@ -17,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import fuzz_storage
 from fuzz_manifest import ENGINE_GRACE, MAX_SECONDS, ROOT, FuzzError, Target, positive, settings
 from fuzz_storage import MAX_RUN_DISK_BYTES, check_disk
 from process_execution import CapturePolicy, bounded_capture
@@ -26,6 +26,7 @@ MEMORY_LIMIT_MIB = 2048
 MAX_ENGINE_LOG_BYTES = 1024 * 1024
 MAX_STAGED_INPUT_BYTES = 32 * 1024 * 1024
 MAX_CORPUS_ORIGINS = 4096
+INITED = re.compile(r"^#([^ \t]*)[ \t]+INITED(?:[ \t].*)?$", re.MULTILINE)
 EXECUTIONS = re.compile(r"^stat::number_of_executed_units:\s*(\d+)\s*$", re.MULTILINE)
 
 
@@ -174,14 +175,26 @@ def engine_findings(run: Run, directory: Path) -> list[str]:
     return sorted({path.relative_to(directory).as_posix() for path in paths if path.is_file()})
 
 
-def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str]]:
+def native_integer(value: str) -> int | None:
+    """Refuse malformed exposure facts without losing independent execution evidence."""
+    try:
+        return int(value) if re.fullmatch(r"[0-9]+", value) else None
+    except ValueError:
+        return None
+
+
+def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str], int | None, int | None]:
     """Require positive native execution statistics and enumerate all recorded findings."""
     findings = engine_findings(run, directory)
+    native_runtime: int | None = None
+    initialized: int | None = None
     if run.engine == "libfuzzer":
         if not (directory / "artifacts").is_dir():
             msg = "Missing libFuzzer artifact directory"
             raise FuzzError(msg)
         text = (directory / "engine.log").read_text(encoding="utf-8", errors="replace")
+        markers = INITED.findall(text)
+        initialized = native_integer(markers[0]) if len(markers) == 1 else None
         counts = EXECUTIONS.findall(text)
         executions = int(counts[-1]) if counts else 0
     else:
@@ -193,9 +206,10 @@ def engine_evidence(run: Run, directory: Path) -> tuple[int, list[str]]:
         )
         values = {key.strip(): value.strip() for key, value in values.items()}
         executions = int(values.get("execs_done", "0"))
+        native_runtime = native_integer(values.get("run_time", ""))
         if int(values.get("saved_crashes", "0")) or int(values.get("saved_hangs", "0")):
             findings.append("afl/default/fuzzer_stats")
-    return executions, sorted(set(findings))
+    return executions, sorted(set(findings)), native_runtime, initialized
 
 
 def completed(
@@ -205,42 +219,15 @@ def completed(
     return exit_code == 0 and executions > 0 and not findings and elapsed >= seconds
 
 
-def remove_successful_scratch(directory: Path, engine: str) -> list[str]:
-    """Remove joined, completed runs' disposable inputs; validate all paths before deleting any."""
-    candidates = [directory / "corpus"]
-    ancestors = [directory]
-    if engine == "afl":
-        ancestors.extend([directory / "afl", directory / "afl/default"])
-    for ancestor in ancestors:
-        if not stat.S_ISDIR(ancestor.lstat().st_mode):
-            msg = f"Scratch ancestor is not a regular directory: {ancestor}"
-            raise FuzzError(msg)
-    queue = directory / "afl/default/queue"
-    if engine == "afl" and (queue.exists() or queue.is_symlink()):
-        candidates.append(queue)
-    nodes = [path for candidate in candidates for path in [candidate, *candidate.rglob("*")]]
-    identities = {}
-    for path in nodes:
-        state = path.lstat()
-        if not (
-            stat.S_ISDIR(state.st_mode) or (path not in candidates and stat.S_ISREG(state.st_mode))
-        ):
-            msg = f"Scratch entry is not a regular file or directory: {path}"
-            raise FuzzError(msg)
-        identities[path] = (state.st_dev, state.st_ino, state.st_mode)
-    for path in sorted(nodes, key=lambda path: len(path.parts), reverse=True):
-        state = path.lstat()
-        if identities[path] != (state.st_dev, state.st_ino, state.st_mode):
-            msg = f"Scratch entry changed before removal: {path}"
-            raise FuzzError(msg)
-        if stat.S_ISDIR(state.st_mode):
-            path.rmdir()
-        else:
-            path.unlink()
-    return [path.relative_to(directory).as_posix() for path in candidates]
+def check_run(run: Run, work: Path, directory: Path) -> None:
+    """Stop owned mutation work once a saved counterexample already makes the run fail."""
+    check_disk(work, directory)
+    if engine_findings(run, directory):
+        msg = "Saved fuzz finding; stopped engine early and retained incomplete evidence"
+        raise FuzzError(msg)
 
 
-def execute(run: Run, work: Path) -> Path:
+def execute(run: Run, work: Path, *, disk_parent: Path) -> Path:
     """Always retain a result record once a workspace is claimed; only complete runs pass."""
     positive(run.seconds, MAX_SECONDS, "seconds")
     directory = new_directory(work, f"{run.target.name}-")
@@ -267,23 +254,36 @@ def execute(run: Run, work: Path) -> Path:
         report["command"] = command
         write_json(directory / "result.json", report)
         engine_started = time.monotonic()
-
         report["exit_code"] = bounded_capture(
             command,
             environment(run),
             directory / "engine.log",
             run.seconds + ENGINE_GRACE,
-            CapturePolicy(MAX_ENGINE_LOG_BYTES, lambda: check_disk(work, directory)),
+            CapturePolicy(MAX_ENGINE_LOG_BYTES, lambda: check_run(run, disk_parent, directory)),
         )
         report["engine_elapsed_seconds"] = time.monotonic() - engine_started
         if report["exit_code"] != 0:
             report["error"] = f"Fuzz engine exited with {report['exit_code']}; inspect engine.log"
-        executions, findings = engine_evidence(run, directory)
+        executions, findings, native_runtime, initialized = engine_evidence(run, directory)
         report.update(executions=executions, findings=findings)
+        if run.engine == "afl":
+            report["afl_run_time_seconds"] = native_runtime
+            if type(native_runtime) is not int or native_runtime < run.seconds:
+                field = "statistics_error" if "error" in report else "error"
+                report[field] = f"AFL native run_time must be an integer >= {run.seconds}s"
+                return directory
+        else:
+            report["libfuzzer_inited_executions"] = initialized
+            if type(initialized) is not int or initialized < 0 or executions <= initialized:
+                field = "statistics_error" if "error" in report else "error"
+                report[field] = "libFuzzer needs one valid INITED count and later executions"
+                return directory
         if completed(
             report["exit_code"], executions, findings, report["engine_elapsed_seconds"], run.seconds
         ):
-            report["scratch_removed"] = remove_successful_scratch(directory, run.engine)
+            report["scratch_removed"] = fuzz_storage.remove_successful_scratch(
+                directory, run.engine
+            )
             report["passed"] = True
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
         report["findings"] = engine_findings(run, directory)

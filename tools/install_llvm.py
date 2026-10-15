@@ -31,13 +31,10 @@ from typing import Any
 
 from cache_lock import exclusive_cache
 from dep_acquire import download
+from llvm_cache import InstallError, source_tool_receipt, validate_source_tools
 
 ROOT = Path(__file__).resolve().parents[1]
 KEYRING = Path("/etc/apt/keyrings/llvm-snapshot.asc")
-
-
-class InstallError(RuntimeError):
-    """The pinned tool could not be installed or verified."""
 
 
 def tool(name: str) -> str:
@@ -107,11 +104,14 @@ def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) ->
             "deployment_target"
         ],
         "recipe_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "cache_recipe_sha256": hashlib.sha256(
+            (ROOT / "tools/llvm_cache.py").read_bytes()
+        ).hexdigest(),
     }
     identifier = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:16]
     target = Path.home() / ".cache" / "docenhance" / "llvm" / f"{version}-x86_64-{identifier}"
     with exclusive_cache(target.with_suffix(".active")):
-        tools = target / "build" / "bin"
+        tools = target / "bin"
         if target.exists():
             validate_source_tools(target, identity)
             return tools
@@ -123,34 +123,13 @@ def install_macos_intel_source(pin: dict[str, Any], version: str, work: Path) ->
         return tools
 
 
-def source_tool_receipt(target: Path, identity: dict[str, str]) -> dict[str, Any]:
-    """Readiness and byte identity for both tools; this is not a binary reproducibility claim."""
-    files = {}
-    for name in ("clang-tidy", "clang-query"):
-        path = target / "build/bin" / name
-        if not path.is_file() or path.is_symlink():
-            msg = f"Incomplete source-built LLVM cache: {path}"
-            raise InstallError(msg)
-        with path.open("rb") as stream:
-            files[name] = hashlib.file_digest(stream, "sha256").hexdigest()
-    return {"identity": identity, "files": files}
-
-
-def validate_source_tools(target: Path, identity: dict[str, str]) -> None:
-    """Reject missing/changed readiness evidence instead of adopting partial cache contents."""
-    receipt = target / "receipt.json"
-    if not receipt.is_file() or json.loads(receipt.read_text()) != source_tool_receipt(
-        target, identity
-    ):
-        msg = f"Incomplete or changed LLVM cache; inspect and remove only {target} before retrying"
-        raise InstallError(msg)
-
-
 def build_source_tools(pin: dict[str, Any], work: Path, target: Path) -> None:
     """Build both analysis tools from one digest-verified source archive."""
     archive = work / "llvm.tar.xz"
     download(pin["source_url"], archive)
-    if hashlib.sha256(archive.read_bytes()).hexdigest() != pin["source_sha256"]:
+    with archive.open("rb") as stream:
+        digest = hashlib.file_digest(stream, "sha256").hexdigest()
+    if digest != pin["source_sha256"]:
         msg = "LLVM source archive digest mismatch"
         raise InstallError(msg)
     source = work / "source"
@@ -158,8 +137,7 @@ def build_source_tools(pin: dict[str, Any], work: Path, target: Path) -> None:
     subprocess.run(
         [tool("tar"), "-xJf", str(archive), "-C", str(source), "--strip-components=1"], check=True
     )
-    build = target / "build"
-    build.parent.mkdir(parents=True, exist_ok=True)
+    build = work / "build"
     cmake = tool("cmake")
     subprocess.run(
         [
@@ -171,10 +149,13 @@ def build_source_tools(pin: dict[str, Any], work: Path, target: Path) -> None:
             "-G",
             "Ninja",
             "-DCMAKE_BUILD_TYPE=Release",
+            "-DBUILD_SHARED_LIBS=OFF",
             "-DCMAKE_OSX_DEPLOYMENT_TARGET="
             + json.loads((ROOT / "deps/tools.json").read_bytes())["macos"]["deployment_target"],
             "-DLLVM_ENABLE_PROJECTS=clang;clang-tools-extra",
             "-DLLVM_TARGETS_TO_BUILD=X86",
+            "-DLLVM_LINK_LLVM_DYLIB=OFF",
+            "-DCLANG_LINK_CLANG_DYLIB=OFF",
             "-DLLVM_ENABLE_TERMINFO=OFF",
             "-DLLVM_ENABLE_ZLIB=OFF",
             "-DLLVM_INCLUDE_TESTS=OFF",
@@ -184,8 +165,30 @@ def build_source_tools(pin: dict[str, Any], work: Path, target: Path) -> None:
         check=True,
     )
     subprocess.run(
-        [cmake, "--build", str(build), "--target", "clang-tidy", "clang-query", "--parallel", "3"],
+        [
+            cmake,
+            "--build",
+            str(build),
+            "--target",
+            "clang-tidy",
+            "clang-query",
+            "clang-resource-headers",
+            "--parallel",
+            "3",
+        ],
         check=True,
+    )
+
+    # Retain executables and their required builtin headers, never native build products.
+    destination = target / "bin"
+    destination.mkdir(parents=True)
+    for name in ("clang-tidy", "clang-query"):
+        shutil.copy2(build / "bin" / name, destination / name)
+    major = json.loads((ROOT / "deps/tools.json").read_bytes())["clang_tidy"]["version"].split(".")[
+        0
+    ]
+    shutil.copytree(
+        build / "lib/clang" / major / "include", target / "lib/clang" / major / "include"
     )
 
 

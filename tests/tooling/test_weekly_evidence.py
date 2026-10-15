@@ -10,18 +10,109 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 from tools_path import ROOT
 
 from check_advisories import scan
 from fuzz_manifest import targets
-from package_fuzz_evidence import archive_evidence, describe
+from package_fuzz_evidence import ArchiveWriter, archive_evidence, describe, source_entries
 from triage_fuzz_findings import triage
 
 
 class WeeklyEvidenceTests(unittest.TestCase):
     """Fake campaign metadata must never be mistaken for full engine work."""
+
+    def test_archive_writer_checks_before_crossing_exact_capacity(self) -> None:
+        """The exact cap fits; the next byte is refused before reaching the file."""
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "bounded"
+            with (
+                patch("package_fuzz_evidence.MAX_ARCHIVE_BYTES", 4),
+                ArchiveWriter(output.open("wb", buffering=0)) as stream,
+            ):
+                with self.assertRaisesRegex(ValueError, "compressed bytes"):
+                    stream.write(memoryview(b"fourfour").cast("I"))
+                self.assertEqual(stream.tell(), 0)
+                self.assertEqual(stream.write(b"four"), 4)
+                with self.assertRaisesRegex(ValueError, "compressed bytes"):
+                    stream.write(b"fifth")
+                stream.flush()
+                self.assertEqual(output.read_bytes(), b"four")
+
+    def test_archive_cannot_include_itself_or_replace_foreign_temporary(self) -> None:
+        """Nested output is rejected and a preexisting sibling .tmp is untouched."""
+        with tempfile.TemporaryDirectory() as temporary:
+            build = Path(temporary) / "app"
+            work = build / "fuzz-work"
+            work.mkdir(parents=True)
+            (work / "retained").write_bytes(b"finding")
+            with self.assertRaisesRegex(ValueError, "outside"):
+                archive_evidence(build, "afl", "a" * 40, work / "evidence.tar.gz")
+            destination = build / "evidence.tar.gz"
+            sibling = destination.with_suffix(".tmp")
+            sibling.write_bytes(b"unrelated")
+            archive_evidence(build, "afl", "a" * 40, destination)
+            self.assertEqual(sibling.read_bytes(), b"unrelated")
+
+    def test_archive_inventory_stops_before_reading_unbounded_tree(self) -> None:
+        """The entry ceiling interrupts enumeration rather than collecting every path first."""
+        with tempfile.TemporaryDirectory() as temporary:
+            build = Path(temporary)
+            root = build / "fuzz-work"
+            root.mkdir()
+
+            def growing_tree(_root: Path) -> Iterator[Path]:
+                for _ in range(3):
+                    yield root
+                self.fail("Inventory continued past its admitted entry budget")
+
+            with (
+                patch("package_fuzz_evidence.MAX_FILES", 2),
+                patch("package_fuzz_evidence._walk_entries", growing_tree),
+                self.assertRaisesRegex(ValueError, "archive budget"),
+            ):
+                source_entries(build)
+
+    def test_oversized_evidence_is_retained_without_partial_archive(self) -> None:
+        """Packaging refusal preserves findings and a previously completed archive."""
+        with tempfile.TemporaryDirectory() as temporary:
+            build = Path(temporary)
+            finding = build / "fuzz-work/finding"
+            finding.parent.mkdir()
+            finding.write_bytes(b"crash")
+            output = build / "evidence.tar.gz"
+            output.write_bytes(b"previous archive")
+            with (
+                patch("package_fuzz_evidence.MAX_SOURCE_BYTES", 1),
+                self.assertRaisesRegex(ValueError, "archive budget"),
+            ):
+                archive_evidence(build, "afl", "a" * 40, output)
+            self.assertEqual(finding.read_bytes(), b"crash")
+            self.assertEqual(output.read_bytes(), b"previous archive")
+            self.assertFalse(list(build.glob(".evidence.tar.gz-*")))
+
+    def test_compressed_archive_cap_preserves_previous_archive_and_findings(self) -> None:
+        """Tar headers and compressed output cannot grow beyond a separately bounded file."""
+        with tempfile.TemporaryDirectory() as temporary:
+            build = Path(temporary)
+            finding = build / "fuzz-work/finding"
+            finding.parent.mkdir()
+            finding.write_bytes(b"retained crash bytes")
+            output = build / "evidence.tar.gz"
+            output.write_bytes(b"previous archive")
+            with (
+                patch("package_fuzz_evidence.MAX_ARCHIVE_BYTES", 32),
+                self.assertRaisesRegex(ValueError, "compressed bytes"),
+            ):
+                archive_evidence(build, "afl", "a" * 40, output)
+            self.assertEqual(finding.read_bytes(), b"retained crash bytes")
+            self.assertEqual(output.read_bytes(), b"previous archive")
+            self.assertFalse(list(build.glob(".evidence.tar.gz-*")))
 
     def test_missing_and_partial_campaign_cannot_be_reported_complete(self) -> None:
         """Absent or incomplete target reports never become a full completed campaign."""

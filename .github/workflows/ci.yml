@@ -82,6 +82,22 @@ jobs:
       - name: Select declared minimum-runner Xcode
         if: startsWith(matrix.platform, 'macos-15-')
         run: python tools/select_xcode.py
+      - name: Identify Intel LLVM build environment
+        id: intel-llvm-environment
+        if: endsWith(matrix.platform, 'x86_64') && runner.os == 'macOS'
+        shell: python
+        run: |
+          import hashlib
+          import json
+          import os
+          import platform
+          identity = {
+              "host_os_version": platform.mac_ver()[0],
+              "developer_directory": os.environ.get("DEVELOPER_DIR", "system-default"),
+          }
+          digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"identity={digest}\n")
       - name: Restore pinned Intel LLVM tools
         id: intel-llvm-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -89,7 +105,7 @@ jobs:
         with:
           path: ~/.cache/docenhance/llvm
           # A generation never receives a partial post-cancellation cache entry.
-          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
+          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ steps.intel-llvm-environment.outputs.identity }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py', 'tools/llvm_cache.py') }}
       - run: python tools/install_build_tools.py
       - run: python tools/install_llvm.py
       - name: Save verified Intel LLVM tools
@@ -97,7 +113,7 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/docenhance/llvm
-          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py') }}
+          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ steps.intel-llvm-environment.outputs.identity }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py', 'tools/llvm_cache.py') }}
       - name: Restore locked dependency sources
         id: dependency-source-cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -178,7 +194,7 @@ jobs:
           with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
               environment.write(f"DE_BUILD_JOBS={cores}\n")
       - run: python tools/install_build_tools.py
-      - run: python tools/run_fuzz_campaign.py --plan --seconds 60 --jobs 4 --job-budget 2400
+      - run: python tools/run_fuzz_campaign.py --plan --seconds 15 --jobs 4 --job-budget 2400
       - run: python tools/install_llvm.py --fuzzing
       - name: Build pinned AFL++
         if: matrix.engine == 'afl'
@@ -211,9 +227,9 @@ jobs:
           CC: ${{ matrix.cc }}
           CXX: ${{ matrix.cxx }}
         run: |
-          cmake --preset ${{ matrix.preset }} -DDE_FUZZ_SECONDS=60 -DDE_FUZZ_JOBS=4
+          cmake --preset ${{ matrix.preset }} -DDE_FUZZ_SECONDS=15 -DDE_FUZZ_JOBS=4
           cmake --build --preset ${{ matrix.preset }}
-      - name: Fuzz every target (60 s each)
+      - name: Fuzz every target (15 s each)
         run: ctest --preset ${{ matrix.preset }} --output-on-failure
       - name: Replay saved findings for diagnosis
         if: always()

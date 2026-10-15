@@ -38,6 +38,7 @@ out.mkdir()
 (out / "result.json").write_text(json.dumps({
     "target": name, "passed": True, "exit_code": 0, "executions": 1, "findings": [],
     "seconds": 1, "engine_elapsed_seconds": 1.0, "engine": "libfuzzer",
+    "libfuzzer_inited_executions": 0,
     "binary_sha256": hashlib.sha256(
         (pathlib.Path(__file__).parent / "fuzz" / ("de_fuzz_" + name)).read_bytes()
     ).hexdigest(),

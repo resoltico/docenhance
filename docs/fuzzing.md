@@ -52,7 +52,13 @@ A passing campaign requires CTest success AND exactly one passing report per exp
 Each report requires engine exit zero, a positive native execution count, at least the requested
 engine wall time, and no saved findings. The coordinator independently rechecks duration, engine,
 actual binary/manifest identities and complete executed JUnit results, rather than trusting the
-runner-provided passed flag. Early successful exits are incomplete runs.
+runner-provided passed flag. AFL reports additionally retain its native `run_time`, a nonnegative integer that must reach the
+requested duration independently of process wall time. This clock excludes initial calibration;
+calibration time never supplies missing active-run exposure. libFuzzer reports require exactly one
+valid nonnegative `INITED` callback count in the retained native log and a strictly larger final
+execution count. This establishes post-initialization callbacks, not mutation-only seconds:
+libFuzzer's `max_total_time` includes seed initialization. Missing or ambiguous retained markers
+fail closed; neither coverage nor newly added corpus units need increase. Early successful exits are incomplete runs.
 Missing statistics, zero executions, missing/duplicate reports, timeouts and saved crashes/hangs
 are failures. JUnit and CTest logs are retained as evidence; target reports establish completion
 without trusting a decorative PASS line or treating skipped tests as successes.
@@ -73,11 +79,29 @@ Staging admits at most 4,096 origins and 32 MiB of distinct input bytes. Before 
 starts, its work parent must have room for another 256 MiB within a 1.5 GiB threshold. A campaign
 reserves 256 MiB for each of up to four concurrent targets, leaving at least 512 MiB within that
 threshold for retained earlier runs. During execution, allocated work is checked every five seconds;
-exceeding 256 MiB for one run or 1.5 GiB for the work parent stops the owned engine and records an
+exceeding 256 MiB for one run, 1.5 GiB for the work parent, or 49,152 entries stops the owned engine and records an
 incomplete run without deleting findings. These are cooperative stop thresholds, not hard disk quotas:
 growth between checks or a host kill can overshoot them. A filesystem quota or bounded ephemeral
 volume is required for a hard limit. Build trees, dependency caches and separately packaged evidence
 are outside the work-parent threshold and are never silently pruned.
+
+The 256 MiB per-run threshold leaves room beyond the admitted 32 MiB staged inputs for
+engine queues, findings, allocation blocks and diagnostics. Four workers reserve 1 GiB; the
+1.5 GiB parent threshold leaves 512 MiB for earlier evidence. These are operational allowances,
+not experimentally proven minimums. The entry ceiling admits four 4,096-origin staged corpora
+plus 32,768 generated/report entries, and stays below the archive's 50,000-entry limit.
+Smaller limits can terminate valid exploration
+sooner, while larger limits consume more disk without increasing the requested time budget.
+
+Packaging admits at most 1.5 GiB of logical source bytes and 50,000 entries, visits entries
+incrementally and hashes the archive as a stream. It refuses archive destinations inside its
+input trees. Plan for 1.5 GiB of source plus the actual existing archive size and at most
+2 GiB for the replacement temporary archive: 5.5 GiB when the existing archive also fits the
+current 2 GiB cap. Older or foreign archives may be larger and remain preserved until replacement.
+Filesystem metadata, cooperative engine overshoot, build products and dependency/tool caches are extra. Sparse files can fail the logical archive
+limit even when their allocated size passes the engine threshold. Keep one output archive per
+build; moving copies elsewhere creates separately owned retention. Overshoot or unavailable
+space fails packaging and cannot manufacture passing evidence.
 
 Reports retain the binary and manifest hashes, command arguments, requested duration, execution
 count, engine exit, elapsed time and finding paths. Engine logs retain up to 1 MiB of their first and
@@ -85,14 +109,16 @@ last output with an omitted-byte count; actual reproducers remain
 beside the reports. After the owned engine processes join, a completed run with no findings
 removes only its own staged/generated corpus and AFL queue scratch. The seed-origin index,
 statistics, logs and result records remain; committed seeds and regressions are never removed.
-Failed or incomplete engine runs retain their scratch for investigation. Every cleanup candidate
+Saved crashes or hangs stop the owned engine at the next periodic check instead of spending the remaining target time; the run remains failed. Failed or incomplete engine runs retain their scratch for investigation. Every cleanup candidate
 and ancestor is checked before removal; links and special files are refused. Cleanup errors fail
 the run and preserve records and any remaining scratch; an unlink failure can leave partial
 cleanup. Earlier run directories are never automatically pruned.
 The inherited environment and credentials are never exported. Review any new
 finding, minimize it deliberately, then commit the regression; a successful campaign never edits
-its own repository corpus. Both engines run short required PR campaigns and longer weekly
-campaigns. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
+its own repository corpus. Both engines run required 15-second PR targets and 300-second weekly targets. Weekly
+manual runs may select up to 1,800 seconds per target. Shorter runs explore fewer inputs; complete corpus replay,
+harness coverage and strict evidence admission remain required. The manifest-derived `--plan`
+output lists every target and computes the complete timeout from the selected concurrency and duration. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
 the artifact uploader cannot accept directly. PR artifacts are retained for seven days, and weekly
 campaign artifacts for 30 days, including failed runs. Each archive includes a manifest binding
 the engine and exact source commit; absent or incomplete campaigns are explicitly labeled rather
@@ -180,7 +206,7 @@ workload admission, so the added target must fit the configured campaign budget.
 The denoising harness invokes actual pinned CV_16U/L1 execution, compares global halos against a
 whole native call, checks correction identity and resource refunds. Isolated fuzz builds instrument
 OpenCV core/photo/imgproc alongside the codec archives; imported archive symbols establish actual
-ASan/UBSan and coverage presence. The required PR workload budget is 2400 seconds for the expanded
+ASan/UBSan and coverage presence. The required PR workload budget is 2400 seconds for the
 complete target set. Native assembly remains outside the instrumentation claim.
 
 Archive sanitizer/coverage symbols establish their presence in the actual imported archives.
@@ -196,21 +222,17 @@ It checks decoded/source agreement and allocation refunds on acceptance and refu
 
 The TV-L1 harness consumes dimensions and 16-bit sample selectors, compares simultaneous
 reference iterations with the production full-field dual/primal passes, and checks finite bounds.
-Its additional execution wave retains the full per-target PR budget and watchdog allowances.
 
 The contrast harness compares interruptible sample ordering and nearest ranks to independent
-sorting and scalar levels/gamma formulas. It extends the manifest to 20 targets, ten waves
-at the default two jobs or five at four jobs. Every target retains 60 seconds of engine work
-and the same watchdog allowances.
+sorting and scalar levels/gamma formulas.
 
 C03 additionally fuzzes charged contextual preparation, floating reconstruction, immutable replay
 and complete observation validation. CLI corpus seeds exercise grid admission and inactive private
 options. Deterministic unit probes enumerate preparation and application cancellation checkpoints.
 
-The S01 sharpening harness adds bounded Gaussian preparation, scalar soft-threshold comparison,
-immutable reconstruction replay and complete report validation. Twenty-one targets retain every
-per-target exposure interval; the campaign plan derives the required wave count and rejects an
-insufficient whole-job budget. CLI seeds cover sharpening admission and inactive private options.
+The S01 sharpening harness checks bounded Gaussian preparation, scalar soft-threshold comparison,
+immutable reconstruction replay and complete report validation. CLI seeds cover sharpening admission
+and inactive private options.
 
 The `otsu` harness compares fitted B01 observations against independently enumerated byte
 populations for every candidate bin, then checks exact output polarity and scratch refunds.

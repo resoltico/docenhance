@@ -21,6 +21,7 @@ import cache_lock
 import dep_acquire
 import dep_verify
 import install_llvm
+import llvm_cache
 
 
 class DependencyIntegrityTests(unittest.TestCase):
@@ -143,28 +144,32 @@ class DependencyIntegrityTests(unittest.TestCase):
         """One executable or a stale/tampered query cannot manufacture cache readiness."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            tools = root / "build/bin"
+            tools = root / "bin"
             tools.mkdir(parents=True)
+            headers = root / "lib/clang/23/include"
+            headers.mkdir(parents=True)
+            (headers / "stddef.h").write_bytes(b"builtin")
             identity = {
+                "version": "23.1.3",
                 "source_sha256": "reviewed",
                 "host_os_version": "15.7",
                 "deployment_target": "15.0",
             }
             (tools / "clang-tidy").write_bytes(b"tidy")
-            with self.assertRaises(install_llvm.InstallError):
-                install_llvm.validate_source_tools(root, identity)
-            with self.assertRaises(install_llvm.InstallError):
-                install_llvm.validate_source_tools(root, identity | {"host_os_version": "26.0"})
-            with self.assertRaises(install_llvm.InstallError):
-                install_llvm.validate_source_tools(root, identity | {"deployment_target": "14.0"})
+            with self.assertRaises(llvm_cache.InstallError):
+                llvm_cache.validate_source_tools(root, identity)
+            with self.assertRaises(llvm_cache.InstallError):
+                llvm_cache.validate_source_tools(root, identity | {"host_os_version": "26.0"})
+            with self.assertRaises(llvm_cache.InstallError):
+                llvm_cache.validate_source_tools(root, identity | {"deployment_target": "14.0"})
             (tools / "clang-query").write_bytes(b"query")
             (root / "receipt.json").write_text(
-                json.dumps(install_llvm.source_tool_receipt(root, identity))
+                json.dumps(llvm_cache.source_tool_receipt(root, identity))
             )
-            install_llvm.validate_source_tools(root, identity)
+            llvm_cache.validate_source_tools(root, identity)
             (tools / "clang-query").write_bytes(b"changed")
-            with self.assertRaises(install_llvm.InstallError):
-                install_llvm.validate_source_tools(root, identity)
+            with self.assertRaises(llvm_cache.InstallError):
+                llvm_cache.validate_source_tools(root, identity)
 
     def test_installed_major_is_preferred_over_runner_default(self) -> None:
         """The CI host can retain generic LLVM 18 alongside the newly installed LLVM 23."""
@@ -180,7 +185,7 @@ class DependencyIntegrityTests(unittest.TestCase):
                     install_llvm.resolve_analysis_tool(directory, name, "23"), directory / name
                 )
                 (directory / name).unlink()
-                with self.assertRaises(install_llvm.InstallError):
+                with self.assertRaises(llvm_cache.InstallError):
                     install_llvm.resolve_analysis_tool(directory, name, "23")
 
     def test_binary_path_feature_is_checked_and_missing_plan_cache_fails(self) -> None:

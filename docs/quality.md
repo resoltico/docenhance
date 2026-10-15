@@ -162,22 +162,22 @@ python tools/deps.py fetch                   # acquire the complete reviewed sou
 CC=clang-23 CXX=clang++-23 cmake --workflow --preset fuzz
 ```
 
-On macOS, use `CC=$(brew --prefix llvm)/bin/clang CXX=$(brew --prefix llvm)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds the fuzz targets, CLI11/JSON, and sanitizer/coverage-instrumented PNG/zlib, then fuzzes every target for `DE_FUZZ_SECONDS` (default 60). For a separate bounded run with retained evidence:
+On macOS, use `CC=$(brew --prefix llvm)/bin/clang CXX=$(brew --prefix llvm)/bin/clang++`; Apple's clang has no libFuzzer runtime. The `fuzz` preset builds every harness and the instrumented native archive closure described in [fuzzing](fuzzing.md), then fuzzes every target for `DE_FUZZ_SECONDS` (local default 60). The following explicit manual runs retain their own evidence; they are not CI defaults:
 
 ```sh
 python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 1800
 python tools/run_fuzzers.py --target cli --binary out/fuzz/app/fuzz/de_fuzz_cli --work out/fuzz/work --seconds 600
 ```
 
-AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with both libFuzzer and AFL++. The weekly workflow runs both engines for 30 minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
+AFL++ uses the same harnesses: `python tools/install_aflplusplus.py`, then `CC=afl-clang-fast CXX=afl-clang-fast++ cmake --preset fuzz-afl` and `run_fuzzers.py --engine afl`. CI fuzzes every pull request with both libFuzzer and AFL++. The weekly workflow runs both engines for five minutes per target and also runs the whole test suite independently under ASan/UBSan and TSan. Campaigns use the CTest registration, including the box-mean harness. Every normal build replays each seed corpus and recorded regression as the `fuzz-replay-*` tests, on every compiler.
 
 The public Ubuntu quality and weekly jobs explicitly select four concurrent fuzz targets.
 [GitHub's runner specification](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)
 provides four cores and 16 GB for those runners; four libFuzzer processes each retain the 2 GiB
 RSS/malloc ceilings, leaving room for runtime and operating-system overhead. AFL++ retains its
 ASan-compatible settings and finite harness allocations, without an equivalent RSS-limit claim.
-Local campaigns default to two workers. Each PR target still receives 60 seconds and each weekly
-target 1,800 seconds; planning and CTest use the same selected concurrency and retain complete
+Local campaigns default to two workers. Each PR target receives 15 seconds and each weekly
+target 300 seconds; planning and CTest use the same selected concurrency and retain complete
 per-target execution evidence. Workload admission precedes compiler installation and the build.
 
 Campaign completeness, bounded parallelism, corpus ownership and retained evidence are specified

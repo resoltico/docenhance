@@ -11,7 +11,8 @@ COPY tools/ /opt/config/tools/
 RUN python3 -m venv /opt/dev && \
     /opt/dev/bin/python /opt/config/tools/install_build_tools.py && \
     /opt/dev/bin/python /opt/config/tools/install_build_tools.py --lint && \
-    /opt/dev/bin/python /opt/config/tools/install_llvm.py --compiler
+    /opt/dev/bin/python /opt/config/tools/install_llvm.py --compiler && \
+    rm -rf /root/.cache/pip /var/lib/apt/lists/*
 ENV PATH="/opt/dev/bin:${PATH}"
 ENV PYTHONDONTWRITEBYTECODE=1
 WORKDIR /source

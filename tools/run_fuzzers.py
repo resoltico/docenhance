@@ -38,7 +38,7 @@ def main() -> int:
         if "DE_FUZZ_RUN_ROOT" not in os.environ:
             admit_work_parent(work)
         run = Run(declared[args.target], args.binary.resolve(), args.engine, args.seconds)
-        directory = execute(run, work)
+        directory = execute(run, work, disk_parent=args.work.resolve())
         report = json.loads((directory / "result.json").read_text(encoding="utf-8"))
     except (OSError, ValueError, FuzzError) as exc:
         print(f"Fuzzing {args.target} failed: {exc}", file=sys.stderr)

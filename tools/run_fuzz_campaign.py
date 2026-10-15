@@ -52,8 +52,11 @@ def validate_command(command: list[str], build: Path, name: str, seconds: int) -
         "--seconds": str(seconds),
         "--engine": configured_engine(build),
         "--binary": str(build / "fuzz" / f"de_fuzz_{name}"),
+        "--work": str(build / "fuzz-work"),
     }
-    if len(command) <= 1 or Path(command[1]).resolve() != ROOT / "tools/run_fuzzers.py":
+    if len(command) != 2 + 2 * len(expected) or (
+        Path(command[1]).resolve() != ROOT / "tools/run_fuzzers.py"
+    ):
         msg = f"Unexpected harness runner: {name}"
         raise FuzzError(msg)
     for flag, value in expected.items():
@@ -63,7 +66,7 @@ def validate_command(command: list[str], build: Path, name: str, seconds: int) -
         actual = command[command.index(flag) + 1]
         agrees = (
             Path(actual).resolve() == Path(value).resolve()
-            if flag == "--binary"
+            if flag in {"--binary", "--work"}
             else actual == value
         )
         if not agrees:
@@ -127,6 +130,21 @@ def complete_reports(directory: Path, expected: set[str], build: Path, seconds: 
             and math.isfinite(report["engine_elapsed_seconds"])
             and report["engine_elapsed_seconds"] >= seconds
             and report.get("engine") == configured_engine(build)
+            and (
+                report["engine"] != "afl"
+                or (
+                    type(report.get("afl_run_time_seconds")) is int
+                    and report["afl_run_time_seconds"] >= seconds
+                )
+            )
+            and (
+                report["engine"] != "libfuzzer"
+                or (
+                    type(report.get("libfuzzer_inited_executions")) is int
+                    and report["libfuzzer_inited_executions"] >= 0
+                    and report["executions"] > report["libfuzzer_inited_executions"]
+                )
+            )
             and report.get("manifest_sha256") == manifest_hash
             and report.get("binary_sha256") == binary_hashes[report["target"]]
             for report in reports

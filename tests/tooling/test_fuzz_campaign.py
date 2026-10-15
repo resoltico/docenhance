@@ -177,6 +177,7 @@ class EvidenceTests(unittest.TestCase):
                 "engine": "libfuzzer",
                 "seconds": 60,
                 "engine_elapsed_seconds": 61,
+                "libfuzzer_inited_executions": 0,
                 "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
                 "manifest_sha256": hashlib.sha256(
                     (ROOT / "fuzz/targets.json").read_bytes()
@@ -226,13 +227,15 @@ class EvidenceTests(unittest.TestCase):
                 fuzz_manifest.targets()[0], Path(sys.executable), "libfuzzer", 1
             )
             (root / "engine.log").write_text("PASS\n", encoding="utf-8")
-            self.assertEqual(fuzz_execution.engine_evidence(run, root), (0, []))
+            self.assertEqual(fuzz_execution.engine_evidence(run, root), (0, [], None, None))
             (root / "engine.log").write_text(
                 "stat::number_of_executed_units: 42\n", encoding="utf-8"
             )
-            self.assertEqual(fuzz_execution.engine_evidence(run, root), (42, []))
+            self.assertEqual(fuzz_execution.engine_evidence(run, root), (42, [], None, None))
             (root / "artifacts/crash").write_bytes(b"input")
-            self.assertEqual(fuzz_execution.engine_evidence(run, root), (42, ["artifacts/crash"]))
+            self.assertEqual(
+                fuzz_execution.engine_evidence(run, root), (42, ["artifacts/crash"], None, None)
+            )
 
     def test_watchdog_records_output_and_reaps_the_process(self) -> None:
         """The standalone runner is bounded even without an outer CTest timeout."""
@@ -261,6 +264,8 @@ class EvidenceTests(unittest.TestCase):
                     str(ROOT / "tools/run_fuzzers.py"),
                     "--seconds",
                     "60",
+                    "--work",
+                    str(ROOT / "fuzz-work"),
                     "--target",
                     target.name,
                     "--engine",
@@ -285,6 +290,8 @@ class EvidenceTests(unittest.TestCase):
             altered[0]["properties"] = [{"name": "DISABLED", "value": True}]
             wrong_binary = copy.deepcopy(tests)
             wrong_binary[0]["command"][-1] = "/not/the/harness"
+            wrong_work = copy.deepcopy(tests)
+            wrong_work[0]["command"][wrong_work[0]["command"].index("--work") + 1] = "/unrelated"
             wrong_engine = copy.deepcopy(tests)
             wrong_engine[0]["command"][-3] = "afl"
             wrong_timeout = copy.deepcopy(tests)
@@ -294,6 +301,7 @@ class EvidenceTests(unittest.TestCase):
                 [*tests, tests[0]],
                 altered,
                 wrong_binary,
+                wrong_work,
                 wrong_engine,
                 wrong_timeout,
             ):
