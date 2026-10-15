@@ -23,11 +23,6 @@ de_library(de_core LAYER core
           "${DE_INCLUDE}/core/cancellation.hpp" "${DE_INCLUDE}/core/utf8.hpp"
           "${DE_INCLUDE}/core/bundle_path.hpp" "${DE_INCLUDE}/core/limits.hpp")
 target_include_directories(de_core PRIVATE "${PROJECT_BINARY_DIR}/generated")
-de_library(de_contract LAYER contract
-  SOURCES contract/parse.cpp
-  HEADERS "${DE_INCLUDE}/contract/command.hpp" "${DE_INCLUDE}/contract/cli_contract.hpp"
-          "${DE_INCLUDE}/contract/parse.hpp"
-  LINKS de_core)
 de_library(de_exec LAYER exec
   SOURCES exec/concurrency.cpp exec/scheduler.cpp
   HEADERS "${DE_INCLUDE}/exec/concurrency.hpp" "${DE_INCLUDE}/exec/scheduler.hpp"
@@ -35,7 +30,7 @@ de_library(de_exec LAYER exec
 de_library(de_image LAYER image
   SOURCES image/geometry.cpp image/gaussian.cpp image/numeric.cpp image/ordered_samples.cpp image/perceptual.cpp image/plane_rows.cpp image/plane.cpp image/raster.cpp image/continuous.cpp image/linear.cpp image/source.cpp image/tiff_source.cpp
   HEADERS "${DE_INCLUDE}/image/geometry.hpp" "${DE_INCLUDE}/image/gaussian.hpp" "${DE_INCLUDE}/image/numeric.hpp" "${DE_INCLUDE}/image/plane.hpp"
-          "${DE_INCLUDE}/image/raster.hpp" "${DE_INCLUDE}/image/source.hpp" "${DE_INCLUDE}/image/continuous.hpp" "${DE_INCLUDE}/image/linear.hpp"
+          "${DE_INCLUDE}/image/raster.hpp" "${DE_INCLUDE}/image/source_facts.hpp" "${DE_INCLUDE}/image/continuous.hpp" "${DE_INCLUDE}/image/linear.hpp"
   LINKS de_core)
 de_library(de_methods LAYER methods
   SOURCES methods/box_mean.cpp methods/catalog.cpp methods/fixed_threshold.cpp methods/otsu.cpp methods/binarization.cpp methods/sauvola.cpp
@@ -52,37 +47,59 @@ de_library(de_methods LAYER methods
           "${DE_INCLUDE}/methods/restoration.hpp" "${DE_INCLUDE}/methods/denoising.hpp" "${DE_INCLUDE}/methods/sharpening.hpp" "${DE_INCLUDE}/methods/contrast.hpp" "${DE_INCLUDE}/methods/progress.hpp" "${DE_INCLUDE}/methods/illumination.hpp" "${DE_INCLUDE}/methods/surface.hpp" "${DE_INCLUDE}/methods/morphology.hpp" "${DE_INCLUDE}/methods/tvl1.hpp"
   LINKS de_core de_exec de_image)
 de_library(de_app LAYER app
-  SOURCES app/stage_observations.cpp app/verification_observations.cpp app/restoration.cpp app/restoration.hpp app/observations.cpp app/observations.hpp app/denoising.cpp app/sharpening.cpp app/sharpening.hpp app/contrast.cpp app/contrast.hpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
+  SOURCES app/values.cpp app/stage_observations.cpp app/verification_observations.cpp app/restoration.cpp app/restoration.hpp app/observations.cpp app/observations.hpp app/denoising.cpp app/sharpening.cpp app/sharpening.hpp app/contrast.cpp app/contrast.hpp app/denoising.hpp app/dispatch.cpp app/verify.cpp app/process.cpp app/illumination.cpp app/illumination.hpp
   HEADERS "${DE_INCLUDE}/app/dispatch.hpp" "${DE_INCLUDE}/app/process.hpp"
-          "${DE_INCLUDE}/app/verify.hpp"
-  LINKS de_core de_contract de_methods de_image)
+          "${DE_INCLUDE}/app/verify.hpp" "${DE_INCLUDE}/app/invocation.hpp"
+          "${DE_INCLUDE}/app/values.hpp" "${DE_INCLUDE}/app/cli_contract.hpp"
+  LINKS de_core de_methods de_image)
 target_include_directories(de_app PRIVATE "${PROJECT_BINARY_DIR}/generated")
-de_library(de_bundle LAYER bundle
-  SOURCES bundle/restoration_fields.cpp bundle/read_restoration.cpp bundle/morphology_fields.cpp bundle/denoising_fields.cpp bundle/sharpen_fields.cpp bundle/read_sharpen.cpp bundle/contrast_fields.cpp bundle/read_contrast.cpp bundle/tvl1_fields.cpp bundle/read_denoising.cpp bundle/fields.cpp bundle/record.cpp bundle/inventory.cpp bundle/read_fields.hpp bundle/read_values.cpp bundle/read_json.cpp
-          bundle/read_observations.cpp bundle/read_operation.cpp bundle/read_illumination.cpp bundle/read_claims.cpp bundle/source_fields.cpp bundle/read_source.cpp
-  HEADERS "${DE_INCLUDE}/bundle/fields.hpp" "${DE_INCLUDE}/bundle/record.hpp"
-          "${DE_INCLUDE}/bundle/record_version.hpp"
-          "${DE_INCLUDE}/bundle/inventory.hpp"
+de_library(de_record LAYER record
+  SOURCES record/restoration_fields.cpp record/read_restoration.cpp record/morphology_fields.cpp record/denoising_fields.cpp record/sharpen_fields.cpp record/read_sharpen.cpp record/contrast_fields.cpp record/read_contrast.cpp record/tvl1_fields.cpp record/read_denoising.cpp record/fields.cpp record/record.cpp record/inventory.cpp record/read_fields.hpp record/read_values.cpp record/read_json.cpp
+          record/read_observations.cpp record/read_operation.cpp record/read_illumination.cpp record/read_claims.cpp record/source_fields.cpp record/read_source.cpp
+  HEADERS "${DE_INCLUDE}/record/fields.hpp" "${DE_INCLUDE}/record/record.hpp"
+          "${DE_INCLUDE}/record/record_version.hpp"
+          "${DE_INCLUDE}/record/inventory.hpp"
   LINKS de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_report LAYER report
   SOURCES report/help.cpp report/help.hpp report/restoration.cpp report/restoration.hpp report/render.cpp report/continuous.cpp report/continuous.hpp report/illumination.cpp report/denoising.cpp report/sharpening.cpp report/sharpening.hpp report/contrast.cpp report/contrast.hpp report/denoising.hpp report/illumination.hpp HEADERS "${DE_INCLUDE}/report/render.hpp"
-  LINKS de_app de_bundle de_contract de_core de_image de_methods nlohmann_json::nlohmann_json)
+  LINKS de_app de_record de_core de_image de_methods nlohmann_json::nlohmann_json)
 de_library(de_cli LAYER cli
   SOURCES cli/run.cpp cli/failures.hpp HEADERS "${DE_INCLUDE}/cli/run.hpp"
-  LINKS de_app de_contract de_core de_report CLI11::CLI11)
+  LINKS de_app de_core de_report CLI11::CLI11)
 
-de_library(de_io LAYER io
-  SOURCES io/file_stream.cpp io/png_context.cpp io/png_decode.cpp io/png_file.cpp io/png_encode.cpp io/png_write_image.cpp io/bundle_publish.cpp io/bundle_stage.cpp io/bundle_stage.hpp io/bundle_inspect.cpp io/png_artifact.cpp io/entry_identity.hpp io/entry_identity.cpp io/bundle_native.hpp io/bundle_posix.cpp io/bundle_windows.cpp io/windows_sdk.hpp
-          io/publication.cpp io/png_context.hpp io/png_reader.hpp io/native_publication.hpp
-          io/png_metadata.cpp io/png_metadata.hpp io/png_chunks.cpp io/png_chunks.hpp io/png_profile.cpp io/exif.cpp io/exif.hpp
-          io/tiff_layout.hpp io/tiff_layout.cpp io/tiff_ifd.hpp io/tiff_ifd.cpp io/tiff_context.hpp io/tiff_context.cpp io/tiff_decode.cpp io/tiff_tags.cpp io/tiff_pixels.cpp io/jpeg_context.hpp io/jpeg_context.cpp io/jpeg_memory.cpp io/jpeg_scan.hpp io/jpeg_markers.hpp io/jpeg_scan.cpp io/jpeg_metadata.cpp io/jpeg_decode.cpp io/source.cpp
-          io/png_raster.cpp io/source_snapshot.cpp io/png_rows.hpp io/png_write_rows.cpp
-          io/png_inventory.cpp io/png_verify_rows.cpp io/png_verified_rows.cpp
-          io/png_psf.cpp io/png_protection.cpp io/source_snapshot.hpp io/digest.cpp io/slot_identity.cpp io/file_access.hpp
-  HEADERS "${DE_INCLUDE}/io/png.hpp" "${DE_INCLUDE}/io/continuous_png.hpp" "${DE_INCLUDE}/io/source.hpp" "${DE_INCLUDE}/io/jpeg.hpp" "${DE_INCLUDE}/io/tiff.hpp"
-          "${DE_INCLUDE}/io/psf_png.hpp" "${DE_INCLUDE}/io/protection_png.hpp" "${DE_INCLUDE}/io/digest.hpp" "${DE_INCLUDE}/io/publication.hpp" "${DE_INCLUDE}/io/bundle_snapshot.hpp"
-          "${DE_INCLUDE}/io/png_artifact.hpp" "${DE_INCLUDE}/io/artifact_limits.hpp" "${DE_INCLUDE}/io/paths.hpp"
-  LINKS de_core de_image DE::png DE::jpeg DE::tiff DE::zlib DE::picosha2)
+de_library(de_codec LAYER codec
+  SOURCES codec/exif.cpp codec/exif.hpp codec/jpeg_context.cpp codec/jpeg_context.hpp
+          codec/jpeg_decode.cpp codec/jpeg_markers.hpp codec/jpeg_memory.cpp codec/jpeg_metadata.cpp
+          codec/jpeg_scan.cpp codec/jpeg_scan.hpp codec/png_artifact.cpp codec/png_chunks.cpp
+          codec/png_chunks.hpp codec/png_context.cpp codec/png_context.hpp codec/png_decode.cpp
+          codec/png_encode.cpp codec/png_inventory.cpp codec/png_metadata.cpp codec/png_metadata.hpp
+          codec/png_profile.cpp codec/png_protection.cpp codec/png_psf.cpp codec/png_raster.cpp
+          codec/png_reader.hpp codec/png_rows.hpp codec/png_verify_rows.cpp codec/png_write_rows.cpp
+          codec/source.cpp codec/tiff_context.cpp codec/tiff_context.hpp codec/tiff_decode.cpp
+          codec/tiff_ifd.cpp codec/tiff_ifd.hpp codec/tiff_layout.cpp codec/tiff_layout.hpp
+          codec/tiff_pixels.cpp codec/tiff_tags.cpp
+  HEADERS "${DE_INCLUDE}/codec/continuous_png.hpp" "${DE_INCLUDE}/codec/jpeg.hpp"
+          "${DE_INCLUDE}/codec/png.hpp" "${DE_INCLUDE}/codec/png_artifact.hpp"
+          "${DE_INCLUDE}/codec/png_stream.hpp" "${DE_INCLUDE}/codec/protection_png.hpp"
+          "${DE_INCLUDE}/codec/psf_png.hpp" "${DE_INCLUDE}/codec/source.hpp"
+          "${DE_INCLUDE}/codec/tiff.hpp"
+  LINKS de_core de_image DE::png DE::jpeg DE::tiff DE::zlib)
+if(NOT DE_FUZZ_ONLY)
+de_library(de_fs LAYER fs
+  SOURCES fs/bundle_inspect.cpp fs/bundle_native.hpp fs/bundle_posix.cpp fs/bundle_publish.cpp
+          fs/bundle_stage.cpp fs/bundle_stage.hpp fs/bundle_windows.cpp fs/digest.cpp
+          fs/entry_identity.cpp fs/entry_identity.hpp fs/file_access.hpp fs/file_stream.cpp
+          fs/native_publication.hpp fs/png_file.cpp fs/png_output.cpp fs/png_file_rows.hpp
+          fs/png_verified_rows.cpp fs/png_verify.cpp fs/png_write_image.cpp fs/protection_png.cpp
+          fs/psf_png.cpp fs/publication.cpp fs/slot_identity.cpp fs/source.cpp
+          fs/source_snapshot.cpp fs/source_snapshot.hpp fs/windows_sdk.hpp
+  HEADERS "${DE_INCLUDE}/fs/artifact_limits.hpp" "${DE_INCLUDE}/fs/bundle_snapshot.hpp"
+          "${DE_INCLUDE}/fs/digest.hpp" "${DE_INCLUDE}/fs/paths.hpp"
+          "${DE_INCLUDE}/fs/png.hpp" "${DE_INCLUDE}/fs/protection_png.hpp"
+          "${DE_INCLUDE}/fs/psf_png.hpp" "${DE_INCLUDE}/fs/publication.hpp"
+          "${DE_INCLUDE}/fs/source.hpp"
+  LINKS de_codec de_core de_image DE::picosha2)
+endif()
 de_library(de_color LAYER color
   SOURCES color/context.cpp color/context.hpp color/profiles.cpp color/interpretation.cpp
           color/converter.cpp color/conversion.hpp color/prepare.cpp color/rows.cpp
@@ -92,16 +109,16 @@ de_library(de_opencv LAYER opencv
   SOURCES opencv/restoration_allocate.cpp opencv/restoration_pad.cpp opencv/restoration_native.cpp opencv/restoration_model.cpp opencv/restoration_apply.cpp opencv/restoration_work.hpp opencv/nlm_native.cpp opencv/nlm_tiles.cpp opencv/diagnostics.cpp opencv/diagnostics.hpp
   HEADERS "${DE_INCLUDE}/opencv/restoration.hpp" "${DE_INCLUDE}/opencv/nlm.hpp"
   LINKS de_core de_image de_methods opencv_core opencv_photo)
-# Both fuzz groups compile production targets. Only codec harnesses link io; the CLI closure
+# Both fuzz groups compile production targets. Only codec harnesses link codec; the CLI closure
 # remains pure and never composes the host or publication path.
 if(DE_FUZZ_ONLY)
-  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli io color opencv)
+  de_write_architecture_targets("${PROJECT_BINARY_DIR}/architecture-targets.json" ROOTS cli codec color opencv)
   return()
 endif()
 de_library(de_host LAYER host
   SOURCES host/protection.cpp host/protection.hpp host/run_publication.cpp host/run_publication.hpp host/bundle_verify.cpp host/bundle_verify.hpp host/context.cpp host/instant.cpp host/instant.hpp host/verifier.cpp host/processor.cpp host/continuous.cpp host/continuous.hpp
           host/restoration.cpp host/restoration.hpp host/linear_rows.cpp host/linear_rows.hpp host/denoising.cpp host/sharpening.cpp host/sharpening.hpp host/contrast.cpp host/contrast.hpp host/denoising.hpp HEADERS "${DE_INCLUDE}/host/processor.hpp" "${DE_INCLUDE}/host/verifier.hpp"
-  LINKS de_app de_bundle de_core de_exec de_image de_io de_methods de_color de_opencv)
+  LINKS de_app de_record de_core de_exec de_image de_codec de_fs de_methods de_color de_opencv)
 add_executable(docenhance entry/main.cpp entry/signals.cpp entry/signals.hpp)
 if(MINGW)
   target_link_options(docenhance PRIVATE -municode)

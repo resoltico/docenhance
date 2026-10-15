@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "restoration.hpp"
 
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
-#include "docenhance/contract/parse.hpp"
+#include "docenhance/app/values.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/geometry.hpp"
@@ -24,10 +24,9 @@ namespace docenhance::app {
 namespace {
 core::Result<double> value(const std::optional<std::string>& raw, std::string_view name,
                            double fallback, double low, double high) {
-    return raw ? contract::parse_decimal_option(name, *raw, low, high)
-               : core::Result<double>{fallback};
+    return raw ? app::parse_decimal_option(name, *raw, low, high) : core::Result<double>{fallback};
 }
-core::Result<methods::Psf> psf(const contract::Invocation& i) {
+core::Result<methods::Psf> psf(const app::Invocation& i) {
     if (i.psf == "gaussian") {
         if (i.psf_length || i.psf_angle || i.psf_file) {
             return core::failure(core::ErrorCode::argument,
@@ -71,7 +70,7 @@ core::Result<methods::Psf> psf(const contract::Invocation& i) {
                          "--deblur wiener requires --psf gaussian, motion or kernel");
 }
 } // namespace
-core::Result<methods::Restoration> prepare_restoration(const contract::Invocation& i) {
+core::Result<methods::Restoration> prepare_restoration(const app::Invocation& i) {
     const bool parameters = i.psf || i.psf_sigma || i.psf_length || i.psf_angle || i.psf_file ||
                             i.wiener_k || i.deblur_blend;
     if (i.output_mode == "bw" && (i.deblur || parameters)) {

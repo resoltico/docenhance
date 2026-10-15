@@ -6,7 +6,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "morphology_detail.hpp"
 
 #include <algorithm>

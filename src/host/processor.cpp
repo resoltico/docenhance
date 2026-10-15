@@ -4,7 +4,6 @@
 
 #include "continuous.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/bundle/record.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"
@@ -12,12 +11,13 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
+#include "docenhance/fs/paths.hpp"
+#include "docenhance/fs/png.hpp"
 #include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/paths.hpp"
-#include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/record/record.hpp"
 #include "run_publication.hpp"
 
 #include <cstdint>
@@ -49,12 +49,12 @@ core::Result<void> rotate_binary(image::Plane<std::uint8_t>& source, image::Quar
 core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
                                           const methods::Binarization& method,
                                           const core::Cancellation& cancellation,
-                                          const bundle::RunContext& context) {
+                                          const record::RunContext& context) {
     if (cancellation.requested(core::Checkpoint::admission)) {
         return core::cancelled();
     }
     core::Budget budget{core::binary_processing_budget};
-    auto loaded = io::load_grayscale_png(request.input(), budget, cancellation);
+    auto loaded = fs::load_grayscale_png(request.input(), budget, cancellation);
     if (!loaded) {
         return std::unexpected(loaded.error());
     }
@@ -110,7 +110,7 @@ core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
         .cancellation = cancellation,
         .context = context,
         .source = loaded->source,
-        .source_name = io::file_name(request.input()),
+        .source_name = fs::file_name(request.input()),
         .source_decoding = loaded->description,
         .rotation = request.rotation(),
 

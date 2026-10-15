@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "denoising.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -33,9 +33,9 @@ enum class Family { illumination, nlm, tvl1, restoration, gamma, sharpening };
 constexpr image::Extent model_extent{.width = 32, .height = 32};
 constexpr std::uint64_t model_pixels = std::uint64_t{model_extent.width} * model_extent.height;
 constexpr std::size_t model_budget = std::size_t{16} * 1024 * 1024;
-contract::Invocation model_request(Family family) {
-    contract::Invocation request;
-    request.command = contract::Command::process;
+app::Invocation model_request(Family family) {
+    app::Invocation request;
+    request.command = app::Command::process;
     request.subject = "input.png";
     request.output_directory = "output";
     switch (family) {
@@ -228,7 +228,7 @@ template <class Report> void mutate(Report& report, unsigned mutation) {
         report.progress = methods::StageProgress::evaluating;
     }
 }
-void check_port(const contract::Invocation& invocation, methods::StageObservations observed,
+void check_port(const app::Invocation& invocation, methods::StageObservations observed,
                 bool malformed) {
     UnusedVerifier verifier;
     PreparedFailure processor{std::move(observed)};

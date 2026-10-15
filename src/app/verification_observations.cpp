@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/app/cli_contract.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/contract/cli_contract.hpp"
 #include "docenhance/core/bundle_path.hpp"
 #include "docenhance/core/identity.hpp"
 #include "observations.hpp"
@@ -12,7 +12,7 @@ bool valid_verified(const Verified& value, const VerifyRequest& request) {
     if (value.directory != request.directory() ||
         !core::valid_hexadecimal(value.run, core::run_identity_hex_length) ||
         !core::valid_instant(value.recorded) || value.confirmed.empty() ||
-        value.confirmed.size() > contract::response_confirmed_limit) {
+        value.confirmed.size() > app::response_confirmed_limit) {
         return false;
     }
     for (std::size_t i = 0; i < value.confirmed.size(); ++i) {

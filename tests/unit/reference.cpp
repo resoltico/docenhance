@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "architecture_cases.hpp"
-#include "docenhance/contract/parse.hpp"
+#include "docenhance/app/values.hpp"
 #include "otsu_cases.hpp"
 #include "pipeline_cases.hpp"
 #include "reference_cases.hpp"
@@ -39,8 +39,8 @@ class NumericLocale {
 
 TEST_CASE("Decimal admission keeps its grammar in the available process numeric locale", "[spec]") {
     const NumericLocale locale;
-    REQUIRE(docenhance::contract::parse_finite("1.5", 0, 2).value() == 1.5);
-    REQUIRE(!docenhance::contract::parse_finite("1,5", 0, 2));
+    REQUIRE(docenhance::app::parse_finite("1.5", 0, 2).value() == 1.5);
+    REQUIRE(!docenhance::app::parse_finite("1,5", 0, 2));
 }
 
 TEST_CASE("Strict parsers and checked arithmetic", "[spec]") {

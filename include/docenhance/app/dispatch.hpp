@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
@@ -18,7 +18,7 @@ namespace docenhance::app {
 // Capabilities admitted by the application and verified by real end-to-end tests.
 struct Capabilities {
     std::span<const methods::ImplementedMethod> methods;
-    std::span<const contract::InputSupport> input_support;
+    std::span<const app::InputSupport> input_support;
 };
 struct Help {
     bool list_commands = false;
@@ -34,7 +34,7 @@ using Failure = ProcessFailure;
 using Payload =
     std::variant<Help, Version, Methods, Processed, PublishedContinuous, Verified, Failure>;
 struct Outcome {
-    contract::Command command = contract::Command::root;
+    app::Command command = app::Command::root;
     // Every response identifies the build that produced it, whatever the payload.
     core::BuildFacts build;
     Payload payload;
@@ -43,7 +43,7 @@ struct Outcome {
         return failed == nullptr ? core::ExitCode::success : failed->error.exit_code();
     }
 };
-[[nodiscard]] Outcome dispatch(const contract::Invocation& invocation, Processor& processor,
+[[nodiscard]] Outcome dispatch(const app::Invocation& invocation, Processor& processor,
                                Verifier& verifier, const core::Cancellation& cancellation = {});
-[[nodiscard]] Outcome failure(const contract::Invocation& invocation, core::Error error);
+[[nodiscard]] Outcome failure(const app::Invocation& invocation, core::Error error);
 } // namespace docenhance::app

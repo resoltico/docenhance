@@ -3,12 +3,12 @@
 #include "docenhance/core/cancellation.hpp"
 
 #include "cancellation_probe.hpp"
+#include "docenhance/codec/png.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/png.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/box_mean.hpp"
 #include "png_fixture.hpp"
@@ -28,7 +28,7 @@ namespace {
 namespace core = docenhance::core;
 namespace exec = docenhance::exec;
 namespace image = docenhance::image;
-namespace io = docenhance::io;
+namespace codec = docenhance::codec;
 namespace methods = docenhance::methods;
 namespace tests = docenhance::tests;
 using docenhance::fuzz::FuzzInput;
@@ -139,9 +139,9 @@ void decode(FuzzInput& input, std::size_t after) {
     const auto bytes = tests::make_gray_png(fixture);
     core::Budget budget{budget_limit};
     const tests::CheckpointStop stop{core::Checkpoint::decode, after};
-    const io::PngLimits limits{.encoded_bytes = 65536, .pixels = 4096};
+    const codec::PngLimits limits{.encoded_bytes = 65536, .pixels = 4096};
     {
-        const auto result = io::decode_grayscale_png(bytes, budget, limits, stop.cancellation());
+        const auto result = codec::decode_grayscale_png(bytes, budget, limits, stop.cancellation());
         check_decoded(result, fixture.samples.front());
     }
     require(budget.used() == 0, "codec allocations are refunded after cancellation or success");

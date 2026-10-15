@@ -4,8 +4,8 @@
 
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/cli/run.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
@@ -46,9 +46,9 @@ core::Cancellation stopped_token() {
     request_stop(source);
     return core::Cancellation{source.get_token()};
 }
-contract::Invocation invocation() {
+app::Invocation invocation() {
     return {
-        .command = contract::Command::process,
+        .command = app::Command::process,
         .subject = "unopened.png",
         .output_directory = "uncreated",
         .output_mode = "bw",

@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
+#include "docenhance/codec/png.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/png.hpp"
 #include "native_publication.hpp"
 #include "png_fixture.hpp"
 #include "png_transaction.hpp"
@@ -58,7 +58,7 @@ std::stop_source& commit_source() {
 std::error_code cancel_after_gate(const std::filesystem::path& from,
                                   const std::filesystem::path& to) noexcept {
     static_cast<void>(commit_source().request_stop());
-    return io::rename_exclusive(from, to);
+    return fs::rename_exclusive(from, to);
 }
 std::error_code ambiguous_commit(const std::filesystem::path& from,
                                  const std::filesystem::path& to) noexcept {
@@ -71,7 +71,7 @@ std::error_code refused_commit(const std::filesystem::path& from,
         static_cast<void>(commit_source().request_stop());
         std::error_code error;
         std::filesystem::create_directory(to, error);
-        return error ? error : io::rename_exclusive(from, to);
+        return error ? error : fs::rename_exclusive(from, to);
     } catch (...) {
         return std::make_error_code(std::errc::io_error);
     }
@@ -102,9 +102,9 @@ void check_decode(const core::Result<image::Plane<std::uint8_t>>& result) {
 bool decode_attempt(std::span<const std::uint8_t> bytes, std::size_t after) {
     const CheckpointStop stop{core::Checkpoint::decode, after};
     core::Budget budget{limit};
-    const io::PngLimits limits;
+    const codec::PngLimits limits;
     {
-        const auto result = io::decode_grayscale_png(bytes, budget, limits, stop.cancellation());
+        const auto result = codec::decode_grayscale_png(bytes, budget, limits, stop.cancellation());
         check_decode(result);
     }
     REQUIRE(budget.used() == 0);
@@ -162,8 +162,8 @@ TEST_CASE("Host cancellation preserves input and never publishes incomplete proc
     const auto source = directory.path / "source.png";
     const auto bytes = png_bytes(true);
     write_file(source, bytes);
-    const contract::Invocation request{
-        .command = contract::Command::process,
+    const app::Invocation request{
+        .command = app::Command::process,
         .subject = utf8_spelling(source),
         .output_directory = utf8_spelling(directory.path / "output"),
         .output_mode = "bw",

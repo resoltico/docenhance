@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "allocation_observer.hpp"
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/core/result.hpp"
 #include "failures.hpp"
 
@@ -21,7 +21,7 @@ int check_allocation_boundary() {
     if (!allocation::initialize_hooks()) {
         return 1;
     }
-    const docenhance::contract::Invocation invocation;
+    const docenhance::app::Invocation invocation;
     allocation::peak.store(0);
     allocation::allocation_attempts.store(0);
     allocation::failure_at.store(1);

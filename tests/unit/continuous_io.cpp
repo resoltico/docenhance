@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "cancellation_probe.hpp"
+#include "docenhance/codec/continuous_png.hpp"
+#include "docenhance/codec/protection_png.hpp"
 #include "docenhance/color/converter.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -10,15 +12,13 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/continuous_png.hpp"
-#include "docenhance/io/protection_png.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "entry_identity.hpp"
 #include "linear_rows.hpp"
 #include "native_publication.hpp"
+#include "png_file_rows.hpp"
 #include "png_fixture.hpp"
-#include "png_rows.hpp"
 #include "png_transaction.hpp"
 #include "temporary_directory.hpp"
 
@@ -42,7 +42,7 @@ image::Raster source(core::Budget& budget) {
         .interlaced = false,
         .samples = std::vector<std::uint8_t>(64, 127),
     });
-    return io::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded).value();
+    return codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded).value();
 }
 class AlteredRows final : public image::RowSource {
   public:
@@ -95,13 +95,13 @@ TEST_CASE("Independent output verification checks metadata not just pixels", "[c
     const auto converter =
         color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
     const auto path = directory.path / "encoded.png";
-    const auto parent = io::EntryLease::directory(directory.path);
-    io::EntryLease created;
-    const io::BundleSlot slot{.path = path, .created = &created, .parent = parent.identity()};
-    REQUIRE(io::encode_png_rows(slot, *converter, budget, {}));
+    const auto parent = fs::EntryLease::directory(directory.path);
+    fs::EntryLease created;
+    const fs::BundleSlot slot{.path = path, .created = &created, .parent = parent.identity()};
+    REQUIRE(fs::encode_png_rows(slot, *converter, budget, {}));
     AlteredRows altered{*converter};
     altered.alter_metadata();
-    const auto result = io::verify_png_rows(path, altered, budget, {});
+    const auto result = fs::verify_png_rows(path, altered, budget, {});
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
 }
@@ -210,7 +210,7 @@ TEST_CASE("Protection decoding accounts allocations and refunds every partial re
     for (const auto limit : {std::size_t{0}, std::size_t{64}, std::size_t{4096}, byte_budget}) {
         core::Budget budget{limit};
         {
-            auto result = io::decode_protection_png(bytes, {.width = 8, .height = 8}, budget);
+            auto result = codec::decode_protection_png(bytes, {.width = 8, .height = 8}, budget);
             if (result) {
                 CHECK(result->view().row(0).front() == 1);
             } else {

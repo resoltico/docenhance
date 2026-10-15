@@ -57,7 +57,7 @@ cannot express, such as matching dimensions, counts, derived fractions and conve
 Independent schema tests check records emitted by the real executable and negative examples.
 
 Every field comes from a value the execution already
-held; the bundle layer that writes it defines no default, no option table and no processing rule of
+held; the record layer that writes it defines no default, no option table and no processing rule of
 its own.
 
 | Section | Establishes |

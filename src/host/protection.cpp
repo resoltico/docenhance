@@ -7,11 +7,11 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/protection_png.hpp"
 #include "docenhance/image/geometry.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/protection_png.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "run_publication.hpp"
@@ -53,7 +53,7 @@ core::Result<Protection> load_protection(const app::ProcessRequest& request,
     if (mask_path) {
         const auto report = converter.report();
         const auto shape = image::oriented_shape(report.source, report.orientation);
-        auto loaded = io::load_protection_png(
+        auto loaded = fs::load_protection_png(
             *mask_path, {.width = shape.width, .height = shape.height}, budget, cancellation);
         if (!loaded) {
             return std::unexpected(loaded.error());

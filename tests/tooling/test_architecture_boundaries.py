@@ -66,7 +66,7 @@ class RestrictionPolicyTests(unittest.TestCase):
             self.assertIn(header, manifest.forbidden("opencv", "headers"))
         self.assertNotIn("stop_token", manifest.forbidden("core", "headers"))
         self.assertNotIn("thread", manifest.forbidden("exec", "headers"))
-        self.assertNotIn("filesystem", manifest.forbidden("io", "headers"))
+        self.assertNotIn("filesystem", manifest.forbidden("fs", "headers"))
         self.assertIn("fopen", manifest.forbidden("exec", "calls"))
 
     def test_obsolete_or_misspelled_policy_is_rejected(self) -> None:
@@ -180,12 +180,12 @@ class HeaderOwnershipTests(unittest.TestCase):
         """Parent traversal, absolute and src-root spellings are all resolved before admission."""
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            private = root / "src/io/lease.hpp"
+            private = root / "src/fs/lease.hpp"
             private.parent.mkdir(parents=True)
             private.write_text("#pragma once\n", encoding="utf-8")
             (root / "src/host").mkdir()
             with patch.object(architecture_boundary, "ROOT", root):
-                for spelled in ("../io/lease.hpp", str(private), "src/io/lease.hpp"):
+                for spelled in ("../fs/lease.hpp", str(private), "src/fs/lease.hpp"):
                     with self.subTest(spelled=spelled):
                         self.assertIsNotNone(
                             architecture_boundary.private_directive_error(
@@ -194,13 +194,13 @@ class HeaderOwnershipTests(unittest.TestCase):
                         )
                 self.assertIsNone(
                     architecture_boundary.private_directive_error(
-                        "io", root / "src/io/probe.cpp", "lease.hpp"
+                        "fs", root / "src/fs/probe.cpp", "lease.hpp"
                     )
                 )
                 self.assertIsNotNone(
                     architecture_boundary.private_directive_error(
-                        "io",
-                        root / "include/docenhance/io/api.hpp",
+                        "fs",
+                        root / "include/docenhance/fs/api.hpp",
                         str(private),
                         public=True,
                     )
@@ -211,10 +211,10 @@ class HeaderOwnershipTests(unittest.TestCase):
         manifest = architecture.load_manifest()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            private = root / "src/io/lease.hpp"
+            private = root / "src/fs/lease.hpp"
             private.parent.mkdir(parents=True)
             private.write_text("#pragma once\n", encoding="utf-8")
-            (root / "bridge.hpp").write_text('#include "src/io/lease.hpp"\n', encoding="utf-8")
+            (root / "bridge.hpp").write_text('#include "src/fs/lease.hpp"\n', encoding="utf-8")
             entry = compiler_probe(
                 root, root / "src/host/probe.cpp", '#include "../../bridge.hpp"\n'
             )

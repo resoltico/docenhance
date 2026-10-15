@@ -75,7 +75,7 @@ class ContractGenerationTests(unittest.TestCase):
                 entry["arguments"].remove("--nlm-h")
         self.write("method-contract.json", self.methods)
         after = generate_spec.outputs()
-        for relative in ("include/docenhance/contract/cli_contract.hpp", "docs/cli-contract.md"):
+        for relative in ("include/docenhance/app/cli_contract.hpp", "docs/cli-contract.md"):
             self.assertNotEqual(before[self.root / relative], after[self.root / relative])
         self.assertEqual(
             before[self.root / "fuzz/dict/cli.dict"], after[self.root / "fuzz/dict/cli.dict"]
@@ -96,11 +96,11 @@ class ContractGenerationTests(unittest.TestCase):
         outputs = generate_spec.outputs()
         self.assertIn(
             "record_version = 19U",
-            outputs[self.root / "include/docenhance/bundle/record_version.hpp"],
+            outputs[self.root / "include/docenhance/record/record_version.hpp"],
         )
         self.assertIn(
             "response_schema_version = 20U",
-            outputs[self.root / "include/docenhance/contract/cli_contract.hpp"],
+            outputs[self.root / "include/docenhance/app/cli_contract.hpp"],
         )
         for invalid in (True, 0, -1, 1.5, "14"):
             for name in ("run-record.schema.json", "command-response.schema.json"):

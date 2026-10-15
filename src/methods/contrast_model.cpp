@@ -5,7 +5,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/progress.hpp"
 

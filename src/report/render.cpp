@@ -5,14 +5,14 @@
 #include "continuous.hpp"
 #include "contrast.hpp"
 #include "denoising.hpp"
+#include "docenhance/app/cli_contract.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/bundle/fields.hpp"
-#include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
+#include "docenhance/record/fields.hpp"
 #include "help.hpp"
 #include "illumination.hpp"
 #include "restoration.hpp"
@@ -68,8 +68,8 @@ std::string publication_text(core::Publication publication) {
 // Common fields first, then the payload's own fields in their given order.
 Json envelope(const app::Outcome& outcome, const Json& fields) {
     Json json = {
-        {"schema_version", contract::response_schema_version},
-        {"command", contract::command_name(outcome.command)},
+        {"schema_version", app::response_schema_version},
+        {"command", app::command_name(outcome.command)},
         {"version", outcome.build.version},
         {"exit_code", static_cast<int>(outcome.exit_code())},
     };
@@ -106,9 +106,9 @@ Json capability_fields(const app::Capabilities& capabilities) {
     }
     return {{"methods", methods}, {"supported_formats", formats}, {"input_support", support}};
 }
-Json option_fields(contract::Command command) {
+Json option_fields(app::Command command) {
     Json options = Json::array();
-    for (const auto& option : contract::option_catalog) {
+    for (const auto& option : app::option_catalog) {
         if (!option.scope.contains(command)) {
             continue;
         }
@@ -139,11 +139,11 @@ Json failure_fields(const app::ProcessFailure& payload) {
     Json fields = {{"error", error}, {"publication", publication_name(payload.error.publication)}};
     if (payload.stages) {
         const auto& stages = *payload.stages;
-        fields.emplace("illumination", bundle::illumination_fields(stages.illumination));
-        fields.emplace("denoising", bundle::denoising_fields(stages.denoising));
-        fields.emplace("restoration", bundle::restoration_fields(stages.restoration));
-        fields.emplace("contrast", bundle::contrast_fields(stages.contrast));
-        fields.emplace("sharpening", bundle::sharpen_fields(stages.sharpening));
+        fields.emplace("illumination", record::illumination_fields(stages.illumination));
+        fields.emplace("denoising", record::denoising_fields(stages.denoising));
+        fields.emplace("restoration", record::restoration_fields(stages.restoration));
+        fields.emplace("contrast", record::contrast_fields(stages.contrast));
+        fields.emplace("sharpening", record::sharpen_fields(stages.sharpening));
     }
     return fields;
 }
@@ -194,7 +194,7 @@ Output json_form(const app::Outcome& outcome) {
             using Payload = std::decay_t<decltype(payload)>;
             if constexpr (std::is_same_v<Payload, app::Help>) {
                 const Json fields = {
-                    {"usage", contract::command_usage(outcome.command)},
+                    {"usage", app::command_usage(outcome.command)},
                     {"options", option_fields(outcome.command)},
                 };
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
@@ -211,16 +211,16 @@ Output json_form(const app::Outcome& outcome) {
                 return {.out = dump(envelope(outcome, fields)), .err = {}};
             } else if constexpr (std::is_same_v<Payload, app::Processed>) {
                 const Json fields = {
-                    {"binarization", bundle::binarization_fields(payload.otsu)},
+                    {"binarization", record::binarization_fields(payload.otsu)},
                     {"rotation_degrees", payload.rotation.degrees()},
                     {"method", payload.method.id},
                     {"method_version", payload.method.method_version},
                     {"output", payload.output},
                     {"publication", "completed"},
-                    {"record", bundle::record_fields(payload.run, payload.record)},
+                    {"record", record::record_fields(payload.run, payload.record)},
                     {
                         "source_decoding",
-                        payload.source_decoding ? bundle::source_fields(*payload.source_decoding)
+                        payload.source_decoding ? record::source_fields(*payload.source_decoding)
                                                 : Json(nullptr),
                     },
                 };

@@ -107,8 +107,8 @@ Evidence is commit/binary-specific, not a promise that a future version has no d
 
 ## Shared PNG decode boundary
 
-`io::load_grayscale_png` acquires and hashes a bounded immutable snapshot of the regular input
-file, then supplies those same bytes to `io::decode_grayscale_png`. File and borrowed-span inputs
+`fs::load_grayscale_png` acquires and hashes a bounded immutable snapshot of the regular input
+file, then supplies those same bytes to `codec::decode_grayscale_png`. File and borrowed-span inputs
 therefore share allocator callbacks, strict CRC handling, format admission, stored-sample
 expansion and Adam7 assembly. A changed file size during acquisition is refused. The snapshot
 keeps hashing and decoding consistent; source paths are not a filesystem sandbox.

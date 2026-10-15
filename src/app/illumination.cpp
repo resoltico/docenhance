@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "illumination.hpp"
 
-#include "docenhance/contract/command.hpp"
-#include "docenhance/contract/parse.hpp"
+#include "docenhance/app/invocation.hpp"
+#include "docenhance/app/values.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/methods/illumination.hpp"
@@ -22,16 +22,15 @@ core::Result<std::optional<std::uint32_t>> integer_value(const std::optional<std
     if (!raw || *raw == "auto") {
         return std::nullopt;
     }
-    return contract::parse_integer_option(name, *raw, low, high).transform([](auto value) {
+    return app::parse_integer_option(name, *raw, low, high).transform([](auto value) {
         return std::optional<std::uint32_t>{value};
     });
 }
 core::Result<double> numeric(const std::optional<std::string>& raw, std::string_view name,
                              double fallback, double low, double high) {
-    return raw ? contract::parse_decimal_option(name, *raw, low, high)
-               : core::Result<double>{fallback};
+    return raw ? app::parse_decimal_option(name, *raw, low, high) : core::Result<double>{fallback};
 }
-core::Result<methods::Surface> surface(const contract::Invocation& v) {
+core::Result<methods::Surface> surface(const app::Invocation& v) {
     const methods::SurfaceParameters defaults;
     const auto strength =
         numeric(v.background_strength, "--background-strength", defaults.strength, 0, 1);
@@ -78,7 +77,7 @@ core::Result<methods::Surface> surface(const contract::Invocation& v) {
         .smooth = *smooth,
     });
 }
-core::Result<methods::Morphology> morphology(const contract::Invocation& v) {
+core::Result<methods::Morphology> morphology(const app::Invocation& v) {
     const methods::MorphologyParameters defaults;
     const auto strength =
         numeric(v.background_strength, "--background-strength", defaults.strength, 0, 1);
@@ -109,7 +108,7 @@ core::Result<methods::Morphology> morphology(const contract::Invocation& v) {
         {.strength = *strength, .max_gain = *gain, .target = target, .radius = *radius});
 }
 } // namespace
-core::Result<methods::Illumination> prepare_illumination(const contract::Invocation& v) {
+core::Result<methods::Illumination> prepare_illumination(const app::Invocation& v) {
     const bool parameters = v.background_strength || v.background_max_gain || v.background_target ||
                             v.background_cell || v.background_quantile || v.background_smooth ||
                             v.background_radius;

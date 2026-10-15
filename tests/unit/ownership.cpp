@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/color/converter.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -122,8 +122,8 @@ TEST_CASE("Concurrent buffers and reservations share one ledger and refund every
 }
 TEST_CASE("Wrong-family and incomplete processing reports preserve unknown publication") {
     UnusedVerifier verifier;
-    contract::Invocation request;
-    request.command = contract::Command::process;
+    app::Invocation request;
+    request.command = app::Command::process;
     request.subject = "input.png";
     request.output_directory = "output";
     ReportingProcessor binary{
@@ -191,8 +191,8 @@ TEST_CASE("Copying a mutable work reference retains the callable rather than the
 
 namespace docenhance::tests {
 TEST_CASE("Moved requests become unready and native ports refuse them before cancellation") {
-    contract::Invocation invocation;
-    invocation.command = contract::Command::process;
+    app::Invocation invocation;
+    invocation.command = app::Command::process;
     invocation.subject = "input.png";
     invocation.output_directory = "output";
     auto original = app::prepare_process(invocation).value();
@@ -216,7 +216,7 @@ TEST_CASE("Moved requests become unready and native ports refuse them before can
     REQUIRE(!refused);
     CHECK(refused.error().error.code == core::ErrorCode::argument);
     CHECK(refused.error().error.publication == core::Publication::not_started);
-    invocation.command = contract::Command::verify;
+    invocation.command = app::Command::verify;
     auto reading = app::prepare_verify(invocation).value();
     auto retained = std::move(reading);
     CHECK(retained.ready());

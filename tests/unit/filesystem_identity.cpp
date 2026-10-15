@@ -5,10 +5,10 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/bundle_snapshot.hpp"
+#include "docenhance/fs/png.hpp"
+#include "docenhance/fs/publication.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/bundle_snapshot.hpp"
-#include "docenhance/io/png.hpp"
-#include "docenhance/io/publication.hpp"
 #include "entry_identity.hpp"
 #include "file_access.hpp"
 #include "file_contents.hpp"
@@ -67,10 +67,10 @@ struct Writer {
     bool replace = false;
     unsigned calls = 0;
 };
-core::Result<void> mutate_after_write(void* const state, const io::BundleSlot& slot) {
+core::Result<void> mutate_after_write(void* const state, const fs::BundleSlot& slot) {
     auto& writer = *static_cast<Writer*>(state);
     ++writer.calls;
-    const auto result = io::write_bytes(slot, "owned");
+    const auto result = fs::write_bytes(slot, "owned");
     if (!result) {
         return result;
     }
@@ -158,12 +158,12 @@ TEST_CASE("Publication binds relative effects before a writer changes working di
     std::ofstream{other / "result.staging-0/run.json"} << "foreign";
     const WorkingDirectory current{initial};
     Writer writer{.next_directory = other};
-    const io::BundleFile file{
+    const fs::BundleFile file{
         .relative = "run.json",
         .state = &writer,
         .write = mutate_after_write,
     };
-    const auto result = io::publish_bundle("result", std::span{&file, 1});
+    const auto result = fs::publish_bundle("result", std::span{&file, 1});
     REQUIRE(result);
 #ifdef _WIN32
     CHECK(*result == "result\\run.json");
@@ -180,10 +180,10 @@ TEST_CASE("A copied-content replacement stage cannot publish or run another writ
     Writer first{.next_directory = {}, .replace = true};
     Writer second;
     const std::array files{
-        io::BundleFile{.relative = "run.json", .state = &first, .write = mutate_after_write},
-        io::BundleFile{.relative = "next", .state = &second, .write = mutate_after_write},
+        fs::BundleFile{.relative = "run.json", .state = &first, .write = mutate_after_write},
+        fs::BundleFile{.relative = "next", .state = &second, .write = mutate_after_write},
     };
-    const auto result = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+    const auto result = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files);
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
     CHECK(first.calls == 1);
@@ -196,12 +196,12 @@ TEST_CASE("Copied destination bytes do not establish ownership after an ambiguou
           "[filesystem][publication]") {
     const TemporaryDirectory temporary{"docenhance-copied-destination"};
     Writer writer;
-    const io::BundleFile file{
+    const fs::BundleFile file{
         .relative = "run.json",
         .state = &writer,
         .write = mutate_after_write,
     };
-    const auto result = io::publish_bundle(utf8_spelling(temporary.path / "result"),
+    const auto result = fs::publish_bundle(utf8_spelling(temporary.path / "result"),
                                            std::span{&file, 1}, {}, copied_destination);
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
@@ -218,7 +218,7 @@ TEST_CASE("Source acquisition keeps the originally opened object when its name i
     filesystem_mutation() = {.original = path, .retained = temporary.path / "retained"};
     core::Budget budget{bytes};
     const auto snapshot =
-        io::read_source_snapshot(utf8_spelling(path), budget, core::Cancellation{{}, mutate_read});
+        fs::read_source_snapshot(utf8_spelling(path), budget, core::Cancellation{{}, mutate_read});
     REQUIRE(snapshot);
     CHECK(std::ranges::equal(snapshot->bytes(), std::as_bytes(std::span{expected})));
     CHECK(file_contents(path) == "foreign");
@@ -231,7 +231,7 @@ TEST_CASE("Opened bundle readers preserve objects and refuse observed Windows an
     const auto root = parent / "bundle";
     REQUIRE(std::filesystem::create_directories(root));
     std::ofstream{root / "run.json"} << "owned";
-    const auto directory = io::BundleDirectory::open(root);
+    const auto directory = fs::BundleDirectory::open(root);
     REQUIRE(directory);
     const auto retained = temporary.path / "retained";
     std::error_code error;
@@ -265,7 +265,7 @@ TEST_CASE("Bundle snapshot acquisition rejects inventory mutation while refundin
     std::ofstream{root / "result.png"} << "owned";
     filesystem_mutation() = {.original = root, .retained = {}, .kind = MutationKind::add_entry};
     core::Budget budget{record_bytes * 2};
-    const auto result = io::read_bundle(utf8_spelling(root), budget,
+    const auto result = fs::read_bundle(utf8_spelling(root), budget,
                                         core::Cancellation{{}, mutate_read}, record_bytes);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::input);
@@ -276,9 +276,9 @@ TEST_CASE("Bundle snapshot acquisition rejects inventory mutation while refundin
 TEST_CASE("Codec creation rechecks the owned parent after its execution checkpoint callback",
           "[filesystem][publication]") {
     const TemporaryDirectory temporary{"docenhance-codec-parent"};
-    io::Stage stage;
-    REQUIRE(io::reserve_stage(stage, temporary.path / "result", {}));
-    const auto slot = io::place(stage, "result.png");
+    fs::Stage stage;
+    REQUIRE(fs::reserve_stage(stage, temporary.path / "result", {}));
+    const auto slot = fs::place(stage, "result.png");
     REQUIRE(slot);
     filesystem_mutation() = {
         .original = stage.directory,
@@ -289,13 +289,13 @@ TEST_CASE("Codec creation rechecks the owned parent after its execution checkpoi
     const auto image = image::Plane<std::uint8_t>::allocate(budget, 2, 2);
     REQUIRE(image);
     const auto result =
-        io::write_verified_png(*slot, image->view(), budget, core::Cancellation{{}, mutate_read});
+        fs::write_verified_png(*slot, image->view(), budget, core::Cancellation{{}, mutate_read});
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output);
     CHECK(filesystem_mutation().checkpoints == 1);
     CHECK(empty_directory(stage.directory));
     CHECK(empty_directory(filesystem_mutation().retained));
-    const auto abandoned = io::abandon(stage, result.error());
+    const auto abandoned = fs::abandon(stage, result.error());
     CHECK(abandoned.publication == core::Publication::unknown);
     CHECK(std::filesystem::exists(stage.directory));
 }
@@ -304,19 +304,19 @@ TEST_CASE("Native leases preserve original identities while allowing rename and 
     const TemporaryDirectory temporary{"docenhance-object-lease"};
     const auto root = temporary.path / "root";
     REQUIRE(std::filesystem::create_directory(root));
-    const auto directory = io::EntryLease::directory(root);
+    const auto directory = fs::EntryLease::directory(root);
     REQUIRE(directory.identity());
     const auto path = root / "file";
-    auto stream = io::open_for_writing(path);
+    auto stream = fs::open_for_writing(path);
     REQUIRE(stream);
-    const auto file = io::EntryLease::capture(stream.get(), path);
+    const auto file = fs::EntryLease::capture(stream.get(), path);
     REQUIRE(file.identity());
     stream.reset();
     std::filesystem::rename(path, root / "retained-file");
     std::ofstream{path} << "foreign";
     CHECK(!file.matches(path));
     CHECK(file.matches(root / "retained-file"));
-    CHECK(io::open_for_reading(root / "retained-file"));
+    CHECK(fs::open_for_reading(root / "retained-file"));
     const auto retained = temporary.path / "retained-root";
     std::filesystem::rename(root, retained);
     REQUIRE(std::filesystem::create_directory(root));
@@ -333,12 +333,12 @@ TEST_CASE("A namespace change inside the commit checkpoint prevents the native r
         .kind = MutationKind::replace_at_commit,
     };
     Writer writer;
-    const io::BundleFile file{
+    const fs::BundleFile file{
         .relative = "run.json",
         .state = &writer,
         .write = mutate_after_write,
     };
-    const auto result = io::publish_bundle(utf8_spelling(target), std::span{&file, 1},
+    const auto result = fs::publish_bundle(utf8_spelling(target), std::span{&file, 1},
                                            core::Cancellation{{}, mutate_read});
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
@@ -357,14 +357,14 @@ TEST_CASE("Native source opening rejects a FIFO with a live peer and validates r
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg)
     const auto peer = ::open(pipe.c_str(), O_RDWR | O_NONBLOCK);
     REQUIRE(peer >= 0);
-    const auto refused = io::open_for_reading(pipe);
+    const auto refused = fs::open_for_reading(pipe);
     CHECK(!refused);
     CHECK(::close(peer) == 0);
     const auto source = temporary.path / "source";
     std::ofstream{source} << "owned";
     std::filesystem::create_symlink(source, temporary.path / "link");
-    CHECK(io::open_for_reading(temporary.path / "link"));
-    CHECK(!io::open_for_reading(temporary.path));
+    CHECK(fs::open_for_reading(temporary.path / "link"));
+    CHECK(!fs::open_for_reading(temporary.path));
 }
 #endif
 } // namespace docenhance::tests

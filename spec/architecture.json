@@ -156,14 +156,6 @@
         "stop_token"
       ]
     },
-    "contract": {
-      "target": "de_contract",
-      "summary": "The command vocabulary, generated option descriptors and strict value parsers",
-      "uses": [
-        "core"
-      ],
-      "external": []
-    },
     "exec": {
       "target": "de_exec",
       "summary": "The schedule: how many workers run a page's independent work items",
@@ -201,50 +193,10 @@
       ],
       "external": []
     },
-    "io": {
-      "target": "de_io",
-      "summary": "PNG/JPEG/TIFF codecs, metadata, hashing and exclusive publication",
-      "uses": [
-        "core",
-        "image"
-      ],
-      "external": [
-        "picosha2",
-        "png",
-        "zlib",
-        "jpeg",
-        "tiff"
-      ],
-      "may_catch": true,
-      "allow_headers": [
-        "filesystem",
-        "fstream"
-      ],
-      "allow_calls": [
-        "fopen"
-      ]
-    },
-    "bundle": {
-      "target": "de_bundle",
-      "summary": "The persistent run record: one written form for the facts an execution produced",
-      "uses": [
-        "core",
-        "image",
-        "methods"
-      ],
-      "external": [
-        "nlohmann_json"
-      ],
-      "interface_packages": [
-        "nlohmann_json"
-      ],
-      "may_catch": true
-    },
     "app": {
       "target": "de_app",
-      "summary": "Validated use cases and the explicit processing and verification ports",
+      "summary": "Command vocabulary, generated option descriptors, strict value parsers, validated use cases and execution ports",
       "uses": [
-        "contract",
         "core",
         "image",
         "methods"
@@ -257,8 +209,7 @@
       "summary": "Renders an outcome as the documented JSON response or as human text",
       "uses": [
         "app",
-        "bundle",
-        "contract",
+        "record",
         "core",
         "image",
         "methods"
@@ -272,7 +223,6 @@
       "summary": "CLI11 syntax adapter, process streams and exit status",
       "uses": [
         "core",
-        "contract",
         "app",
         "report"
       ],
@@ -289,14 +239,15 @@
       "summary": "Executes admitted requests using codecs, kernels and publication",
       "uses": [
         "app",
-        "bundle",
+        "codec",
         "color",
         "core",
         "exec",
+        "fs",
         "image",
-        "io",
         "methods",
-        "opencv"
+        "opencv",
+        "record"
       ],
       "external": []
     },
@@ -340,6 +291,57 @@
         "opencv"
       ],
       "may_catch": true
+    },
+    "record": {
+      "target": "de_record",
+      "summary": "The persistent run record: one written form for the facts an execution produced",
+      "uses": [
+        "core",
+        "image",
+        "methods"
+      ],
+      "external": [
+        "nlohmann_json"
+      ],
+      "interface_packages": [
+        "nlohmann_json"
+      ],
+      "may_catch": true
+    },
+    "codec": {
+      "target": "de_codec",
+      "summary": "PNG/JPEG/TIFF byte codecs, metadata and streaming PNG comparison",
+      "uses": [
+        "core",
+        "image"
+      ],
+      "external": [
+        "png",
+        "zlib",
+        "jpeg",
+        "tiff"
+      ],
+      "may_catch": true
+    },
+    "fs": {
+      "target": "de_fs",
+      "summary": "Snapshots, digest, file-backed codec streams, owned staging, exclusive publication and bundle reading",
+      "uses": [
+        "codec",
+        "core",
+        "image"
+      ],
+      "external": [
+        "picosha2"
+      ],
+      "may_catch": true,
+      "allow_headers": [
+        "filesystem",
+        "fstream"
+      ],
+      "allow_calls": [
+        "fopen"
+      ]
     }
   }
 }

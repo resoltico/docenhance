@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/geometry.hpp"
 #include "docenhance/methods/denoising.hpp"
@@ -10,7 +10,7 @@
 namespace docenhance::app {
 class ProcessRequest;
 [[nodiscard]] core::Result<methods::Restoration>
-prepare_restoration(const contract::Invocation& invocation);
+prepare_restoration(const app::Invocation& invocation);
 [[nodiscard]] bool partial_restoration(const methods::RestorationReport& report,
                                        const ProcessRequest& request);
 [[nodiscard]] bool restoration_prefix(const methods::RestorationReport& report,

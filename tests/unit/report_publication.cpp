@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/report/render.hpp"
 
@@ -12,8 +12,8 @@
 
 namespace docenhance::tests {
 TEST_CASE("Human failures preserve publication state independently of error code", "[report]") {
-    contract::Invocation invocation;
-    invocation.command = contract::Command::process;
+    app::Invocation invocation;
+    invocation.command = app::Command::process;
     struct FailureCase {
         core::Publication state;
         core::ErrorCode code;

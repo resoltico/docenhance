@@ -2,13 +2,13 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/verify.hpp"
 
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 
 namespace docenhance::app {
-core::Result<VerifyRequest> prepare_verify(const contract::Invocation& invocation) {
-    if (invocation.command != contract::Command::verify) {
+core::Result<VerifyRequest> prepare_verify(const app::Invocation& invocation) {
+    if (invocation.command != app::Command::verify) {
         return core::failure(core::ErrorCode::argument, "Expected a verify invocation");
     }
     if (invocation.subject.empty()) {

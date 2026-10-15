@@ -4,9 +4,9 @@
 
 #include "bundle_verify.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/bundle/inventory.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/record/inventory.hpp"
 
 #include <expected>
 #include <utility>

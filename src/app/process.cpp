@@ -4,9 +4,9 @@
 
 #include "contrast.hpp"
 #include "denoising.hpp"
-#include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/contract/command.hpp"
-#include "docenhance/contract/parse.hpp"
+#include "docenhance/app/cli_contract.hpp"
+#include "docenhance/app/invocation.hpp"
+#include "docenhance/app/values.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
@@ -28,13 +28,12 @@
 
 namespace docenhance::app {
 namespace {
-using contract::Invocation;
-core::Error context(const contract::Invocation& invocation, core::Error error,
-                    std::string_view group) {
+using app::Invocation;
+core::Error context(const app::Invocation& invocation, core::Error error, std::string_view group) {
     if (error.code != core::ErrorCode::argument || error.message.contains("domain/default:")) {
         return error;
     }
-    for (const auto& option : contract::option_catalog) {
+    for (const auto& option : app::option_catalog) {
         if (group.empty()
                 ? (option.group != "Processing arguments" && option.group != "Output arguments")
                 : option.group != group) {
@@ -49,21 +48,21 @@ core::Error context(const contract::Invocation& invocation, core::Error error,
         if (!raw) {
             continue;
         }
-        error.message += "\n" + contract::option_error({
-                                                           .name = option.name,
-                                                           .value = *raw,
-                                                           .reason = "Supplied option",
-                                                       })
+        error.message += "\n" + app::option_error({
+                                                      .name = option.name,
+                                                      .value = *raw,
+                                                      .reason = "Supplied option",
+                                                  })
                                     .message;
     }
     return error;
 }
 core::Result<double> value_or(const std::optional<std::string>& value, std::string_view name,
                               double fallback, double low) {
-    return value ? contract::parse_decimal_option(name, *value, low, 1.0)
+    return value ? app::parse_decimal_option(name, *value, low, 1.0)
                  : core::Result<double>{fallback};
 }
-core::Result<methods::Binarization> prepare_method(const contract::Invocation& invocation) {
+core::Result<methods::Binarization> prepare_method(const app::Invocation& invocation) {
     if (invocation.binarize == methods::Otsu::descriptor().selector) {
         if (invocation.fixed_threshold || invocation.sauvola_window || invocation.sauvola_k ||
             invocation.sauvola_r) {
@@ -94,7 +93,7 @@ core::Result<methods::Binarization> prepare_method(const contract::Invocation& i
                              "--fixed-threshold requires --binarize fixed");
     }
     const auto window = (invocation.sauvola_window
-                             ? contract::parse_integer_option(
+                             ? app::parse_integer_option(
                                    "--sauvola-window", *invocation.sauvola_window,
                                    methods::Sauvola::min_window, methods::Sauvola::max_window, true)
                              : core::Result<std::uint32_t>{methods::Sauvola::default_window});
@@ -125,9 +124,9 @@ core::Result<Value> choice(const std::optional<std::string>& raw, std::string_vi
         }
     }
     return std::unexpected(
-        contract::option_error({.name = option, .value = *raw, .reason = "Invalid output policy"}));
+        app::option_error({.name = option, .value = *raw, .reason = "Invalid output policy"}));
 }
-core::Result<image::QuarterTurn> prepare_rotation(const contract::Invocation& invocation) {
+core::Result<image::QuarterTurn> prepare_rotation(const app::Invocation& invocation) {
     const auto value = invocation.rotate.value_or("0");
     for (const auto degrees : {
              0U,
@@ -142,10 +141,10 @@ core::Result<image::QuarterTurn> prepare_rotation(const contract::Invocation& in
             }
         }
     }
-    return std::unexpected(contract::option_error(
+    return std::unexpected(app::option_error(
         {.name = "--rotate", .value = value, .reason = "Expected an exact quarter-turn"}));
 }
-core::Result<image::Continuous> prepare_tone(const contract::Invocation& invocation) {
+core::Result<image::Continuous> prepare_tone(const app::Invocation& invocation) {
     using image::AlphaPolicy;
     using image::OutputDepth;
     using image::ProfilePolicy;
@@ -190,7 +189,7 @@ core::Result<image::Continuous> prepare_tone(const contract::Invocation& invocat
     });
 }
 using Representation = std::variant<methods::Binarization, image::Continuous>;
-core::Result<Representation> prepare_operation(const contract::Invocation& invocation) {
+core::Result<Representation> prepare_operation(const app::Invocation& invocation) {
     const auto mode = invocation.output_mode.value_or("preserve");
     if (mode == "bw") {
         if (invocation.bit_depth || invocation.alpha || invocation.profile_policy) {
@@ -214,8 +213,8 @@ core::Result<Representation> prepare_operation(const contract::Invocation& invoc
     return prepare_tone(invocation).transform([](auto value) -> Representation { return value; });
 }
 } // namespace
-core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation) {
-    if (invocation.command != contract::Command::process) {
+core::Result<ProcessRequest> prepare_process(const app::Invocation& invocation) {
+    if (invocation.command != app::Command::process) {
         return core::failure(core::ErrorCode::argument, "Expected a process invocation");
     }
     if (invocation.subject.empty()) {

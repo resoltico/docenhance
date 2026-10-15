@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "cancellation_probe.hpp"
+#include "docenhance/codec/jpeg.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
-#include "docenhance/io/jpeg.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "jpeg_fixture.hpp"
 
 #include <algorithm>
@@ -51,7 +51,7 @@ TEST_CASE("JPEG coefficient fixtures decode with the specified integer sample me
             {
                 const auto fixture =
                     jpeg_fixture(std::string(ac ? "gray-ac-" : "gray-1x1-") + process + ".jpg");
-                auto decoded = io::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded);
+                auto decoded = codec::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded);
                 REQUIRE(decoded);
                 REQUIRE(decoded->raster.shape.width == 17);
                 REQUIRE(decoded->raster.shape.height == 9);
@@ -68,10 +68,11 @@ TEST_CASE("JPEG baseline and progressive color decode identically at partial MCU
     for (const auto* const layout :
          {"rgb-1x1", "ycbcr-1x1", "ycbcr-2x1", "ycbcr-2x2", "ycbcr-1x2", "ycbcr-4x1"}) {
         core::Budget budget{byte_budget};
-        auto baseline = io::decode_jpeg(jpeg_fixture(std::string(layout) + "-baseline.jpg"), budget,
-                                        image::ProfilePolicy::embedded);
-        auto progressive = io::decode_jpeg(jpeg_fixture(std::string(layout) + "-progressive.jpg"),
+        auto baseline = codec::decode_jpeg(jpeg_fixture(std::string(layout) + "-baseline.jpg"),
                                            budget, image::ProfilePolicy::embedded);
+        auto progressive =
+            codec::decode_jpeg(jpeg_fixture(std::string(layout) + "-progressive.jpg"), budget,
+                               image::ProfilePolicy::embedded);
         REQUIRE(baseline);
         REQUIRE(progressive);
         CHECK(baseline->raster.shape.model == image::SampleModel::rgb);
@@ -98,7 +99,8 @@ TEST_CASE("JPEG native failures and resource refusals refund every charged alloc
     for (std::size_t limit = 0; limit <= 150000; limit += 1024) {
         core::Budget budget{limit};
         {
-            const auto decoded = io::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded);
+            const auto decoded =
+                codec::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded);
             if (decoded) {
                 succeeded = true;
             } else {
@@ -111,11 +113,11 @@ TEST_CASE("JPEG native failures and resource refusals refund every charged alloc
     CHECK(native_refused);
     CHECK(succeeded);
     core::Budget budget{byte_budget};
-    CHECK(!io::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded, {}, {.scans = 1}));
+    CHECK(!codec::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded, {}, {.scans = 1}));
     CHECK(budget.used() == 0);
     for (std::size_t extent = 0; extent < fixture.size(); ++extent) {
-        CHECK(!io::decode_jpeg(std::span{fixture}.first(extent), budget,
-                               image::ProfilePolicy::embedded));
+        CHECK(!codec::decode_jpeg(std::span{fixture}.first(extent), budget,
+                                  image::ProfilePolicy::embedded));
         CHECK(budget.used() == 0);
     }
 }
@@ -135,7 +137,7 @@ TEST_CASE("A complete JPEG frame cannot hide a native entropy recovery warning",
     broken.insert(broken.end(), {0, 255, 217});
     core::Budget budget{byte_budget};
     {
-        const auto result = io::decode_jpeg(broken, budget, image::ProfilePolicy::embedded);
+        const auto result = codec::decode_jpeg(broken, budget, image::ProfilePolicy::embedded);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::input);
     }
@@ -149,8 +151,8 @@ TEST_CASE("JPEG cancellation reaches scan parsing, native allocation and actual 
         core::Budget budget{byte_budget};
         const CheckpointStop stop{core::Checkpoint::decode, allowed};
         {
-            const auto decoded = io::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded,
-                                                 stop.cancellation());
+            const auto decoded = codec::decode_jpeg(fixture, budget, image::ProfilePolicy::embedded,
+                                                    stop.cancellation());
             if (decoded) {
                 reached_native = true;
             } else {

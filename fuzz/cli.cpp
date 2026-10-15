@@ -4,8 +4,8 @@
 // Properties: only contract exit codes; exactly one well-formed JSON object in JSON mode, with
 // nothing on stderr; errors on stderr in text mode; parsed JSON flags select JSON, while
 // option values keep their role; syntax failures retain raw-token fallback. Repeated runs agree.
+#include "docenhance/app/cli_contract.hpp"
 #include "docenhance/cli/run.hpp"
-#include "docenhance/contract/cli_contract.hpp"
 #include "processor.hpp"
 #include "stub_verifier.hpp"
 #include "support/entry_point.hpp"
@@ -78,7 +78,7 @@ void check_json(const Outcome& outcome) {
     require(outcome.err.empty(), "JSON mode writes nothing to stderr");
     const auto document = nlohmann::json::parse(outcome.out, nullptr, false);
     require(!document.is_discarded() && document.is_object(), "JSON output parses as an object");
-    require(document.value("schema_version", 0U) == docenhance::contract::response_schema_version,
+    require(document.value("schema_version", 0U) == docenhance::app::response_schema_version,
             "JSON output carries the reviewed schema version");
     require(document.value("exit_code", -1) == outcome.code, "JSON exit_code equals the exit code");
     if (outcome.code != exit_success) {
@@ -135,7 +135,7 @@ JsonRoles json_roles(const std::vector<std::string>& args) {
             roles.syntax_failure = true;
         }
         pending_value =
-            std::ranges::any_of(docenhance::contract::option_catalog, [&arg](const auto& option) {
+            std::ranges::any_of(docenhance::app::option_catalog, [&arg](const auto& option) {
                 return !option.metavar.empty() &&
                        (arg == option.name || (arg.size() == option.name.size() + 1 &&
                                                arg.starts_with(option.name) && arg.back() == '='));

@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-// Fuzzing of contract::parse_finite. Acceptance must match an independent grammar (a regular
+// Fuzzing of app::parse_finite. Acceptance must match an independent grammar (a regular
 // expression, not the parser's scanner); accepted values must be finite, in range and exactly the
 // correctly rounded conversion; invalid bounds are invariant errors, never argument errors.
-#include "docenhance/contract/parse.hpp"
+#include "docenhance/app/values.hpp"
 #include "docenhance/core/result.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
@@ -59,7 +59,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     docenhance::fuzz::FuzzInput input(std::span<const std::uint8_t>(data, size));
     const auto bounds = choose_bounds(input);
     const auto text = input.rest(max_input_length);
-    const auto result = docenhance::contract::parse_finite(text, bounds.low, bounds.high);
+    const auto result = docenhance::app::parse_finite(text, bounds.low, bounds.high);
     if (!std::isfinite(bounds.low) || !std::isfinite(bounds.high) || bounds.low > bounds.high) {
         require(!result.has_value() && result.error().code == ErrorCode::invariant,
                 "invalid bounds are an invariant error");

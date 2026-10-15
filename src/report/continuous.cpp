@@ -5,9 +5,9 @@
 #include "contrast.hpp"
 #include "denoising.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/bundle/fields.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/record/fields.hpp"
 #include "illumination.hpp"
 #include "restoration.hpp"
 #include "sharpening.hpp"
@@ -21,18 +21,18 @@ nlohmann::ordered_json continuous_fields(const app::PublishedContinuous& value) 
     // the commit point and cannot assert that publication succeeded.
     return {
         {"operation", "continuous"},
-        {"illumination", bundle::illumination_fields(value.stages.illumination)},
-        {"denoising", bundle::denoising_fields(value.stages.denoising)},
-        {"restoration", bundle::restoration_fields(value.stages.restoration)},
-        {"contrast", bundle::contrast_fields(value.stages.contrast)},
-        {"sharpening", bundle::sharpen_fields(value.stages.sharpening)},
+        {"illumination", record::illumination_fields(value.stages.illumination)},
+        {"denoising", record::denoising_fields(value.stages.denoising)},
+        {"restoration", record::restoration_fields(value.stages.restoration)},
+        {"contrast", record::contrast_fields(value.stages.contrast)},
+        {"sharpening", record::sharpen_fields(value.stages.sharpening)},
         {"output", value.output},
         {"publication", "completed"},
-        {"conversion", bundle::conversion_fields(value.conversion)},
-        {"record", bundle::record_fields(value.run, value.record)},
+        {"conversion", record::conversion_fields(value.conversion)},
+        {"record", record::record_fields(value.run, value.record)},
         {
             "source_decoding",
-            value.source_decoding ? bundle::source_fields(*value.source_decoding)
+            value.source_decoding ? record::source_fields(*value.source_decoding)
                                   : nlohmann::ordered_json(nullptr),
         },
     };
@@ -43,7 +43,7 @@ std::string continuous_text(const app::PublishedContinuous& value) {
     text += std::to_string(report.output.depth.bits()) + " bits; " +
             std::to_string(image::components(report.output.model)) + " channels; interpretation: " +
             std::string(image::interpretation_name(report.interpretation)) + "\n";
-    for (const auto warning : bundle::conversion_warnings(report)) {
+    for (const auto warning : record::conversion_warnings(report)) {
         text += std::string(warning) + ": ";
         if (warning == "W_PROFILE_ASSUMED") {
             text += "Color interpretation assumes sRGB where declarations are absent; transfer=";

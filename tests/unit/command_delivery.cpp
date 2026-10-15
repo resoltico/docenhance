@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/cli/run.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/report/render.hpp"
@@ -98,9 +98,9 @@ constexpr auto process_args = std::to_array<const char*>({
     "fixed",
     "--json",
 });
-contract::Invocation request() {
+app::Invocation request() {
     return {
-        .command = contract::Command::process,
+        .command = app::Command::process,
         .subject = "input.png",
         .output_directory = "result",
         .output_mode = "bw",

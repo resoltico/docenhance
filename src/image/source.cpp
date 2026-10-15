@@ -1,8 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/image/source.hpp"
-
 #include "docenhance/image/raster.hpp"
+#include "docenhance/image/source_facts.hpp"
 
 #include <array>
 #include <cstdint>
@@ -11,13 +10,14 @@
 #include <variant>
 namespace docenhance::image {
 namespace {
+constexpr unsigned png_nibble_depth = 4;
 bool dimensions(std::uint32_t width, std::uint32_t height) noexcept {
     return width != 0 && height != 0 && std::uint64_t{width} * height <= source_pixels_max;
 }
 bool resolution(const std::optional<Resolution>& value) noexcept {
     return !value || (value->x != 0 && value->y != 0);
 }
-bool png_description(const PngSource& png) noexcept {
+bool png_description(const PngFacts& png) noexcept {
     if (!dimensions(png.width, png.height)) {
         return false;
     }
@@ -27,14 +27,15 @@ bool png_description(const PngSource& png) noexcept {
     if (png.color_type == 0) {
         return short_depth || depth == word_bits;
     }
-    if (png.color_type == png_palette) {
+    if (png.color_type == static_cast<unsigned>(PngColor::palette)) {
         return short_depth;
     }
-    const bool direct =
-        png.color_type == 2 || png.color_type == png_gray_alpha || png.color_type == png_rgb_alpha;
+    const bool direct = png.color_type == 2 ||
+                        png.color_type == static_cast<unsigned>(PngColor::gray_alpha) ||
+                        png.color_type == static_cast<unsigned>(PngColor::rgb_alpha);
     return direct && (depth == byte_bits || depth == word_bits);
 }
-bool jpeg_metadata(const JpegSource& jpeg) noexcept {
+bool jpeg_metadata(const JpegFacts& jpeg) noexcept {
     if (!resolution(jpeg.jfif_resolution) || !resolution(jpeg.exif_resolution) ||
         (!jpeg.jfif_present && jpeg.jfif_resolution) ||
         (!jpeg.exif_present && jpeg.exif_resolution)) {
@@ -56,7 +57,7 @@ bool jpeg_metadata(const JpegSource& jpeg) noexcept {
                           *jpeg.exif_resolution != *jpeg.jfif_resolution;
     return conflict == jpeg.resolution_conflict;
 }
-bool jpeg_sampling(const JpegSource& jpeg, unsigned components) noexcept {
+bool jpeg_sampling(const JpegFacts& jpeg, unsigned components) noexcept {
     const auto first = jpeg.sampling.front();
     if ((first.horizontal * first.vertical) + components - 1 > jpeg_mcu_blocks_max) {
         return false;
@@ -76,7 +77,7 @@ bool jpeg_sampling(const JpegSource& jpeg, unsigned components) noexcept {
     }
     return true;
 }
-bool jpeg_identity(const JpegSource& jpeg, unsigned components) noexcept {
+bool jpeg_identity(const JpegFacts& jpeg, unsigned components) noexcept {
     for (unsigned i = 0; i < components; ++i) {
         const auto identity = std::span{jpeg.component_ids}.subspan(i, 1).front();
         if (identity > byte_max) {
@@ -95,7 +96,7 @@ bool jpeg_identity(const JpegSource& jpeg, unsigned components) noexcept {
     constexpr auto ycc = std::to_array<unsigned>({1, 2, jpeg_components});
     return jpeg.component_ids == (jpeg.color == JpegColor::rgb ? rgb : ycc);
 }
-bool jpeg_description(const JpegSource& jpeg) noexcept {
+bool jpeg_description(const JpegFacts& jpeg) noexcept {
     const bool known_color = jpeg.color == JpegColor::gray || jpeg.color == JpegColor::rgb ||
                              jpeg.color == JpegColor::ycbcr;
     const bool known_process =
@@ -116,14 +117,14 @@ bool jpeg_description(const JpegSource& jpeg) noexcept {
            jpeg_identity(jpeg, components);
 }
 } // namespace
-bool valid_source_description(const SourceDescription& description) noexcept {
-    if (const auto* const png = std::get_if<PngSource>(&description)) {
+bool valid_source_facts(const SourceFacts& description) noexcept {
+    if (const auto* const png = std::get_if<PngFacts>(&description)) {
         return png_description(*png);
     }
-    if (const auto* const tiff = std::get_if<TiffSource>(&description)) {
-        return valid_tiff_source(*tiff);
+    if (const auto* const tiff = std::get_if<TiffFacts>(&description)) {
+        return valid_tiff_facts(*tiff);
     }
-    const auto* const jpeg = std::get_if<JpegSource>(&description);
+    const auto* const jpeg = std::get_if<JpegFacts>(&description);
     return jpeg != nullptr && jpeg_description(*jpeg);
 }
 } // namespace docenhance::image

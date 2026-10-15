@@ -94,7 +94,7 @@ class ArchitectureExecutionTests(unittest.TestCase):
                 architecture_api.api_violations(query, root, entry, rules)
             with self.assertRaises(architecture.ArchitectureError):
                 architecture_build.header_violations(
-                    architecture.load_manifest(), entry, root, "contract", owner=None
+                    architecture.load_manifest(), entry, root, "app", owner=None
                 )
 
     def test_layer_roots_preserve_native_windows_boundaries(self) -> None:

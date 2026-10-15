@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -49,9 +49,9 @@ class LifecycleProcessor final : public app::Processor {
     unsigned calls_ = 0;
     core::ErrorCode code_;
 };
-contract::Invocation lifecycle_request() {
-    contract::Invocation request;
-    request.command = contract::Command::process;
+app::Invocation lifecycle_request() {
+    app::Invocation request;
+    request.command = app::Command::process;
     request.subject = "input.png";
     request.output_directory = "output";
     request.illumination = "surface";
@@ -233,8 +233,8 @@ TEST_CASE("Prepared gamma cannot be followed by a completed sharpening identity"
 }
 TEST_CASE("Disabled predecessor entry and counted masks remain truthful on partial returns",
           "[app]") {
-    contract::Invocation request;
-    request.command = contract::Command::process;
+    app::Invocation request;
+    request.command = app::Command::process;
     request.subject = "input.png";
     request.output_directory = "output";
     request.denoise = "nlm";

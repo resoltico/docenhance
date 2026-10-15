@@ -8,7 +8,7 @@
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
@@ -96,8 +96,8 @@ bool partial_contrast(const methods::ContrastReport& r, const ProcessRequest& re
                               r, std::get<app::ContinuousPlan>(request.plan()).photometric.contrast)
                         : methods::valid_progress(r);
 }
-bool source_matches(const image::SourceDescription& source, image::RasterShape shape) {
-    if (!image::valid_source_description(source)) {
+bool source_matches(const image::SourceFacts& source, image::RasterShape shape) {
+    if (!image::valid_source_facts(source)) {
         return false;
     }
     return std::visit(
@@ -106,14 +106,15 @@ bool source_matches(const image::SourceDescription& source, image::RasterShape s
             if (decoded.width != shape.width || decoded.height != shape.height) {
                 return false;
             }
-            if constexpr (std::is_same_v<Source, image::PngSource>) {
+            if constexpr (std::is_same_v<Source, image::PngFacts>) {
                 const auto depth =
                     decoded.depth == image::word_bits ? image::word_bits : image::byte_bits;
-                const bool color = decoded.color_type == 2 ||
-                                   decoded.color_type == image::png_palette ||
-                                   decoded.color_type == image::png_rgb_alpha;
+                const bool color =
+                    decoded.color_type == 2 ||
+                    decoded.color_type == static_cast<unsigned>(image::PngColor::palette) ||
+                    decoded.color_type == static_cast<unsigned>(image::PngColor::rgb_alpha);
                 return shape.depth.bits() == depth && image::is_color(shape.model) == color;
-            } else if constexpr (std::is_same_v<Source, image::TiffSource>) {
+            } else if constexpr (std::is_same_v<Source, image::TiffFacts>) {
                 return shape == image::decoded_tiff_shape(decoded);
             } else {
                 const auto model = decoded.color == image::JpegColor::gray
@@ -190,8 +191,8 @@ bool valid_published(const PublishedBinary& value, const ProcessRequest& request
     if (!value.source_decoding) {
         return true;
     }
-    const auto* const png = std::get_if<image::PngSource>(&*value.source_decoding);
-    return png != nullptr && image::valid_source_description(*value.source_decoding) &&
+    const auto* const png = std::get_if<image::PngFacts>(&*value.source_decoding);
+    return png != nullptr && image::valid_source_facts(*value.source_decoding) &&
            png->color_type == 0 && png->depth <= image::byte_bits;
 }
 bool valid_published(const PublishedContinuous& value, const ProcessRequest& request) {

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/bundle/record.hpp"
 #include "docenhance/host/processor.hpp"
+#include "docenhance/record/record.hpp"
 #include "instant.hpp"
 
 #include <chrono>
@@ -40,7 +40,7 @@ std::string observed_identity() {
 }
 } // namespace
 
-bundle::RunContext observed_context() {
+record::RunContext observed_context() {
     const auto now = std::chrono::floor<std::chrono::seconds>(std::chrono::system_clock::now());
     return {
         .identity = observed_identity(),

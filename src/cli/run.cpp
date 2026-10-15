@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/cli/run.hpp"
 
+#include "docenhance/app/cli_contract.hpp"
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
@@ -29,15 +29,15 @@
 #include <utility>
 #include <variant>
 namespace docenhance::cli {
-app::Outcome allocation_failure(const contract::Invocation& invocation) noexcept {
+app::Outcome allocation_failure(const app::Invocation& invocation) noexcept {
     static_assert(std::is_nothrow_move_constructible_v<app::Outcome>);
     // Empty owning strings do not allocate. The renderer supplies a static diagnostic later.
     return app::failure(invocation, {.code = core::ErrorCode::resource, .message = {}});
 }
 namespace {
+using docenhance::app::Command;
+using docenhance::app::Invocation;
 using docenhance::app::Outcome;
-using docenhance::contract::Command;
-using docenhance::contract::Invocation;
 using docenhance::core::ErrorCode;
 struct ParsedCommand {
     CLI::App* parser;
@@ -52,7 +52,7 @@ bool has_repeated_option(const CLI::App& app) {
                                [](const CLI::Option* option) { return option->count() > 1; });
 }
 template <typename Member>
-void bind_option(ParsedCommand& command, const docenhance::contract::OptionDescriptor& option,
+void bind_option(ParsedCommand& command, const docenhance::app::OptionDescriptor& option,
                  Member member) {
     const std::string name(option.name);
     const std::string description(option.description);
@@ -75,7 +75,7 @@ void bind_option(ParsedCommand& command, const docenhance::contract::OptionDescr
 // own all domains and cross-option meaning; this adapter preserves raw presence, including empty.
 void add_options(ParsedCommand& command) {
     command.parser->set_help_flag();
-    for (const auto& option : docenhance::contract::option_catalog) {
+    for (const auto& option : docenhance::app::option_catalog) {
         if (option.scope.contains(command.invocation.command)) {
             std::visit([&](auto member) { bind_option(command, option, member); }, option.binding);
         }

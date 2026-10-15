@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
 #include "docenhance/methods/contrast.hpp"
@@ -15,9 +15,9 @@
 
 namespace docenhance::tests {
 namespace {
-contract::Invocation selected() {
-    contract::Invocation v{
-        .command = contract::Command::process,
+app::Invocation selected() {
+    app::Invocation v{
+        .command = app::Command::process,
         .subject = "absent-source.png",
         .output_directory = "unused-output",
     };

@@ -250,14 +250,14 @@ class ContractTests(unittest.TestCase):
             raise RuntimeError(msg)
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            headers = root / "docenhance/contract"
+            headers = root / "docenhance/app"
             headers.mkdir(parents=True)
             shutil.copyfile(
-                ROOT / "include/docenhance/contract/command.hpp", headers / "command.hpp"
+                ROOT / "include/docenhance/app/invocation.hpp", headers / "invocation.hpp"
             )
             source = root / "binding.cpp"
-            source.write_text('#include "docenhance/contract/cli_contract.hpp"\n')
-            original = (ROOT / "include/docenhance/contract/cli_contract.hpp").read_text()
+            source.write_text('#include "docenhance/app/cli_contract.hpp"\n')
+            original = (ROOT / "include/docenhance/app/cli_contract.hpp").read_text()
             for member, expected in (("help", 0), ("output_directory", 1), ("absent_member", 1)):
                 (headers / "cli_contract.hpp").write_text(
                     original.replace(
@@ -310,7 +310,7 @@ class ContractTests(unittest.TestCase):
                 }
                 self.assertEqual(
                     changed,
-                    {"include/docenhance/contract/cli_contract.hpp", "docs/cli-contract.md"},
+                    {"include/docenhance/app/cli_contract.hpp", "docs/cli-contract.md"},
                 )
 
     def test_clang_tidy_is_strict(self) -> None:

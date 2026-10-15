@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/denoising.hpp"
@@ -33,9 +33,9 @@ class ReturningProcessor final : public app::Processor {
     app::ProcessResult value_;
     unsigned calls_ = 0;
 };
-contract::Invocation invocation() {
-    contract::Invocation value;
-    value.command = contract::Command::process;
+app::Invocation invocation() {
+    app::Invocation value;
+    value.command = app::Command::process;
     value.subject = "input.png";
     value.output_directory = "output";
     return value;

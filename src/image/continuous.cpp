@@ -5,7 +5,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/geometry.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 
 #include <cstdint>
 #include <string_view>

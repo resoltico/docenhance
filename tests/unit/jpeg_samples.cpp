@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/jpeg.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/jpeg.hpp"
 #include "jpeg_fixture.hpp"
 
 #include <algorithm>
@@ -73,8 +73,8 @@ TEST_CASE("JPEG fancy chroma upsampling agrees with an independent centered refe
     for (const auto* const process : {"baseline", "progressive"}) {
         core::Budget budget{std::size_t{8} * 1024 * 1024};
         auto decoded =
-            io::decode_jpeg(jpeg_fixture(std::string("chroma-patch-") + process + ".jpeg"), budget,
-                            image::ProfilePolicy::embedded);
+            codec::decode_jpeg(jpeg_fixture(std::string("chroma-patch-") + process + ".jpeg"),
+                               budget, image::ProfilePolicy::embedded);
         REQUIRE(decoded);
         for (unsigned y = 0; y < 33; ++y) {
             check_row(decoded->raster.pixels.view().row(y), y);

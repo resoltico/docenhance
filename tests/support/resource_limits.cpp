@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "allocation_observer.hpp"
-#include "docenhance/bundle/inventory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/surface.hpp"
+#include "docenhance/record/inventory.hpp"
 
 #include <array>
 #include <atomic>
@@ -57,7 +57,7 @@ bool record_bookkeeping_case(std::size_t objects) {
     begin();
     bool rejected = false;
     {
-        const auto result = docenhance::bundle::read_record(std::as_bytes(std::span{input}));
+        const auto result = docenhance::record::read_record(std::as_bytes(std::span{input}));
         rejected = !result && result.error().code == docenhance::core::ErrorCode::input &&
                    result.error().message.contains("parser event ceiling");
     }
@@ -71,17 +71,17 @@ bool record_bookkeeping_case(std::size_t objects) {
 bool record_bookkeeping() {
     // One case follows the admitted event boundary; the original shallow adversary stays tested.
     constexpr std::size_t shallow_adversary_objects = 10000;
-    return record_bookkeeping_case((docenhance::bundle::record_max_events / 2) + 1) &&
+    return record_bookkeeping_case((docenhance::record::record_max_events / 2) + 1) &&
            record_bookkeeping_case(shallow_adversary_objects);
 }
 bool record_allocation_refusal() {
 #if !DE_ALLOCATION_SANITIZER_OBSERVATION
-    const std::string input = std::string(docenhance::bundle::record_max_depth - 2, '[') +
+    const std::string input = std::string(docenhance::record::record_max_depth - 2, '[') +
                               R"({"inner":[]})" +
-                              std::string(docenhance::bundle::record_max_depth - 2, ']');
+                              std::string(docenhance::record::record_max_depth - 2, ']');
     begin();
     {
-        const auto result = docenhance::bundle::read_record(std::as_bytes(std::span{input}));
+        const auto result = docenhance::record::read_record(std::as_bytes(std::span{input}));
         if (result || result.error().code != docenhance::core::ErrorCode::input) {
             allocation::observing.store(false);
             return false;
@@ -96,7 +96,7 @@ bool record_allocation_refusal() {
         begin(failure);
         bool refused = false;
         {
-            const auto result = docenhance::bundle::read_record(std::as_bytes(std::span{input}));
+            const auto result = docenhance::record::read_record(std::as_bytes(std::span{input}));
             refused = !result && result.error().code == docenhance::core::ErrorCode::resource;
         }
         allocation::observing.store(false);
@@ -153,7 +153,7 @@ bool concurrent_observation() {
     const auto work = [&] {
         ready.count_down();
         start.wait();
-        const auto result = docenhance::bundle::read_record(std::as_bytes(std::span{input}));
+        const auto result = docenhance::record::read_record(std::as_bytes(std::span{input}));
         if (!result && result.error().code == docenhance::core::ErrorCode::input) {
             refusals.fetch_add(1);
         }
