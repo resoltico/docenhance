@@ -54,7 +54,9 @@ def validate_command(command: list[str], build: Path, name: str, seconds: int) -
         "--binary": str(build / "fuzz" / f"de_fuzz_{name}"),
         "--work": str(build / "fuzz-work"),
     }
-    if len(command) <= 1 or Path(command[1]).resolve() != ROOT / "tools/run_fuzzers.py":
+    if len(command) != 2 + 2 * len(expected) or (
+        Path(command[1]).resolve() != ROOT / "tools/run_fuzzers.py"
+    ):
         msg = f"Unexpected harness runner: {name}"
         raise FuzzError(msg)
     for flag, value in expected.items():

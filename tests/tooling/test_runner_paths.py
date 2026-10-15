@@ -25,7 +25,7 @@ class RunnerPathTests(unittest.TestCase):
     """Equivalent path spelling cannot hide real work or admit a substituted runner."""
 
     def test_fuzz_path_identity_and_runner_position(self) -> None:
-        """Accept traversal aliases but refuse a fake runner and missing flag value."""
+        """Accept path aliases but refuse substituted runners and extra command arguments."""
         command = [
             sys.executable,
             str(ROOT / "tools/../tools/run_fuzzers.py"),
@@ -44,7 +44,17 @@ class RunnerPathTests(unittest.TestCase):
             run_fuzz_campaign.validate_command(command, ROOT, "cli", 60)
             substituted = [*command, str(ROOT / "tools/run_fuzzers.py")]
             substituted[1] = "/different/runner.py"
-            for altered in (substituted, command[:-1]):
+            overrides: list[list[str]] = []
+            for flag, value in (
+                ("--work", "/unrelated"),
+                ("--seconds", "1800"),
+                ("--binary", "/different/binary"),
+                ("--engine", "afl"),
+                ("--target", "decimal"),
+            ):
+                overrides.extend(([*command, flag, value], [*command, f"{flag}={value}"]))
+            overrides.extend(([*command, "--unknown"], [*command, "--"], [*command, "extra"]))
+            for altered in (substituted, command[:-1], *overrides):
                 with self.assertRaises(FuzzError):
                     run_fuzz_campaign.validate_command(altered, ROOT, "cli", 60)
 
