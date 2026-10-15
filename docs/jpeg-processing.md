@@ -28,6 +28,10 @@ traverse GPS, maker notes, thumbnails or later IFDs. PNG pHYs precedence is unch
 
 ## Admitted JPEG codestreams
 
+Shared source-fact domain bounds belong to `image` because codecs, independent fact validation
+and strict record admission use the same domain. JPEG's sampling, MCU-block, dimension and scan
+bounds have one authority in `image/source_facts.hpp`. Decoder-private constants belong to `codec`.
+
 A source has one complete 8-bit Huffman DCT image: SOF0 baseline or SOF2 progressive. Gray has one
 component with 1x1 sampling. Three-component RGB has 1x1 sampling for each component. YCbCr has
 1x1 Cb/Cr and integral Y factors 1..4 in each direction, with no more than 10 blocks per MCU.

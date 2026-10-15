@@ -2,15 +2,65 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/image/source_facts.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <string>
 #include <type_traits>
 
 namespace docenhance::tests {
+TEST_CASE("JPEG facts enforce shared bounds without entering a decoder", "[values][jpeg]") {
+    constexpr image::Sampling unit_sampling{.horizontal = 1, .vertical = 1};
+    const image::JpegFacts source{
+        .width = 65500,
+        .height = 1,
+        .color = image::JpegColor::ycbcr,
+        .process = image::JpegProcess::progressive,
+        .scans = 128,
+        .component_ids = {1, 2, 3},
+        .sampling =
+            {
+                image::Sampling{.horizontal = 4, .vertical = 2},
+                unit_sampling,
+                unit_sampling,
+            },
+        .adobe_transform = std::nullopt,
+        .jfif_resolution = std::nullopt,
+        .exif_resolution = std::nullopt,
+    };
+    REQUIRE(image::valid_source_facts(source));
+    auto altered = source;
+    altered.width = 65501; // Still below the pixel ceiling; only the per-axis domain is exceeded.
+    CHECK(!image::valid_source_facts(altered));
+    altered = source;
+    altered.width = 1;
+    altered.height = 65500;
+    REQUIRE(image::valid_source_facts(altered));
+    altered.height = 65501;
+    CHECK(!image::valid_source_facts(altered));
+    for (const auto scans : {0U, 129U}) {
+        altered = source;
+        altered.scans = scans;
+        CHECK(!image::valid_source_facts(altered));
+    }
+    altered = source;
+    altered.sampling.front() = {.horizontal = 2, .vertical = 4};
+    REQUIRE(image::valid_source_facts(altered));
+    for (const auto sample : std::array{
+             image::Sampling{.horizontal = 5, .vertical = 1},
+             image::Sampling{.horizontal = 1, .vertical = 5},
+             image::Sampling{.horizontal = 3, .vertical = 3},
+         }) {
+        altered = source;
+        altered.sampling.front() = sample;
+        // 5x1/1x5 isolate sampling admission; 3x3 is legal per-axis but exceeds ten MCU blocks.
+        CHECK(!image::valid_source_facts(altered));
+    }
+}
 TEST_CASE("Decoded precision admits only complete byte or word samples", "[values]") {
     static_assert(!std::is_constructible_v<image::SampleDepth, unsigned>);
     for (const auto bits :

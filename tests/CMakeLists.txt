@@ -87,7 +87,7 @@ set_tests_properties(interrupt-contract PROPERTIES TIMEOUT 60)
 # Developer-only allocation observation; no benchmark result is manufactured by an API estimate.
 add_executable(de_jpeg_resources support/jpeg_resources.cpp)
 target_include_directories(de_jpeg_resources PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support")
-target_link_libraries(de_jpeg_resources PRIVATE de_codec de_fs de_image de_core)
+target_link_libraries(de_jpeg_resources PRIVATE de_codec de_image de_core)
 de_apply_options(de_jpeg_resources)
 
 add_test(NAME composition-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_composition.py" "$<TARGET_FILE:docenhance>")

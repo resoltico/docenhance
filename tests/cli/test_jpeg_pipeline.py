@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import json
 import os
@@ -255,12 +256,38 @@ def equivalent_pipeline(exe: Path, root: Path) -> None:
     )
 
 
+def source_fact_records(exe: Path, root: Path) -> None:
+    """Reject inconsistent JPEG record facts and verify the restored original."""
+    process(exe, root, "fact-domain", (DATA / "ycbcr-1x1-progressive.jpg").read_bytes())
+    path = root / "fact-domain/run.json"
+    original = path.read_bytes()
+    record = json.loads(original)
+    changes: list[dict[str, object]] = [{"width": 65501}, {"height": 65501}, {"scans": 129}]
+    for horizontal, vertical in ((5, 1), (1, 5), (3, 3)):
+        changes.append(
+            {
+                "sampling": [
+                    {"horizontal": horizontal, "vertical": vertical},
+                    *record["source"]["decoding"]["sampling"][1:],
+                ]
+            }
+        )
+    for change in changes:
+        altered = copy.deepcopy(record)
+        altered["source"]["decoding"].update(change)
+        path.write_text(json.dumps(altered), encoding="utf-8")
+        response = call_json(exe, ["verify", str(path.parent), "--json"], 3)
+        expect(response["error"]["code"] == "E_INPUT", "invalid JPEG fact domain is refused")
+    path.write_bytes(original)
+    call_json(exe, ["verify", str(path.parent), "--json"])
+
+
 def main() -> int:
     """Run the metadata/resource/pipeline contract against the real executable."""
     executable = Path(sys.argv[1]).resolve()
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
-        for test in (resolution, limits, equivalent_pipeline):
+        for test in (resolution, limits, equivalent_pipeline, source_fact_records):
             test(executable, root)
             print(f"PASS: {test.__name__}")
     return 0

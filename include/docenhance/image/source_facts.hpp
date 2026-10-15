@@ -9,6 +9,7 @@
 #include <variant>
 namespace docenhance::image {
 inline constexpr unsigned jpeg_components = 3;
+// Shared fact-domain bounds for codecs, independent image validation and record admission.
 inline constexpr unsigned jpeg_sampling_max = 4;
 inline constexpr unsigned jpeg_mcu_blocks_max = 10;
 inline constexpr unsigned jpeg_dimension_max = 65500;
