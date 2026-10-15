@@ -213,7 +213,7 @@ def check_run(run: Run, work: Path, directory: Path) -> None:
         raise FuzzError(msg)
 
 
-def execute(run: Run, work: Path) -> Path:
+def execute(run: Run, work: Path, *, disk_parent: Path) -> Path:
     """Always retain a result record once a workspace is claimed; only complete runs pass."""
     positive(run.seconds, MAX_SECONDS, "seconds")
     directory = new_directory(work, f"{run.target.name}-")
@@ -245,7 +245,7 @@ def execute(run: Run, work: Path) -> Path:
             environment(run),
             directory / "engine.log",
             run.seconds + ENGINE_GRACE,
-            CapturePolicy(MAX_ENGINE_LOG_BYTES, lambda: check_run(run, work, directory)),
+            CapturePolicy(MAX_ENGINE_LOG_BYTES, lambda: check_run(run, disk_parent, directory)),
         )
         report["engine_elapsed_seconds"] = time.monotonic() - engine_started
         if report["exit_code"] != 0:

@@ -89,9 +89,10 @@ sooner, while larger limits consume more disk without increasing the requested t
 
 Packaging admits at most 1.5 GiB of logical source bytes and 50,000 entries, visits entries
 incrementally and hashes the archive as a stream. It refuses archive destinations inside its
-input trees. At the threshold, source plus a previous archive and a replacement temporary
-archive can require up to 5.5 GiB of source/archive payload with the 2 GiB compressed output cap,
-outside build products and dependency/tool caches. Sparse files can fail the logical archive
+input trees. Plan for 1.5 GiB of source plus the actual existing archive size and at most
+2 GiB for the replacement temporary archive: 5.5 GiB when the existing archive also fits the
+current 2 GiB cap. Older or foreign archives may be larger and remain preserved until replacement.
+Filesystem metadata, cooperative engine overshoot, build products and dependency/tool caches are extra. Sparse files can fail the logical archive
 limit even when their allocated size passes the engine threshold. Keep one output archive per
 build; moving copies elsewhere creates separately owned retention. Overshoot or unavailable
 space fails packaging and cannot manufacture passing evidence.

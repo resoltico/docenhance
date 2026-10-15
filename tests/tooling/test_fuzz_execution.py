@@ -82,7 +82,7 @@ class FuzzExecutionTests(unittest.TestCase):
                 patch("fuzz_execution.shutil.which", return_value="/fixture/afl-fuzz"),
                 patch("fuzz_execution.bounded_capture", side_effect=exceeded),
             ):
-                directory = fuzz_execution.execute(self.run_spec(), work)
+                directory = fuzz_execution.execute(self.run_spec(), work, disk_parent=work)
             report = json.loads((directory / "result.json").read_text())
             self.assertFalse(report["passed"])
             self.assertIsNone(report["exit_code"])
@@ -183,7 +183,7 @@ class FuzzExecutionTests(unittest.TestCase):
                     patch("fuzz_execution.shutil.which", return_value="/fixture/afl-fuzz"),
                     patch("fuzz_execution.bounded_capture", side_effect=refusal(exit_code)),
                 ):
-                    directory = fuzz_execution.execute(self.run_spec(), work)
+                    directory = fuzz_execution.execute(self.run_spec(), work, disk_parent=work)
                 report = json.loads((directory / "result.json").read_text())
                 self.assertFalse(report["passed"])
                 self.assertEqual(report["exit_code"], exit_code)
@@ -235,7 +235,7 @@ class FuzzScratchTests(unittest.TestCase):
                     patch("fuzz_execution.bounded_capture", side_effect=self.fixture_engine),
                     patch("fuzz_execution.time.monotonic", side_effect=[0, 0, 2, 3]),
                 ):
-                    directory = fuzz_execution.execute(run, work)
+                    directory = fuzz_execution.execute(run, work, disk_parent=work)
                 report = json.loads((directory / "result.json").read_text())
                 self.assertTrue(report["passed"])
                 self.assertFalse((directory / "corpus").exists())
@@ -280,7 +280,7 @@ class FuzzScratchTests(unittest.TestCase):
                         side_effect=PermissionError("owned scratch cleanup refused"),
                     ) as cleanup,
                 ):
-                    directory = fuzz_execution.execute(run, work)
+                    directory = fuzz_execution.execute(run, work, disk_parent=work)
                 report = json.loads((directory / "result.json").read_text())
                 self.assertFalse(report["passed"])
                 self.assertTrue((directory / "corpus-index.json").is_file())

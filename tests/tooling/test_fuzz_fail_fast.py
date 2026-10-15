@@ -70,7 +70,7 @@ class FuzzFailFastTests(unittest.TestCase):
                     patch("fuzz_execution.bounded_capture", side_effect=save_finding(relative)),
                     patch("fuzz_storage.remove_successful_scratch") as cleanup,
                 ):
-                    directory = fuzz_execution.execute(run, work)
+                    directory = fuzz_execution.execute(run, work, disk_parent=work)
                 cleanup.assert_not_called()
                 report = json.loads((directory / "result.json").read_text())
                 self.assertFalse(report["passed"])

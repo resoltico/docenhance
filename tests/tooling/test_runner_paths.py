@@ -29,6 +29,8 @@ class RunnerPathTests(unittest.TestCase):
         command = [
             sys.executable,
             str(ROOT / "tools/../tools/run_fuzzers.py"),
+            "--work",
+            str(ROOT / "fuzz-work/../fuzz-work"),
             "--target",
             "cli",
             "--seconds",

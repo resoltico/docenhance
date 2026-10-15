@@ -261,6 +261,8 @@ class EvidenceTests(unittest.TestCase):
                     str(ROOT / "tools/run_fuzzers.py"),
                     "--seconds",
                     "60",
+                    "--work",
+                    str(ROOT / "fuzz-work"),
                     "--target",
                     target.name,
                     "--engine",
@@ -285,6 +287,8 @@ class EvidenceTests(unittest.TestCase):
             altered[0]["properties"] = [{"name": "DISABLED", "value": True}]
             wrong_binary = copy.deepcopy(tests)
             wrong_binary[0]["command"][-1] = "/not/the/harness"
+            wrong_work = copy.deepcopy(tests)
+            wrong_work[0]["command"][wrong_work[0]["command"].index("--work") + 1] = "/unrelated"
             wrong_engine = copy.deepcopy(tests)
             wrong_engine[0]["command"][-3] = "afl"
             wrong_timeout = copy.deepcopy(tests)
@@ -294,6 +298,7 @@ class EvidenceTests(unittest.TestCase):
                 [*tests, tests[0]],
                 altered,
                 wrong_binary,
+                wrong_work,
                 wrong_engine,
                 wrong_timeout,
             ):
