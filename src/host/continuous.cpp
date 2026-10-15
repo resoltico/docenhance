@@ -5,20 +5,19 @@
 #include "contrast.hpp"
 #include "denoising.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/bundle/record.hpp"
 #include "docenhance/color/converter.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/paths.hpp"
+#include "docenhance/fs/source.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
-#include "docenhance/io/paths.hpp"
-#include "docenhance/io/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
@@ -28,6 +27,7 @@
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/stages.hpp"
 #include "docenhance/methods/surface.hpp"
+#include "docenhance/record/record.hpp"
 #include "linear_rows.hpp"
 #include "protection.hpp"
 #include "restoration.hpp"
@@ -48,7 +48,7 @@ struct ContinuousRun {
     std::reference_wrapper<core::Budget> budget;
     std::reference_wrapper<const core::Cancellation> cancellation;
     std::reference_wrapper<methods::StageObservations> reports;
-    std::reference_wrapper<const bundle::RunContext> context;
+    std::reference_wrapper<const record::RunContext> context;
 };
 // Prepares the rows the bundle will contain: either the converter itself, or the converter seen
 // through the illumination model. Publication happens once, afterwards, for the whole bundle.
@@ -93,7 +93,7 @@ prepare(ContinuousRun run, image::PlaneView<const std::uint8_t> protection) {
 core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source,
                                                      bool prefix_observed, const ContinuousRun& run,
                                                      const Protection& protection,
-                                                     const io::IdentifiedRaster& decoded) {
+                                                     const fs::IdentifiedRaster& decoded) {
     auto& budget = run.budget.get();
     const auto& cancellation = run.cancellation.get();
     const auto& request = run.request.get();
@@ -120,7 +120,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
         .cancellation = cancellation,
         .context = context,
         .source = decoded.source,
-        .source_name = io::file_name(request.input()),
+        .source_name = fs::file_name(request.input()),
         .source_decoding = decoded.description,
         .rotation = request.rotation(),
 
@@ -133,7 +133,7 @@ core::Result<app::PublishedContinuous> publish_frame(image::LinearSource& source
 }
 core::Result<app::PublishedContinuous>
 finish_frame(image::LinearSource& source, bool source_prefix_observed, const ContinuousRun& run,
-             const Protection& protection, const io::IdentifiedRaster& decoded) {
+             const Protection& protection, const fs::IdentifiedRaster& decoded) {
     auto& contrast = run.reports.get().contrast;
     auto& budget = run.budget.get();
     const auto& cancellation = run.cancellation.get();
@@ -187,7 +187,7 @@ core::Result<app::PublishedContinuous> restore_and_finish(image::LinearSource& s
                                                           bool source_prefix_observed,
                                                           const ContinuousRun& run,
                                                           const Protection& protection,
-                                                          const io::IdentifiedRaster& decoded) {
+                                                          const fs::IdentifiedRaster& decoded) {
     auto& budget = run.budget.get();
     const auto& cancellation = run.cancellation.get();
     auto& restoration = run.reports.get().restoration;
@@ -230,7 +230,7 @@ core::Result<app::PublishedContinuous> continuous(const app::ProcessRequest& req
     core::Budget budget{core::continuous_processing_budget};
     const auto& operation = std::get<app::ContinuousPlan>(request.plan()).operation;
     auto decoded =
-        io::load_source(request.input(), budget, operation.parameters().profile, cancellation);
+        fs::load_source(request.input(), budget, operation.parameters().profile, cancellation);
     if (!decoded) {
         return std::unexpected(decoded.error());
     }

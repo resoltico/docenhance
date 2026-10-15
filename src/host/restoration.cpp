@@ -5,11 +5,11 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/psf_png.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/psf_png.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/opencv/restoration.hpp"
@@ -34,7 +34,7 @@ void preceding_warning(RestoreInput input, methods::RestorationReport& report) {
 }
 core::Result<methods::ResolvedPsf> load_kernel(const methods::FilePsf& file, core::Budget& budget,
                                                const core::Cancellation& cancellation) {
-    auto loaded = io::load_psf_png(file.path, budget, cancellation);
+    auto loaded = fs::load_psf_png(file.path, budget, cancellation);
     if (!loaded) {
         return std::unexpected(loaded.error());
     }

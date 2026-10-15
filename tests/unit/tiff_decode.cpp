@@ -1,13 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "cancellation_probe.hpp"
+#include "docenhance/codec/tiff.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
-#include "docenhance/io/tiff.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "tiff_fixture.hpp"
 
 #include <array>
@@ -58,9 +58,9 @@ void matrix_case(unsigned depth, unsigned channels, unsigned flags) {
     core::Budget budget{tiff_budget};
     {
         const auto decoded =
-            io::decode_tiff(tiff_fixture(name), budget, image::ProfilePolicy::embedded);
+            codec::decode_tiff(tiff_fixture(name), budget, image::ProfilePolicy::embedded);
         REQUIRE(decoded);
-        CHECK(image::valid_tiff_source(decoded->source));
+        CHECK(image::valid_tiff_facts(decoded->source));
         exact_samples(decoded->raster, depth, channels);
     }
     CHECK(budget.used() == 0);
@@ -69,7 +69,8 @@ void matrix_case(unsigned depth, unsigned channels, unsigned flags) {
 TEST_CASE("TIFF exact 8/16-bit samples cross endian, BigTIFF, planes and strile edges", "[tiff]") {
     constexpr unsigned layout_combinations = 16;
     for (const auto depth : {image::byte_bits, image::word_bits}) {
-        for (const auto channels : {1U, 2U, image::tiff_color_samples, image::rgba_channels}) {
+        for (const auto channels :
+             {1U, 2U, image::components(image::SampleModel::rgb), image::rgba_channels}) {
             for (unsigned flags = 0; flags < layout_combinations; ++flags) {
                 matrix_case(depth, channels, flags);
             }
@@ -82,13 +83,34 @@ TEST_CASE("TIFF lossless codecs and predictors retain independent sample values"
         unsigned predictor{};
     };
     constexpr auto codecs = std::to_array<CodecCase>({
-        {.compression = image::tiff_lzw, .predictor = 1},
-        {.compression = image::tiff_lzw, .predictor = 2},
-        {.compression = image::tiff_deflate, .predictor = 1},
-        {.compression = image::tiff_deflate, .predictor = 2},
-        {.compression = image::tiff_adobe_deflate, .predictor = 1},
-        {.compression = image::tiff_adobe_deflate, .predictor = 2},
-        {.compression = image::tiff_packbits, .predictor = 1},
+        {
+            .compression = static_cast<unsigned>(image::TiffCompression::lzw),
+            .predictor = 1,
+        },
+        {
+            .compression = static_cast<unsigned>(image::TiffCompression::lzw),
+            .predictor = 2,
+        },
+        {
+            .compression = static_cast<unsigned>(image::TiffCompression::deflate),
+            .predictor = 1,
+        },
+        {
+            .compression = static_cast<unsigned>(image::TiffCompression::deflate),
+            .predictor = 2,
+        },
+        {
+            .compression = static_cast<unsigned>(image::TiffCompression::adobe_deflate),
+            .predictor = 1,
+        },
+        {
+            .compression = static_cast<unsigned>(image::TiffCompression::adobe_deflate),
+            .predictor = 2,
+        },
+        {
+            .compression = static_cast<unsigned>(image::TiffCompression::packbits),
+            .predictor = 1,
+        },
     });
     for (const auto codec : codecs) {
         for (const auto depth : {image::byte_bits, image::word_bits}) {
@@ -98,9 +120,9 @@ TEST_CASE("TIFF lossless codecs and predictors retain independent sample values"
             INFO(name);
             core::Budget budget{tiff_budget};
             const auto decoded =
-                io::decode_tiff(tiff_fixture(name), budget, image::ProfilePolicy::embedded);
+                codec::decode_tiff(tiff_fixture(name), budget, image::ProfilePolicy::embedded);
             REQUIRE(decoded);
-            exact_samples(decoded->raster, depth, image::tiff_color_samples);
+            exact_samples(decoded->raster, depth, image::components(image::SampleModel::rgb));
         }
     }
 }
@@ -108,8 +130,8 @@ TEST_CASE("TIFF CCITT decoding retains bilevel MINISWHITE sample meaning", "[tif
     for (const unsigned compression : {3U, 4U}) {
         core::Budget budget{tiff_budget};
         const auto decoded =
-            io::decode_tiff(tiff_fixture("fax-" + std::to_string(compression) + ".tif"), budget,
-                            image::ProfilePolicy::embedded);
+            codec::decode_tiff(tiff_fixture("fax-" + std::to_string(compression) + ".tif"), budget,
+                               image::ProfilePolicy::embedded);
         REQUIRE(decoded);
         CHECK(decoded->source.photometric == 0);
         const auto pixels = decoded->raster.pixels.view();
@@ -123,7 +145,7 @@ TEST_CASE("TIFF CCITT decoding retains bilevel MINISWHITE sample meaning", "[tif
 }
 namespace {
 int jpeg_reference(unsigned photo, unsigned channel, unsigned x, unsigned y) {
-    if (photo == image::tiff_minisblack) {
+    if (photo == static_cast<unsigned>(image::TiffPhotometric::minisblack)) {
         constexpr unsigned block_width = 8;
         constexpr unsigned dc_base = 48;
         constexpr unsigned horizontal_dc = 29;
@@ -135,7 +157,8 @@ int jpeg_reference(unsigned photo, unsigned channel, unsigned x, unsigned y) {
     }
     constexpr auto rgb = std::to_array<int>({180, 80, 30});
     constexpr auto ycc_rgb = std::to_array<int>({233, 134, 103});
-    return (photo == image::tiff_rgb ? rgb : ycc_rgb).at(channel);
+    return (photo == static_cast<unsigned>(image::TiffPhotometric::rgb) ? rgb : ycc_rgb)
+        .at(channel);
 }
 void jpeg_samples(const image::Raster& raster, unsigned photo) {
     const auto channels = image::components(raster.shape.model);
@@ -155,8 +178,8 @@ void jpeg_case(unsigned photo, const std::string& suffix) {
     core::Budget budget{tiff_budget};
     {
         const auto decoded =
-            io::decode_tiff(tiff_fixture("jpeg-" + std::to_string(photo) + suffix + ".tif"), budget,
-                            image::ProfilePolicy::embedded);
+            codec::decode_tiff(tiff_fixture("jpeg-" + std::to_string(photo) + suffix + ".tif"),
+                               budget, image::ProfilePolicy::embedded);
         REQUIRE(decoded);
         jpeg_samples(decoded->raster, photo);
     }
@@ -165,7 +188,11 @@ void jpeg_case(unsigned photo, const std::string& suffix) {
 } // namespace
 TEST_CASE("TIFF nested JPEG uses charged allocation and one YCbCr interpretation", "[tiff]") {
     for (const auto* const suffix : {"", "-progressive"}) {
-        for (const auto photo : {image::tiff_minisblack, image::tiff_rgb, image::tiff_ycbcr}) {
+        for (const auto photo : {
+                 static_cast<unsigned>(image::TiffPhotometric::minisblack),
+                 static_cast<unsigned>(image::TiffPhotometric::rgb),
+                 static_cast<unsigned>(image::TiffPhotometric::ycbcr),
+             }) {
             jpeg_case(photo, suffix);
         }
     }
@@ -173,14 +200,14 @@ TEST_CASE("TIFF nested JPEG uses charged allocation and one YCbCr interpretation
 TEST_CASE("TIFF JPEG progress bounds valid repeated scans before publication", "[tiff]") {
     core::Budget budget{tiff_budget};
     {
-        const auto complete = io::decode_tiff(tiff_fixture("jpeg-bounded-scans.tif"), budget,
-                                              image::ProfilePolicy::embedded);
+        const auto complete = codec::decode_tiff(tiff_fixture("jpeg-bounded-scans.tif"), budget,
+                                                 image::ProfilePolicy::embedded);
         REQUIRE(complete);
-        jpeg_samples(complete->raster, image::tiff_minisblack);
+        jpeg_samples(complete->raster, static_cast<unsigned>(image::TiffPhotometric::minisblack));
     }
     CHECK(budget.used() == 0);
-    const auto refused = io::decode_tiff(tiff_fixture("jpeg-many-scans.tif"), budget,
-                                         image::ProfilePolicy::embedded);
+    const auto refused = codec::decode_tiff(tiff_fixture("jpeg-many-scans.tif"), budget,
+                                            image::ProfilePolicy::embedded);
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::resource);
     CHECK(budget.used() == 0);
@@ -188,8 +215,8 @@ TEST_CASE("TIFF JPEG progress bounds valid repeated scans before publication", "
 TEST_CASE("TIFF Deflate output bytes do not substitute for a completed checksum trailer",
           "[tiff]") {
     core::Budget budget{tiff_budget};
-    CHECK(!io::decode_tiff(tiff_fixture("deflate-missing-checksum.tif"), budget,
-                           image::ProfilePolicy::embedded));
+    CHECK(!codec::decode_tiff(tiff_fixture("deflate-missing-checksum.tif"), budget,
+                              image::ProfilePolicy::embedded));
     CHECK(budget.used() == 0);
 }
 TEST_CASE("TIFF native decode truncations, charged refusals and cancellation refund ownership",
@@ -197,17 +224,18 @@ TEST_CASE("TIFF native decode truncations, charged refusals and cancellation ref
     const auto fixture = tiff_fixture("jpeg-6.tif");
     for (std::size_t extent = 0; extent < fixture.size(); ++extent) {
         core::Budget budget{tiff_budget};
-        CHECK(!io::decode_tiff(std::span{fixture}.first(extent), budget,
-                               image::ProfilePolicy::embedded));
+        CHECK(!codec::decode_tiff(std::span{fixture}.first(extent), budget,
+                                  image::ProfilePolicy::embedded));
         CHECK(budget.used() == 0);
     }
-    const auto reservation = io::tiff_native_payload_max + io::tiff_control_reservation;
+    const auto reservation = codec::tiff_native_payload_max + codec::tiff_control_reservation;
     bool success = false;
     bool native_refused = false;
     for (std::size_t extra = 0; extra < std::size_t{256} * 1024; extra += 1024) {
         core::Budget budget{reservation + extra};
         {
-            const auto decoded = io::decode_tiff(fixture, budget, image::ProfilePolicy::embedded);
+            const auto decoded =
+                codec::decode_tiff(fixture, budget, image::ProfilePolicy::embedded);
             if (decoded) {
                 success = true;
             } else {
@@ -224,8 +252,8 @@ TEST_CASE("TIFF native decode truncations, charged refusals and cancellation ref
         core::Budget budget{tiff_budget};
         const CheckpointStop stop{core::Checkpoint::decode, allowed};
         {
-            const auto decoded = io::decode_tiff(fixture, budget, image::ProfilePolicy::embedded,
-                                                 stop.cancellation());
+            const auto decoded = codec::decode_tiff(fixture, budget, image::ProfilePolicy::embedded,
+                                                    stop.cancellation());
             if (decoded) {
                 completed = true;
             } else {

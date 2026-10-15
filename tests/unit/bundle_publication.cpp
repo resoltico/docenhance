@@ -1,17 +1,17 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "bundle_verify.hpp"
-#include "docenhance/bundle/record.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/artifact_limits.hpp"
+#include "docenhance/fs/digest.hpp"
+#include "docenhance/fs/publication.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
-#include "docenhance/io/artifact_limits.hpp"
-#include "docenhance/io/digest.hpp"
-#include "docenhance/io/publication.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/progress.hpp"
+#include "docenhance/record/record.hpp"
 #include "file_contents.hpp"
 #include "native_publication.hpp"
 #include "png_fixture.hpp"
@@ -54,24 +54,24 @@ WrittenBundle written_bundle() {
     for (const auto value : png) {
         image.push_back(static_cast<char>(value));
     }
-    const auto digest = io::identify(bytes(image));
+    const auto digest = fs::identify(bytes(image));
     REQUIRE(digest);
     const auto method = methods::FixedThreshold::create();
     REQUIRE(method);
-    const bundle::RunRecord facts{
+    const record::RunRecord facts{
         .context = {.identity = std::string(32, 'a'), .recorded = "2026-09-30T00:00:00Z"},
         .build = core::build_facts(),
         .source =
             {
                 .identity = {.sha256 = std::string(64, 'b'), .bytes = 1},
                 .name = "source.png",
-                .decoding = image::PngSource{.width = 2, .height = 2, .depth = 8, .color_type = 0},
+                .decoding = image::PngFacts{.width = 2, .height = 2, .depth = 8, .color_type = 0},
             },
         .operation = methods::Binarization{*method},
         .protection_supplied = false,
         .output =
             {
-                .artifact = {.name = bundle::image_name, .identity = *digest},
+                .artifact = {.name = record::image_name, .identity = *digest},
                 .shape =
                     {
                         .width = 2,
@@ -81,7 +81,7 @@ WrittenBundle written_bundle() {
                     },
                 .profile_embedded = false,
                 .resolution = std::nullopt,
-                .verification = bundle::Verification::decoded_and_compared,
+                .verification = record::Verification::decoded_and_compared,
             },
         .protection = std::nullopt,
         .conversion = std::nullopt,
@@ -93,9 +93,9 @@ WrittenBundle written_bundle() {
                 .sharpening = {.progress = methods::StageProgress::completed},
             },
     };
-    auto record = bundle::serialize(facts);
+    auto record = record::serialize(facts);
     REQUIRE(record);
-    const auto identity = io::identify(bytes(*record));
+    const auto identity = fs::identify(bytes(*record));
     REQUIRE(identity);
     return {
         .image = image,
@@ -103,12 +103,12 @@ WrittenBundle written_bundle() {
         .expected = {.run = facts.context.identity, .record = *identity},
     };
 }
-core::Result<void> write_text(void* const state, const io::BundleSlot& slot) {
-    return io::write_bytes(slot, *static_cast<std::string*>(state));
+core::Result<void> write_text(void* const state, const fs::BundleSlot& slot) {
+    return fs::write_bytes(slot, *static_cast<std::string*>(state));
 }
 std::error_code lost_reply(const std::filesystem::path& from,
                            const std::filesystem::path& to) noexcept {
-    const auto actual = io::rename_exclusive(from, to);
+    const auto actual = fs::rename_exclusive(from, to);
     return actual ? actual : std::make_error_code(std::errc::io_error);
 }
 std::error_code ambiguous_refusal(const std::filesystem::path& /*unused*/,
@@ -117,12 +117,12 @@ std::error_code ambiguous_refusal(const std::filesystem::path& /*unused*/,
 }
 std::error_code corrupt_after_commit(const std::filesystem::path& from,
                                      const std::filesystem::path& to) noexcept {
-    const auto actual = io::rename_exclusive(from, to);
+    const auto actual = fs::rename_exclusive(from, to);
     if (actual) {
         return actual;
     }
     try {
-        std::ofstream{to / bundle::image_name, std::ios::binary}.put('x');
+        std::ofstream{to / record::image_name, std::ios::binary}.put('x');
     } catch (...) {
         return std::make_error_code(std::errc::io_error);
     }
@@ -130,12 +130,12 @@ std::error_code corrupt_after_commit(const std::filesystem::path& from,
 }
 std::error_code unreadable_after_commit(const std::filesystem::path& from,
                                         const std::filesystem::path& to) noexcept {
-    const auto actual = io::rename_exclusive(from, to);
+    const auto actual = fs::rename_exclusive(from, to);
     if (actual) {
         return actual;
     }
     try {
-        std::filesystem::remove(to / bundle::record_name);
+        std::filesystem::remove(to / record::record_name);
     } catch (...) {
         return std::make_error_code(std::errc::io_error);
     }
@@ -145,7 +145,7 @@ std::error_code occupied_after_gate(const std::filesystem::path& /*from*/,
                                     const std::filesystem::path& to) noexcept {
     try {
         std::filesystem::create_directory(to);
-        std::ofstream{to / bundle::record_name} << "another run";
+        std::ofstream{to / record::record_name} << "another run";
     } catch (...) {
         return std::make_error_code(std::errc::io_error);
     }
@@ -171,13 +171,13 @@ std::size_t fail_write(const void* /*data*/, std::size_t /*size*/, std::size_t /
 }
 struct ManifestWriter {
     std::string content;
-    io::BundleStream stream;
+    fs::BundleStream stream;
     bool remove_record = false;
     bool extra_file = false;
 };
-core::Result<void> write_manifest(void* const state, const io::BundleSlot& slot) {
+core::Result<void> write_manifest(void* const state, const fs::BundleSlot& slot) {
     auto const& writer = *static_cast<ManifestWriter*>(state);
-    const auto written = io::write_bytes(slot, writer.content, {}, writer.stream);
+    const auto written = fs::write_bytes(slot, writer.content, {}, writer.stream);
     if (!written) {
         return written;
     }
@@ -190,20 +190,20 @@ core::Result<void> write_manifest(void* const state, const io::BundleSlot& slot)
     return {};
 }
 core::Result<std::string> publish(const std::filesystem::path& output, WrittenBundle& written,
-                                  io::PublishRename commit) {
+                                  fs::PublishRename commit) {
     const std::array files{
-        io::BundleFile{
-            .relative = bundle::image_name,
+        fs::BundleFile{
+            .relative = record::image_name,
             .state = &written.image,
             .write = write_text,
         },
-        io::BundleFile{
-            .relative = bundle::record_name,
+        fs::BundleFile{
+            .relative = record::record_name,
             .state = &written.record,
             .write = write_text,
         },
     };
-    return io::publish_bundle(utf8_spelling(output), files, {}, commit,
+    return fs::publish_bundle(utf8_spelling(output), files, {}, commit,
                               host::bundle_validation(written.expected));
 }
 } // namespace
@@ -235,13 +235,13 @@ TEST_CASE("Postcommit integrity failure retains completed publication", "[bundle
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(result.error().publication == core::Publication::completed);
     CHECK(std::filesystem::is_directory(output));
-    CHECK(std::filesystem::exists(output / bundle::record_name));
+    CHECK(std::filesystem::exists(output / record::record_name));
 }
 TEST_CASE("Staged bundle disagreement prevents any commit", "[bundle][publication]") {
     const TemporaryDirectory temporary{"docenhance-bundle-stage"};
     auto written = written_bundle();
     written.image = "not a PNG";
-    const auto result = publish(temporary.path / "result", written, io::rename_exclusive);
+    const auto result = publish(temporary.path / "result", written, fs::rename_exclusive);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output_verify);
     CHECK(result.error().publication == core::Publication::not_published);
@@ -256,7 +256,7 @@ TEST_CASE("Owned publication with a lost reply and unreadable record stays compl
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::completed);
     CHECK(result.error().code == core::ErrorCode::output_verify);
-    CHECK(std::filesystem::exists(output / bundle::image_name));
+    CHECK(std::filesystem::exists(output / record::image_name));
 }
 TEST_CASE("Another run at the destination is preserved during reconciliation",
           "[bundle][publication]") {
@@ -266,7 +266,7 @@ TEST_CASE("Another run at the destination is preserved during reconciliation",
     const auto result = publish(output, written, occupied_after_gate);
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
-    CHECK(file_contents(output / bundle::record_name) == "another run");
+    CHECK(file_contents(output / record::record_name) == "another run");
     CHECK(host::verify_bundle(utf8_spelling(temporary.path / "result.staging-0"), {}));
 }
 TEST_CASE("Manifest writer completion and staged reread failures prevent publication",
@@ -292,19 +292,19 @@ TEST_CASE("Manifest writer completion and staged reread failures prevent publica
         manifest.extra_file = true;
     }
     const std::array files{
-        io::BundleFile{
-            .relative = bundle::image_name,
+        fs::BundleFile{
+            .relative = record::image_name,
             .state = &written.image,
             .write = write_text,
         },
-        io::BundleFile{
-            .relative = bundle::record_name,
+        fs::BundleFile{
+            .relative = record::record_name,
             .state = &manifest,
             .write = write_manifest,
         },
     };
     const auto output = temporary.path / "result";
-    const auto result = io::publish_bundle(utf8_spelling(output), files, {}, io::rename_exclusive,
+    const auto result = fs::publish_bundle(utf8_spelling(output), files, {}, fs::rename_exclusive,
                                            host::bundle_validation(written.expected));
     REQUIRE(!result);
     CHECK(!std::filesystem::exists(output));
@@ -323,19 +323,19 @@ TEST_CASE("Publication refuses missing writers and oversized tables before stagi
     const auto output = temporary.path / "result";
     const auto before = std::distance(std::filesystem::directory_iterator{temporary.path},
                                       std::filesystem::directory_iterator{});
-    const io::BundleFile missing_writer{
+    const fs::BundleFile missing_writer{
         .relative = "image.png",
         .state = nullptr,
         .write = nullptr,
     };
     const std::array missing{missing_writer};
-    REQUIRE(io::publish_bundle(utf8_spelling(output), missing).error().code ==
+    REQUIRE(fs::publish_bundle(utf8_spelling(output), missing).error().code ==
             core::ErrorCode::argument);
     std::string content = "unused";
-    const std::vector<io::BundleFile> oversized(
-        io::bundle_max_entries + 1,
+    const std::vector<fs::BundleFile> oversized(
+        fs::bundle_max_entries + 1,
         {.relative = "image.png", .state = &content, .write = write_text});
-    REQUIRE(io::publish_bundle(utf8_spelling(output), oversized).error().code ==
+    REQUIRE(fs::publish_bundle(utf8_spelling(output), oversized).error().code ==
             core::ErrorCode::argument);
     REQUIRE(std::distance(std::filesystem::directory_iterator{temporary.path},
                           std::filesystem::directory_iterator{}) == before);
@@ -343,15 +343,15 @@ TEST_CASE("Publication refuses missing writers and oversized tables before stagi
 TEST_CASE("Staging bounds nested owned entries and cleans every acquired directory", "[bundle]") {
     const TemporaryDirectory temporary{"docenhance-bundle-depth"};
     std::string relative;
-    for (std::size_t i = 0; i < io::bundle_max_entries - 1; ++i) {
+    for (std::size_t i = 0; i < fs::bundle_max_entries - 1; ++i) {
         relative += "d/";
     }
     relative += 'i';
     std::string content = "never written";
-    const io::BundleFile file{.relative = relative, .state = &content, .write = write_text};
-    const io::BundleFile extra{.relative = "extra", .state = &content, .write = write_text};
+    const fs::BundleFile file{.relative = relative, .state = &content, .write = write_text};
+    const fs::BundleFile extra{.relative = "extra", .state = &content, .write = write_text};
     const std::array files{file, extra};
-    const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+    const auto refused = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files);
     REQUIRE(!refused);
     REQUIRE(refused.error().code == core::ErrorCode::resource);
     REQUIRE(refused.error().publication == core::Publication::not_published);
@@ -363,9 +363,9 @@ TEST_CASE("Native absolute publication names cannot escape staging", "[bundle]")
     const auto escaped = temporary.path / "escape";
     const auto relative = utf8_spelling(escaped);
     std::string content = "never written";
-    const io::BundleFile file{.relative = relative, .state = &content, .write = write_text};
+    const fs::BundleFile file{.relative = relative, .state = &content, .write = write_text};
     const std::array files{file};
-    const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+    const auto refused = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files);
     REQUIRE(!refused);
     REQUIRE(refused.error().publication == core::Publication::not_published);
     REQUIRE(!std::filesystem::exists(escaped));
@@ -383,13 +383,13 @@ TEST_CASE("Staging refuses nonportable artifact paths and leaves no owned effect
              std::string{"a\\b"},
              std::string{"a//b"},
          }) {
-        const io::BundleFile file{
+        const fs::BundleFile file{
             .relative = path,
             .state = &content,
             .write = write_text,
         };
         const std::array files{file};
-        const auto refused = io::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+        const auto refused = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files);
         REQUIRE(!refused);
         CHECK(refused.error().code == core::ErrorCode::argument);
         CHECK(refused.error().publication == core::Publication::not_published);

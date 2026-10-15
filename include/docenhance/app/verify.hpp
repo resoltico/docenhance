@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
@@ -37,11 +37,11 @@ class VerifyRequest {
     [[nodiscard]] const std::string& directory() const&& = delete;
 
   private:
-    friend core::Result<VerifyRequest> prepare_verify(const contract::Invocation& /*invocation*/);
+    friend core::Result<VerifyRequest> prepare_verify(const app::Invocation& /*invocation*/);
     explicit VerifyRequest(std::string directory) : directory_(std::move(directory)) {}
     std::string directory_;
 };
-[[nodiscard]] core::Result<VerifyRequest> prepare_verify(const contract::Invocation& invocation);
+[[nodiscard]] core::Result<VerifyRequest> prepare_verify(const app::Invocation& invocation);
 
 // What a bundle agreed with. Confirming a bundle establishes that its artifacts are the ones its
 // record names; it does not establish who produced them, and it never reruns the processing that

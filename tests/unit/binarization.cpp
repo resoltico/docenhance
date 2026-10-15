@@ -3,8 +3,8 @@
 #include "docenhance/methods/binarization.hpp"
 
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -38,9 +38,9 @@ constexpr std::uint8_t untouched = 42;
 exec::Scheduler schedule(unsigned workers) {
     return exec::Scheduler{exec::Concurrency::resolve(workers, workers, 0, 0).value()};
 }
-contract::Invocation request(const std::string& selector) {
-    contract::Invocation value;
-    value.command = contract::Command::process;
+app::Invocation request(const std::string& selector) {
+    app::Invocation value;
+    value.command = app::Command::process;
     value.subject = "input.png";
     value.output_directory = "output";
     value.output_mode = "bw";

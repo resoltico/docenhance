@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/io/protection_png.hpp"
+#include "docenhance/codec/protection_png.hpp"
 
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/linear.hpp"
@@ -38,7 +38,7 @@ void check_samples(docenhance::image::PlaneView<const std::uint8_t> view) {
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     namespace core = docenhance::core;
     namespace image = docenhance::image;
-    namespace io = docenhance::io;
+    namespace codec = docenhance::codec;
     using docenhance::fuzz::require;
     const std::span<const std::uint8_t> bytes{data, size};
     constexpr std::size_t width_at = 16;
@@ -49,7 +49,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     };
     core::Budget budget{budget_limit};
     {
-        auto decoded = io::decode_protection_png(bytes, extent, budget);
+        auto decoded = codec::decode_protection_png(bytes, extent, budget);
         if (decoded) {
             require(decoded->width() == extent.width && decoded->height() == extent.height,
                     "mask extent");

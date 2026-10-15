@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/contract/parse.hpp"
+#include "docenhance/app/cli_contract.hpp"
+#include "docenhance/app/values.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "require.hpp"
@@ -23,31 +23,30 @@
 #include <vector>
 namespace docenhance::tests {
 inline void parser_cases() {
-    require(contract::parse_finite("1e-2", 0, 1).value() == 0.01, "finite exponent");
+    require(app::parse_finite("1e-2", 0, 1).value() == 0.01, "finite exponent");
     for (const auto* const text : {
              "nan", "NaN", "inf", "-inf", "1e999", "0x1.0p0", " 1",  "1 ",
              "1,2", "",    "+1",  "\t1",  "\n1",   "\v1",     "\f1", "\r1",
              "1\t", "-",   ".",   "e1",   "1e",    "1e-",     "--1", "1..0",
          }) {
-        require(!contract::parse_finite(text, -10, 10).has_value(),
+        require(!app::parse_finite(text, -10, 10).has_value(),
                 "noncanonical/invalid decimal accepted");
     }
-    const auto option = contract::parse_decimal_option("--gamma", "5", 0.25, 4);
+    const auto option = app::parse_decimal_option("--gamma", "5", 0.25, 4);
     require(!option && option.error().code == core::ErrorCode::argument &&
                 option.error().message.contains("--gamma value \"5\"") &&
                 option.error().message.contains("[0.25,4]"),
             "named decimal diagnostic");
-    require(contract::parse_integer_option("--sauvola-window", "31", 3, 4095, true).value() == 31,
+    require(app::parse_integer_option("--sauvola-window", "31", 3, 4095, true).value() == 31,
             "named integer acceptance");
     for (const auto* const text : {"", "4", "+31", "31.0", "1e1", "4294967296"}) {
-        const auto integer =
-            contract::parse_integer_option("--sauvola-window", text, 3, 4095, true);
+        const auto integer = app::parse_integer_option("--sauvola-window", text, 3, 4095, true);
         require(!integer && integer.error().message.contains("--sauvola-window") &&
                     integer.error().message.contains("[3,4095]"),
                 "named integer refusal");
     }
-    require(!contract::parse_finite("2", 0, 1).has_value(), "range enforced");
-    require(!contract::parse_finite("0", 1, 0).has_value(), "invalid bounds rejected");
+    require(!app::parse_finite("2", 0, 1).has_value(), "range enforced");
+    require(!app::parse_finite("0", 1, 0).has_value(), "invalid bounds rejected");
     require(image::checked_elements(12, 10, 3, 360).value() == 360, "exact raster budget");
     require(!image::checked_elements(12, 10, 3, 359).has_value(), "budget overrun");
     require(!image::checked_elements(std::numeric_limits<std::size_t>::max(), 2, 4,
@@ -59,7 +58,7 @@ inline void parser_cases() {
 // The decimal grammar of spec/cli-contract.json, checked by spelling rather than against the
 // parser's own scanner: equivalent forms, malformed exponents and option ranges.
 inline void decimal_cases() {
-    const auto hundred = contract::parse_finite("1e2", -1000, 1000);
+    const auto hundred = app::parse_finite("1e2", -1000, 1000);
     require(hundred.has_value() && hundred.value() == 100.0, "1e2 is one hundred");
     for (const auto* const text : {
              "1e+2",
@@ -72,37 +71,33 @@ inline void decimal_cases() {
              "0.1e+3",
              "10000e-2",
          }) {
-        const auto value = contract::parse_finite(text, -1000, 1000);
+        const auto value = app::parse_finite(text, -1000, 1000);
         require(value.has_value() && value.value() == hundred.value(),
                 std::string("equivalent spelling of 1e2: ") + text);
     }
-    require(contract::parse_finite("-1e+2", -1000, 1000).value() == -100.0,
-            "signed exponent, negative");
-    require(contract::parse_finite("1e-2", 0, 1).value() == 0.01, "negative exponent");
-    require(contract::parse_finite(".5e+1", 0, 10).value() == 5.0,
-            "leading point with signed exponent");
+    require(app::parse_finite("-1e+2", -1000, 1000).value() == -100.0, "signed exponent, negative");
+    require(app::parse_finite("1e-2", 0, 1).value() == 0.01, "negative exponent");
+    require(app::parse_finite(".5e+1", 0, 10).value() == 5.0, "leading point with signed exponent");
     // A '+' is an exponent sign only; malformed exponents and trailing characters are rejected.
     for (const auto* const text : {
              "+1",    "+1e2",  "+1e+2", "1e",    "1e+",   "1e-",   "1e++2",  "1e--2",
              "1e+-2", "1e-+2", "1+e2",  "1e +2", "1e+ 2", "1e+2+", "1e+2x",  "1e+2.5",
              "1.5e",  "e+2",   "E+2",   ".e+2",  "1e+2 ", " 1e+2", "1e+2\t", "1,e+2",
          }) {
-        require(!contract::parse_finite(text, -1000, 1000).has_value(),
+        require(!app::parse_finite(text, -1000, 1000).has_value(),
                 std::string("malformed decimal accepted: ") + text);
     }
     // Grammatical scientific notation still has to lie inside the option's range and be finite.
-    require(!contract::parse_finite("1e+2", 0, 1).has_value(), "in-grammar value above the range");
-    require(!contract::parse_finite("-1e+2", -10, 10).has_value(),
-            "in-grammar value below the range");
-    require(contract::parse_finite("1e-8", 1e-8, 1e-3).has_value(),
-            "range endpoint in exponent form");
-    require(!contract::parse_finite("1e-9", 1e-8, 1e-3).has_value(), "below the option range");
-    require(!contract::parse_finite("1e+400", -1e308, 1e308).has_value(), "overflowing exponent");
-    require(!contract::parse_finite("1e-400", 0, 1).has_value(), "conversion underflow refused");
-    require(contract::parse_finite("0e-400", 0, 1).value() == 0, "zero has no underflow");
-    require(!contract::parse_finite("4.9406564584124654e-324", 0, 1).has_value(),
+    require(!app::parse_finite("1e+2", 0, 1).has_value(), "in-grammar value above the range");
+    require(!app::parse_finite("-1e+2", -10, 10).has_value(), "in-grammar value below the range");
+    require(app::parse_finite("1e-8", 1e-8, 1e-3).has_value(), "range endpoint in exponent form");
+    require(!app::parse_finite("1e-9", 1e-8, 1e-3).has_value(), "below the option range");
+    require(!app::parse_finite("1e+400", -1e308, 1e308).has_value(), "overflowing exponent");
+    require(!app::parse_finite("1e-400", 0, 1).has_value(), "conversion underflow refused");
+    require(app::parse_finite("0e-400", 0, 1).value() == 0, "zero has no underflow");
+    require(!app::parse_finite("4.9406564584124654e-324", 0, 1).has_value(),
             "conversion underflow is refused even for subnormal results");
-    require(std::signbit(contract::parse_finite("-0", -1, 1).value()), "negative zero retained");
+    require(std::signbit(app::parse_finite("-0", -1, 1).value()), "negative zero retained");
 }
 inline void numerical_cases() {
     require(image::srgb_decode(0).value() == 0, "black decode");
@@ -164,35 +159,30 @@ inline void numerical_cases() {
     require(!image::reflect101(0, 0).has_value(), "empty reflection rejected");
 }
 inline void capabilities_cases() {
-    require(contract::option_catalog.size() == 50, "compiled target contract size");
+    require(app::option_catalog.size() == 50, "compiled target contract size");
     // The reviewed scope of an option is typed, so no layer has to interpret a scope string.
-    const auto& out_dir = contract::option_catalog.front();
+    const auto& out_dir = app::option_catalog.front();
     require(out_dir.name == "--out-dir", "the catalog keeps the reviewed order");
-    require(out_dir.scope.contains(contract::Command::process), "--out-dir belongs to process");
-    require(!out_dir.scope.contains(contract::Command::methods),
-            "--out-dir is not a methods option");
-    require(!out_dir.scope.contains(contract::Command::root), "--out-dir is not a root option");
-    require(std::ranges::count(contract::option_catalog, "--rotate",
-                               &contract::OptionDescriptor::name) == 1,
+    require(out_dir.scope.contains(app::Command::process), "--out-dir belongs to process");
+    require(!out_dir.scope.contains(app::Command::methods), "--out-dir is not a methods option");
+    require(!out_dir.scope.contains(app::Command::root), "--out-dir is not a root option");
+    require(std::ranges::count(app::option_catalog, "--rotate", &app::OptionDescriptor::name) == 1,
             "rotation option is declared once");
     require(std::ranges::any_of(
-                contract::option_catalog,
-                [](const contract::OptionDescriptor& option) {
+                app::option_catalog,
+                [](const app::OptionDescriptor& option) {
                     const auto* const binding =
-                        std::get_if<decltype(&contract::Invocation::rotate)>(&option.binding);
+                        std::get_if<decltype(&app::Invocation::rotate)>(&option.binding);
                     return option.name == "--rotate" &&
-                           option.scope.contains(contract::Command::process) &&
-                           !option.scope.contains(contract::Command::methods) &&
-                           !option.scope.contains(contract::Command::root) && binding != nullptr &&
-                           *binding == &contract::Invocation::rotate;
+                           option.scope.contains(app::Command::process) &&
+                           !option.scope.contains(app::Command::methods) &&
+                           !option.scope.contains(app::Command::root) && binding != nullptr &&
+                           *binding == &app::Invocation::rotate;
                 }),
             "rotation is process-only and binds its typed value member");
-    require(contract::CommandSet::all().contains(contract::Command::version),
-            "every command is in all");
-    require(!contract::CommandSet{}.contains(contract::Command::root),
-            "an empty scope holds nothing");
-    require(!contract::command_usage(contract::Command::process).empty(),
-            "every command has a usage line");
+    require(app::CommandSet::all().contains(app::Command::version), "every command is in all");
+    require(!app::CommandSet{}.contains(app::Command::root), "an empty scope holds nothing");
+    require(!app::command_usage(app::Command::process).empty(), "every command has a usage line");
     require(
         methods::implemented_methods().size() == 13 &&
             methods::implemented_methods().front().id == "I01" &&

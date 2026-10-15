@@ -1,0 +1,56 @@
+// SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+// SPDX-License-Identifier: MPL-2.0
+#include "native_publication.hpp"
+
+#include <filesystem>
+#include <system_error>
+
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h> // NOLINT(misc-include-cleaner): Windows API umbrella header.
+#elifdef __linux__
+#include <cerrno>
+#include <fcntl.h>
+#include <stdio.h> // NOLINT(modernize-deprecated-headers)
+#elifdef __APPLE__
+#include <sys/stdio.h>
+#else
+#error "Exclusive publication requires a supported native no-replace rename"
+#endif
+
+namespace docenhance::fs {
+std::error_code rename_exclusive(const std::filesystem::path& source,
+                                 const std::filesystem::path& target) noexcept {
+#ifdef _WIN32
+    // NOLINTNEXTLINE(misc-include-cleaner): MoveFileExW is a Windows SDK ABI entry point.
+    if (MoveFileExW(source.c_str(), target.c_str(), 0) != 0) {
+        return {};
+    }
+    // NOLINTNEXTLINE(misc-include-cleaner): GetLastError pairs with the Windows ABI call above.
+    return {static_cast<int>(GetLastError()), std::system_category()};
+#elifdef __linux__
+    if (renameat2(AT_FDCWD, source.c_str(), AT_FDCWD, target.c_str(), RENAME_NOREPLACE) == 0) {
+        return {};
+    }
+    return {errno, std::generic_category()};
+#else
+    if (renamex_np(source.c_str(), target.c_str(), RENAME_EXCL) == 0) {
+        return {};
+    }
+    return {errno, std::generic_category()};
+#endif
+}
+bool definitely_not_published(const std::error_code& error) noexcept {
+    // An I/O/network error can be ambiguous (e.g. a remote rename committed before a lost reply).
+    // Only errors that prove refusal are reported as not_published.
+    return error == std::errc::file_exists || error == std::errc::directory_not_empty ||
+           error == std::errc::permission_denied || error == std::errc::read_only_file_system ||
+           error == std::errc::cross_device_link || error == std::errc::function_not_supported ||
+           error == std::errc::operation_not_supported || error == std::errc::invalid_argument;
+}
+} // namespace docenhance::fs

@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -44,15 +44,15 @@ class ObservedFailure final : public app::Processor {
     core::ErrorCode code_;
     unsigned calls_ = 0;
 };
-contract::Invocation invocation() {
-    contract::Invocation request;
-    request.command = contract::Command::process;
+app::Invocation invocation() {
+    app::Invocation request;
+    request.command = app::Command::process;
     request.subject = "input.png";
     request.output_directory = "output";
     return request;
 }
-void check(const contract::Invocation& request, methods::StageObservations stages,
-           core::ErrorCode code, bool malformed) {
+void check(const app::Invocation& request, methods::StageObservations stages, core::ErrorCode code,
+           bool malformed) {
     UnusedVerifier verifier;
     ObservedFailure processor{std::move(stages), code};
     const auto outcome = app::dispatch(request, processor, verifier);

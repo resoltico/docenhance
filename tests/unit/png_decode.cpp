@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/png.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/png.hpp"
 #include "png_context.hpp"
 #include "png_fixture.hpp"
 
@@ -19,7 +19,7 @@
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t codec_budget = std::size_t{8} * 1024 * 1024;
-bool native_png_refusal(const io::PngContext& context) {
+bool native_png_refusal(const codec::PngContext& context) {
     // Every resource owner is in the test's caller, outside this jump frame.
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -65,7 +65,7 @@ void check_samples(const GrayFixture& fixture) {
     const auto bytes = make_gray_png(fixture);
     core::Budget budget{codec_budget};
     {
-        const auto decoded = io::decode_grayscale_png(bytes, budget);
+        const auto decoded = codec::decode_grayscale_png(bytes, budget);
         REQUIRE(decoded);
         verify_samples(decoded->view(), fixture);
     }
@@ -82,7 +82,7 @@ TEST_CASE("A protected PNG error returns to its native frame and refunds codec o
           "[png][ownership]") {
     core::Budget budget{codec_budget};
     {
-        io::PngContext context{budget, false};
+        codec::PngContext context{budget, false};
         REQUIRE(context.png != nullptr);
         REQUIRE(context.info != nullptr);
         REQUIRE(budget.used() > 0);
@@ -109,7 +109,7 @@ TEST_CASE("Every truncated PNG prefix is rejected and refunds its decoder budget
     const auto bytes = make_gray_png(sample_fixture(4, true, 9));
     core::Budget budget{codec_budget};
     for (std::size_t size = 0; size < bytes.size(); ++size) {
-        const auto decoded = io::decode_grayscale_png(std::span{bytes}.first(size), budget);
+        const auto decoded = codec::decode_grayscale_png(std::span{bytes}.first(size), budget);
         REQUIRE(!decoded);
         CHECK(decoded.error().code == core::ErrorCode::input);
         CHECK(budget.used() == 0);
@@ -118,22 +118,22 @@ TEST_CASE("Every truncated PNG prefix is rejected and refunds its decoder budget
 TEST_CASE("PNG limits can only tighten and codec allocation refusal refunds every block", "[png]") {
     const auto bytes = make_gray_png(sample_fixture(8, false, 9));
     core::Budget budget{codec_budget};
-    CHECK(
-        io::decode_grayscale_png(bytes, budget, {.encoded_bytes = bytes.size() - 1}).error().code ==
-        core::ErrorCode::resource);
-    CHECK(io::decode_grayscale_png(bytes, budget, {.pixels = 80}).error().code ==
+    CHECK(codec::decode_grayscale_png(bytes, budget, {.encoded_bytes = bytes.size() - 1})
+              .error()
+              .code == core::ErrorCode::resource);
+    CHECK(codec::decode_grayscale_png(bytes, budget, {.pixels = 80}).error().code ==
           core::ErrorCode::resource);
-    CHECK(io::decode_grayscale_png(bytes, budget, {.pixels = 0}).error().code ==
+    CHECK(codec::decode_grayscale_png(bytes, budget, {.pixels = 0}).error().code ==
           core::ErrorCode::argument);
-    CHECK(io::decode_grayscale_png(bytes, budget, {.pixels = 40'000'001}).error().code ==
+    CHECK(codec::decode_grayscale_png(bytes, budget, {.pixels = 40'000'001}).error().code ==
           core::ErrorCode::argument);
-    CHECK(io::decode_grayscale_png(bytes, budget, {.encoded_bytes = 0}).error().code ==
+    CHECK(codec::decode_grayscale_png(bytes, budget, {.encoded_bytes = 0}).error().code ==
           core::ErrorCode::argument);
     CHECK(budget.used() == 0);
     for (const std::size_t limit : {0U, 64U, 1024U, 4096U, 16384U, 32768U}) {
         core::Budget constrained{limit};
         {
-            const auto decoded = io::decode_grayscale_png(bytes, constrained);
+            const auto decoded = codec::decode_grayscale_png(bytes, constrained);
             REQUIRE(!decoded);
             CHECK(decoded.error().code == core::ErrorCode::resource);
         }
@@ -144,7 +144,7 @@ TEST_CASE("PNG CRC checking is identical on the memory path", "[png]") {
     auto bytes = make_gray_png(sample_fixture(8, false, 2));
     bytes.at(29) ^= 1U;
     core::Budget budget{codec_budget};
-    const auto decoded = io::decode_grayscale_png(bytes, budget);
+    const auto decoded = codec::decode_grayscale_png(bytes, budget);
     REQUIRE(!decoded);
     CHECK(decoded.error().code == core::ErrorCode::input);
     CHECK(budget.used() == 0);

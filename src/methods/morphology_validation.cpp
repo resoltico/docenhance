@@ -3,7 +3,7 @@
 #include "docenhance/core/limits.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/progress.hpp"

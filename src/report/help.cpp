@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "help.hpp"
 
+#include "docenhance/app/cli_contract.hpp"
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 
 #include <cstddef>
 #include <string>
@@ -36,7 +36,7 @@ void append_wrapped(std::string& output, std::string_view body) {
 } // namespace
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
-                       std::string(contract::command_usage(outcome.command)) + "\n\n";
+                       std::string(app::command_usage(outcome.command)) + "\n\n";
     text += "Implemented methods:";
     for (const auto& method : help.capabilities.methods) {
         text += " " + std::string(method.id) + " (" + std::string(method.selector) + ")";
@@ -53,7 +53,7 @@ std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     if (help.list_commands) {
         text += "Commands: process, verify, methods, version\n\n";
     }
-    for (const auto& option : contract::option_catalog) {
+    for (const auto& option : app::option_catalog) {
         if (!option.scope.contains(outcome.command)) {
             continue;
         }

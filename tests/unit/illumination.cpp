@@ -3,8 +3,8 @@
 #include "docenhance/methods/illumination.hpp"
 
 #include "cancellation_probe.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -67,8 +67,8 @@ TEST_CASE("I01 factory and application admission reject contradictions before I/
     params = options().parameters();
     params.cell = 1;
     CHECK(!methods::Surface::create(params));
-    contract::Invocation request{
-        .command = contract::Command::process,
+    app::Invocation request{
+        .command = app::Command::process,
         .subject = "input.png",
         .output_directory = "out",
     };

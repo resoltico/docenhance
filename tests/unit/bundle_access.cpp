@@ -6,8 +6,8 @@
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/io/artifact_limits.hpp"
-#include "docenhance/io/bundle_snapshot.hpp"
+#include "docenhance/fs/artifact_limits.hpp"
+#include "docenhance/fs/bundle_snapshot.hpp"
 #include "temporary_directory.hpp"
 
 #include <array>
@@ -26,7 +26,7 @@ TEST_CASE("Bundle native access refuses links and special files at opening", "[b
     const TemporaryDirectory temporary{"docenhance-bundle-native"};
     const auto root = temporary.path / "bundle";
     REQUIRE(std::filesystem::create_directory(root));
-    auto directory = io::BundleDirectory::open(root);
+    auto directory = fs::BundleDirectory::open(root);
     REQUIRE(directory);
     std::ofstream{temporary.path / "outside"} << "outside";
     std::error_code error;
@@ -47,7 +47,7 @@ TEST_CASE("Bundle native reads retain opened identity across pathname replacemen
     const auto root = temporary.path / "bundle";
     REQUIRE(std::filesystem::create_directory(root));
     std::ofstream{root / "run.json"} << "owned";
-    auto directory = io::BundleDirectory::open(root);
+    auto directory = fs::BundleDirectory::open(root);
     REQUIRE(directory);
     auto file = directory->file("run.json");
     REQUIRE(file);
@@ -76,8 +76,8 @@ TEST_CASE("Bundle reading and hashing observe bounded cancellation", "[bundle][c
     constexpr std::size_t blocks = std::size_t{3} * 64 * 1024;
     std::ofstream{root / "run.json"} << std::string(blocks, 'x');
     const CheckpointStop stop{core::Checkpoint::verification, 1};
-    core::Budget budget{io::bundle_snapshot_budget};
-    auto read = io::read_bundle(utf8_spelling(root), budget, stop.cancellation(),
+    core::Budget budget{fs::bundle_snapshot_budget};
+    auto read = fs::read_bundle(utf8_spelling(root), budget, stop.cancellation(),
                                 core::bundle_max_file_bytes);
     REQUIRE(!read);
     CHECK(read.error().code == core::ErrorCode::cancelled);

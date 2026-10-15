@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/tiff.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
-#include "docenhance/io/tiff.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 
@@ -14,11 +14,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     using docenhance::fuzz::require;
     docenhance::core::Budget budget{std::size_t{64} * 1024 * 1024};
     {
-        const auto decoded = docenhance::io::decode_tiff(
+        const auto decoded = docenhance::codec::decode_tiff(
             {data, size}, budget, docenhance::image::ProfilePolicy::embedded, {},
             {.encoded_bytes = 65536, .pixels = 65536});
         if (decoded) {
-            require(docenhance::image::valid_tiff_source(decoded->source),
+            require(docenhance::image::valid_tiff_facts(decoded->source),
                     "accepted TIFF has complete source declarations");
             require(decoded->raster.shape == docenhance::image::decoded_tiff_shape(decoded->source),
                     "decoded TIFF precision and sample model agree with declarations");

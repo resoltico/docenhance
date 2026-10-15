@@ -2,32 +2,32 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "bundle_verify.hpp"
 
-#include "docenhance/bundle/inventory.hpp"
-#include "docenhance/bundle/record.hpp"
+#include "docenhance/codec/png_artifact.hpp"
 #include "docenhance/color/profile.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/artifact_limits.hpp"
+#include "docenhance/fs/bundle_snapshot.hpp"
+#include "docenhance/fs/digest.hpp"
+#include "docenhance/fs/publication.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/artifact_limits.hpp"
-#include "docenhance/io/bundle_snapshot.hpp"
-#include "docenhance/io/digest.hpp"
-#include "docenhance/io/png_artifact.hpp"
-#include "docenhance/io/publication.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/record/inventory.hpp"
+#include "docenhance/record/record.hpp"
 
 #include <expected>
 #include <utility>
 #include <variant>
 namespace docenhance::host {
 namespace {
-core::Result<void> artifacts(const bundle::DeclaredBundle& declared,
-                             const io::BundleSnapshot& bytes, core::Budget& budget,
+core::Result<void> artifacts(const record::DeclaredBundle& declared,
+                             const fs::BundleSnapshot& bytes, core::Budget& budget,
                              const core::Cancellation& cancellation) {
     if (!declared.operation) {
         return core::failure(core::ErrorCode::input, "Missing bundle operation");
     }
-    auto image = io::observe_png_artifact(bytes.image.bytes(), budget, cancellation);
+    auto image = codec::observe_png_artifact(bytes.image.bytes(), budget, cancellation);
     if (!image) {
         return std::unexpected(image.error());
     }
@@ -46,7 +46,7 @@ core::Result<void> artifacts(const bundle::DeclaredBundle& declared,
     if (!declared.protection) {
         return {};
     }
-    auto mask = io::observe_png_artifact(bytes.mask.bytes(), budget, cancellation);
+    auto mask = codec::observe_png_artifact(bytes.mask.bytes(), budget, cancellation);
     if (!mask) {
         return std::unexpected(mask.error());
     }
@@ -80,21 +80,21 @@ core::Result<void> validate_bundle(void* const state, const std::string& directo
     return {};
 }
 } // namespace
-io::BundleValidation bundle_validation(ExpectedBundle& expected) {
+fs::BundleValidation bundle_validation(ExpectedBundle& expected) {
     return {.state = &expected, .validate = validate_bundle};
 }
 core::Result<VerifiedBundle> verify_bundle(const std::string& directory,
                                            const core::Cancellation& cancellation) {
-    core::Budget budget{io::bundle_snapshot_budget};
-    auto bytes = io::read_bundle(directory, budget, cancellation, bundle::record_max_bytes);
+    core::Budget budget{fs::bundle_snapshot_budget};
+    auto bytes = fs::read_bundle(directory, budget, cancellation, record::record_max_bytes);
     if (!bytes) {
         return std::unexpected(bytes.error());
     }
-    auto declared = bundle::read_record(bytes->record.bytes());
+    auto declared = record::read_record(bytes->record.bytes());
     if (!declared) {
         return std::unexpected(declared.error());
     }
-    auto agreed = bundle::agrees(*declared, bytes->contents.files, bytes->contents.directories);
+    auto agreed = record::agrees(*declared, bytes->contents.files, bytes->contents.directories);
     if (!agreed) {
         return std::unexpected(agreed.error());
     }
@@ -102,7 +102,7 @@ core::Result<VerifiedBundle> verify_bundle(const std::string& directory,
     if (!checked) {
         return std::unexpected(checked.error());
     }
-    auto identity = io::identify(bytes->record.bytes(), cancellation);
+    auto identity = fs::identify(bytes->record.bytes(), cancellation);
     if (!identity) {
         return std::unexpected(identity.error());
     }

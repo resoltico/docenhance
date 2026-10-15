@@ -1,14 +1,14 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
 add_executable(de_tests unit/illumination_states.cpp unit/prepared_observations.cpp unit/lifecycle.cpp unit/stage_outcomes.cpp unit/report_publication.cpp unit/value_contracts.cpp unit/geometry.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_decode.cpp unit/tiff_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/psf_png.cpp unit/restoration_contract.cpp unit/restoration_states.cpp unit/restoration_admission.cpp unit/otsu.cpp unit/otsu_reference.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/morphology.cpp unit/tvl1.cpp unit/contrast.cpp unit/clahe.cpp unit/sharpening.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
-target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/io" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
-target_link_libraries(de_tests PRIVATE de_app de_bundle de_core de_contract de_exec de_image de_methods de_io de_cli de_host de_color de_opencv Catch2::Catch2WithMain)
+  unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_streams.cpp unit/png_decode.cpp unit/tiff_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/psf_png.cpp unit/restoration_contract.cpp unit/restoration_states.cpp unit/restoration_admission.cpp unit/otsu.cpp unit/otsu_reference.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/morphology.cpp unit/tvl1.cpp unit/contrast.cpp unit/clahe.cpp unit/sharpening.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
+target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/codec" "${PROJECT_SOURCE_DIR}/src/fs" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
+target_link_libraries(de_tests PRIVATE de_app de_record de_core de_exec de_image de_methods de_codec de_fs de_cli de_host de_color de_opencv Catch2::Catch2WithMain)
 de_apply_options(de_tests)
 # The dependency-free reference runner used by tools/check_reference_suite.py, built, linted and run here too.
 add_executable(de_reference_tests support/standalone_main.cpp)
 target_include_directories(de_reference_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support")
-target_link_libraries(de_reference_tests PRIVATE de_app de_core de_contract de_exec de_image de_methods)
+target_link_libraries(de_reference_tests PRIVATE de_app de_core de_exec de_image de_methods)
 de_apply_options(de_reference_tests)
 add_test(NAME reference-suite COMMAND de_reference_tests)
 # Every fuzz harness also runs in every build, on every compiler and under the sanitize preset,
@@ -87,7 +87,7 @@ set_tests_properties(interrupt-contract PROPERTIES TIMEOUT 60)
 # Developer-only allocation observation; no benchmark result is manufactured by an API estimate.
 add_executable(de_jpeg_resources support/jpeg_resources.cpp)
 target_include_directories(de_jpeg_resources PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support")
-target_link_libraries(de_jpeg_resources PRIVATE de_io de_image de_core)
+target_link_libraries(de_jpeg_resources PRIVATE de_codec de_fs de_image de_core)
 de_apply_options(de_jpeg_resources)
 
 add_test(NAME composition-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_composition.py" "$<TARGET_FILE:docenhance>")
@@ -110,7 +110,7 @@ add_test(NAME delivery-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT
 set_tests_properties(delivery-contract PROPERTIES TIMEOUT 60)
 
 add_executable(de_cli_allocation support/cli_allocation.cpp support/allocation_observer.cpp)
-target_link_libraries(de_cli_allocation PRIVATE de_cli de_app de_contract de_core)
+target_link_libraries(de_cli_allocation PRIVATE de_cli de_app de_core)
 target_include_directories(de_cli_allocation PRIVATE "${PROJECT_SOURCE_DIR}/src/cli")
 target_compile_definitions(de_cli_allocation PRIVATE DE_ALLOCATION_SANITIZER_OBSERVATION=$<BOOL:${DE_ENABLE_TSAN}>)
 de_apply_options(de_cli_allocation)
@@ -118,7 +118,7 @@ add_test(NAME cli-allocation-failure COMMAND de_cli_allocation)
 set_tests_properties(cli-allocation-failure PROPERTIES TIMEOUT 60)
 
 add_executable(de_resource_limits support/resource_limits.cpp support/allocation_observer.cpp)
-target_link_libraries(de_resource_limits PRIVATE de_bundle de_methods de_image de_core)
+target_link_libraries(de_resource_limits PRIVATE de_record de_methods de_image de_core)
 target_compile_definitions(de_resource_limits PRIVATE DE_ALLOCATION_SANITIZER_OBSERVATION=$<BOOL:${DE_ENABLE_TSAN}>)
 de_apply_options(de_resource_limits)
 add_test(NAME resource-limits COMMAND de_resource_limits)

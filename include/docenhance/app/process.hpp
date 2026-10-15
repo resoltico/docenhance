@@ -1,14 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/contract/command.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/geometry.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/contrast.hpp"
@@ -88,21 +88,21 @@ class ProcessRequest {
     }
 
   private:
-    friend core::Result<ProcessRequest> prepare_process(const contract::Invocation& /*invocation*/);
+    friend core::Result<ProcessRequest> prepare_process(const app::Invocation& /*invocation*/);
     ProcessRequest(std::string input, std::string output, ProcessPlan plan)
         : input_(std::move(input)), output_(std::move(output)), plan_(std::move(plan)) {}
     std::string input_;
     std::string output_;
     ProcessPlan plan_;
 };
-[[nodiscard]] core::Result<ProcessRequest> prepare_process(const contract::Invocation& invocation);
+[[nodiscard]] core::Result<ProcessRequest> prepare_process(const app::Invocation& invocation);
 // A published bundle is identified by the run and record digest, not a persisted publication claim.
 // Success alternatives carry only the observations belonging to their representation.
 struct PublishedBinary {
     std::string output;
     std::string run;
     core::ContentIdentity record;
-    std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    std::optional<image::SourceFacts> source_decoding = std::nullopt;
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
     image::QuarterTurn rotation = image::QuarterTurn::identity();
 };
@@ -113,7 +113,7 @@ struct PublishedContinuous {
     methods::StageObservations stages;
     std::string run;
     core::ContentIdentity record;
-    std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    std::optional<image::SourceFacts> source_decoding = std::nullopt;
 };
 using Published = std::variant<PublishedBinary, PublishedContinuous>;
 struct Processed {
@@ -121,7 +121,7 @@ struct Processed {
     methods::ImplementedMethod method;
     std::string run;
     core::ContentIdentity record;
-    std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    std::optional<image::SourceFacts> source_decoding = std::nullopt;
     std::optional<methods::OtsuObservation> otsu = std::nullopt;
     image::QuarterTurn rotation = image::QuarterTurn::identity();
 };

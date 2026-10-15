@@ -12,7 +12,7 @@ The selected libraries serve actual production or test owners. Codec, color and 
 
 ## Typed admission and fixed execution
 
-The CLI parses syntax into `contract::Invocation`, retaining raw option presence. Application admission constructs the private `ProcessRequest` containing `BinaryPlan | ContinuousPlan`; only continuous plans contain photometric/protection state. The host executes geometry, illumination, denoising, restoration, contrast, sharpening and final quantization at fixed owners. The entry layer composes the host with the CLI. Tests/fuzzers can supply non-I/O ports, without a runtime bypass flag.
+The CLI parses syntax into `app::Invocation`, retaining raw option presence. Application admission constructs the private `ProcessRequest` containing `BinaryPlan | ContinuousPlan`; only continuous plans contain photometric/protection state. The host executes geometry, illumination, denoising, restoration, contrast, sharpening and final quantization at fixed owners. The entry layer composes the host with the CLI. Tests/fuzzers can supply non-I/O ports, without a runtime bypass flag.
 
 No plugin registry, JSON parameter-map engine or arbitrary recipe/DAG execution is needed. Runtime method catalogs come from actual implemented types. Reviewed classification distinguishes selectable, automatic and planned methods; G01 is automatic metadata orientation without a selector. Method arguments alone derive option attribution. Generated syntax/catalog declarations cannot admit an unimplemented operation. Current [format authorities](bundles.md#source-observations-and-format-compatibility) independently own response and record versions; obsolete forms have no reader or migration.
 

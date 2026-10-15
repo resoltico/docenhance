@@ -3,7 +3,7 @@
 ## Authority and composition
 
 The application owns meaning; adapters own effects. The command line parses syntax into
-`contract::Invocation` through generated typed option bindings, retaining raw presence. `de_app` validates it and constructs a private-construction
+`app::Invocation` through generated typed option bindings, retaining raw presence. `de_app` validates it and constructs a private-construction
 `ProcessRequest` owning a closed `BinaryPlan | ContinuousPlan`. Only the continuous alternative owns the fixed
 photometric plan and protection policy. Only that admitted value can cross `app::Processor`, the processing port.
 `de_host` implements the port with the image/codec pipeline. The `entry` layer is the only
@@ -55,22 +55,22 @@ checker reads it for include closure, API restrictions and this mechanically che
 | Target | May use | Responsibility |
 |---|---|---|
 | `de_core` | — | Errors, owned allocation budgets and the Result vocabulary |
-| `de_contract` | `de_core` | The command vocabulary, generated option descriptors and strict value parsers |
 | `de_exec` | `de_core` | The schedule: how many workers run a page's independent work items |
 | `de_image` | `de_core` | Checked owning planes, borrowed views and numerical primitives |
 | `de_methods` | `de_core`, `de_exec`, `de_image` | Pure image operations and typed executable method catalog |
-| `de_io` | `de_core`, `de_image` | PNG/JPEG/TIFF codecs, metadata, hashing and exclusive publication |
-| `de_bundle` | `de_core`, `de_image`, `de_methods` | The persistent run record: one written form for the facts an execution produced |
-| `de_app` | `de_contract`, `de_core`, `de_image`, `de_methods` | Validated use cases and the explicit processing and verification ports |
-| `de_report` | `de_app`, `de_bundle`, `de_contract`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
-| `de_cli` | `de_core`, `de_contract`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
-| `de_host` | `de_app`, `de_bundle`, `de_color`, `de_core`, `de_exec`, `de_image`, `de_io`, `de_methods`, `de_opencv` | Executes admitted requests using codecs, kernels and publication |
-| `de_opencv` | `de_core`, `de_image`, `de_methods` | Bounded CPU OpenCV NLM and Fourier restoration execution |
+| `de_app` | `de_core`, `de_image`, `de_methods` | Command vocabulary, generated option descriptors, strict value parsers, validated use cases and execution ports |
+| `de_report` | `de_app`, `de_record`, `de_core`, `de_image`, `de_methods` | Renders an outcome as the documented JSON response or as human text |
+| `de_cli` | `de_core`, `de_app`, `de_report` | CLI11 syntax adapter, process streams and exit status |
+| `de_host` | `de_app`, `de_codec`, `de_color`, `de_core`, `de_exec`, `de_fs`, `de_image`, `de_methods`, `de_opencv`, `de_record` | Executes admitted requests using codecs, kernels and publication |
 | `docenhance` | `de_cli`, `de_core`, `de_host` | The process entry point and sole production composition root |
 | `de_color` | `de_core`, `de_image` | Context-local color interpretation and bounded continuous-tone row conversion |
+| `de_opencv` | `de_core`, `de_image`, `de_methods` | Bounded CPU OpenCV NLM and Fourier restoration execution |
+| `de_record` | `de_core`, `de_image`, `de_methods` | The persistent run record: one written form for the facts an execution produced |
+| `de_codec` | `de_core`, `de_image` | PNG/JPEG/TIFF byte codecs, metadata and streaming PNG comparison |
+| `de_fs` | `de_codec`, `de_core`, `de_image` | Snapshots, digest, file-backed codec streams, owned staging, exclusive publication and bundle reading |
 
-Only `de_bundle` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_io` uses libpng in production.
-OpenCV core/photo serve D01 and R01 through `de_opencv`; production-adapter controls and native closure audits verify the selected libraries. The bundle field-mapping interface explicitly exposes nlohmann JSON to the report layer under
+Only `de_record` and `de_report` use nlohmann JSON, `de_cli` uses CLI11, and `de_codec` uses libpng in production.
+OpenCV core/photo serve D01 and R01 through `de_opencv`; production-adapter controls and native closure audits verify the selected libraries. The record field-mapping interface explicitly exposes nlohmann JSON to the report layer under
 the manifest's `interface_packages` permission; processing and numerical interfaces use project types. The executable-only `entry` layer
 explicitly declares that it has no public header directory; it is not a fake reusable library.
 
@@ -141,7 +141,7 @@ Malformed/truncated data, strict CRC failures and refused allocations are regres
 Filesystem effects bind relative paths before callbacks; admitted/report spelling remains intact.
 [Bundle ownership](bundles.md) requires native object leases,
 opened-handle admission and deterministic namespace mutation cases. Staging retains at most one
-root and 64 entry leases. Native publication ownership stays in I/O; one complete host validator
+root and 64 entry leases. Native publication ownership stays in `de_fs`; one complete host validator
 serves before and after commit, with no separate partial-record reopen or observation enum.
 
 The output must be a new directory whose parent already exists. Prechecking the target improves
@@ -158,8 +158,8 @@ Commit is native and atomically non-replacing: Linux `renameat2(RENAME_NOREPLACE
 check-then-rename fallback. An existing empty directory, file or symlink cannot be replaced, even
 when it appeared after the precheck. Unsupported filesystems fail closed.
 
-Bundle validation stays in `de_host`, composing `de_bundle`'s complete typed record reader with
-`de_io`'s native snapshots and PNG observations and `de_color`'s supported ICC checks. The publisher
+Bundle validation stays in `de_host`, composing `de_record`'s complete typed record reader with
+`de_fs`'s native snapshots and `de_codec`'s PNG observations and `de_color`'s supported ICC checks. The publisher
 invokes supplied validation callbacks before commit and when reconciling the destination, without
 acquiring a bundle/method layer dependency. The same acceptance contract serves later verification,
 staging validation and postcommit observation; none reruns processing.
@@ -259,8 +259,7 @@ operation's observation; codecs and publication receive the same control explici
 `image::LinearSource` exposes bounded, interpreted linear RGB blocks without encoded output
 round trips. The color adapter implements this alongside its no-filter row source. `de_methods`
 measures I01 surfaces and I02 morphology fields without codec/native types or filesystem authority; `de_host` composes the
-immutable model, oriented protection mask and downstream quantizer. `de_io` keeps exclusive
-ownership of encoding/verification/publication. There is no plugin or generic recipe framework.
+immutable model, oriented protection mask and downstream quantizer. `de_codec` owns byte encoding and comparison; `de_fs` owns the file streams and exclusive publication. There is no plugin or generic recipe framework.
 
 `ProcessFailure` is an application result envelope with a core error and one optional typed `StageObservations` aggregate. Selected untouched stages have progress `not_started` and unresolved effect;
 attempted families retain preparing/prepared/evaluating progress on failure without erasing
@@ -281,10 +280,10 @@ mathematics, resource phases, separate design QA and verification obligations.
 The continuous host calls the format-neutral source adapter. One bounded immutable encoded snapshot
 is hashed and dispatched by signature, never by extension or decoder retries. `image::RasterMetadata`
 contains shared ICC/orientation/resolution observations with closed PNG/JPEG/TIFF container declarations;
-no native codec types escape `io`. Common EXIF extraction retains its bounded IFD0 contract. PNG's
+no native codec types escape `codec`. Common EXIF extraction retains its bounded IFD0 contract. PNG's
 color/physical precedence and B02/B03 stored samples retain their existing semantics.
 
-The JPEG adapter promotes the locked static dependency into `de_io`, with the manifest owning that
+The JPEG adapter promotes the locked static dependency into `de_codec`, with the manifest owning that
 external-package permission. A bounded framing/metadata scan and charged native memory manager
 precede full-resolution native decoding. Native jumps stay inside owner-free wrappers, while the
 request's buffers and contexts outlive the frame. JPEG has no separate host, publisher or numerical

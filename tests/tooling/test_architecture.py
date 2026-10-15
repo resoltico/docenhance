@@ -185,7 +185,7 @@ class SourceRuleTests(unittest.TestCase):
     def test_allowed_directives_are_accepted(self) -> None:
         """What the layers really include is what the manifest allows."""
         for directive, name in (
-            ("docenhance/core/result.hpp", "contract"),
+            ("docenhance/core/result.hpp", "app"),
             ("nlohmann/json.hpp", "report"),
             ("CLI/CLI.hpp", "cli"),
             ("docenhance/version.hpp", "app"),

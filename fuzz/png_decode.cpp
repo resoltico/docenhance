@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/png.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/png.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 #include "support/png_shape.hpp"
@@ -59,7 +59,7 @@ Decoded decode(std::span<const std::uint8_t> bytes, std::size_t limit) {
     docenhance::core::Budget budget{limit};
     Decoded snapshot;
     {
-        auto decoded = docenhance::io::decode_grayscale_png(
+        auto decoded = docenhance::codec::decode_grayscale_png(
             bytes, budget, {.encoded_bytes = 65536, .pixels = 4096});
         if (decoded) {
             require(static_container(bytes),

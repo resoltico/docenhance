@@ -2,18 +2,19 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/contract/command.hpp"
+#include "docenhance/codec/png_stream.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/publication.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/publication.hpp"
 #include "entry_identity.hpp"
 #include "native_publication.hpp"
 #include "png_context.hpp"
+#include "png_file_rows.hpp"
 #include "png_reader.hpp"
-#include "png_rows.hpp"
 #include "processor.hpp"
 #include "temporary_directory.hpp"
 
@@ -61,8 +62,8 @@ std::error_code ambiguous(const std::filesystem::path& /*from*/,
                           const std::filesystem::path& /*to*/) noexcept {
     return std::make_error_code(std::errc::io_error);
 }
-core::Result<void> write_text(void* /*state*/, const io::BundleSlot& slot) {
-    return io::write_bytes(slot, "owned bytes");
+core::Result<void> write_text(void* /*state*/, const fs::BundleSlot& slot) {
+    return fs::write_bytes(slot, "owned bytes");
 }
 std::stop_source& execution_stop() {
     static std::stop_source source;
@@ -96,13 +97,13 @@ int failed_flush(std::FILE* /*file*/) {
 }
 struct Writer {
     core::Cancellation cancellation;
-    io::BundleStream operations;
+    fs::BundleStream operations;
     std::optional<core::ErrorCode> error;
 };
-core::Result<void> write_controlled(void* const state, const io::BundleSlot& slot) {
+core::Result<void> write_controlled(void* const state, const fs::BundleSlot& slot) {
     auto& writer = *static_cast<Writer*>(state);
     const std::string content(std::size_t{128} * 1024, 'a');
-    auto result = io::write_bytes(slot, content, writer.cancellation, writer.operations);
+    auto result = fs::write_bytes(slot, content, writer.cancellation, writer.operations);
     if (!result) {
         writer.error = result.error().code;
     }
@@ -113,9 +114,9 @@ bool failed_read_and_stop(void* const state, std::span<std::uint8_t> /*bytes*/) 
     return false;
 }
 unsigned writer_calls = 0;
-core::Result<void> stop_between_writers(void* /*state*/, const io::BundleSlot& slot) {
+core::Result<void> stop_between_writers(void* /*state*/, const fs::BundleSlot& slot) {
     ++writer_calls;
-    auto result = io::write_bytes(slot, "owned");
+    auto result = fs::write_bytes(slot, "owned");
     static_cast<void>(execution_stop().request_stop());
     return result;
 }
@@ -127,8 +128,8 @@ TEST_CASE(
     execution_stop() = std::stop_source{};
     static_cast<void>(execution_stop().request_stop());
     const core::Cancellation control{execution_stop().get_token()};
-    contract::Invocation invocation;
-    invocation.command = contract::Command::verify;
+    app::Invocation invocation;
+    invocation.command = app::Command::verify;
     REQUIRE(app::dispatch(invocation, processor, verifier, control).exit_code() ==
             core::ExitCode::invocation);
     invocation.subject = "absent";
@@ -140,28 +141,28 @@ TEST_CASE(
 }
 TEST_CASE("Publication exception containment respects the irreversible boundary", "[publication]") {
     for (const bool preparing : {true, false}) {
-        for (const auto commit : {io::rename_exclusive, ambiguous}) {
+        for (const auto commit : {fs::rename_exclusive, ambiguous}) {
             const TemporaryDirectory temporary{"docenhance-publication-exception"};
             const auto target = temporary.path / "result";
-            const io::BundleFile file{
+            const fs::BundleFile file{
                 .relative = "result.png",
                 .state = nullptr,
                 .write = write_text,
             };
             const std::array files{file};
             ValidationInjection injection{.preparing = preparing};
-            const io::BundleValidation validation{
+            const fs::BundleValidation validation{
                 .state = &injection,
                 .validate = throw_validation,
             };
             const auto result =
-                io::publish_bundle(utf8_spelling(target), files, {}, commit, validation);
+                fs::publish_bundle(utf8_spelling(target), files, {}, commit, validation);
             REQUIRE(!result);
             if (preparing) {
                 CHECK(result.error().code == core::ErrorCode::resource);
                 CHECK(result.error().publication == core::Publication::not_published);
                 CHECK(empty_directory(temporary.path));
-            } else if (commit == io::rename_exclusive) {
+            } else if (commit == fs::rename_exclusive) {
                 CHECK(result.error().code == core::ErrorCode::output_verify);
                 CHECK(result.error().publication == core::Publication::completed);
                 CHECK(std::filesystem::exists(target / "result.png"));
@@ -189,13 +190,13 @@ TEST_CASE("Manifest cancellation closes once and cannot erase delayed stream fai
                 },
             .error = std::nullopt,
         };
-        const io::BundleFile file{
+        const fs::BundleFile file{
             .relative = "run.json",
             .state = &writer,
             .write = write_controlled,
         };
         const std::array files{file};
-        const auto result = io::publish_bundle(utf8_spelling(temporary.path / "result"), files,
+        const auto result = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files,
                                                writer.cancellation);
         REQUIRE(!result);
         CHECK(result.error().code ==
@@ -212,10 +213,10 @@ TEST_CASE("Cancellation between bundle writers prevents later callbacks and clea
     execution_stop() = std::stop_source{};
     writer_calls = 0;
     const std::array files{
-        io::BundleFile{.relative = "result.png", .state = nullptr, .write = stop_between_writers},
-        io::BundleFile{.relative = "run.json", .state = nullptr, .write = stop_between_writers},
+        fs::BundleFile{.relative = "result.png", .state = nullptr, .write = stop_between_writers},
+        fs::BundleFile{.relative = "run.json", .state = nullptr, .write = stop_between_writers},
     };
-    const auto result = io::publish_bundle(utf8_spelling(temporary.path / "result"), files,
+    const auto result = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files,
                                            core::Cancellation{execution_stop().get_token()});
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::cancelled);
@@ -227,9 +228,9 @@ TEST_CASE("A failed native PNG read outranks a concurrently requested stop") {
     std::stop_source source;
     core::Budget budget{std::size_t{1} * 1024 * 1024};
     {
-        io::PngContext context{budget, false, core::Cancellation{source.get_token()}};
-        io::PngInput input{.state = &source, .read = failed_read_and_stop, .remaining = 8};
-        const auto result = io::decode_png(context, input, {});
+        codec::PngContext context{budget, false, core::Cancellation{source.get_token()}};
+        codec::PngInput input{.state = &source, .read = failed_read_and_stop, .remaining = 8};
+        const auto result = codec::decode_png(context, input, {});
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::input);
         CHECK(source.stop_requested());
@@ -247,16 +248,16 @@ TEST_CASE("Every wide PNG reread checkpoint cancels with full resource refunds")
         sample = static_cast<std::uint8_t>(value >> 24U);
     }
     const auto path = temporary.path / "result.png";
-    const auto parent = io::EntryLease::directory(temporary.path);
-    io::EntryLease created;
-    const io::BundleSlot slot{.path = path, .created = &created, .parent = parent.identity()};
-    REQUIRE(io::encode_png(slot, image.view().as_const(), budget));
+    const auto parent = fs::EntryLease::directory(temporary.path);
+    fs::EntryLease created;
+    const fs::BundleSlot slot{.path = path, .created = &created, .parent = parent.identity()};
+    REQUIRE(fs::encode_png(slot, image.view().as_const(), budget));
     const auto held = budget.used();
     bool complete = false;
     for (std::size_t after = 0; after < 256; ++after) {
         const CheckpointStop stop{core::Checkpoint::verification, after};
         const auto verified =
-            io::verify_png_image(path, image.view().as_const(), budget, stop.cancellation());
+            fs::verify_png_image(path, image.view().as_const(), budget, stop.cancellation());
         if (CheckpointStop::stopped()) {
             REQUIRE(!verified);
             CHECK(verified.error().code == core::ErrorCode::cancelled);

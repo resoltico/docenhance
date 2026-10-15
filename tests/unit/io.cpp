@@ -1,16 +1,17 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/png.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/fs/digest.hpp"
+#include "docenhance/fs/paths.hpp"
+#include "docenhance/fs/png.hpp"
+#include "docenhance/fs/publication.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/digest.hpp"
-#include "docenhance/io/paths.hpp"
-#include "docenhance/io/png.hpp"
-#include "docenhance/io/publication.hpp"
 #include "native_publication.hpp"
+#include "png_file_rows.hpp"
 #include "png_fixture.hpp"
-#include "png_rows.hpp"
 #include "png_transaction.hpp"
 #include "temporary_directory.hpp"
 
@@ -52,7 +53,7 @@ TEST_CASE("Codec allocations share the caller budget and refund on every path", 
         const auto output = temporary.path / ("budget-" + std::to_string(limit));
         {
             const auto decoded =
-                io::load_grayscale_png(utf8_spelling(original / "result.png"), constrained);
+                fs::load_grayscale_png(utf8_spelling(original / "result.png"), constrained);
             if (!decoded) {
                 CHECK(decoded.error().code == core::ErrorCode::resource);
             }
@@ -101,8 +102,8 @@ TEST_CASE("Binary output is read back and compared before it is published", "[io
         std::ofstream writing{tampered, std::ios::binary};
         writing.write(damaged.data(), static_cast<std::streamsize>(damaged.size()));
     }
-    CHECK(io::verify_png_image(result, image->view().as_const(), budget));
-    const auto refused = io::verify_png_image(tampered, image->view().as_const(), budget);
+    CHECK(fs::verify_png_image(result, image->view().as_const(), budget));
+    const auto refused = fs::verify_png_image(tampered, image->view().as_const(), budget);
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::output_verify);
 }
@@ -114,15 +115,15 @@ struct TextFile {
     std::string content;
     bool fail = false;
 };
-core::Result<void> write_text(void* const state, const io::BundleSlot& slot) {
+core::Result<void> write_text(void* const state, const fs::BundleSlot& slot) {
     const auto& file = *static_cast<TextFile*>(state);
     if (file.fail) {
         return core::failure(core::ErrorCode::output, "This file refuses to be written");
     }
-    return io::write_bytes(slot, file.content);
+    return fs::write_bytes(slot, file.content);
 }
-std::vector<io::BundleFile> declared(std::span<TextFile> files) {
-    std::vector<io::BundleFile> bundle;
+std::vector<fs::BundleFile> declared(std::span<TextFile> files) {
+    std::vector<fs::BundleFile> bundle;
     for (auto& file : files) {
         bundle.push_back({.relative = file.relative, .state = &file, .write = write_text});
     }
@@ -141,7 +142,7 @@ TEST_CASE("A bundle is published whole or not at all", "[io]") {
     SECTION("every declared file, including one in a directory the bundle owns") {
         const auto output = temporary.path / "complete";
         const auto published =
-            io::publish_bundle(utf8_spelling(output), declared(files), {}, io::rename_exclusive);
+            fs::publish_bundle(utf8_spelling(output), declared(files), {}, fs::rename_exclusive);
         REQUIRE(published);
         CHECK(std::filesystem::exists(output / "result.png"));
         CHECK(std::filesystem::exists(output / "assets" / "protect-mask.png"));
@@ -152,7 +153,7 @@ TEST_CASE("A bundle is published whole or not at all", "[io]") {
         files.back().fail = true;
         const auto output = temporary.path / "refused";
         const auto published =
-            io::publish_bundle(utf8_spelling(output), declared(files), {}, io::rename_exclusive);
+            fs::publish_bundle(utf8_spelling(output), declared(files), {}, fs::rename_exclusive);
         REQUIRE(!published);
         CHECK(published.error().publication == core::Publication::not_published);
         CHECK(!std::filesystem::exists(output));
@@ -172,9 +173,9 @@ TEST_CASE("The native commit refuses even an existing empty directory", "[io]") 
     const auto target = temporary.path / "target";
     REQUIRE(std::filesystem::create_directory(source));
     REQUIRE(std::filesystem::create_directory(target));
-    const auto error = io::rename_exclusive(source, target);
+    const auto error = fs::rename_exclusive(source, target);
     CHECK(error);
-    CHECK(io::definitely_not_published(error));
+    CHECK(fs::definitely_not_published(error));
     CHECK(std::filesystem::is_directory(source));
     CHECK(std::filesystem::is_directory(target));
 }
@@ -196,14 +197,14 @@ TEST_CASE("Only one concurrent native commit can win", "[io]") {
             while (!start.load(std::memory_order_acquire)) {
                 std::this_thread::yield();
             }
-            first_error = io::rename_exclusive(first, target);
+            first_error = fs::rename_exclusive(first, target);
         }};
         std::jthread const b{[&] {
             ready.fetch_add(1, std::memory_order_release);
             while (!start.load(std::memory_order_acquire)) {
                 std::this_thread::yield();
             }
-            second_error = io::rename_exclusive(second, target);
+            second_error = fs::rename_exclusive(second, target);
         }};
         while (ready.load(std::memory_order_acquire) != 2) {
             std::this_thread::yield();
@@ -240,8 +241,8 @@ TEST_CASE("File and memory PNG sources use identical decoding and error policy",
         core::Budget file_budget{mebibyte};
         core::Budget memory_budget{mebibyte};
         {
-            const auto from_file = io::load_grayscale_png(utf8_spelling(input), file_budget);
-            const auto from_memory = io::decode_grayscale_png(bytes, memory_budget);
+            const auto from_file = fs::load_grayscale_png(utf8_spelling(input), file_budget);
+            const auto from_memory = codec::decode_grayscale_png(bytes, memory_budget);
             REQUIRE(from_file.has_value() == from_memory.has_value());
             if (corrupt) {
                 REQUIRE(!from_file);
@@ -267,17 +268,17 @@ TEST_CASE("A recorded name keeps the bytes the path was admitted with", "[io]") 
     // and a platform that spells paths in wide characters must not hand them back through an
     // encoding that cannot express them.
     const std::string admitted = "dokuments-\u0101-\u6587.png";
-    CHECK(io::file_name("folder/" + admitted) == admitted);
-    CHECK(io::file_name(admitted) == admitted);
+    CHECK(fs::file_name("folder/" + admitted) == admitted);
+    CHECK(fs::file_name(admitted) == admitted);
     // A path that names no file at all is reported as it was given, not as an empty name.
-    CHECK(io::file_name("").empty());
+    CHECK(fs::file_name("").empty());
 }
 } // namespace docenhance::tests
 
 namespace docenhance::tests {
 TEST_CASE("Digest adapter matches the SHA-256 abc known answer", "[io][digest]") {
     constexpr std::array<std::byte, 3> input{std::byte{'a'}, std::byte{'b'}, std::byte{'c'}};
-    const auto identity = io::identify(input);
+    const auto identity = fs::identify(input);
     REQUIRE(identity);
     CHECK(identity->bytes == input.size());
     CHECK(identity->sha256 == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");

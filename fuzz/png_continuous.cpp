@@ -1,12 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/color/converter.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/continuous_png.hpp"
 #include "support/color_samples.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
@@ -46,8 +46,8 @@ void rows(docenhance::image::RowSource& producer, docenhance::core::Budget& budg
 }
 void decode(std::span<const std::uint8_t> bytes, docenhance::image::ProfilePolicy policy,
             docenhance::core::Budget& budget) {
-    auto source = docenhance::io::decode_png_raster(bytes, budget, policy, {},
-                                                    {.encoded_bytes = 65536, .pixels = 4096});
+    auto source = docenhance::codec::decode_png_raster(bytes, budget, policy, {},
+                                                       {.encoded_bytes = 65536, .pixels = 4096});
     if (docenhance::fuzz::zero_png_dimension(bytes)) {
         docenhance::fuzz::require(!source, "zero PNG dimensions cannot decode successfully");
     }

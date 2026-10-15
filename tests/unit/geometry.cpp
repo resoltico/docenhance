@@ -4,8 +4,8 @@
 
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
@@ -165,8 +165,8 @@ app::PublishedContinuous geometry_observation() {
 }
 void check_rotation_observation(bool binary, unsigned degrees, unsigned observed) {
     UnusedVerifier verifier;
-    contract::Invocation request;
-    request.command = contract::Command::process;
+    app::Invocation request;
+    request.command = app::Command::process;
     request.subject = "input.png";
     request.output_directory = "output";
     request.output_mode = binary ? "bw" : "preserve";

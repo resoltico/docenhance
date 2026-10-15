@@ -2,10 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
 
+#include "docenhance/app/cli_contract.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/contract/cli_contract.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
@@ -26,22 +26,22 @@ namespace {
 Capabilities capabilities() noexcept {
     return {
         .methods = methods::implemented_methods(),
-        .input_support = contract::input_support,
+        .input_support = app::input_support,
     };
 }
-Outcome succeeded(const contract::Invocation& invocation, Payload payload) {
+Outcome succeeded(const app::Invocation& invocation, Payload payload) {
     return {
         .command = invocation.command,
         .build = core::build_facts(),
         .payload = std::move(payload),
     };
 }
-Outcome not_implemented(const contract::Invocation& invocation, std::string message) {
+Outcome not_implemented(const app::Invocation& invocation, std::string message) {
     return failure(invocation,
                    {.code = core::ErrorCode::not_implemented, .message = std::move(message)});
 }
 
-Outcome process(const contract::Invocation& invocation, Processor& processor,
+Outcome process(const app::Invocation& invocation, Processor& processor,
                 const core::Cancellation& cancellation) {
     auto request = prepare_process(invocation);
     if (!request) {
@@ -92,7 +92,7 @@ Outcome process(const contract::Invocation& invocation, Processor& processor,
     }
 }
 } // namespace
-Outcome failure(const contract::Invocation& invocation, core::Error error) {
+Outcome failure(const app::Invocation& invocation, core::Error error) {
     return {
         .command = invocation.command,
         .build = core::build_facts(),
@@ -100,7 +100,7 @@ Outcome failure(const contract::Invocation& invocation, core::Error error) {
     };
 }
 namespace {
-Outcome verify(const contract::Invocation& invocation, Verifier& verifier,
+Outcome verify(const app::Invocation& invocation, Verifier& verifier,
                const core::Cancellation& cancellation) {
     auto request = prepare_verify(invocation);
     if (!request) {
@@ -142,38 +142,36 @@ Outcome verify(const contract::Invocation& invocation, Verifier& verifier,
 }
 } // namespace
 
-Outcome dispatch(const contract::Invocation& invocation, Processor& processor, Verifier& verifier,
+Outcome dispatch(const app::Invocation& invocation, Processor& processor, Verifier& verifier,
                  const core::Cancellation& cancellation) {
-    if (!contract::CommandSet::all().contains(invocation.command)) {
+    if (!app::CommandSet::all().contains(invocation.command)) {
         auto refused = failure(
             invocation, {.code = core::ErrorCode::argument, .message = "Unknown command value"});
-        refused.command = contract::Command::root;
+        refused.command = app::Command::root;
         return refused;
     }
-    const bool bare_root =
-        invocation.command == contract::Command::root && !invocation.root_version;
+    const bool bare_root = invocation.command == app::Command::root && !invocation.root_version;
     if (invocation.help || bare_root) {
         // The root command is the only one that lists the other commands.
-        return succeeded(invocation,
-                         Help{
-                             .list_commands = invocation.command == contract::Command::root,
-                             .capabilities = capabilities(),
-                         });
+        return succeeded(invocation, Help{
+                                         .list_commands = invocation.command == app::Command::root,
+                                         .capabilities = capabilities(),
+                                     });
     }
-    if (invocation.command == contract::Command::process) {
+    if (invocation.command == app::Command::process) {
         return process(invocation, processor, cancellation);
     }
-    if (invocation.command == contract::Command::verify) {
+    if (invocation.command == app::Command::verify) {
         return verify(invocation, verifier, cancellation);
     }
-    if (invocation.command == contract::Command::version || invocation.root_version) {
+    if (invocation.command == app::Command::version || invocation.root_version) {
         auto outcome = succeeded(invocation, Version{
                                                  .capabilities = capabilities(),
                                              });
-        outcome.command = contract::Command::version;
+        outcome.command = app::Command::version;
         return outcome;
     }
-    if (invocation.command == contract::Command::methods) {
+    if (invocation.command == app::Command::methods) {
         auto available = capabilities();
         if (!invocation.subject.empty()) {
             const auto selected = std::ranges::find(available.methods, invocation.subject,
@@ -188,7 +186,7 @@ Outcome dispatch(const contract::Invocation& invocation, Processor& processor, V
         }
         return succeeded(invocation, Methods{.capabilities = available});
     }
-    return not_implemented(invocation, std::string(contract::command_name(invocation.command)) +
+    return not_implemented(invocation, std::string(app::command_name(invocation.command)) +
                                            " is specified but not implemented; no inputs were "
                                            "opened and no outputs were created");
 }

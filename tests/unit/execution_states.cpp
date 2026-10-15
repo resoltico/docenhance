@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
@@ -63,9 +63,9 @@ class ReturningVerifier final : public app::Verifier {
     core::Result<app::Verified> value_;
     unsigned exception_ = 0;
 };
-contract::Invocation invocation(bool binary) {
-    contract::Invocation value;
-    value.command = contract::Command::process;
+app::Invocation invocation(bool binary) {
+    app::Invocation value;
+    value.command = app::Command::process;
     value.subject = "input.png";
     value.output_directory = "output";
     value.output_mode = binary ? "bw" : "preserve";
@@ -231,8 +231,8 @@ TEST_CASE("Complete continuous returns must agree on geometry, operation and sta
 }
 TEST_CASE("Readonly returns and exceptions cannot claim publication or fabricated confirmation") {
     RejectingProcessor processor;
-    contract::Invocation request;
-    request.command = contract::Command::verify;
+    app::Invocation request;
+    request.command = app::Command::verify;
     request.subject = "bundle";
     const app::Verified valid{
         .directory = "bundle",
@@ -296,11 +296,11 @@ TEST_CASE("Invalid command values have no scope bits and cannot reach execution"
     RejectingProcessor processor;
     UnusedVerifier verifier;
     auto request = invocation(false);
-    request.command = static_cast<contract::Command>(std::numeric_limits<unsigned>::digits);
-    CHECK(!contract::CommandSet::all().contains(request.command));
+    request.command = static_cast<app::Command>(std::numeric_limits<unsigned>::digits);
+    CHECK(!app::CommandSet::all().contains(request.command));
     const auto outcome = app::dispatch(request, processor, verifier);
     CHECK(error(outcome).code == core::ErrorCode::argument);
-    CHECK(outcome.command == contract::Command::root);
+    CHECK(outcome.command == app::Command::root);
     CHECK(processor.calls == 0);
 }
 TEST_CASE("I02 failure observations reject foreign fields and invalid scalar domains",

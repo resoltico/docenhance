@@ -4,7 +4,7 @@
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/linear.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 

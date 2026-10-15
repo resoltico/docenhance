@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/jpeg.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/continuous.hpp"
-#include "docenhance/io/jpeg.hpp"
 #include "file_contents.hpp"
 
 #include <algorithm>
@@ -29,8 +29,8 @@ int observe(int count, const char* const* const values) {
     // Encoded byte view; the charged snapshot outlives native decoding and its statistics.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     const auto* const bytes = reinterpret_cast<const std::uint8_t*>(snapshot->bytes().data());
-    const auto result = docenhance::io::decode_jpeg({bytes, snapshot->size()}, budget,
-                                                    docenhance::image::ProfilePolicy::embedded);
+    const auto result = docenhance::codec::decode_jpeg({bytes, snapshot->size()}, budget,
+                                                       docenhance::image::ProfilePolicy::embedded);
     if (!result) {
         std::cerr << result.error().message << '\n';
         return 4;

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/app/process.hpp"
-#include "docenhance/bundle/record.hpp"
 #include "docenhance/color/converter.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
@@ -11,7 +10,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/image/source.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
@@ -20,6 +19,7 @@
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "docenhance/methods/stages.hpp"
+#include "docenhance/record/record.hpp"
 
 #include <cstdint>
 #include <functional>
@@ -57,10 +57,10 @@ struct RunPublication {
     Artwork artwork;
     std::reference_wrapper<core::Budget> budget;
     std::reference_wrapper<const core::Cancellation> cancellation;
-    std::reference_wrapper<const bundle::RunContext> context;
+    std::reference_wrapper<const record::RunContext> context;
     core::ContentIdentity source;
     std::string source_name;
-    std::optional<image::SourceDescription> source_decoding = std::nullopt;
+    std::optional<image::SourceFacts> source_decoding = std::nullopt;
     image::QuarterTurn rotation = image::QuarterTurn::identity();
 };
 
@@ -69,13 +69,13 @@ struct PublishedRun {
     std::string output;
     std::string run;
     core::ContentIdentity record;
-    bundle::Verification verification = bundle::Verification::not_performed;
+    record::Verification verification = record::Verification::not_performed;
     // What the conversion observed while the image was produced, as the record states it.
     std::optional<image::ConversionReport> conversion;
 };
 
 [[nodiscard]] core::Result<app::PublishedContinuous>
-published_continuous(PublishedRun published, image::SourceDescription source,
+published_continuous(PublishedRun published, image::SourceFacts source,
                      methods::StageObservations& reports, image::AlphaPolicy alpha);
 [[nodiscard]] core::Result<PublishedRun> publish_run(const RunPublication& run);
 } // namespace docenhance::host

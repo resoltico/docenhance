@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/restoration.hpp"
 
@@ -12,21 +12,20 @@
 #include <utility>
 namespace docenhance::tests {
 namespace {
-contract::Invocation restoration_invocation() {
-    contract::Invocation i;
-    i.command = contract::Command::process;
+app::Invocation restoration_invocation() {
+    app::Invocation i;
+    i.command = app::Command::process;
     i.subject = "input.png";
     i.output_directory = "output";
     i.deblur = "wiener";
     i.psf = "gaussian";
     return i;
 }
-using RawMember = std::optional<std::string> contract::Invocation::*;
+using RawMember = std::optional<std::string> app::Invocation::*;
 constexpr std::array private_options{
-    &contract::Invocation::psf,          &contract::Invocation::psf_sigma,
-    &contract::Invocation::psf_length,   &contract::Invocation::psf_angle,
-    &contract::Invocation::psf_file,     &contract::Invocation::wiener_k,
-    &contract::Invocation::deblur_blend,
+    &app::Invocation::psf,          &app::Invocation::psf_sigma, &app::Invocation::psf_length,
+    &app::Invocation::psf_angle,    &app::Invocation::psf_file,  &app::Invocation::wiener_k,
+    &app::Invocation::deblur_blend,
 };
 } // namespace
 TEST_CASE("Restoration admission retains explicit option presence", "[app][restoration]") {
@@ -59,17 +58,17 @@ TEST_CASE("PSF selectors reject incompatible options even at default or empty va
           "[app][restoration]") {
     for (const auto* const spelling : {"", "1"}) {
         for (const auto member : std::array{
-                 &contract::Invocation::psf_length,
-                 &contract::Invocation::psf_angle,
-                 &contract::Invocation::psf_file,
+                 &app::Invocation::psf_length,
+                 &app::Invocation::psf_angle,
+                 &app::Invocation::psf_file,
              }) {
             auto i = restoration_invocation();
             i.*member = spelling;
             CHECK(!app::prepare_process(i));
         }
         for (const auto member : std::array{
-                 &contract::Invocation::psf_sigma,
-                 &contract::Invocation::psf_file,
+                 &app::Invocation::psf_sigma,
+                 &app::Invocation::psf_file,
              }) {
             auto i = restoration_invocation();
             i.psf = "motion";
@@ -77,9 +76,9 @@ TEST_CASE("PSF selectors reject incompatible options even at default or empty va
             CHECK(!app::prepare_process(i));
         }
         for (const auto member : std::array{
-                 &contract::Invocation::psf_sigma,
-                 &contract::Invocation::psf_length,
-                 &contract::Invocation::psf_angle,
+                 &app::Invocation::psf_sigma,
+                 &app::Invocation::psf_length,
+                 &app::Invocation::psf_angle,
              }) {
             auto i = restoration_invocation();
             i.psf = "kernel";
@@ -122,9 +121,9 @@ TEST_CASE("Restoration kernel path identity survives request moves", "[app][rest
 TEST_CASE("Restoration admission validates finite bounded values with zero blend",
           "[app][restoration]") {
     for (const auto member : std::array<RawMember, 3>{
-             &contract::Invocation::psf_sigma,
-             &contract::Invocation::wiener_k,
-             &contract::Invocation::deblur_blend,
+             &app::Invocation::psf_sigma,
+             &app::Invocation::wiener_k,
+             &app::Invocation::deblur_blend,
          }) {
         for (const auto* const spelling : {"", "nan", "inf", "-1", "1e309"}) {
             auto i = restoration_invocation();

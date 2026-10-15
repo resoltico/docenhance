@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "processor.hpp"
@@ -26,8 +26,8 @@ const app::Failure& failure_for(const app::Outcome& outcome) {
 
 TEST_CASE("Application owns invocation requirements", "[app]") {
     RejectingProcessor processor;
-    contract::Invocation process{};
-    process.command = contract::Command::process;
+    app::Invocation process{};
+    process.command = app::Command::process;
     CHECK(failure_for(app::dispatch(process, processor, verifier)).error.code ==
           core::ErrorCode::argument);
 
@@ -44,8 +44,8 @@ TEST_CASE("Application owns invocation requirements", "[app]") {
 
 TEST_CASE("Application owns capability discovery", "[app]") {
     RejectingProcessor processor;
-    contract::Invocation version{};
-    version.command = contract::Command::version;
+    app::Invocation version{};
+    version.command = app::Command::version;
     const auto outcome = app::dispatch(version, processor, verifier);
     const auto* payload = std::get_if<app::Version>(&outcome.payload);
     REQUIRE(payload != nullptr);
@@ -56,8 +56,8 @@ TEST_CASE("Application owns capability discovery", "[app]") {
     CHECK(std::string{payload->capabilities.input_support.back().format} == "tiff");
 }
 TEST_CASE("Otsu admission rejects every explicit method-specific option", "[app][otsu]") {
-    contract::Invocation value;
-    value.command = contract::Command::process;
+    app::Invocation value;
+    value.command = app::Command::process;
     value.subject = "input.png";
     value.output_directory = "output";
     value.output_mode = "bw";
@@ -83,8 +83,8 @@ TEST_CASE("Otsu admission rejects every explicit method-specific option", "[app]
     }
 }
 TEST_CASE("Quarter-turn admission accepts only its explicit degree spellings", "[app][geometry]") {
-    contract::Invocation value;
-    value.command = contract::Command::process;
+    app::Invocation value;
+    value.command = app::Command::process;
     value.subject = "input.png";
     value.output_directory = "output";
     REQUIRE(app::prepare_process(value));

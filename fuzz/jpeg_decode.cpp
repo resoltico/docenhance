@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/jpeg.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source.hpp"
-#include "docenhance/io/jpeg.hpp"
+#include "docenhance/image/source_facts.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 
@@ -15,11 +15,11 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     using docenhance::fuzz::require;
     docenhance::core::Budget budget{std::size_t{8} * 1024 * 1024};
     {
-        const auto decoded = docenhance::io::decode_jpeg(
+        const auto decoded = docenhance::codec::decode_jpeg(
             {data, size}, budget, docenhance::image::ProfilePolicy::embedded, {},
             {.encoded_bytes = 65536, .pixels = 65536, .scans = 16});
         if (decoded) {
-            require(docenhance::image::valid_source_description(decoded->source),
+            require(docenhance::image::valid_source_facts(decoded->source),
                     "accepted JPEG has complete valid source observations");
             require(decoded->raster.shape.depth == docenhance::image::SampleDepth::byte(),
                     "JPEG has no hidden precision mode");

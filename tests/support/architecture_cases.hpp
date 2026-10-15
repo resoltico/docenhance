@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
@@ -142,8 +142,8 @@ inline void execution_exception_cases() {
 }
 inline void admission_cases() {
     static_assert(!std::is_default_constructible_v<app::ProcessRequest>);
-    contract::Invocation invocation{};
-    invocation.command = contract::Command::process;
+    app::Invocation invocation{};
+    invocation.command = app::Command::process;
     invocation.subject = "input.png";
     invocation.output_directory = "output";
     invocation.output_mode = "bw";

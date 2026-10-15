@@ -3,15 +3,15 @@
 #include "docenhance/image/continuous.hpp"
 
 #include "cancellation_probe.hpp"
+#include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
+#include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/color/converter.hpp"
-#include "docenhance/contract/command.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/io/continuous_png.hpp"
 #include "png_fixture.hpp"
 
 #include <algorithm>
@@ -52,8 +52,8 @@ std::vector<std::uint8_t> continuous_fixture() {
 } // namespace
 TEST_CASE("Continuous admission is distinct from binary method admission", "[continuous][app]") {
     static_assert(!std::is_default_constructible_v<image::Continuous>);
-    contract::Invocation invocation{
-        .command = contract::Command::process,
+    app::Invocation invocation{
+        .command = app::Command::process,
         .subject = "input.png",
         .output_directory = "output",
     };
@@ -129,8 +129,8 @@ TEST_CASE("Continuous PNG decoding observes cancellation and releases storage",
         core::Budget budget{continuous_budget};
         const CheckpointStop stop{core::Checkpoint::decode, after};
         {
-            const auto result = io::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded,
-                                                      stop.cancellation());
+            const auto result = codec::decode_png_raster(
+                bytes, budget, image::ProfilePolicy::embedded, stop.cancellation());
             if (CheckpointStop::stopped()) {
                 REQUIRE(!result);
                 CHECK(result.error().code == core::ErrorCode::cancelled);

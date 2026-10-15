@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/png.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/io/png.hpp"
 #include "png_fixture.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
@@ -37,7 +37,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     const auto encoded = docenhance::tests::make_gray_png(expected);
     docenhance::core::Budget budget{std::size_t{8} * 1024 * 1024};
     {
-        const auto result = docenhance::io::decode_grayscale_png(
+        const auto result = docenhance::codec::decode_grayscale_png(
             encoded, budget, {.encoded_bytes = 65536, .pixels = 4096});
         require(result.has_value(), "independently encoded grayscale PNG is accepted");
         require(result->width() == expected.width && result->height() == expected.height,
