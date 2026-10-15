@@ -86,3 +86,22 @@ def action_errors(document: dict[str, Any]) -> list[str]:
     if "defaults" in document:
         errors.append("Workflow execution defaults may not remap required checks")
     return errors
+
+
+def required_job(document: dict[str, Any], name: str) -> dict[str, Any]:
+    """Required execution jobs cannot be conditional, optional or remapped by defaults."""
+    job: dict[str, Any] = document["jobs"][name]
+    if "if" in job or job.get("continue-on-error", "false") != "false" or "defaults" in job:
+        msg = f"Required job is conditional, optional or changes execution defaults: {name}"
+        raise ValueError(msg)
+    if "needs" in job:
+        msg = f"Required execution jobs must start independently: {name}"
+        raise ValueError(msg)
+    return job
+
+
+def require_strategy(job: dict[str, Any], matrix: dict[str, Any]) -> None:
+    """A complete reviewed matrix has no exclusion, fail-fast or dynamic substitution."""
+    if job.get("strategy") != {"fail-fast": "false", "matrix": matrix}:
+        msg = "Required matrix coverage or independent execution differs"
+        raise ValueError(msg)

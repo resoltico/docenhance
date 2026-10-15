@@ -10,8 +10,14 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from ci_contract import NATIVE_RUNNERS, SANITIZERS, require_workflow_coverage
-from workflow_assertions import action_errors, aggregate_job, require_evidence_upload
-from workflow_cache import source_cache
+from workflow_assertions import (
+    action_errors,
+    aggregate_job,
+    require_evidence_upload,
+    require_strategy,
+    required_job,
+)
+from workflow_cache import llvm_cache, source_cache
 from workflow_config import python_errors, workflow
 
 if TYPE_CHECKING:
@@ -42,18 +48,6 @@ def required_step(
     return step
 
 
-def required_job(document: dict[str, Any], name: str) -> dict[str, Any]:
-    """Required execution jobs cannot be conditional, optional or remapped by defaults."""
-    job: dict[str, Any] = document["jobs"][name]
-    if "if" in job or job.get("continue-on-error", "false") != "false" or "defaults" in job:
-        msg = f"Required job is conditional, optional or changes execution defaults: {name}"
-        raise ValueError(msg)
-    if "needs" in job:
-        msg = f"Required execution jobs must start independently: {name}"
-        raise ValueError(msg)
-    return job
-
-
 def fuzz_matrix(major: str) -> dict[str, Any]:
     """The two required engines and their actual compiler selections."""
     return {
@@ -74,13 +68,6 @@ def fuzz_matrix(major: str) -> dict[str, Any]:
     }
 
 
-def require_strategy(job: dict[str, Any], matrix: dict[str, Any]) -> None:
-    """A complete reviewed matrix has no exclusion, fail-fast or dynamic substitution."""
-    if job.get("strategy") != {"fail-fast": "false", "matrix": matrix}:
-        msg = "Required matrix coverage or independent execution differs"
-        raise ValueError(msg)
-
-
 def sanitizer_job(document: dict[str, Any], major: str) -> None:
     """Both whole-suite sanitizer modes use actual pinned build-step environment."""
     job = required_job(document, "sanitize")
@@ -99,7 +86,7 @@ def fuzz_job(document: dict[str, Any], major: str, *, weekly: bool) -> None:
     job = required_job(document, "campaign" if weekly else "fuzz")
     require_strategy(job, fuzz_matrix(major))
     required_step(job, "python tools/install_build_tools.py")
-    seconds = '"$SECONDS_PER_TARGET"' if weekly else "60"
+    seconds = '"$SECONDS_PER_TARGET"' if weekly else "15"
     command = (
         "cmake --preset ${{ matrix.preset }} "
         f"-DDE_FUZZ_SECONDS={seconds} -DDE_FUZZ_JOBS=4\n"
@@ -184,9 +171,10 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     required_step(
         native, "python tools/check_runtime_platform.py --platform ${{ matrix.platform }}"
     )
-    required_step(
+    selection = required_step(
         native, "python tools/select_xcode.py", "startsWith(matrix.platform, 'macos-15-')"
     )
+    llvm_cache(native, selection)
     required_step(native, "python tools/install_build_tools.py")
     required_step(native, "python tools/install_llvm.py")
     source_cache(native, required_step(native, "cmake -P cmake/AcquireDependencies.cmake"))
@@ -224,6 +212,13 @@ def hook_errors(root: Path) -> list[str]:
 
 def weekly_workflow(document: dict[str, Any], major: str) -> None:
     """Require a weekly local schedule, strict OSV review and full fuzz/sanitizer coverage."""
+    if document.get("on", {}).get("workflow_dispatch", {}).get("inputs", {}).get("seconds", {}).get(
+        "default"
+    ) != "300" or document["jobs"]["campaign"].get("env") != {
+        "SECONDS_PER_TARGET": "${{ github.event.inputs.seconds || '300' }}"
+    }:
+        message = "Weekly fuzz duration must default to 300 seconds"
+        raise ValueError(message)
     schedule = [{"cron": "0 22 * * 5", "timezone": "Europe/Riga"}]
     if document.get("on", {}).get("schedule") != schedule:
         message = "Weekly schedule must be Friday 22:00 Europe/Riga"

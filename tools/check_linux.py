@@ -29,6 +29,7 @@ IMAGE_FILES = (
     "deps/tools.json",
     "tools/install_build_tools.py",
     "tools/install_llvm.py",
+    "tools/llvm_cache.py",
     "tools/dep_acquire.py",
     "tools/dep_verify.py",
     "tools/cache_lock.py",

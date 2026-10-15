@@ -9,7 +9,6 @@ import json
 import os
 import re
 import shutil
-import stat
 import subprocess
 import tempfile
 import time
@@ -17,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import fuzz_storage
 from fuzz_manifest import ENGINE_GRACE, MAX_SECONDS, ROOT, FuzzError, Target, positive, settings
 from fuzz_storage import MAX_RUN_DISK_BYTES, check_disk
 from process_execution import CapturePolicy, bounded_capture
@@ -205,39 +205,12 @@ def completed(
     return exit_code == 0 and executions > 0 and not findings and elapsed >= seconds
 
 
-def remove_successful_scratch(directory: Path, engine: str) -> list[str]:
-    """Remove joined, completed runs' disposable inputs; validate all paths before deleting any."""
-    candidates = [directory / "corpus"]
-    ancestors = [directory]
-    if engine == "afl":
-        ancestors.extend([directory / "afl", directory / "afl/default"])
-    for ancestor in ancestors:
-        if not stat.S_ISDIR(ancestor.lstat().st_mode):
-            msg = f"Scratch ancestor is not a regular directory: {ancestor}"
-            raise FuzzError(msg)
-    queue = directory / "afl/default/queue"
-    if engine == "afl" and (queue.exists() or queue.is_symlink()):
-        candidates.append(queue)
-    nodes = [path for candidate in candidates for path in [candidate, *candidate.rglob("*")]]
-    identities = {}
-    for path in nodes:
-        state = path.lstat()
-        if not (
-            stat.S_ISDIR(state.st_mode) or (path not in candidates and stat.S_ISREG(state.st_mode))
-        ):
-            msg = f"Scratch entry is not a regular file or directory: {path}"
-            raise FuzzError(msg)
-        identities[path] = (state.st_dev, state.st_ino, state.st_mode)
-    for path in sorted(nodes, key=lambda path: len(path.parts), reverse=True):
-        state = path.lstat()
-        if identities[path] != (state.st_dev, state.st_ino, state.st_mode):
-            msg = f"Scratch entry changed before removal: {path}"
-            raise FuzzError(msg)
-        if stat.S_ISDIR(state.st_mode):
-            path.rmdir()
-        else:
-            path.unlink()
-    return [path.relative_to(directory).as_posix() for path in candidates]
+def check_run(run: Run, work: Path, directory: Path) -> None:
+    """Stop owned mutation work once a saved counterexample already makes the run fail."""
+    check_disk(work, directory)
+    if engine_findings(run, directory):
+        msg = "Saved fuzz finding; stopped engine early and retained incomplete evidence"
+        raise FuzzError(msg)
 
 
 def execute(run: Run, work: Path) -> Path:
@@ -267,13 +240,12 @@ def execute(run: Run, work: Path) -> Path:
         report["command"] = command
         write_json(directory / "result.json", report)
         engine_started = time.monotonic()
-
         report["exit_code"] = bounded_capture(
             command,
             environment(run),
             directory / "engine.log",
             run.seconds + ENGINE_GRACE,
-            CapturePolicy(MAX_ENGINE_LOG_BYTES, lambda: check_disk(work, directory)),
+            CapturePolicy(MAX_ENGINE_LOG_BYTES, lambda: check_run(run, work, directory)),
         )
         report["engine_elapsed_seconds"] = time.monotonic() - engine_started
         if report["exit_code"] != 0:
@@ -283,7 +255,9 @@ def execute(run: Run, work: Path) -> Path:
         if completed(
             report["exit_code"], executions, findings, report["engine_elapsed_seconds"], run.seconds
         ):
-            report["scratch_removed"] = remove_successful_scratch(directory, run.engine)
+            report["scratch_removed"] = fuzz_storage.remove_successful_scratch(
+                directory, run.engine
+            )
             report["passed"] = True
     except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired) as exc:
         report["findings"] = engine_findings(run, directory)

@@ -276,7 +276,7 @@ class FuzzScratchTests(unittest.TestCase):
                     ),
                     patch("fuzz_execution.time.monotonic", side_effect=[0, 0, 2, 3]),
                     patch(
-                        "fuzz_execution.remove_successful_scratch",
+                        "fuzz_storage.remove_successful_scratch",
                         side_effect=PermissionError("owned scratch cleanup refused"),
                     ) as cleanup,
                 ):
@@ -312,14 +312,14 @@ class FuzzScratchTests(unittest.TestCase):
                     sentinel.write_bytes(b"outside owner")
                     (directory / "afl/default").symlink_to(external, target_is_directory=True)
                     with self.assertRaises(fuzz_manifest.FuzzError):
-                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                        fuzz_storage.remove_successful_scratch(directory, "afl")
                     self.assertEqual(sentinel.read_bytes(), b"outside owner")
                 elif mutation == "file-root":
                     queue = directory / "afl/default/queue"
                     queue.parent.mkdir()
                     queue.write_bytes(b"not a scratch directory")
                     with self.assertRaises(fuzz_manifest.FuzzError):
-                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                        fuzz_storage.remove_successful_scratch(directory, "afl")
                     self.assertEqual(queue.read_bytes(), b"not a scratch directory")
                 else:
                     special = directory / "afl/default/queue/.state/special"
@@ -344,7 +344,7 @@ class FuzzScratchTests(unittest.TestCase):
                         patch.object(Path, "lstat", unsupported),
                         self.assertRaises(fuzz_manifest.FuzzError),
                     ):
-                        fuzz_execution.remove_successful_scratch(directory, "afl")
+                        fuzz_storage.remove_successful_scratch(directory, "afl")
                     self.assertTrue(special.is_file())
                 self.assertEqual((directory / "corpus/seed").read_bytes(), b"keep on refusal")
 

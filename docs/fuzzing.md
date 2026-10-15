@@ -73,11 +73,28 @@ Staging admits at most 4,096 origins and 32 MiB of distinct input bytes. Before 
 starts, its work parent must have room for another 256 MiB within a 1.5 GiB threshold. A campaign
 reserves 256 MiB for each of up to four concurrent targets, leaving at least 512 MiB within that
 threshold for retained earlier runs. During execution, allocated work is checked every five seconds;
-exceeding 256 MiB for one run or 1.5 GiB for the work parent stops the owned engine and records an
+exceeding 256 MiB for one run, 1.5 GiB for the work parent, or 49,152 entries stops the owned engine and records an
 incomplete run without deleting findings. These are cooperative stop thresholds, not hard disk quotas:
 growth between checks or a host kill can overshoot them. A filesystem quota or bounded ephemeral
 volume is required for a hard limit. Build trees, dependency caches and separately packaged evidence
 are outside the work-parent threshold and are never silently pruned.
+
+The 256 MiB per-run threshold leaves room beyond the admitted 32 MiB staged inputs for
+engine queues, findings, allocation blocks and diagnostics. Four workers reserve 1 GiB; the
+1.5 GiB parent threshold leaves 512 MiB for earlier evidence. These are operational allowances,
+not experimentally proven minimums. The entry ceiling admits four 4,096-origin staged corpora
+plus 32,768 generated/report entries, and stays below the archive's 50,000-entry limit.
+Smaller limits can terminate valid exploration
+sooner, while larger limits consume more disk without increasing the requested time budget.
+
+Packaging admits at most 1.5 GiB of logical source bytes and 50,000 entries, visits entries
+incrementally and hashes the archive as a stream. It refuses archive destinations inside its
+input trees. At the threshold, source plus a previous archive and a replacement temporary
+archive can require up to 5.5 GiB of source/archive payload with the 2 GiB compressed output cap,
+outside build products and dependency/tool caches. Sparse files can fail the logical archive
+limit even when their allocated size passes the engine threshold. Keep one output archive per
+build; moving copies elsewhere creates separately owned retention. Overshoot or unavailable
+space fails packaging and cannot manufacture passing evidence.
 
 Reports retain the binary and manifest hashes, command arguments, requested duration, execution
 count, engine exit, elapsed time and finding paths. Engine logs retain up to 1 MiB of their first and
@@ -85,14 +102,18 @@ last output with an omitted-byte count; actual reproducers remain
 beside the reports. After the owned engine processes join, a completed run with no findings
 removes only its own staged/generated corpus and AFL queue scratch. The seed-origin index,
 statistics, logs and result records remain; committed seeds and regressions are never removed.
-Failed or incomplete engine runs retain their scratch for investigation. Every cleanup candidate
+Saved crashes or hangs stop the owned engine at the next periodic check instead of spending the remaining target time; the run remains failed. Failed or incomplete engine runs retain their scratch for investigation. Every cleanup candidate
 and ancestor is checked before removal; links and special files are refused. Cleanup errors fail
 the run and preserve records and any remaining scratch; an unlink failure can leave partial
 cleanup. Earlier run directories are never automatically pruned.
 The inherited environment and credentials are never exported. Review any new
 finding, minimize it deliberately, then commit the regression; a successful campaign never edits
-its own repository corpus. Both engines run short required PR campaigns and longer weekly
-campaigns. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
+its own repository corpus. Both engines run required 15-second PR targets and 300-second weekly targets. Weekly
+manual runs may select up to 1,800 seconds per target. These defaults reduce scheduled engine
+time by 75% and 83% respectively against 60/1,800 seconds, with correspondingly less stochastic
+exploration; complete corpus replay, harness coverage and strict evidence admission remain required.
+For 23 targets and four workers, six waves require at least 90 seconds (PR) or 30 minutes
+(weekly) of engine time per job, before startup and reporting. CI packages the evidence as a tar archive because AFL++ filenames contain colons that
 the artifact uploader cannot accept directly. PR artifacts are retained for seven days, and weekly
 campaign artifacts for 30 days, including failed runs. Each archive includes a manifest binding
 the engine and exact source commit; absent or incomplete campaigns are explicitly labeled rather

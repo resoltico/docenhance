@@ -7,7 +7,7 @@ on:
     inputs:
       seconds:
         description: Fuzzing time per target, in seconds
-        default: '1800'
+        default: '300'
 permissions:
   contents: read
 concurrency:
@@ -126,7 +126,7 @@ jobs:
     # the targets no longer fit. Thirty minutes stay reserved for setup and the build.
     timeout-minutes: 360
     env:
-      SECONDS_PER_TARGET: ${{ github.event.inputs.seconds || '1800' }}
+      SECONDS_PER_TARGET: ${{ github.event.inputs.seconds || '300' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

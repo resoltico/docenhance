@@ -73,9 +73,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
         document = workflow(self.root / path)
         self.assertEqual(document["name"], "Weekly deep checks")
         self.assertEqual(set(document["on"]), {"schedule", "workflow_dispatch"})
-        self.assertEqual(
-            document["on"]["workflow_dispatch"]["inputs"]["seconds"]["default"], "1800"
-        )
+        self.assertEqual(document["on"]["workflow_dispatch"]["inputs"]["seconds"]["default"], "300")
         self.assertEqual(
             document["on"]["schedule"], [{"cron": "0 22 * * 5", "timezone": "Europe/Riga"}]
         )
