@@ -102,6 +102,7 @@ def render_psf(parameters: list[dict[str, Any]], by_name: dict[str, dict[str, An
         checks.extend(predicates)
     text += "    bool operator==(const WienerParameters&) const = default;\n};\n"
     text += "[[nodiscard]] inline bool valid_parameters(const WienerParameters& p) noexcept {\n"
+    text += "    if (p.psf.valueless_by_exception()) { return false; }\n"
     text += "    if (!(" + (" && ".join(checks) or "true") + ")) { return false; }\n"
     for _, type_name in PSF_TYPES:
         text += (

@@ -34,7 +34,7 @@ inline constexpr std::uint64_t restoration_native_control = std::uint64_t{8} * 1
 inline constexpr std::uint64_t restoration_native_per_pixel = 40;
 class Wiener {
   public:
-    [[nodiscard]] static core::Result<Wiener> create(WienerParameters p = {});
+    [[nodiscard]] static core::Result<Wiener> create(const WienerParameters& p = {});
     [[nodiscard]] const WienerParameters& parameters() const& noexcept {
         return parameters_;
     }

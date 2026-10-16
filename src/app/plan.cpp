@@ -31,7 +31,7 @@ namespace {
 template <typename Variant, typename Method, typename Parameters>
 core::Result<Variant> construct_parameters(core::Result<Method> (*create)(Parameters),
                                            const SuppliedOptions& supplied) {
-    auto parameters = bind_parameters<Parameters>(supplied);
+    auto parameters = bind_parameters<std::remove_cvref_t<Parameters>>(supplied);
     if (!parameters) {
         return std::unexpected(std::move(parameters.error()));
     }

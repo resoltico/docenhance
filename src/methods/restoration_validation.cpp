@@ -57,7 +57,7 @@ bool valid_requested_state(const RestorationReport& r) {
 }
 } // namespace
 bool canonical_psf(const WienerParameters& p, const ResolvedPsf& psf) {
-    if (!validate_psf(psf)) {
+    if (p.psf.valueless_by_exception() || !validate_psf(psf)) {
         return false;
     }
     if (const auto* const file = std::get_if<FilePsf>(&p.psf)) {

@@ -33,7 +33,19 @@ TEST_CASE("Wiener admission refuses a deterministically valueless PSF") {
                     std::runtime_error);
     REQUIRE(parameters.psf.valueless_by_exception());
     CHECK(!methods::valid_parameters(parameters));
-    const auto refused = methods::Wiener::create(std::move(parameters));
+    const auto side = methods::psf_side(parameters.psf);
+    REQUIRE(!side);
+    CHECK(side.error().code == core::ErrorCode::argument);
+    const methods::ResolvedPsf resolved{
+        .width = 3,
+        .height = 3,
+        .coefficients = {0, 0, 0, 0, 1, 0, 0, 0, 0},
+    };
+    REQUIRE(methods::validate_psf(resolved));
+    CHECK(!methods::canonical_psf(parameters, resolved));
+    // Exercise an xvalue input; validation must precede any factory-owned copy or move.
+    const auto refused =
+        methods::Wiener::create(static_cast<methods::WienerParameters&&>(parameters));
     CHECK(!refused);
 }
 TEST_CASE("Wiener admission rejects nonfinite options and invalid PSF identities") {

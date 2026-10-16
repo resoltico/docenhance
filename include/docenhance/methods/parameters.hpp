@@ -95,6 +95,9 @@ struct WienerParameters {
     bool operator==(const WienerParameters&) const = default;
 };
 [[nodiscard]] inline bool valid_parameters(const WienerParameters& p) noexcept {
+    if (p.psf.valueless_by_exception()) {
+        return false;
+    }
     if (!(wiener_k_domain.contains(p.k) && deblur_blend_domain.contains(p.blend))) {
         return false;
     }

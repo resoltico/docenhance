@@ -19,8 +19,9 @@ template <typename T, typename Default = T> struct ParameterDomain {
         }
         if constexpr (std::is_integral_v<T>) {
             return !odd || value % 2 != 0;
+        } else {
+            return true;
         }
-        return true;
     }
 };
 enum class IlluminationValue { value_off, value_surface, value_auto, value_morph };

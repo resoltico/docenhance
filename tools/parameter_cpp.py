@@ -35,8 +35,9 @@ DOMAIN_TYPE = """template <typename T, typename Default = T> struct ParameterDom
         }
         if constexpr (std::is_integral_v<T>) {
             return !odd || value % 2 != 0;
+        } else {
+            return true;
         }
-        return true;
     }
 };
 """

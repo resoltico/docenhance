@@ -9,17 +9,19 @@
 #include <cmath>
 #include <cstdint>
 #include <string_view>
-#include <utility>
 #include <variant>
 namespace docenhance::methods {
-core::Result<Wiener> Wiener::create(WienerParameters p) {
+core::Result<Wiener> Wiener::create(const WienerParameters& p) {
     if (!valid_parameters(p)) {
         return core::failure(core::ErrorCode::argument,
                              "Invalid Wiener regularization, blend or PSF");
     }
-    return Wiener{std::move(p)};
+    return Wiener{p};
 }
 core::Result<std::uint32_t> psf_side(const Psf& p) {
+    if (p.valueless_by_exception()) {
+        return core::failure(core::ErrorCode::argument, "Invalid PSF state");
+    }
     if (const auto* const gaussian = std::get_if<GaussianPsf>(&p)) {
         if (!valid_parameters(*gaussian)) {
             return core::failure(core::ErrorCode::argument, "Invalid Gaussian PSF sigma");
