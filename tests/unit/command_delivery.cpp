@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/cli/run.hpp"
 #include "docenhance/core/cancellation.hpp"
@@ -99,14 +100,13 @@ constexpr auto process_args = std::to_array<const char*>({
     "--json",
 });
 app::Invocation request() {
-    return {
-        .command = app::Command::process,
-        .subject = "input.png",
-        .output_directory = "result",
-        .output_mode = "bw",
-        .binarize = "fixed",
-        .fixed_threshold = {},
-    };
+    app::Invocation value;
+    value.command = app::Command::process;
+    value.operands = {"input.png"};
+    value.option(app::OptionId::out_dir) = "result";
+    value.option(app::OptionId::output_mode) = "bw";
+    value.option(app::OptionId::binarize) = "fixed";
+    return value;
 }
 } // namespace
 
@@ -230,7 +230,11 @@ TEST_CASE("Malformed UTF-8 cannot cross command or direct application admission"
     for (const auto& invalid : std::array{malformed, std::string{"prefix\0suffix", 13}}) {
         for (const bool input : std::array{false, true}) {
             auto invocation = request();
-            (input ? invocation.subject : invocation.output_directory) = invalid;
+            if (input) {
+                invocation.operands.front() = invalid;
+            } else {
+                invocation.option(app::OptionId::out_dir) = invalid;
+            }
             const auto outcome = app::dispatch(invocation, processor, verifier);
             REQUIRE(outcome.exit_code() == core::ExitCode::invocation);
             REQUIRE(std::get<app::Failure>(outcome.payload).error.publication ==

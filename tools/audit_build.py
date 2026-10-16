@@ -222,7 +222,7 @@ def audit(build: Path) -> list[str]:
             failures.append(f"Missing configured dependency cache: {name}")
             continue
         cache = read_cache(path)
-        if name not in {"cli11", "json", "picosha2"}:
+        if name not in {"json", "picosha2"}:
             failures.extend(hardening_errors(binary, build / "hardening-policy.json"))
         failures.extend(feature_failures(name, features[name], cache, binary))
         for key in (

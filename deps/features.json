@@ -184,15 +184,6 @@
       "LCMS2_WITH_FASTFLOAT": false,
       "LCMS2_WITH_THREADED_PLUGIN": false
     },
-    "cli11": {
-      "CLI11_BUILD_DOCS": false,
-      "CLI11_BUILD_TESTS": false,
-      "CLI11_BUILD_EXAMPLES": false,
-      "CLI11_SINGLE_FILE": false,
-      "CLI11_PRECOMPILED": false,
-      "CLI11_MODULES": false,
-      "CLI11_INSTALL": true
-    },
     "json": {
       "JSON_BuildTests": false,
       "JSON_Install": true,

@@ -96,4 +96,4 @@ CheckOptions:
   readability-magic-numbers.IgnorePowersOf2IntegerValues: 'false'
   cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues: '1;2'
   misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic: 'true'
-  misc-include-cleaner.IgnoreHeaders: 'nlohmann/.*;CLI/.*;catch2/.*;opencv2/.*;allheaders\.h;lcms2\.h;jpeglib\.h;png\.h;tiffio\.h;zlib\.h;picosha2\.h;docenhance/version\.hpp'
+  misc-include-cleaner.IgnoreHeaders: 'nlohmann/.*;catch2/.*;opencv2/.*;allheaders\.h;lcms2\.h;jpeglib\.h;png\.h;tiffio\.h;zlib\.h;picosha2\.h;docenhance/version\.hpp'

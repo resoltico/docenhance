@@ -9,7 +9,9 @@ Documentation describes the current implementation, contracts, requirements and 
 | Dependency identities | `deps/lock.json` | [dependency policy](dependencies.md) |
 | Dependency features and tool pins | `deps/features.json`, `deps/tools.json` | [dependency policy](dependencies.md) |
 | Layer graph and allowed edges | `spec/architecture.json` | [architecture](architecture.md) |
-| Command syntax and method classification | `spec/cli-contract.json`, `spec/method-contract.json` | [CLI contract](cli-contract.md), [methods](methods.md) |
+| Command syntax and format admission | `spec/cli-contract.json` (schema 13) | [CLI reference](cli-reference.md) |
+| Method families, selectors and typed parameters | `spec/method-contract.json` (schema 3) | [methods](methods.md) |
+| Runtime selectable method catalog | Implemented processing-method variants | [design decisions](decisions.md) |
 | Response and record shapes | `spec/command-response.schema.json`, `spec/run-record.schema.json` | [bundles](bundles.md), [CLI behavior](cli.md) |
 | Public corpus admission and rights | `docs/corpus.md`; `corpus/manifest.json` owns item provenance | [corpus](corpus.md), [licensing](licensing.md) |
 | Document-quality protocol and report | `spec/document-quality.schema.json` | [quality evaluation](document-quality.md) |
@@ -37,4 +39,4 @@ between technical inputs and independent human quality evidence.
 
 ## Generated references
 
-[CLI contract](cli-contract.md), [methods](methods.md) and [roadmap](roadmap.md) are generated from reviewed `spec/` sources by `tools/generate_spec.py`; do not edit them by hand. The roadmap is an inventory, not executable admission. Runtime selectable catalogs come from implemented types. Current guides must agree with those authorities.
+[CLI reference](cli-reference.md) and [methods](methods.md) are generated from the reviewed CLI and method contracts by `tools/generate_spec.py`; do not edit them by hand. The [roadmap](roadmap.md) is a manually maintained planning inventory, not executable admission. Runtime selectable catalogs come from implemented processing-method variants. Common geometry operations remain documented in their guide, outside that catalog. Current guides must agree with those authorities.

@@ -4,6 +4,11 @@ Notable changes to this project are documented in this file. The format is based
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking (CLI and discovery):** the owned long-option grammar rejects every flag `=VALUE` spelling, retains joined empty values without consuming the next token, and treats single-dash tokens as ordinary operands. Missing operands use application admission and parsed presentation roles; syntax failures retain the exact raw JSON fallback before the first delimiter. Update callers that relied on flag overrides or short-option interpretation. Discovery entries now include names, families, selectors and parameter domains; common metadata orientation and exact quarter-turn geometry are outside the selectable method catalog. Response consumers must use schema 15. Processing method versions and run-record version 14 retain their existing semantics in this change.
+- **Breaking (C++ and contract authoring):** raw invocations use generated option identities, owned operands and indexed optional strings. Generated parameter records/domains replace duplicated handwritten defaults and bounds. Update callers to the current application vocabulary and method parameter owners. CLI schema 13 owns request syntax; method schema 3 owns families, selectors and typed parameters. Obsolete bindings/classifications and old generated headers have no compatibility reader. Byte codecs, filesystem effects, application contracts and persistent records have distinct owners; replace former `io`, `contract` and `bundle` includes with their current `codec`, `fs`, `app` and `record` owners.
+
 ### Internal
 
 - Bound fuzz evidence enumeration, file counts and compressed archives; stop engines after saved findings while retaining failure evidence. PR targets now run for 15 seconds instead of 60 (75% less requested engine time), and scheduled weekly targets for 300 seconds instead of 1,800 (83.3% less), reducing stochastic exploration time while preserving both engines, every harness and regression replay. Cooperative engine disk thresholds are not filesystem quotas.

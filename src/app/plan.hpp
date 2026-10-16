@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "admission.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/methods/illumination.hpp"
 namespace docenhance::app {
-[[nodiscard]] core::Result<methods::Illumination> prepare_illumination(const app::Invocation& v);
+[[nodiscard]] core::Result<ProcessPlan> prepare_plan(const Invocation& invocation,
+                                                     const SuppliedOptions& supplied);
 } // namespace docenhance::app

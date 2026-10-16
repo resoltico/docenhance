@@ -102,7 +102,7 @@ def discovery_probes() -> list[Probe]:
     cases.append(Probe("version-alias", ("--version",)))
     for name in ("version", "methods"):
         cases.extend(paired(name, (name,)))
-    for method in ("B01", "D02", "G02"):
+    for method in ("B01", "D02", "I02"):
         cases.extend(paired("method-" + method, ("methods", method)))
     for name, arguments in SYNTAX:
         cases.extend(paired(name, arguments, 2))
@@ -112,7 +112,7 @@ def discovery_probes() -> list[Probe]:
             Probe("missing-option-value-json", ("process", "{gray}", "--json", "--out-dir"), 2),
         )
     )
-    for method in ("G01", "B99", "b01"):
+    for method in ("G01", "G02", "B99", "b01"):
         cases.extend(paired("unavailable-" + method, ("methods", method), 4))
     return cases
 

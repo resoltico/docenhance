@@ -7,9 +7,9 @@
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/fixed_threshold.hpp"
 #include "docenhance/methods/otsu.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/sauvola.hpp"
 
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -17,22 +17,14 @@
 
 namespace docenhance::methods {
 core::Result<FixedThreshold> FixedThreshold::create(double threshold) {
-    if (!std::isfinite(threshold) || threshold < 0.0 || threshold > 1.0) {
+    if (!valid_parameters(FixedThresholdParameters{.threshold = threshold})) {
         return core::failure(core::ErrorCode::argument, "B03 requires a finite threshold in [0,1]");
     }
     return FixedThreshold{threshold};
 }
 core::Result<Sauvola> Sauvola::create(SauvolaParameters parameters) {
-    const auto [window, k, r] = parameters;
-    if (window < min_window || window > max_window || window % 2 == 0) {
-        return core::failure(core::ErrorCode::argument, "B02 requires an odd window in [3,4095]");
-    }
-    if (!std::isfinite(k) || k < 0.0 || k > 1.0) {
-        return core::failure(core::ErrorCode::argument, "B02 requires finite k in [0,1]");
-    }
-    if (!std::isfinite(r) || r < min_r || r > 1.0) {
-        return core::failure(core::ErrorCode::argument,
-                             "B02 requires finite normalized R in [1/255,1]");
+    if (!valid_parameters(parameters)) {
+        return core::failure(core::ErrorCode::argument, "Invalid B02 window, k or normalized R");
     }
     return Sauvola{parameters};
 }

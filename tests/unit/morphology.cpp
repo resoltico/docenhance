@@ -11,6 +11,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "linear_fixture.hpp"
 #include "morphology_reference.hpp"
@@ -89,7 +90,7 @@ TEST_CASE("I02 float64 closing and smoothing agree with independent square and G
             independent_case(extent, radius);
         }
     }
-    independent_case({.width = 1, .height = 1}, methods::Morphology::max_radius);
+    independent_case({.width = 1, .height = 1}, methods::background_radius_domain.maximum);
 }
 TEST_CASE("I02 admission resolves exact radius and rejects every invalid parameter",
           "[morphology]") {

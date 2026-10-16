@@ -8,6 +8,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/tvl1.hpp"
 
 #include <algorithm>
@@ -19,10 +20,7 @@
 #include <variant>
 namespace docenhance::methods {
 core::Result<Nlm> Nlm::create(NlmParameters p) {
-    if (!std::isfinite(p.h) || p.h < nlm_min_h || p.h > nlm_max_h || !std::isfinite(p.blend) ||
-        p.blend < 0 || p.blend > 1 || p.patch < nlm_min_patch || p.patch > nlm_max_patch ||
-        p.patch % 2 == 0 || p.search < nlm_min_search || p.search > nlm_max_search ||
-        p.search % 2 == 0 || p.search < p.patch) {
+    if (!valid_parameters(p) || p.search < p.patch) {
         return core::failure(core::ErrorCode::argument, "Invalid NLM strength, blend or windows");
     }
     return Nlm{p};

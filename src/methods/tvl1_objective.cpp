@@ -3,7 +3,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/methods/tvl1.hpp"
 #include "tvl1_operators.hpp"
 
@@ -14,7 +14,8 @@ core::Result<double> tvl1_objective(image::PlaneView<const double> input,
                                     image::PlaneView<const double> primal, double lambda,
                                     const core::Cancellation& cancellation) {
     if (input.empty() || input.width() != primal.width() || input.height() != primal.height() ||
-        !std::isfinite(lambda) || lambda < Tvl1::minimum_lambda || lambda > Tvl1::maximum_lambda) {
+        !std::isfinite(lambda) || lambda < tv_lambda_domain.minimum ||
+        lambda > tv_lambda_domain.maximum) {
         return core::failure(core::ErrorCode::argument,
                              "Invalid TV-L1 objective storage or fidelity");
     }

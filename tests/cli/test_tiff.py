@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 from continuous_fixtures import Fixture, decode_output, gamma_profile, profile_from_output
-from test_cli import WIRE_VERSION, call_json, expect
+from test_cli import RECORD_VERSION, WIRE_VERSION, call_json, expect
 from test_jpeg import oriented_fixture
 from tiff_fixtures import Field, TiffFixture, container
 
@@ -41,7 +41,8 @@ def process(
     record = json.loads((output / "run.json").read_bytes())
     expect(response["publication"] == "completed", "TIFF bundle is published")
     expect(
-        response["schema_version"] == WIRE_VERSION and record["record"]["version"] == WIRE_VERSION,
+        response["schema_version"] == WIRE_VERSION
+        and record["record"]["version"] == RECORD_VERSION,
         "current closed wire contracts",
     )
     expect(response["source_decoding"]["format"] == "tiff", "signature selects TIFF")

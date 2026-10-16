@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "help.hpp"
 
-#include "docenhance/app/cli_contract.hpp"
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
+#include "docenhance/methods/catalog.hpp"
 
 #include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
 namespace docenhance::report {
@@ -34,6 +35,25 @@ void append_wrapped(std::string& output, std::string_view body) {
     }
 }
 } // namespace
+std::string methods_text(std::span<const methods::ImplementedMethod> methods) {
+    std::string text;
+    for (const auto& method : methods) {
+        text += std::string(method.id) + " " + std::string(method.name) + " (" +
+                std::string(method.family) + ", version " + std::to_string(method.method_version) +
+                ")\n";
+        text += "  Selectors:";
+        for (const auto selector : method.selectors) {
+            text += " " + std::string(selector);
+        }
+        text += '\n';
+        for (const auto& parameter : method.parameters) {
+            text +=
+                "  " + std::string(parameter.option) + ": " + std::string(parameter.domain) + "\n";
+            append_wrapped(text, parameter.description);
+        }
+    }
+    return text;
+}
 std::string help_text(const app::Outcome& outcome, const app::Help& help) {
     std::string text = "DocEnhance " + std::string(outcome.build.version) + "\n" +
                        std::string(app::command_usage(outcome.command)) + "\n\n";

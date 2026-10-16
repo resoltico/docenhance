@@ -5,6 +5,7 @@
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/source_facts.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 
@@ -56,7 +57,7 @@ bool valid_requested_state(const RestorationReport& r) {
 }
 } // namespace
 bool canonical_psf(const WienerParameters& p, const ResolvedPsf& psf) {
-    if (!validate_psf(psf)) {
+    if (p.psf.valueless_by_exception() || !validate_psf(psf)) {
         return false;
     }
     if (const auto* const file = std::get_if<FilePsf>(&p.psf)) {
@@ -118,7 +119,7 @@ bool valid_restoration_observations(const RestorationReport& r) {
     if (!valid_requested_state(r)) {
         return false;
     }
-    if (!valid_wiener_parameters(*r.requested) || r.status == RestorationStatus::disabled ||
+    if (!valid_parameters(*r.requested) || r.status == RestorationStatus::disabled ||
         !r.inference_warning || (r.psf && !canonical_psf(*r.requested, *r.psf))) {
         return false;
     }

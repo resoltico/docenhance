@@ -5,8 +5,9 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <array>
 #include <cstddef>
@@ -27,32 +28,9 @@ struct IlluminationInput {
         : source(linear), protection(mask) {}
 };
 inline constexpr double illumination_floor = 0.02;
-enum class SurfaceMode { explicit_surface, automatic };
-inline constexpr double illumination_default_strength = 1.0;
-inline constexpr double illumination_default_max_gain = 2.0;
-inline constexpr double surface_default_quantile = 0.90;
-inline constexpr double surface_default_smooth = 1.0;
 // The largest admissible max_gain; no illumination correction can brighten a sample further.
-inline constexpr double illumination_gain_limit = 4;
-inline constexpr double illumination_min_target = 0.1;
-inline constexpr double surface_min_quantile = 0.75;
-inline constexpr double surface_max_quantile = 0.99;
-inline constexpr double surface_min_smooth = 0.1;
-inline constexpr double surface_max_smooth = 20;
-struct SurfaceParameters {
-    SurfaceMode mode = SurfaceMode::explicit_surface;
-    double strength = illumination_default_strength;
-    double max_gain = illumination_default_max_gain;
-    std::optional<double> target = std::nullopt;
-    std::optional<std::uint32_t> cell = std::nullopt;
-    double quantile = surface_default_quantile;
-    double smooth = surface_default_smooth;
-    bool operator==(const SurfaceParameters&) const = default;
-};
 class Surface {
   public:
-    static constexpr std::uint32_t min_cell = 8;
-    static constexpr std::uint32_t max_cell = 512;
     [[nodiscard]] static core::Result<Surface> create(SurfaceParameters parameters = {});
     [[nodiscard]] SurfaceParameters parameters() const noexcept {
         return parameters_;
@@ -66,17 +44,8 @@ class Surface {
     SurfaceParameters parameters_;
 };
 struct IlluminationOff {};
-struct MorphologyParameters {
-    double strength = illumination_default_strength;
-    double max_gain = illumination_default_max_gain;
-    std::optional<double> target = std::nullopt;
-    std::optional<std::uint32_t> radius = std::nullopt;
-    bool operator==(const MorphologyParameters&) const = default;
-};
 class Morphology {
   public:
-    static constexpr std::uint32_t min_radius = 1;
-    static constexpr std::uint32_t max_radius = 256;
     [[nodiscard]] static core::Result<Morphology> create(MorphologyParameters parameters = {});
     [[nodiscard]] MorphologyParameters parameters() const noexcept {
         return parameters_;
@@ -157,7 +126,8 @@ struct IlluminationReport {
     std::uint64_t protected_samples{};
     std::uint32_t cells{};
     std::uint32_t measured_cells{};
-    // Cells below background_reference / illumination_gain_limit, left unmeasured as dark content.
+    // Cells below background_reference / background_max_gain_domain.maximum, left unmeasured as
+    // dark content.
     std::uint32_t dark_cells{};
     std::optional<double> background_reference = std::nullopt;
     std::optional<SolverReport> solver = std::nullopt;

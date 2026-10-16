@@ -6,6 +6,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/opencv/restoration.hpp"
 #include "restoration_work.hpp"

@@ -144,20 +144,20 @@ inline void admission_cases() {
     static_assert(!std::is_default_constructible_v<app::ProcessRequest>);
     app::Invocation invocation{};
     invocation.command = app::Command::process;
-    invocation.subject = "input.png";
-    invocation.output_directory = "output";
-    invocation.output_mode = "bw";
-    invocation.binarize = "fixed";
+    invocation.operands = {"input.png"};
+    invocation.option(app::OptionId::out_dir) = "output";
+    invocation.option(app::OptionId::output_mode) = "bw";
+    invocation.option(app::OptionId::binarize) = "fixed";
     auto accepted = app::prepare_process(invocation);
     require(accepted.has_value() && std::get<methods::FixedThreshold>(
                                         std::get<app::BinaryPlan>(accepted->plan()).operation)
                                             .threshold() == 0.5,
             "application admission owns defaults");
-    invocation.fixed_threshold = "NaN";
+    invocation.option(app::OptionId::fixed_threshold) = "NaN";
     require(!app::prepare_process(invocation),
             "the processing port cannot receive an invalid threshold");
-    invocation.fixed_threshold.reset();
-    invocation.output_directory = std::string{"output\0hidden", 13};
+    invocation.option(app::OptionId::fixed_threshold).reset();
+    invocation.option(app::OptionId::out_dir) = std::string{"output\0hidden", 13};
     require(!app::prepare_process(invocation), "paths cannot be silently truncated by C APIs");
 }
 inline void architecture_cases() {

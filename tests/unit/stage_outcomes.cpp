@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
@@ -16,17 +17,16 @@
 namespace docenhance::tests {
 namespace {
 app::Invocation selected() {
-    app::Invocation v{
-        .command = app::Command::process,
-        .subject = "absent-source.png",
-        .output_directory = "unused-output",
-    };
-    v.illumination = "surface";
-    v.denoise = "nlm";
-    v.deblur = "wiener";
-    v.psf = "gaussian";
-    v.contrast = "clahe";
-    v.sharpen = "unsharp";
+    app::Invocation v;
+    v.command = app::Command::process;
+    v.operands = {"absent-source.png"};
+    v.option(app::OptionId::out_dir) = "unused-output";
+    v.option(app::OptionId::illumination) = "surface";
+    v.option(app::OptionId::denoise) = "nlm";
+    v.option(app::OptionId::deblur) = "wiener";
+    v.option(app::OptionId::psf) = "gaussian";
+    v.option(app::OptionId::contrast) = "clahe";
+    v.option(app::OptionId::sharpen) = "unsharp";
     return v;
 }
 } // namespace

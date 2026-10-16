@@ -4,6 +4,7 @@
 
 #include "cancellation_probe.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -11,6 +12,7 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "linear_fixture.hpp"
@@ -67,23 +69,22 @@ TEST_CASE("I01 factory and application admission reject contradictions before I/
     params = options().parameters();
     params.cell = 1;
     CHECK(!methods::Surface::create(params));
-    app::Invocation request{
-        .command = app::Command::process,
-        .subject = "input.png",
-        .output_directory = "out",
-    };
-    request.illumination = "surface";
+    app::Invocation request;
+    request.command = app::Command::process;
+    request.operands = {"input.png"};
+    request.option(app::OptionId::out_dir) = "out";
+    request.option(app::OptionId::illumination) = "surface";
     REQUIRE(app::prepare_process(request));
-    request.background_cell = "";
+    request.option(app::OptionId::background_cell) = "";
     CHECK(!app::prepare_process(request));
-    request.background_cell = "008";
+    request.option(app::OptionId::background_cell) = "008";
     REQUIRE(app::prepare_process(request));
-    request.illumination = "off";
+    request.option(app::OptionId::illumination) = "off";
     CHECK(!app::prepare_process(request));
-    request.background_cell.reset();
-    request.protect_mask = "mask.png";
+    request.option(app::OptionId::background_cell).reset();
+    request.option(app::OptionId::protect_mask) = "mask.png";
     REQUIRE(app::prepare_process(request));
-    request.output_mode = "bw";
+    request.option(app::OptionId::output_mode) = "bw";
     CHECK(!app::prepare_process(request));
 }
 TEST_CASE("Disabled algebra and all-protected input avoid fit allocation exactly",

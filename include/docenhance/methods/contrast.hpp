@@ -8,8 +8,9 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <array>
 #include <cstdint>
@@ -20,27 +21,9 @@
 #include <utility>
 #include <variant>
 namespace docenhance::methods {
-inline constexpr double contrast_default_blend = 1;
-inline constexpr double levels_default_low = 0.5;
-inline constexpr double levels_default_high = 99.5;
-inline constexpr double gamma_default_exponent = 1.2;
 inline constexpr double levels_minimum_range = 1e-6;
-struct LevelsParameters {
-    double low = levels_default_low;
-    double high = levels_default_high;
-    double blend = contrast_default_blend;
-    bool operator==(const LevelsParameters&) const = default;
-};
-struct GammaParameters {
-    double gamma = gamma_default_exponent;
-    double blend = contrast_default_blend;
-    bool operator==(const GammaParameters&) const = default;
-};
 class Levels {
   public:
-    static constexpr double maximum_low = 10;
-    static constexpr double minimum_high = 90;
-    static constexpr double maximum_high = 100;
     [[nodiscard]] static core::Result<Levels> create(LevelsParameters p = {});
     [[nodiscard]] LevelsParameters parameters() const noexcept {
         return parameters_;
@@ -55,8 +38,6 @@ class Levels {
 };
 class Gamma {
   public:
-    static constexpr double minimum_exponent = 0.25;
-    static constexpr double maximum_exponent = 4;
     [[nodiscard]] static core::Result<Gamma> create(GammaParameters p = {});
     [[nodiscard]] GammaParameters parameters() const noexcept {
         return parameters_;
@@ -69,18 +50,8 @@ class Gamma {
     explicit Gamma(GammaParameters p) : parameters_(p) {}
     GammaParameters parameters_;
 };
-inline constexpr std::uint32_t clahe_default_grid = 8;
-inline constexpr std::uint32_t clahe_maximum_grid = 32;
-inline constexpr double clahe_maximum_clip = 8;
 inline constexpr std::uint32_t clahe_minimum_tile = 16;
 inline constexpr std::uint32_t clahe_minimum_samples = 16;
-struct ClaheParameters {
-    std::uint32_t grid_columns = clahe_default_grid;
-    std::uint32_t grid_rows = clahe_default_grid;
-    double clip = 2;
-    double blend = contrast_default_blend;
-    bool operator==(const ClaheParameters&) const = default;
-};
 class Clahe {
   public:
     [[nodiscard]] static core::Result<Clahe> create(ClaheParameters p = {});
@@ -98,7 +69,9 @@ class Clahe {
 inline constexpr std::uint32_t clahe_bins = 1024;
 struct ClaheMaps {
     image::Plane<double> knots;
-    std::array<bool, std::size_t{clahe_maximum_grid} * clahe_maximum_grid> identity{};
+    std::array<bool,
+               std::size_t{clahe_grid_columns_domain.maximum} * clahe_grid_columns_domain.maximum>
+        identity{};
 };
 struct ContrastOff {};
 using Contrast = std::variant<ContrastOff, Levels, Gamma, Clahe>;

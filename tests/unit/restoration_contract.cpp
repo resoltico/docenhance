@@ -6,6 +6,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/opencv/restoration.hpp"
 #include "linear_fixture.hpp"
@@ -16,8 +17,37 @@
 #include <cstdint>
 #include <limits>
 #include <span>
+#include <stdexcept>
 #include <utility>
 namespace docenhance::tests {
+namespace {
+struct ThrowingPsfPath {
+    explicit operator methods::FilePsf() const {
+        throw std::runtime_error("Injected PSF path construction failure");
+    }
+};
+} // namespace
+TEST_CASE("Wiener admission refuses a deterministically valueless PSF") {
+    methods::WienerParameters parameters;
+    CHECK_THROWS_AS(parameters.psf.emplace<methods::FilePsf>(ThrowingPsfPath{}),
+                    std::runtime_error);
+    REQUIRE(parameters.psf.valueless_by_exception());
+    CHECK(!methods::valid_parameters(parameters));
+    const auto side = methods::psf_side(parameters.psf);
+    REQUIRE(!side);
+    CHECK(side.error().code == core::ErrorCode::argument);
+    const methods::ResolvedPsf resolved{
+        .width = 3,
+        .height = 3,
+        .coefficients = {0, 0, 0, 0, 1, 0, 0, 0, 0},
+    };
+    REQUIRE(methods::validate_psf(resolved));
+    CHECK(!methods::canonical_psf(parameters, resolved));
+    // Exercise an xvalue input; validation must precede any factory-owned copy or move.
+    const auto refused =
+        methods::Wiener::create(static_cast<methods::WienerParameters&&>(parameters));
+    CHECK(!refused);
+}
 TEST_CASE("Wiener admission rejects nonfinite options and invalid PSF identities") {
     for (const auto k : {0.0, 1e-6, 1.01, std::numeric_limits<double>::infinity()}) {
         CHECK(!methods::Wiener::create({.psf = methods::GaussianPsf{}, .k = k}));

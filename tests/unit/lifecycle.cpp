@@ -3,6 +3,7 @@
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -12,6 +13,7 @@
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
@@ -52,10 +54,10 @@ class LifecycleProcessor final : public app::Processor {
 app::Invocation lifecycle_request() {
     app::Invocation request;
     request.command = app::Command::process;
-    request.subject = "input.png";
-    request.output_directory = "output";
-    request.illumination = "surface";
-    request.denoise = "nlm";
+    request.operands = {"input.png"};
+    request.option(app::OptionId::out_dir) = "output";
+    request.option(app::OptionId::illumination) = "surface";
+    request.option(app::OptionId::denoise) = "nlm";
     return request;
 }
 methods::IlluminationReport fitted_surface() {
@@ -198,12 +200,12 @@ TEST_CASE("Disabled protection counting stops within a wide row without allocati
 
 TEST_CASE("Prepared gamma cannot be followed by a completed sharpening identity", "[app]") {
     auto request = lifecycle_request();
-    request.illumination = "off";
-    request.denoise = "off";
-    request.contrast = "gamma";
-    request.gamma = "2";
-    request.sharpen = "unsharp";
-    request.sharpen_amount = "0";
+    request.option(app::OptionId::illumination) = "off";
+    request.option(app::OptionId::denoise) = "off";
+    request.option(app::OptionId::contrast) = "gamma";
+    request.option(app::OptionId::gamma) = "2";
+    request.option(app::OptionId::sharpen) = "unsharp";
+    request.option(app::OptionId::sharpen_amount) = "0";
     const auto admitted = app::prepare_process(request);
     REQUIRE(admitted);
     const auto& plan = std::get<app::ContinuousPlan>(admitted->plan());
@@ -235,10 +237,10 @@ TEST_CASE("Disabled predecessor entry and counted masks remain truthful on parti
           "[app]") {
     app::Invocation request;
     request.command = app::Command::process;
-    request.subject = "input.png";
-    request.output_directory = "output";
-    request.denoise = "nlm";
-    request.denoise_blend = "0";
+    request.operands = {"input.png"};
+    request.option(app::OptionId::out_dir) = "output";
+    request.option(app::OptionId::denoise) = "nlm";
+    request.option(app::OptionId::denoise_blend) = "0";
     const auto admitted = app::prepare_process(request);
     REQUIRE(admitted);
     UnusedVerifier verifier;
@@ -271,8 +273,8 @@ TEST_CASE("Disabled predecessor entry and counted masks remain truthful on parti
 TEST_CASE("TV-L1 failure reports reject native claims and fictional stopping", "[app][tvl1]") {
     UnusedVerifier verifier;
     auto request = lifecycle_request();
-    request.illumination = "off";
-    request.denoise = "tvl1";
+    request.option(app::OptionId::illumination) = "off";
+    request.option(app::OptionId::denoise) = "tvl1";
     const methods::Tvl1Parameters parameters;
     for (unsigned mutation = 0; mutation < 8; ++mutation) {
         methods::DenoisingReport report{
@@ -326,9 +328,9 @@ TEST_CASE("Real explicit Surface applicability refusals retain their specific fa
     source.fill(0.5);
     auto mask = image::Plane<std::uint8_t>::allocate(budget, extent.width, extent.height).value();
     auto invocation = lifecycle_request();
-    invocation.denoise = "off";
-    invocation.background_cell = "8";
-    invocation.protect_mask = "mask.png";
+    invocation.option(app::OptionId::denoise) = "off";
+    invocation.option(app::OptionId::background_cell) = "8";
+    invocation.option(app::OptionId::protect_mask) = "mask.png";
     const auto request = app::prepare_process(invocation);
     REQUIRE(request);
     const auto& plan = std::get<app::ContinuousPlan>(request->plan()).photometric;

@@ -6,6 +6,8 @@
 #include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "morphology_detail.hpp"
 
@@ -113,7 +115,8 @@ bool valid_morphology_observations(const IlluminationReport& r) {
     const bool radius =
         p.radius ? m.radius == *p.radius
                  : m.radius >= morphology_automatic_min && m.radius <= morphology_automatic_max;
-    return radius && m.radius >= Morphology::min_radius && m.radius <= Morphology::max_radius &&
+    return radius && m.radius >= background_radius_domain.minimum &&
+           m.radius <= background_radius_domain.maximum &&
            m.sigma == static_cast<double>(m.radius) / 2 &&
            m.gaussian_radius == ((support_sigmas * m.radius) + 1) / 2 &&
            m.count <= illumination_sample_limit && m.count <= r.eligible_samples &&

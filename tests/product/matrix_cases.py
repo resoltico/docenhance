@@ -4,11 +4,10 @@
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
 from typing import Any
 
-from audit_paths import ROOT
+from contract_reference import reviewed_methods
 from matrix_fixtures import tiff_sources
 from matrix_rejections import rejection_cases
 from matrix_types import IDENTITIES, STAGES, Case, stage_options
@@ -24,20 +23,21 @@ def discovery_cases() -> list[Case]:
         Case(f"help-{command}", "discovery", "", ("--help",), command=command)
         for command in ("root", "process", "verify", "methods", "version")
     )
-    contract = json.loads((ROOT / "spec/method-contract.json").read_text())
+    cases.extend(
+        Case(f"method-{method['id']}", "discovery", "", (method["id"],), command="methods")
+        for method in reviewed_methods()
+    )
     cases.extend(
         Case(
-            f"method-{method['id']}",
+            f"method-{identity}",
             "discovery",
             "",
-            (method["id"],),
-            exit_code=0 if method["classification"] == "implemented-selectable" else 4,
-            error=""
-            if method["classification"] == "implemented-selectable"
-            else "E_NOT_IMPLEMENTED",
+            (identity,),
+            exit_code=4,
+            error="E_NOT_IMPLEMENTED",
             command="methods",
         )
-        for method in contract["methods"]
+        for identity in ("G01", "G02", "G03", "G04", "G05")
     )
     return cases
 
@@ -326,12 +326,9 @@ def catalog() -> list[dict[str, Any]]:
 
 def active_coverage(cases: list[Case]) -> dict[str, list[str]]:
     """Refuse a matrix that discovers a supported method but never exercises its active path."""
-    reviewed = json.loads((ROOT / "spec/method-contract.json").read_text())
-    coverage: dict[str, list[str]] = {
-        method["id"]: []
-        for method in reviewed["methods"]
-        if method["classification"] == "implemented-selectable"
-    }
+    coverage: dict[str, list[str]] = {method["id"]: [] for method in reviewed_methods()}
+    # Common quarter-turn geometry still needs an active scenario, outside selectable discovery.
+    coverage["G02"] = []
     for case in cases:
         if case.group in ("benefit", "binarization", "geometry") and not case.exit_code:
             for method in case.methods:

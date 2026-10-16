@@ -95,7 +95,7 @@ class ManifestTests(unittest.TestCase):
 
     def test_headers_map_to_their_package(self) -> None:
         """A header is attributed to the package that declares it, by prefix or by name."""
-        self.assertEqual(self.manifest.package_of_header("CLI/CLI.hpp"), "CLI11")
+        self.assertEqual(self.manifest.package_of_header("opencv2/core.hpp"), "opencv")
         self.assertEqual(self.manifest.package_of_header("nlohmann/json_fwd.hpp"), "nlohmann_json")
         self.assertEqual(self.manifest.package_of_header("lcms2.h"), "lcms")
         self.assertIsNone(self.manifest.package_of_header("string_view"))
@@ -187,7 +187,7 @@ class SourceRuleTests(unittest.TestCase):
         for directive, name in (
             ("docenhance/core/result.hpp", "app"),
             ("nlohmann/json.hpp", "report"),
-            ("CLI/CLI.hpp", "cli"),
+            ("png.h", "codec"),
             ("docenhance/version.hpp", "app"),
             ("string_view", "core"),
         ):
@@ -198,7 +198,7 @@ class SourceRuleTests(unittest.TestCase):
         for directive, name in (
             ("docenhance/cli/run.hpp", "app"),
             ("docenhance/app/dispatch.hpp", "core"),
-            ("CLI/CLI.hpp", "app"),
+            ("nlohmann/json.hpp", "cli"),
             ("nlohmann/json.hpp", "app"),
             ("nlohmann/json.hpp", "image"),
             ("opencv2/core.hpp", "methods"),
@@ -257,13 +257,13 @@ class LinkRuleTests(unittest.TestCase):
             source.write_text(
                 '#include "docenhance/core/result.hpp"\n'
                 '#include "docenhance/app/dispatch.hpp"\n'
-                "#include <CLI/CLI.hpp>\n"
-                "// #include <nlohmann/json.hpp>\n",
+                "#include <nlohmann/json.hpp>\n"
+                "// #include <lcms2.h>\n",
                 encoding="utf-8",
             )
             layers, packages = architecture_build.direct_use(self.manifest, [str(source)], "app")
             self.assertEqual(layers, {"core"})
-            self.assertEqual(packages, {"CLI11"})
+            self.assertEqual(packages, {"nlohmann_json"})
 
     def test_registration_rejects_missing_and_misattributed_layers(self) -> None:
         """The native owner rejects omitted layers; tooling needs no ambient build directory."""

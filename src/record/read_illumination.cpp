@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/record/fields.hpp"
 #include "read_fields.hpp"
 

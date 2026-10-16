@@ -44,6 +44,9 @@ exactly by bypassing transport. Blend in perceptual space; equal candidate/input
 value retains the entering RGB exactly. Reuse the immutable result for output verification.
 Do not rerun the solver or double-count reconstruction observations.
 
+The TV penalty can smooth isolated marks along with noise. With nonzero blend, dark mark centers
+can become lighter even while flat-region variance decreases.
+
 Cancellation is explicit execution control: observe once per iteration and at bounded intervals
 inside transfers, gradient/projection, adjoint/proximal, objective and reconstruction passes.
 Discard partial buffers and preserve genuine-error precedence, actual earlier-stage observations, including prepared illumination

@@ -4,8 +4,8 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -84,8 +84,9 @@ core::Result<void> extrema_pass(image::PlaneView<const double> input,
                                 ExtremaPass pass, const core::Cancellation& cancellation) {
     if (input.empty() || input.width() != output.width() || input.height() != output.height() ||
         image::overlaps(input, output) || image::overlaps(queue, input.storage()) ||
-        image::overlaps(queue, output.storage()) || pass.radius < Morphology::min_radius ||
-        pass.radius > Morphology::max_radius || queue.size() < (2 * pass.radius) + 1) {
+        image::overlaps(queue, output.storage()) ||
+        pass.radius < background_radius_domain.minimum ||
+        pass.radius > background_radius_domain.maximum || queue.size() < (2 * pass.radius) + 1) {
         return core::failure(core::ErrorCode::argument, "Invalid I02 extrema pass storage");
     }
     const auto lines = pass.horizontal ? input.height() : input.width();

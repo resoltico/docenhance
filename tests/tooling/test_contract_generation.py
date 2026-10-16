@@ -28,6 +28,7 @@ class ContractGenerationTests(unittest.TestCase):
         self.addCleanup(temporary.cleanup)
         self.root = Path(temporary.name)
         shutil.copytree(ROOT / "spec", self.root / "spec")
+        shutil.copy2(ROOT / ".clang-format", self.root / ".clang-format")
         self.contract = json.loads((self.root / "spec/cli-contract.json").read_bytes())
         self.methods = json.loads((self.root / "spec/method-contract.json").read_bytes())
         owner = patch.object(generate_spec, "ROOT", self.root)
@@ -40,44 +41,47 @@ class ContractGenerationTests(unittest.TestCase):
 
     def test_source_options_reject_obsolete_extra_missing_and_nonstring_fields(self) -> None:
         """Derived attribution never licenses stale or ignored source declarations."""
-        for change in ({"methods": "B01"}, {"invented": "ignored"}, {"description": 1}):
+        for change in ({"methods": "B01"}, {"invented": "ignored"}, {"summary": 1}):
             altered = copy.deepcopy(self.contract)
             altered["options"][0].update(change)
             self.write("cli-contract.json", altered)
-            with self.subTest(change=change), self.assertRaises(generate_spec.ContractError):
+            with self.subTest(change=change), self.assertRaises(ValueError):
                 generate_spec.outputs()
         altered = copy.deepcopy(self.contract)
-        del altered["options"][0]["binding"]
+        del altered["options"][0]["kind"]
         self.write("cli-contract.json", altered)
-        with self.assertRaises(generate_spec.ContractError):
+        with self.assertRaises(ValueError):
             generate_spec.outputs()
 
     def test_bindings_scopes_and_option_identities_remain_checked(self) -> None:
         """One attribution authority does not remove typed CLI structure validation."""
-        for field, value in (("binding", "bad-binding"), ("scope", "unknown")):
+        for field, value in (("binding", "bad-binding"), ("scope", ["unknown"])):
             altered = copy.deepcopy(self.contract)
             altered["options"][0][field] = value
             self.write("cli-contract.json", altered)
-            with self.subTest(field=field), self.assertRaises(generate_spec.ContractError):
+            with self.subTest(field=field), self.assertRaises(ValueError):
                 generate_spec.outputs()
-        for field in ("binding", "name"):
+        for field in ("name",):
             altered = copy.deepcopy(self.contract)
             altered["options"][1][field] = altered["options"][0][field]
             self.write("cli-contract.json", altered)
-            with self.subTest(field=field), self.assertRaises(generate_spec.ContractError):
+            with self.subTest(field=field), self.assertRaises(ValueError):
                 generate_spec.outputs()
 
     def test_argument_edit_updates_derived_consumers_without_authoring_cli_relations(self) -> None:
         """A single method edit reaches descriptors/docs while syntax stays authored once."""
         before = generate_spec.outputs()
-        for entry in self.methods["methods"]:
-            if entry["id"] == "D01":
-                entry["arguments"].remove("--nlm-h")
+        for family in self.methods["families"]:
+            for entry in family["methods"]:
+                if entry["id"] == "D01":
+                    entry["parameters"] = [
+                        p for p in entry["parameters"] if p["option"] != "--nlm-h"
+                    ]
         self.write("method-contract.json", self.methods)
         after = generate_spec.outputs()
-        for relative in ("include/docenhance/app/cli_contract.hpp", "docs/cli-contract.md"):
+        for relative in ("include/docenhance/app/options.hpp", "docs/cli-reference.md"):
             self.assertNotEqual(before[self.root / relative], after[self.root / relative])
-        self.assertEqual(
+        self.assertNotEqual(
             before[self.root / "fuzz/dict/cli.dict"], after[self.root / "fuzz/dict/cli.dict"]
         )
         self.assertEqual(
@@ -100,7 +104,7 @@ class ContractGenerationTests(unittest.TestCase):
         )
         self.assertIn(
             "response_schema_version = 20U",
-            outputs[self.root / "include/docenhance/app/cli_contract.hpp"],
+            outputs[self.root / "include/docenhance/app/options.hpp"],
         )
         for invalid in (True, 0, -1, 1.5, "14"):
             for name in ("run-record.schema.json", "command-response.schema.json"):
@@ -115,7 +119,7 @@ class ContractGenerationTests(unittest.TestCase):
                 self.write("command-response.schema.json", changed_response)
                 with (
                     self.subTest(name=name, invalid=invalid),
-                    self.assertRaises(generate_spec.ContractError),
+                    self.assertRaises(ValueError),
                 ):
                     generate_spec.outputs()
 

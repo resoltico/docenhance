@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/geometry.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/restoration.hpp"
 
 #include <algorithm>
@@ -69,9 +71,9 @@ core::Result<void> motion_psf(MotionPsf p, std::span<double> coefficients) {
     }
     std::ranges::fill(coefficients, 0);
     const auto samples =
-        std::max(MotionPsf::minimum_samples,
-                 static_cast<std::uint32_t>(std::ceil(MotionPsf::samples_per_pixel * p.length)));
-    const auto radians = p.angle * std::numbers::pi / MotionPsf::maximum_angle;
+        std::max(motion_psf_minimum_samples,
+                 static_cast<std::uint32_t>(std::ceil(motion_psf_samples_per_pixel * p.length)));
+    const auto radians = p.angle * std::numbers::pi / image::QuarterTurn::half_degrees;
     const auto dx = std::cos(radians);
     const auto dy = std::sin(radians);
     const auto radius = *side / 2;

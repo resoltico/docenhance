@@ -26,7 +26,7 @@ Use the [documentation map](docs/README.md) to find the authority for a change. 
 
 CMake **4.4.3** and Ninja **1.13.2** are the recommended build tools. The project uses CMake preset schema **12**, configure/build/test/package workflows, target-scoped settings, explicit source lists, header file sets, strict first-party diagnostics, optional sanitizers and IPO, and an isolated dependency superbuild. There are no handwritten Makefiles, global include/link-directory settings, implicit system-library fallbacks, or downloads during normal configure/build commands.
 
-The dependency lock pins OpenCV **5.0.0**, Little CMS **2.19.1**, CLI11 **2.7.2**, libjpeg-turbo **3.2.0**, libpng **1.6.58**, libtiff **4.7.2**, zlib **1.3.2**, nlohmann/json **3.12.0**, PicoSHA2 **1.0.1**, and test-only Catch2 **3.16.0**. See [dependency provenance](docs/dependencies.md).
+The dependency lock pins OpenCV **5.0.0**, Little CMS **2.19.1**, libjpeg-turbo **3.2.0**, libpng **1.6.58**, libtiff **4.7.2**, zlib **1.3.2**, nlohmann/json **3.12.0**, PicoSHA2 **1.0.1**, and test-only Catch2 **3.16.0**. See [dependency provenance](docs/dependencies.md).
 
 OpenCV 5 changed its dependency graph: `photo` requires `geometry`, which requires `flann`. The explicit allowed module closure is `core`, `flann`, `geometry`, `imgproc`, `photo`—not the obsolete three-module assumption. Neural/GPU/GUI/video backends and optional external acceleration downloads are disabled.
 
@@ -83,7 +83,7 @@ out/dev/bin/docenhance methods --json
 out/dev/bin/docenhance process --help --json
 ```
 
-`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels, C02 gamma and C03 CLAHE contrast, S01 unsharp masking, R01 known-PSF restoration, B01 global Otsu, B02 Sauvola and B03 fixed-threshold binarization, G02 exact quarter-turns; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-contract.md), and its
+`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels, C02 gamma and C03 CLAHE contrast, S01 unsharp masking, R01 known-PSF restoration, B01 global Otsu, B02 Sauvola and B03 fixed-threshold binarization. G01 metadata orientation and G02 `--rotate` quarter-turns are common geometry operations; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-reference.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout

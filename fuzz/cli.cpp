@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-// Fuzzing of the complete command line: argument parsing (CLI11), validation and dispatch.
+// Fuzzing of the complete command line: owned argument tokenization, validation and dispatch.
 // Properties: only contract exit codes; exactly one well-formed JSON object in JSON mode, with
 // nothing on stderr; errors on stderr in text mode; parsed JSON flags select JSON, while
 // option values keep their role; syntax failures retain raw-token fallback. Repeated runs agree.
-#include "docenhance/app/cli_contract.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/cli/run.hpp"
 #include "processor.hpp"
 #include "stub_verifier.hpp"
@@ -103,14 +103,14 @@ void check_text(const Outcome& outcome) {
 struct JsonRoles {
     bool fallback = false;
     bool flag = false;
-    bool exact_flag = false;
     bool syntax_failure = false;
 };
 JsonRoles json_roles(const std::vector<std::string>& args) {
     JsonRoles roles;
     // Independent role walk uses the reviewed catalog, not the CLI parser. A string option's
-    // next token is its value; an empty joined value also needs the next token. Syntax failure
-    // can deliberately select JSON more broadly. Joined flags use the reviewed default spellings.
+    // next token is its value; joined values, including empty ones, consume only their own token.
+    // Flags with a joined value are syntax failures. The independent Python grammar oracle
+    // additionally checks complete token roles against the actual native tokenizer.
     const auto option_tokens =
         args | std::views::drop(1) |
         std::views::take_while([](const std::string& arg) { return arg != "--"; });
@@ -126,19 +126,17 @@ JsonRoles json_roles(const std::vector<std::string>& args) {
             break;
         }
         if (arg == "--json") {
-            roles.exact_flag = true;
             roles.flag = true;
-        } else if (arg == "--json=true" || arg == "--json=" || arg == "--json={}") {
-            roles.flag = true;
-        } else if (arg.starts_with("--json=") || arg == "--wat") {
-            // These unconsumed tokens necessarily fail syntax; admission cannot accept them.
+        } else if (arg == "--wat" ||
+                   std::ranges::any_of(docenhance::app::option_catalog, [&arg](const auto& option) {
+                       return option.metavar.empty() && arg.starts_with(option.name) &&
+                              arg.size() > option.name.size() && arg[option.name.size()] == '=';
+                   })) {
             roles.syntax_failure = true;
         }
         pending_value =
             std::ranges::any_of(docenhance::app::option_catalog, [&arg](const auto& option) {
-                return !option.metavar.empty() &&
-                       (arg == option.name || (arg.size() == option.name.size() + 1 &&
-                                               arg.starts_with(option.name) && arg.back() == '='));
+                return !option.metavar.empty() && arg == option.name;
             });
     }
     return roles;
@@ -154,7 +152,7 @@ void check_json_roles(const std::vector<std::string>& args, const Outcome& outco
     // Syntax failure uses only an exact raw token. A consumed value can be "--", so a later
     // parsed flag may lie beyond the raw fallback boundary. Exit 2 alone cannot distinguish
     // syntax failure from refused admission; explicit transport tests cover both presentations.
-    if ((roles.exact_flag && roles.fallback) || (roles.flag && outcome.code != exit_invocation)) {
+    if (roles.flag && (roles.fallback || outcome.code != exit_invocation)) {
         require(json_mode, "a parsed JSON flag selects JSON output");
     }
     if (json_mode) {

@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/app/cli_contract.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/core/bundle_path.hpp"
 #include "docenhance/core/identity.hpp"

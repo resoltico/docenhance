@@ -23,6 +23,7 @@ from document_quality import (
     validate_plan,
     validator,
 )
+from parameter_contract import merged_options
 from quality_collection import SEMANTIC_FACTS, BundleChecks, collect
 from quality_evidence import admit, command_options, confined, digest, evidence_error
 from quality_protocol import BUNDLE_ROLES
@@ -64,10 +65,11 @@ def read_bundle(executable: Path, directory: Path, source: str) -> dict[str, Any
 def replay_options(options: list[str], root: Path) -> None:
     """Admit declared processing options without letting evidence redirect evaluation outputs."""
     contract = json.loads((ROOT / "spec/cli-contract.json").read_bytes())
+    methods = json.loads((ROOT / "spec/method-contract.json").read_bytes())
     allowed = {
         option["name"]
-        for option in contract["options"]
-        if option["metavar"] and option["name"] != "--out-dir"
+        for option in merged_options(contract, methods)
+        if option["metavar"] and "process" in option["scope"] and option["name"] != "--out-dir"
     }
     if len(options) % 2 or any(options[i] not in allowed for i in range(0, len(options), 2)):
         message = "Replay requires exact processing option/value pairs with no output override"

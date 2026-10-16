@@ -3,6 +3,7 @@
 #include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/codec/png.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -26,6 +27,7 @@
 #include <span>
 #include <stop_token>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace docenhance::tests {
@@ -162,13 +164,13 @@ TEST_CASE("Host cancellation preserves input and never publishes incomplete proc
     const auto source = directory.path / "source.png";
     const auto bytes = png_bytes(true);
     write_file(source, bytes);
-    const app::Invocation request{
-        .command = app::Command::process,
-        .subject = utf8_spelling(source),
-        .output_directory = utf8_spelling(directory.path / "output"),
-        .output_mode = "bw",
-        .binarize = "sauvola",
-    };
+    app::Invocation raw_request;
+    raw_request.command = app::Command::process;
+    raw_request.operands = {utf8_spelling(source)};
+    raw_request.option(app::OptionId::out_dir) = utf8_spelling(directory.path / "output");
+    raw_request.option(app::OptionId::output_mode) = "bw";
+    raw_request.option(app::OptionId::binarize) = "sauvola";
+    const app::Invocation request = std::move(raw_request);
     host::Processor processor;
     for (const auto phase : {
              core::Checkpoint::admission,

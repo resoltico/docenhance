@@ -11,4 +11,12 @@ namespace docenhance::app {
                                         const ProcessRequest& request);
 [[nodiscard]] bool valid_failure(const ProcessFailure& value, const ProcessRequest& request);
 [[nodiscard]] bool valid_verified(const Verified& value, const VerifyRequest& request);
+[[nodiscard]] bool partial_restoration(const methods::RestorationReport& report,
+                                       const ProcessRequest& request);
+[[nodiscard]] bool restoration_prefix(const methods::RestorationReport& report,
+                                      image::Orientation orientation, image::QuarterTurn rotation,
+                                      const methods::IlluminationReport& illumination,
+                                      const methods::DenoisingReport& denoising);
+[[nodiscard]] bool partial_sharpen(const methods::SharpenReport& report,
+                                   const ProcessRequest& request);
 } // namespace docenhance::app

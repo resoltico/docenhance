@@ -4,45 +4,40 @@
 
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
+#include "docenhance/methods/parameters.hpp"
 
 #include <cmath>
 #include <cstdint>
 #include <string_view>
-#include <utility>
 #include <variant>
 namespace docenhance::methods {
-bool valid_wiener_parameters(const WienerParameters& parameters) {
-    return std::isfinite(parameters.k) && parameters.k >= Wiener::minimum_k &&
-           parameters.k <= Wiener::maximum_k && std::isfinite(parameters.blend) &&
-           parameters.blend >= 0 && parameters.blend <= 1 &&
-           !parameters.psf.valueless_by_exception() && psf_side(parameters.psf).has_value();
-}
-core::Result<Wiener> Wiener::create(WienerParameters p) {
-    if (!valid_wiener_parameters(p)) {
+core::Result<Wiener> Wiener::create(const WienerParameters& p) {
+    if (!valid_parameters(p)) {
         return core::failure(core::ErrorCode::argument,
                              "Invalid Wiener regularization, blend or PSF");
     }
-    return Wiener{std::move(p)};
+    return Wiener{p};
 }
 core::Result<std::uint32_t> psf_side(const Psf& p) {
+    if (p.valueless_by_exception()) {
+        return core::failure(core::ErrorCode::argument, "Invalid PSF state");
+    }
     if (const auto* const gaussian = std::get_if<GaussianPsf>(&p)) {
-        if (!std::isfinite(gaussian->sigma) || gaussian->sigma < GaussianPsf::minimum_sigma ||
-            gaussian->sigma > GaussianPsf::maximum_sigma) {
+        if (!valid_parameters(*gaussian)) {
             return core::failure(core::ErrorCode::argument, "Invalid Gaussian PSF sigma");
         }
         return (2 * static_cast<std::uint32_t>(
-                        std::ceil(GaussianPsf::radius_sigmas * gaussian->sigma))) +
+                        std::ceil(gaussian_psf_radius_sigmas * gaussian->sigma))) +
                1;
     }
     if (const auto* const motion = std::get_if<MotionPsf>(&p)) {
-        if (!std::isfinite(motion->length) || motion->length < MotionPsf::minimum_length ||
-            motion->length > MotionPsf::maximum_length || !std::isfinite(motion->angle) ||
-            motion->angle < MotionPsf::minimum_angle || motion->angle > MotionPsf::maximum_angle) {
+        if (!valid_parameters(*motion)) {
             return core::failure(core::ErrorCode::argument, "Invalid motion PSF length or angle");
         }
         return (2 * (static_cast<std::uint32_t>(std::ceil(motion->length / 2)) + 1)) + 1;
     }
-    if (!core::valid_path(std::get<FilePsf>(p).path)) {
+    const auto* const file = std::get_if<FilePsf>(&p);
+    if (file == nullptr || !valid_parameters(*file)) {
         return core::failure(core::ErrorCode::argument, "Invalid PSF filename");
     }
     return 0;

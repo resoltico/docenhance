@@ -4,14 +4,13 @@
 
 from __future__ import annotations
 
-import json
 import math
 import statistics
 import struct
 from typing import TYPE_CHECKING, Any
 
-from audit_paths import ROOT
 from continuous_fixtures import Fixture, chunks
+from contract_reference import reviewed_methods
 from matrix_fixtures import HEIGHT, MARKS, WIDTH, png_sources, tiff_sources
 
 if TYPE_CHECKING:
@@ -370,12 +369,10 @@ def mark_measurements(before: list[int], after: list[int]) -> list[dict[str, Any
 def discovery_check(case: Case, response: dict[str, Any]) -> None:
     """Discovery must match reviewed capability contracts, including no planned promotion."""
     if case.id in ("version", "methods") or (case.id.startswith("method-") and not case.exit_code):
-        reviewed = json.loads((ROOT / "spec/method-contract.json").read_text())
         expected = [
-            {"id": method["id"], "method_version": method["method_version"]}
-            for method in reviewed["methods"]
-            if method["classification"] == "implemented-selectable"
-            and (not case.id.startswith("method-") or method["id"] == case.options[0])
+            method
+            for method in reviewed_methods()
+            if not case.id.startswith("method-") or method["id"] == case.options[0]
         ]
         require(
             response["methods"] == expected,

@@ -1,235 +1,597 @@
 {
-  "schema_version": 2,
-  "methods": [
+  "$comment": "Single authority for selectable methods, their families, selectors and typed parameters. tools/generate_spec.py emits methods/parameters.hpp, app/options.hpp (method options), docs/methods.md, docs/cli-reference.md and fuzz/dict/cli.dict. Bounds and defaults are exact decimal strings or rationals 'a/b'. Prose in 'auto' describes how the method resolves an automatic value; the resolved value is reported by the method.",
+  "schema_version": 3,
+  "families": [
     {
-      "id": "I01",
-      "name": "Quantile log-surface illumination",
-      "method_version": 1,
-      "arguments": [
-        "--illumination",
-        "--background-strength",
-        "--background-max-gain",
-        "--background-target",
-        "--background-cell",
-        "--background-quantile",
-        "--background-smooth",
-        "--protect-mask"
-      ],
-      "selector": "surface",
       "family": "illumination",
-      "classification": "implemented-selectable"
+      "order": 1,
+      "selector": {
+        "option": "--illumination",
+        "metavar": "MODE",
+        "default": "off"
+      },
+      "group": "Illumination",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ],
+      "shared": [
+        {
+          "option": "--background-strength",
+          "field": "strength",
+          "kind": "decimal",
+          "metavar": "A",
+          "min": "0",
+          "max": "1",
+          "default": "1",
+          "summary": "Exponent applied to the illumination gain; 0 is an exact no-op."
+        },
+        {
+          "option": "--background-max-gain",
+          "field": "max_gain",
+          "kind": "decimal",
+          "metavar": "G",
+          "min": "1",
+          "max": "4",
+          "default": "2",
+          "summary": "Largest multiplicative gain applied to any sample; 1 is an exact no-op."
+        },
+        {
+          "option": "--background-target",
+          "field": "target",
+          "kind": "source_or_decimal",
+          "metavar": "TARGET",
+          "min": "0.1",
+          "max": "1",
+          "default": "source",
+          "summary": "Linear-light target; 'source' uses the fitted background's nearest-rank 90th percentile."
+        }
+      ],
+      "methods": [
+        {
+          "id": "I01",
+          "name": "Quantile log-surface illumination",
+          "version": 1,
+          "selectors": {
+            "surface": {
+              "mode": "explicit"
+            },
+            "auto": {
+              "mode": "automatic"
+            }
+          },
+          "parameters": [
+            {
+              "option": "--background-cell",
+              "field": "cell",
+              "kind": "auto_or_integer",
+              "metavar": "SIZE",
+              "min": "8",
+              "max": "512",
+              "default": "auto",
+              "auto": "round(min(W,H)/24) clamped to [16,256]",
+              "summary": "Cell edge in processing pixels."
+            },
+            {
+              "option": "--background-quantile",
+              "field": "quantile",
+              "kind": "decimal",
+              "metavar": "Q",
+              "min": "0.75",
+              "max": "0.99",
+              "default": "0.90",
+              "summary": "Nearest-rank quantile of eligible cell samples."
+            },
+            {
+              "option": "--background-smooth",
+              "field": "smooth",
+              "kind": "decimal",
+              "metavar": "BETA",
+              "min": "0.1",
+              "max": "20",
+              "default": "1",
+              "summary": "Grid-Laplacian weight of the logarithmic background fit."
+            }
+          ]
+        },
+        {
+          "id": "I02",
+          "name": "Morphological illumination",
+          "version": 1,
+          "selectors": {
+            "morph": {}
+          },
+          "parameters": [
+            {
+              "option": "--background-radius",
+              "field": "radius",
+              "kind": "auto_or_integer",
+              "metavar": "RADIUS",
+              "min": "1",
+              "max": "256",
+              "default": "auto",
+              "auto": "round(min(W,H)/50) clamped to [8,128]",
+              "summary": "Square closing radius in processing pixels; Gaussian sigma = max(0.5, radius/2)."
+            }
+          ]
+        }
+      ]
     },
     {
-      "id": "I02",
-      "name": "Morphological illumination",
-      "method_version": 1,
-      "arguments": [
-        "--illumination",
-        "--background-strength",
-        "--background-max-gain",
-        "--background-target",
-        "--background-radius",
-        "--protect-mask"
-      ],
-      "selector": "morph",
-      "family": "illumination",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "D01",
-      "name": "16-bit NLM-L1",
-      "method_version": 1,
-      "arguments": [
-        "--denoise",
-        "--denoise-blend",
-        "--nlm-h",
-        "--nlm-patch",
-        "--nlm-search",
-        "--protect-mask"
-      ],
-      "selector": "nlm",
       "family": "denoising",
-      "classification": "implemented-selectable"
+      "order": 2,
+      "selector": {
+        "option": "--denoise",
+        "metavar": "METHOD",
+        "default": "off"
+      },
+      "group": "Denoising",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ],
+      "shared": [
+        {
+          "option": "--denoise-blend",
+          "field": "blend",
+          "kind": "decimal",
+          "metavar": "A",
+          "min": "0",
+          "max": "1",
+          "default": "0.5",
+          "summary": "Blend in perceptual luminance; 0 keeps entering samples."
+        }
+      ],
+      "methods": [
+        {
+          "id": "D01",
+          "name": "NLM-L1 on 16-bit perceptual codes",
+          "version": 1,
+          "selectors": {
+            "nlm": {}
+          },
+          "parameters": [
+            {
+              "option": "--nlm-h",
+              "field": "h",
+              "kind": "decimal",
+              "metavar": "H",
+              "min": "0.1",
+              "max": "25",
+              "default": "3",
+              "summary": "Filter strength in equivalent 8-bit perceptual points; higher values may remove marks."
+            },
+            {
+              "option": "--nlm-patch",
+              "field": "patch",
+              "kind": "odd_integer",
+              "metavar": "PIXELS",
+              "min": "3",
+              "max": "15",
+              "default": "7",
+              "summary": "Square patch width."
+            },
+            {
+              "option": "--nlm-search",
+              "field": "search",
+              "kind": "odd_integer",
+              "metavar": "PIXELS",
+              "min": "7",
+              "max": "41",
+              "default": "21",
+              "summary": "Square search width; at least the patch width."
+            }
+          ],
+          "constraints": [
+            "search >= patch"
+          ]
+        },
+        {
+          "id": "D02",
+          "name": "Floating-point TV-L1",
+          "version": 1,
+          "selectors": {
+            "tvl1": {}
+          },
+          "parameters": [
+            {
+              "option": "--tv-lambda",
+              "field": "lambda",
+              "kind": "decimal",
+              "metavar": "LAMBDA",
+              "min": "0.05",
+              "max": "20",
+              "default": "1.5",
+              "summary": "L1 fidelity weight; larger values smooth less."
+            },
+            {
+              "option": "--tv-iterations",
+              "field": "iterations",
+              "kind": "integer",
+              "metavar": "N",
+              "min": "10",
+              "max": "1000",
+              "default": "150",
+              "summary": "Iteration cap; exhaustion keeps the iterate and warns."
+            },
+            {
+              "option": "--tv-tolerance",
+              "field": "tolerance",
+              "kind": "decimal",
+              "metavar": "EPS",
+              "min": "1e-8",
+              "max": "1e-3",
+              "default": "1e-5",
+              "summary": "Primal and dual update tolerance at two consecutive checkpoints."
+            }
+          ]
+        }
+      ]
     },
     {
-      "id": "D02",
-      "name": "Floating-point TV-L1",
-      "method_version": 1,
-      "arguments": [
-        "--denoise",
-        "--denoise-blend",
-        "--tv-lambda",
-        "--tv-iterations",
-        "--tv-tolerance",
-        "--protect-mask"
-      ],
-      "selector": "tvl1",
-      "family": "denoising",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "C01",
-      "name": "Percentile levels",
-      "method_version": 1,
-      "arguments": [
-        "--contrast",
-        "--contrast-blend",
-        "--levels-low",
-        "--levels-high",
-        "--protect-mask"
-      ],
-      "family": "contrast",
-      "selector": "levels",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "C02",
-      "name": "Gamma",
-      "method_version": 1,
-      "arguments": [
-        "--contrast",
-        "--contrast-blend",
-        "--gamma",
-        "--protect-mask"
-      ],
-      "family": "contrast",
-      "selector": "gamma",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "C03",
-      "name": "Masked floating-point CLAHE",
-      "method_version": 1,
-      "arguments": [
-        "--contrast",
-        "--contrast-blend",
-        "--clahe-grid",
-        "--clahe-clip",
-        "--protect-mask"
-      ],
-      "family": "contrast",
-      "selector": "clahe",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "S01",
-      "name": "Thresholded unsharp masking",
-      "method_version": 1,
-      "arguments": [
-        "--sharpen",
-        "--sharpen-sigma",
-        "--sharpen-amount",
-        "--sharpen-threshold",
-        "--protect-mask"
-      ],
-      "family": "sharpening",
-      "selector": "unsharp",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "R01",
-      "name": "Known-PSF regularized Fourier restoration",
-      "method_version": 1,
-      "arguments": [
-        "--deblur",
-        "--psf",
-        "--psf-sigma",
-        "--psf-length",
-        "--psf-angle",
-        "--psf-file",
-        "--wiener-k",
-        "--deblur-blend",
-        "--protect-mask"
-      ],
-      "selector": "wiener",
       "family": "restoration",
-      "classification": "implemented-selectable"
+      "order": 3,
+      "selector": {
+        "option": "--deblur",
+        "metavar": "METHOD",
+        "default": "off"
+      },
+      "group": "Restoration",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ],
+      "shared": [],
+      "methods": [
+        {
+          "id": "R01",
+          "name": "Known-PSF regularized Fourier restoration",
+          "version": 1,
+          "selectors": {
+            "wiener": {}
+          },
+          "parameters": [
+            {
+              "option": "--psf",
+              "field": "psf",
+              "kind": "choice",
+              "metavar": "KIND",
+              "values": [
+                "gaussian",
+                "motion",
+                "kernel"
+              ],
+              "required": true,
+              "summary": "Point-spread function model in the processing frame."
+            },
+            {
+              "option": "--psf-sigma",
+              "field": "sigma",
+              "kind": "decimal",
+              "metavar": "SIGMA",
+              "min": "0.3",
+              "max": "5",
+              "default": "1",
+              "when": {
+                "--psf": "gaussian"
+              },
+              "summary": "Gaussian standard deviation in pixels."
+            },
+            {
+              "option": "--psf-length",
+              "field": "length",
+              "kind": "decimal",
+              "metavar": "LENGTH",
+              "min": "1",
+              "max": "31",
+              "default": "5",
+              "when": {
+                "--psf": "motion"
+              },
+              "summary": "Motion segment length in pixels."
+            },
+            {
+              "option": "--psf-angle",
+              "field": "angle",
+              "kind": "decimal",
+              "metavar": "ANGLE",
+              "min": "-180",
+              "max": "180",
+              "default": "0",
+              "when": {
+                "--psf": "motion"
+              },
+              "summary": "Motion direction, degrees clockwise from +x in y-down coordinates."
+            },
+            {
+              "option": "--psf-file",
+              "field": "kernel",
+              "kind": "path",
+              "metavar": "PATH",
+              "when": {
+                "--psf": "kernel"
+              },
+              "required": true,
+              "summary": "Grayscale PNG of raw non-negative coefficients, odd sides 3..129."
+            },
+            {
+              "option": "--wiener-k",
+              "field": "k",
+              "kind": "decimal",
+              "metavar": "K",
+              "min": "1e-5",
+              "max": "1",
+              "default": "0.01",
+              "summary": "Positive regularizer in |H|^2+K; not a measured noise ratio."
+            },
+            {
+              "option": "--deblur-blend",
+              "field": "blend",
+              "kind": "decimal",
+              "metavar": "A",
+              "min": "0",
+              "max": "1",
+              "default": "0.5",
+              "summary": "Blend of entering and restored linear luminance before clamping."
+            }
+          ]
+        }
+      ]
     },
     {
-      "id": "B02",
-      "name": "Sauvola",
-      "method_version": 1,
-      "arguments": [
-        "--binarize",
-        "--sauvola-window",
-        "--sauvola-k",
-        "--sauvola-r"
+      "family": "contrast",
+      "order": 4,
+      "selector": {
+        "option": "--contrast",
+        "metavar": "METHOD",
+        "default": "off"
+      },
+      "group": "Contrast",
+      "applies_to": [
+        "preserve",
+        "gray"
       ],
-      "selector": "sauvola",
+      "shared": [
+        {
+          "option": "--contrast-blend",
+          "field": "blend",
+          "kind": "decimal",
+          "metavar": "A",
+          "min": "0",
+          "max": "1",
+          "default": "1",
+          "summary": "Blend in perceptual luminance; 0 keeps entering samples."
+        }
+      ],
+      "methods": [
+        {
+          "id": "C01",
+          "name": "Percentile levels",
+          "version": 1,
+          "selectors": {
+            "levels": {}
+          },
+          "parameters": [
+            {
+              "option": "--levels-low",
+              "field": "low",
+              "kind": "decimal",
+              "metavar": "P",
+              "min": "0",
+              "max": "10",
+              "default": "0.5",
+              "unit": "percent",
+              "summary": "Nearest-rank lower percentile of unprotected perceptual samples."
+            },
+            {
+              "option": "--levels-high",
+              "field": "high",
+              "kind": "decimal",
+              "metavar": "P",
+              "min": "90",
+              "max": "100",
+              "default": "99.5",
+              "unit": "percent",
+              "summary": "Nearest-rank upper percentile; greater than the lower one."
+            }
+          ],
+          "constraints": [
+            "high > low"
+          ]
+        },
+        {
+          "id": "C02",
+          "name": "Gamma",
+          "version": 1,
+          "selectors": {
+            "gamma": {}
+          },
+          "parameters": [
+            {
+              "option": "--gamma",
+              "field": "gamma",
+              "kind": "decimal",
+              "metavar": "G",
+              "min": "0.25",
+              "max": "4",
+              "default": "1.2",
+              "summary": "f' = f^G; above 1 darkens midtones; 1 is an exact identity."
+            }
+          ]
+        },
+        {
+          "id": "C03",
+          "name": "Masked floating-point CLAHE",
+          "version": 1,
+          "selectors": {
+            "clahe": {}
+          },
+          "parameters": [
+            {
+              "option": "--clahe-grid",
+              "field": "grid",
+              "kind": "grid",
+              "metavar": "CxR",
+              "min": "2",
+              "max": "32",
+              "default": "8x8",
+              "summary": "Contextual columns x rows; every tile at least 16 pixels per side."
+            },
+            {
+              "option": "--clahe-clip",
+              "field": "clip",
+              "kind": "decimal",
+              "metavar": "C",
+              "min": "1",
+              "max": "8",
+              "default": "2",
+              "summary": "Pre-redistribution clip multiplier relative to mean occupancy."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "family": "sharpening",
+      "order": 5,
+      "selector": {
+        "option": "--sharpen",
+        "metavar": "METHOD",
+        "default": "off"
+      },
+      "group": "Sharpening",
+      "applies_to": [
+        "preserve",
+        "gray"
+      ],
+      "shared": [],
+      "methods": [
+        {
+          "id": "S01",
+          "name": "Thresholded unsharp masking",
+          "version": 1,
+          "selectors": {
+            "unsharp": {}
+          },
+          "parameters": [
+            {
+              "option": "--sharpen-sigma",
+              "field": "sigma",
+              "kind": "decimal",
+              "metavar": "S",
+              "min": "0.3",
+              "max": "3",
+              "default": "0.8",
+              "summary": "Gaussian standard deviation in pixels."
+            },
+            {
+              "option": "--sharpen-amount",
+              "field": "amount",
+              "kind": "decimal",
+              "metavar": "A",
+              "min": "0",
+              "max": "2",
+              "default": "0.5",
+              "summary": "Soft-thresholded high-pass gain; 0 is an exact identity."
+            },
+            {
+              "option": "--sharpen-threshold",
+              "field": "threshold",
+              "kind": "decimal",
+              "metavar": "T",
+              "min": "0",
+              "max": "20",
+              "default": "1",
+              "summary": "Soft threshold in equivalent 8-bit perceptual points."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "family": "binarization",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "B03",
-      "name": "Fixed threshold",
-      "method_version": 1,
-      "arguments": [
-        "--binarize",
-        "--fixed-threshold"
+      "order": 6,
+      "selector": {
+        "option": "--binarize",
+        "metavar": "METHOD",
+        "default": "sauvola"
+      },
+      "group": "Binarization",
+      "applies_to": [
+        "bw"
       ],
-      "selector": "fixed",
-      "family": "binarization",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "B01",
-      "name": "Otsu",
-      "method_version": 1,
-      "arguments": [
-        "--binarize"
-      ],
-      "selector": "otsu",
-      "family": "binarization",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "G01",
-      "name": "Metadata orientation",
-      "method_version": 1,
-      "arguments": [],
-      "classification": "implemented-automatic"
-    },
-    {
-      "id": "G02",
-      "name": "Exact quarter-turn",
-      "method_version": 1,
-      "arguments": [
-        "--rotate"
-      ],
-      "selector": "quarter_turn",
-      "family": "geometry",
-      "classification": "implemented-selectable"
-    },
-    {
-      "id": "G03",
-      "name": "Manual perspective",
-      "method_version": 1,
-      "arguments": [
-        "--quad",
-        "--page-size"
-      ],
-      "classification": "planned"
-    },
-    {
-      "id": "G04",
-      "name": "Deskew",
-      "method_version": 1,
-      "arguments": [
-        "--deskew",
-        "--deskew-limit"
-      ],
-      "classification": "planned"
-    },
-    {
-      "id": "G05",
-      "name": "Vertical text-line dewarp",
-      "method_version": 1,
-      "arguments": [
-        "--dewarp",
-        "--dewarp-min-lines",
-        "--dewarp-max-displacement"
-      ],
-      "classification": "planned"
+      "shared": [],
+      "methods": [
+        {
+          "id": "B01",
+          "name": "Otsu",
+          "version": 1,
+          "selectors": {
+            "otsu": {}
+          },
+          "parameters": []
+        },
+        {
+          "id": "B02",
+          "name": "Sauvola",
+          "version": 1,
+          "selectors": {
+            "sauvola": {}
+          },
+          "parameters": [
+            {
+              "option": "--sauvola-window",
+              "field": "window",
+              "kind": "odd_integer",
+              "metavar": "PIXELS",
+              "min": "3",
+              "max": "4095",
+              "default": "31",
+              "summary": "Centred square window with REFLECT_101 borders."
+            },
+            {
+              "option": "--sauvola-k",
+              "field": "k",
+              "kind": "decimal",
+              "metavar": "K",
+              "min": "0",
+              "max": "1",
+              "default": "0.2",
+              "summary": "Weight in T = m*(1 + k*(s/R - 1))."
+            },
+            {
+              "option": "--sauvola-r",
+              "field": "r",
+              "kind": "decimal",
+              "metavar": "R",
+              "min": "1/255",
+              "max": "1",
+              "default": "0.5",
+              "summary": "Normalized deviation scale."
+            }
+          ]
+        },
+        {
+          "id": "B03",
+          "name": "Fixed threshold",
+          "version": 1,
+          "selectors": {
+            "fixed": {}
+          },
+          "parameters": [
+            {
+              "option": "--fixed-threshold",
+              "field": "threshold",
+              "kind": "decimal",
+              "metavar": "T",
+              "min": "0",
+              "max": "1",
+              "default": "0.5",
+              "summary": "Black iff the normalized stored grayscale sample is at most T."
+            }
+          ]
+        }
+      ]
     }
   ]
 }

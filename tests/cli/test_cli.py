@@ -12,11 +12,13 @@ import subprocess
 import sys
 import tempfile
 import zlib
+from fractions import Fraction
 from functools import cache
 from pathlib import Path
 from typing import Any
 
 from continuous_fixtures import Fixture
+from contract_reference import option_projection, reviewed_methods, reviewed_options
 from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
@@ -62,7 +64,7 @@ def expect(condition: object, message: str) -> None:
         raise ContractError(message)
 
 
-def call(exe: Path, args: list[str], code: int = 0) -> str:
+def call(exe: Path, args: list[str], code: int = 0, *, cwd: Path | None = None) -> str:
     """Run the executable, require the exit code, and return stdout."""
     result = subprocess.run(
         [str(exe), *args],
@@ -71,6 +73,7 @@ def call(exe: Path, args: list[str], code: int = 0) -> str:
         encoding="utf-8",
         timeout=COMMAND_TIMEOUT_SECONDS,
         check=False,
+        cwd=cwd,
     )
     expect(
         result.returncode == code,
@@ -87,9 +90,11 @@ def response_validator() -> Draft202012Validator:
     return Draft202012Validator(schema)
 
 
-def call_json(exe: Path, args: list[str], code: int = 0) -> dict[str, Any]:
+def call_json(
+    exe: Path, args: list[str], code: int = 0, *, cwd: Path | None = None
+) -> dict[str, Any]:
     """Run the executable, parse its single JSON object and validate it against the schema."""
-    data: dict[str, Any] = json.loads(call(exe, args, code))
+    data: dict[str, Any] = json.loads(call(exe, args, code, cwd=cwd))
     response_validator().validate(data)
     expect(data["exit_code"] == code, "envelope and process exit codes must agree")
     return data
@@ -151,54 +156,21 @@ def read_gray_png(path: Path) -> bytes:
 def discovery_cases(exe: Path) -> None:
     """Version, method and help discovery report capabilities honestly."""
     version = call_json(exe, ["version", "--json"])
-    expect(
-        version["methods"]
-        == [
-            {"id": "I01", "method_version": 1},
-            {"id": "I02", "method_version": 1},
-            {"id": "D01", "method_version": 1},
-            {"id": "D02", "method_version": 1},
-            {"id": "C01", "method_version": 1},
-            {"id": "C02", "method_version": 1},
-            {"id": "C03", "method_version": 1},
-            {"id": "S01", "method_version": 1},
-            {"id": "R01", "method_version": 1},
-            {"id": "B02", "method_version": 1},
-            {"id": "B03", "method_version": 1},
-            {"id": "B01", "method_version": 1},
-            {"id": "G02", "method_version": 1},
-        ],
-        "implemented methods advertised",
-    )
+    expect(version["methods"] == reviewed_methods(), "implemented metadata matches authority")
     expect(
         version["supported_formats"] == ["png", "jpeg", "tiff"],
         "reviewed PNG/JPEG/TIFF admission advertised",
     )
     expect(len(version["dependency_lock_sha256"]) == SHA256_HEX_LENGTH, "lock digest")
     expect(
-        call_json(exe, ["methods", "--json"])["methods"]
-        == [
-            {"id": "I01", "method_version": 1},
-            {"id": "I02", "method_version": 1},
-            {"id": "D01", "method_version": 1},
-            {"id": "D02", "method_version": 1},
-            {"id": "C01", "method_version": 1},
-            {"id": "C02", "method_version": 1},
-            {"id": "C03", "method_version": 1},
-            {"id": "S01", "method_version": 1},
-            {"id": "R01", "method_version": 1},
-            {"id": "B02", "method_version": 1},
-            {"id": "B03", "method_version": 1},
-            {"id": "B01", "method_version": 1},
-            {"id": "G02", "method_version": 1},
-        ],
+        call_json(exe, ["methods", "--json"])["methods"] == version["methods"],
         "methods list matches implementation",
     )
     for command in HELP_COMMANDS:
         text = call(exe, [*([command] if command else []), "--help"])
         for method in version["methods"]:
             expect(method["id"] in text, "help includes each implemented method")
-        expect("G01" not in text, "help excludes planned methods")
+        expect("G01" not in text, "help keeps common geometry outside the method catalog")
         expect("png: preserve, gray, bw" in text, "help reports PNG modes")
         expect("jpeg: preserve, gray\n" in text, "help reports scoped JPEG modes")
         response = call_json(exe, [*([command] if command else []), "--help", "--json"])
@@ -209,22 +181,8 @@ def discovery_cases(exe: Path) -> None:
         "root help lists every current command",
     )
     options = call_json(exe, ["process", "--help", "--json"])["options"]
-    contract = json.loads((SCHEMA.parents[1] / "spec/cli-contract.json").read_text())
-    methods = json.loads((SCHEMA.parents[1] / "spec/method-contract.json").read_text())["methods"]
     expected = [
-        {
-            **{key: option[key] for key in ("name", "metavar", "description", "domain")},
-            "methods": ",".join(
-                sorted(
-                    method["id"]
-                    for method in methods
-                    if method["classification"] != "planned"
-                    and option["name"] in method["arguments"]
-                )
-            ),
-        }
-        for option in contract["options"]
-        if option["scope"] in {"P", "All commands"}
+        option_projection(option) for option in reviewed_options() if "process" in option["scope"]
     ]
     expect(options == expected, "complete reviewed process option descriptors")
 
@@ -290,24 +248,59 @@ def processing_case(exe: Path) -> None:
         expect(read_gray_png(target) == bytes([0, 0, 255, 255]), "threshold output")
 
 
+def literal_filename_cases(exe: Path) -> None:
+    """Open literal leading-dash operands relative to the child's actual working directory."""
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        samples = bytes([0, 64, 192, 255])
+        for index, name in enumerate(("-", "-h", "-input.png", "--input.png")):
+            source = root / name
+            write_gray_png(source, samples)
+            original = source.read_bytes()
+            output = f"bundle-{index}"
+            response = call_json(
+                exe,
+                [
+                    "process",
+                    "--out-dir",
+                    output,
+                    "--output-mode",
+                    "bw",
+                    "--binarize",
+                    "fixed",
+                    "--json",
+                    *(["--"] if name.startswith("--") else []),
+                    name,
+                ],
+                cwd=root,
+            )
+            expect(response["publication"] == "completed", f"literal {name} is processed")
+            expect(
+                read_gray_png(root / output / "result.png") == bytes([0, 0, 255, 255]),
+                "literal input produces the expected pixels",
+            )
+            expect(source.read_bytes() == original, "literal source remains unchanged")
+            call_json(exe, ["verify", output, "--json"], cwd=root)
+
+
 def default_cases(exe: Path) -> None:
     """Compare actual admitted records with the defaults advertised in the reviewed contract."""
-    contract = json.loads((SCHEMA.parents[1] / "spec/cli-contract.json").read_text())
-    defaults = {item["name"]: item["domain"].split(";", 1)[0] for item in contract["options"]}
+    all_options = reviewed_options()
+    defaults = {item["name"]: item["default"] for item in all_options if "default" in item}
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         source = root / "source.png"
         side = 32
         source.write_bytes(Fixture(side, side, ((200,),) * (side * side)).encoded())
-        for option in contract["options"]:
-            if option["scope"] == "P" and option["metavar"]:
+        for descriptor in all_options:
+            if "process" in descriptor["scope"] and descriptor["metavar"]:
                 output = root / "refused"
                 arguments = ["process", str(source)]
-                if option["name"] != "--out-dir":
+                if descriptor["name"] != "--out-dir":
                     arguments.extend(["--out-dir", str(output)])
                 response = call_json(
                     exe,
-                    [*arguments, option["name"], "", "--json"],
+                    [*arguments, descriptor["name"], "", "--json"],
                     EXIT_INVOCATION,
                 )
                 expect(response["publication"] == "not_started", "empty value refuses execution")
@@ -365,14 +358,16 @@ def default_cases(exe: Path) -> None:
         for actual, names in groups:
             for key, option in names.items():
                 value = defaults[option]
-                expected = float(value) if isinstance(actual[key], (int, float)) else value
+                expected = (
+                    float(Fraction(value)) if isinstance(actual[key], (int, float)) else value
+                )
                 if option == "--bit-depth":
                     expected = "automatic" if value == "auto" else value
                 expect(
                     actual[key] == expected, f"{option}: executed default matches reviewed default"
                 )
         expect(records[1]["request"]["operation"]["method"]["id"] == "B02", "default bw is B02")
-        expect(defaults["--binarize"] == "sauvola for bw", "reviewed default binary selector")
+        expect(defaults["--binarize"] == "sauvola", "reviewed default binary selector")
         for stage, option in (("illumination", "--illumination"), ("denoising", "--denoise")):
             expect(defaults[option] == "off", f"{stage} defaults to off")
             expect(
@@ -389,6 +384,7 @@ def main() -> int:
         call(exe, args, EXIT_INVOCATION)
     unavailable_cases(exe)
     processing_case(exe)
+    literal_filename_cases(exe)
     default_cases(exe)
     print("PASS: real-executable CLI contract")
     return 0

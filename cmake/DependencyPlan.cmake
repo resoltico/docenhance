@@ -4,7 +4,7 @@
 include_guard(GLOBAL)
 set(DE_SELECTED_DEPENDENCIES zlib jpeg png tiff)
 list(APPEND DE_SELECTED_DEPENDENCIES opencv)
-list(APPEND DE_SELECTED_DEPENDENCIES lcms cli11 json picosha2)
+list(APPEND DE_SELECTED_DEPENDENCIES lcms json picosha2)
 if(DE_BUILD_TESTS)
   list(APPEND DE_SELECTED_DEPENDENCIES catch2)
 endif()

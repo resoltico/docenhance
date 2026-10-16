@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/color/converter.hpp"
@@ -124,8 +125,8 @@ TEST_CASE("Wrong-family and incomplete processing reports preserve unknown publi
     UnusedVerifier verifier;
     app::Invocation request;
     request.command = app::Command::process;
-    request.subject = "input.png";
-    request.output_directory = "output";
+    request.operands = {"input.png"};
+    request.option(app::OptionId::out_dir) = "output";
     ReportingProcessor binary{
         app::PublishedBinary{.output = "output/result.png", .run = {}, .record = {}}};
     REQUIRE(app::dispatch(request, binary, verifier).exit_code() ==
@@ -139,7 +140,7 @@ TEST_CASE("Wrong-family and incomplete processing reports preserve unknown publi
         reported.stages.denoising.progress =
             invalid != 3 ? methods::StageProgress::completed : methods::StageProgress::prepared;
         ReportingProcessor continuous{reported};
-        request.output_mode = invalid == 0 ? "bw" : "preserve";
+        request.option(app::OptionId::output_mode) = invalid == 0 ? "bw" : "preserve";
         const auto outcome = app::dispatch(request, continuous, verifier);
         REQUIRE(outcome.exit_code() == core::ExitCode::publication_unknown);
         REQUIRE(std::get<app::ProcessFailure>(outcome.payload).error.publication ==
@@ -193,8 +194,8 @@ namespace docenhance::tests {
 TEST_CASE("Moved requests become unready and native ports refuse them before cancellation") {
     app::Invocation invocation;
     invocation.command = app::Command::process;
-    invocation.subject = "input.png";
-    invocation.output_directory = "output";
+    invocation.operands = {"input.png"};
+    invocation.option(app::OptionId::out_dir) = "output";
     auto original = app::prepare_process(invocation).value();
     auto moved = std::move(original);
     CHECK(moved.ready());
@@ -217,6 +218,7 @@ TEST_CASE("Moved requests become unready and native ports refuse them before can
     CHECK(refused.error().error.code == core::ErrorCode::argument);
     CHECK(refused.error().error.publication == core::Publication::not_started);
     invocation.command = app::Command::verify;
+    invocation.option(app::OptionId::out_dir).reset();
     auto reading = app::prepare_verify(invocation).value();
     auto retained = std::move(reading);
     CHECK(retained.ready());

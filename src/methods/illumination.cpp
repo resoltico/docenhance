@@ -6,6 +6,8 @@
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/morphology.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/surface.hpp"
 #include "surface_detail.hpp"
@@ -17,20 +19,8 @@
 #include <variant>
 
 namespace docenhance::methods {
-namespace {
-bool in_range(double value, double low, double high) noexcept {
-    return std::isfinite(value) && value >= low && value <= high;
-}
-} // namespace
 core::Result<Surface> Surface::create(SurfaceParameters parameters) {
-    const bool valid_mode = parameters.mode == SurfaceMode::explicit_surface ||
-                            parameters.mode == SurfaceMode::automatic;
-    if (!valid_mode || !in_range(parameters.strength, 0, 1) ||
-        !in_range(parameters.max_gain, 1, illumination_gain_limit) ||
-        !in_range(parameters.quantile, surface_min_quantile, surface_max_quantile) ||
-        !in_range(parameters.smooth, surface_min_smooth, surface_max_smooth) ||
-        (parameters.target && !in_range(*parameters.target, illumination_min_target, 1)) ||
-        (parameters.cell && (*parameters.cell < min_cell || *parameters.cell > max_cell))) {
+    if (!valid_parameters(parameters)) {
         return core::failure(core::ErrorCode::argument, "Invalid I01 surface parameters");
     }
     return Surface{parameters};
@@ -153,7 +143,8 @@ bool grid_agrees(const IlluminationReport& r, image::Extent extent) {
     if (!r.cell) {
         return r.cells == 0;
     }
-    if (!r.requested || *r.cell < Surface::min_cell || *r.cell > Surface::max_cell) {
+    if (!r.requested || *r.cell < background_cell_domain.minimum ||
+        *r.cell > background_cell_domain.maximum) {
         return false;
     }
     const auto method = Surface::create(std::get<SurfaceParameters>(*r.requested));
@@ -173,13 +164,14 @@ bool application_facts(const IlluminationReport& r) {
            r.saturated_samples <= r.evaluated_samples &&
            r.evaluated_samples <= r.eligible_samples && std::isfinite(r.min_gain) &&
            std::isfinite(r.max_gain) && r.min_gain >= 1 && r.max_gain >= r.min_gain &&
-           r.max_gain <= illumination_gain_limit;
+           r.max_gain <= background_max_gain_domain.maximum;
 }
 bool surface_shape(const IlluminationReport& r) {
     if (r.requested && !Surface::create(std::get<SurfaceParameters>(*r.requested))) {
         return false;
     }
-    if (r.cell && (*r.cell < Surface::min_cell || *r.cell > Surface::max_cell || r.cells == 0 ||
+    if (r.cell && (*r.cell < background_cell_domain.minimum ||
+                   *r.cell > background_cell_domain.maximum || r.cells == 0 ||
                    (r.requested && std::get<SurfaceParameters>(*r.requested).cell &&
                     r.cell != std::get<SurfaceParameters>(*r.requested).cell))) {
         return false;

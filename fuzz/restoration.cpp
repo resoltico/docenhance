@@ -7,6 +7,7 @@
 #include "docenhance/image/continuous.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/opencv/restoration.hpp"
 #include "support/entry_point.hpp"

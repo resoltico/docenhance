@@ -6,6 +6,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/opencv/nlm.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
@@ -24,10 +25,12 @@ void check(std::span<const std::uint8_t> bytes) {
     using docenhance::fuzz::require;
     docenhance::fuzz::FuzzInput input{bytes};
     constexpr std::uint32_t size_choices = 8;
-    const auto side = methods::nlm_min_search + (input.byte() % size_choices);
-    const auto method =
-        methods::Nlm::create({.patch = methods::nlm_min_patch, .search = methods::nlm_min_search})
-            .value();
+    const auto side = methods::nlm_search_domain.minimum + (input.byte() % size_choices);
+    const auto method = methods::Nlm::create({
+                                                 .patch = methods::nlm_patch_domain.minimum,
+                                                 .search = methods::nlm_search_domain.minimum,
+                                             })
+                            .value();
     constexpr std::size_t limit = std::size_t{8} * 1024 * 1024;
     core::Budget budget{limit};
     auto source = image::Plane<std::uint16_t>::allocate(budget, side, side).value();
@@ -59,7 +62,8 @@ void check(std::span<const std::uint8_t> bytes) {
     const auto q = input.integer<std::uint16_t>();
     constexpr double sample = 0.123456789;
     const image::Rgb rgb{sample, sample, sample};
-    require(methods::nlm_correct(rgb, q, q, methods::denoising_default_blend).value() == rgb,
+    require(methods::nlm_correct(rgb, q, q, methods::denoise_blend_domain.default_value).value() ==
+                rgb,
             "zero correction preserves entering doubles");
 }
 } // namespace

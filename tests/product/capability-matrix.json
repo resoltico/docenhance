@@ -14,6 +14,9 @@
       "active-D02",
       "active-D02-default"
     ],
+    "R01": [
+      "active-R01"
+    ],
     "C01": [
       "active-C01"
     ],
@@ -26,8 +29,11 @@
     "S01": [
       "active-S01"
     ],
-    "R01": [
-      "active-R01"
+    "B01": [
+      "binary-B01-r0",
+      "binary-B01-r90",
+      "binary-B01-r180",
+      "binary-B01-r270"
     ],
     "B02": [
       "binary-B02-r0",
@@ -40,12 +46,6 @@
       "binary-B03-r90",
       "binary-B03-r180",
       "binary-B03-r270"
-    ],
-    "B01": [
-      "binary-B01-r0",
-      "binary-B01-r90",
-      "binary-B01-r180",
-      "binary-B01-r270"
     ],
     "G02": [
       "geometry-8-o1-r90",
@@ -270,6 +270,21 @@
       "publication": "not_started"
     },
     {
+      "id": "method-R01",
+      "group": "discovery",
+      "source": "",
+      "options": [
+        "R01"
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 0,
+      "error": "",
+      "command": "methods",
+      "publication": "not_started"
+    },
+    {
       "id": "method-C01",
       "group": "discovery",
       "source": "",
@@ -330,11 +345,11 @@
       "publication": "not_started"
     },
     {
-      "id": "method-R01",
+      "id": "method-B01",
       "group": "discovery",
       "source": "",
       "options": [
-        "R01"
+        "B01"
       ],
       "check": "structure",
       "reference": "",
@@ -375,21 +390,6 @@
       "publication": "not_started"
     },
     {
-      "id": "method-B01",
-      "group": "discovery",
-      "source": "",
-      "options": [
-        "B01"
-      ],
-      "check": "structure",
-      "reference": "",
-      "methods": [],
-      "exit_code": 0,
-      "error": "",
-      "command": "methods",
-      "publication": "not_started"
-    },
-    {
       "id": "method-G01",
       "group": "discovery",
       "source": "",
@@ -414,8 +414,8 @@
       "check": "structure",
       "reference": "",
       "methods": [],
-      "exit_code": 0,
-      "error": "",
+      "exit_code": 4,
+      "error": "E_NOT_IMPLEMENTED",
       "command": "methods",
       "publication": "not_started"
     },
@@ -4301,22 +4301,6 @@
       "publication": "not_started"
     },
     {
-      "id": "empty-rotate",
-      "group": "rejection",
-      "source": "shaded",
-      "options": [
-        "--rotate",
-        ""
-      ],
-      "check": "structure",
-      "reference": "",
-      "methods": [],
-      "exit_code": 2,
-      "error": "E_ARGUMENT",
-      "command": "process",
-      "publication": "not_started"
-    },
-    {
       "id": "empty-output-mode",
       "group": "rejection",
       "source": "shaded",
@@ -4381,11 +4365,11 @@
       "publication": "not_started"
     },
     {
-      "id": "empty-binarize",
+      "id": "empty-rotate",
       "group": "rejection",
       "source": "shaded",
       "options": [
-        "--binarize",
+        "--rotate",
         ""
       ],
       "check": "structure",
@@ -4397,59 +4381,11 @@
       "publication": "not_started"
     },
     {
-      "id": "empty-fixed-threshold",
+      "id": "empty-protect-mask",
       "group": "rejection",
       "source": "shaded",
       "options": [
-        "--fixed-threshold",
-        ""
-      ],
-      "check": "structure",
-      "reference": "",
-      "methods": [],
-      "exit_code": 2,
-      "error": "E_ARGUMENT",
-      "command": "process",
-      "publication": "not_started"
-    },
-    {
-      "id": "empty-sauvola-window",
-      "group": "rejection",
-      "source": "shaded",
-      "options": [
-        "--sauvola-window",
-        ""
-      ],
-      "check": "structure",
-      "reference": "",
-      "methods": [],
-      "exit_code": 2,
-      "error": "E_ARGUMENT",
-      "command": "process",
-      "publication": "not_started"
-    },
-    {
-      "id": "empty-sauvola-k",
-      "group": "rejection",
-      "source": "shaded",
-      "options": [
-        "--sauvola-k",
-        ""
-      ],
-      "check": "structure",
-      "reference": "",
-      "methods": [],
-      "exit_code": 2,
-      "error": "E_ARGUMENT",
-      "command": "process",
-      "publication": "not_started"
-    },
-    {
-      "id": "empty-sauvola-r",
-      "group": "rejection",
-      "source": "shaded",
-      "options": [
-        "--sauvola-r",
+        "--protect-mask",
         ""
       ],
       "check": "structure",
@@ -4578,22 +4514,6 @@
       "source": "shaded",
       "options": [
         "--background-radius",
-        ""
-      ],
-      "check": "structure",
-      "reference": "",
-      "methods": [],
-      "exit_code": 2,
-      "error": "E_ARGUMENT",
-      "command": "process",
-      "publication": "not_started"
-    },
-    {
-      "id": "empty-protect-mask",
-      "group": "rejection",
-      "source": "shaded",
-      "options": [
-        "--protect-mask",
         ""
       ],
       "check": "structure",
@@ -5026,6 +4946,86 @@
       "source": "shaded",
       "options": [
         "--sharpen-threshold",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-binarize",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--binarize",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sauvola-window",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sauvola-window",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sauvola-k",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sauvola-k",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-sauvola-r",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--sauvola-r",
+        ""
+      ],
+      "check": "structure",
+      "reference": "",
+      "methods": [],
+      "exit_code": 2,
+      "error": "E_ARGUMENT",
+      "command": "process",
+      "publication": "not_started"
+    },
+    {
+      "id": "empty-fixed-threshold",
+      "group": "rejection",
+      "source": "shaded",
+      "options": [
+        "--fixed-threshold",
         ""
       ],
       "check": "structure",

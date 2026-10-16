@@ -1,210 +1,210 @@
 {
   "exceptions": {
-    ".clang-tidy:clang-tidy-option/bugprone-easily-swappable-parameters.MinimumLength@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/bugprone-easily-swappable-parameters.MinimumLength@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Named two-operand numerical APIs, including unsharp_candidate(f, blurred, method) and coordinate pairs, deliberately share units. Longer interchangeable sequences remain diagnosed from length three; independent numerical references distinguish argument order and signed residuals.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/bugprone-narrowing-conversions.PedanticMode@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/bugprone-narrowing-conversions.PedanticMode@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Pedantic narrowing diagnostics remain enabled at floating/integer pixel, extent and resource boundaries, supplemented by finite-domain factories and independent precision references.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Only the ubiquitous structural constants one and two are unnamed integer exceptions. Algorithm thresholds, physical units, resource ceilings and other values require names; power-of-two exemptions are separately disabled.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.BranchThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.BranchThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.LineThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.LineThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.NestingThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.NestingThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.ParameterThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.ParameterThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.StatementThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.StatementThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.VariableThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.VariableThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/misc-const-correctness.WarnPointersAsValues@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/misc-const-correctness.WarnPointersAsValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Pointer values remain subject to const-correctness checks so native adapters cannot silently weaken borrowed-pointer intent; any unavoidable mutable external ABI needs a separate source approval.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/misc-include-cleaner.IgnoreHeaders@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
-      "explanation": "The explicit patterns cover the locked CLI/JSON/Catch/OpenCV/native-codec providers and the exact generated docenhance/version.hpp facts header. Include-cleaner cannot reliably attribute those provider/generated declarations; first-party layer and direct-package ownership remain independently enforced. No general first-party header/source pattern is ignored.",
+    ".clang-tidy:clang-tidy-option/misc-include-cleaner.IgnoreHeaders@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
+      "explanation": "The explicit patterns cover the locked JSON/Catch/OpenCV/native-codec providers and the exact generated docenhance/version.hpp facts header. Include-cleaner cannot reliably attribute those provider/generated declarations; first-party layer and direct-package ownership remain independently enforced. No general first-party header/source pattern is ignored.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Plain parameter and completed-observation records expose their fields together as values. Admitted request/storage owners retain private construction and lifetime contracts; mixed public/private owner classes remain checked. Public fields do not replace parameter or returned-observation validation.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.IgnoreMacros@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.IgnoreMacros@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Complexity counts first-party decisions rather than expanded locked SDK and Catch registration/assertion machinery. Body line, statement, branch, nesting and variable limits remain independently mandatory; token-pasted/continued hidden compiler controls are refused.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.Threshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.Threshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The mandatory readability-function-cognitive-complexity.Threshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-size.BranchThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-size.BranchThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The mandatory readability-function-size.BranchThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-size.LineThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-size.LineThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The mandatory readability-function-size.LineThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-size.NestingThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-size.NestingThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The mandatory readability-function-size.NestingThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-size.ParameterThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-size.ParameterThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The original function-size check owns unsuppressible body budgets; its parameter dimension belongs to the separately mandatory Google parameter-only alias, preventing fixed ABI parameter exceptions from hiding body violations.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-size.StatementThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-size.StatementThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The mandatory readability-function-size.StatementThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-function-size.VariableThreshold@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-function-size.VariableThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "The mandatory readability-function-size.VariableThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ClassCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ClassCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Class declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConceptCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConceptCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Concept declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConstexprVariableCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConstexprVariableCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "ConstexprVariable declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Enum declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumConstantCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumConstantCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "EnumConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Function declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionIgnoredRegexp@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionIgnoredRegexp@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "LLVMFuzzerTestOneInput is the fixed external libFuzzer/AFL/replay entry symbol. Only that anchored exact ABI name bypasses snake_case naming; ordinary first-party functions retain the naming check.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.GlobalConstantCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.GlobalConstantCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "GlobalConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MacroDefinitionCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MacroDefinitionCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "MacroDefinition declarations use the reviewed UPPER_CASE naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MemberCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MemberCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Member declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MethodCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MethodCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Method declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.NamespaceCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.NamespaceCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Namespace declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ParameterCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ParameterCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Parameter declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "PrivateMember declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberSuffix@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberSuffix@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "PrivateMember storage uses '_' to distinguish class state from local values and parameters while retaining snake_case vocabulary.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "ProtectedMember declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberSuffix@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberSuffix@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "ProtectedMember storage uses '_' to distinguish class state from local values and parameters while retaining snake_case vocabulary.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StaticConstantCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StaticConstantCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "StaticConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StructCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StructCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Struct declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TemplateParameterCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TemplateParameterCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "TemplateParameter declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypeAliasCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypeAliasCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "TypeAlias declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypedefCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypedefCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Typedef declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.UnionCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.UnionCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Union declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.VariableCase@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.VariableCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Variable declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowIntegerConditions@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowIntegerConditions@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Integer status, count and flag values require explicit comparisons rather than implicit Boolean tests, exposing numerical and native-return interpretation at their boundaries.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowPointerConditions@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowPointerConditions@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Pointer admission and optional native handles require explicit null comparisons, keeping their presence checks visible instead of implicit Boolean conversion.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnorePowersOf2IntegerValues@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnorePowersOf2IntegerValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Power-of-two integers still require names because they can encode significant buffer, precision or resource assumptions rather than inherently obvious values.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnoredIntegerValues@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnoredIntegerValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Only the ubiquitous structural constants one and two are unnamed integer exceptions. Algorithm thresholds, physical units, resource ceilings and other values require names; power-of-two exemptions are separately disabled.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy/modernize-use-trailing-return-type@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy/modernize-use-trailing-return-type@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Style-only check conflicts with the project's explicit return-type declaration style; the enabled compiler, ownership and API checks remain mandatory.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy/performance-enum-size@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy/performance-enum-size@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Enums are not stored in bulk and ExitCode mirrors the process int domain; shrinking representations would not serve this interface contract.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy/portability-avoid-pragma-once@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy/portability-avoid-pragma-once@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Pragma once is supported by every admitted native compiler; public headers are independently compiled by the architecture check.",
       "occurrences": 1
     },
-    ".clang-tidy:clang-tidy/readability-identifier-length@0a4652431d1aa1c481228664f2ab4296f016085015c6839934d3510e6ff407b2": {
+    ".clang-tidy:clang-tidy/readability-identifier-length@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
       "explanation": "Numerical code mirrors specification notation x, y, p and c; the enabled readability-identifier-naming check still enforces the reviewed naming convention.",
       "occurrences": 1
     },
@@ -1040,8 +1040,8 @@
       "explanation": "OpenCV 5 MatAllocator::allocate fixes seven parameters in its public pure-virtual ABI. This developer-only allocation observer implements that exact override with a fixed pointer registry; production never links it. The parameter-only check is excepted, while body size, nesting, variables, statements and cognitive complexity remain mandatory.",
       "occurrences": 1
     },
-    "include/docenhance/app/cli_contract.hpp:clang-format/off@10a862396ec1c7f7befccfc4de34f06c36f3084e5d13bec9935d895a0b0523c2": {
-      "explanation": "Generated table: tools/generate_spec.py emits one option per line with long description literals; clang-format would split the literals and break byte-exact regeneration checks. Foundation review: method attribution is now derived and sorted from method arguments; the protection relation retains the same admitted IDs.",
+    "include/docenhance/app/options.hpp:clang-format/off@ecc25027cc5e39a545752fb1b5c39137985e21037bc167f192be6b2e7492d01c": {
+      "explanation": "Generated immutable option data uses one structured row per option and shared spelling/condition tables. Only this data region keeps its compact authored row layout; vocabulary, typed domains, parameter records, validators and bindings use the pinned canonical formatter. This carries the reviewed option-table formatting exception to its new owner without disabling size, semantic or primitive-validation checks.",
       "occurrences": 1
     }
   }

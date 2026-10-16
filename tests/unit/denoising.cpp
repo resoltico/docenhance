@@ -7,6 +7,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/opencv/nlm.hpp"
 
@@ -31,8 +32,9 @@ methods::Nlm method(std::uint32_t patch = 3, std::uint32_t search = 7) {
 TEST_CASE("NLM correction retains entering doubles and uses a signed native difference") {
     const image::Rgb between{0.123456789, 0.345678912, 0.789123456};
     const auto q = methods::nlm_quantize(between).value();
-    REQUIRE(methods::nlm_correct(between, q, q, methods::denoising_default_blend).value() ==
-            between);
+    REQUIRE(
+        methods::nlm_correct(between, q, q, methods::denoise_blend_domain.default_value).value() ==
+        between);
     REQUIRE(methods::nlm_correct(between, q, 0, 0).value() == between);
     constexpr double maximum = 65535;
     const auto f = image::srgb_encode(image::luminance(between).value()).value();
@@ -77,8 +79,12 @@ TEST_CASE("NLM global halos agree exactly with whole native output at seams and 
                 ((x * multiplier) + (y * vertical) + (x * y)) % pattern_modulus);
         }
     }
-    for (const auto p : std::array{methods::nlm_min_patch, methods::nlm_max_patch}) {
-        for (const auto s : std::array{methods::nlm_default_search, methods::nlm_max_search}) {
+    for (const auto p :
+         std::array{methods::nlm_patch_domain.minimum, methods::nlm_patch_domain.maximum}) {
+        for (const auto s : std::array{
+                 methods::nlm_search_domain.default_value,
+                 methods::nlm_search_domain.maximum,
+             }) {
             const auto options = method(p, s);
             methods::DenoisingReport report;
             REQUIRE(opencv::denoise(input.view().as_const(), tiled.view(),

@@ -6,8 +6,9 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/linear.hpp"
 #include "docenhance/methods/catalog.hpp"
+#include "docenhance/methods/method_catalog.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/reviewed_methods.hpp"
 
 #include <array>
 #include <cstdint>
@@ -19,8 +20,9 @@
 #include <variant>
 #include <vector>
 namespace docenhance::methods {
-inline constexpr double wiener_default_k = 0.01;
-inline constexpr double restoration_default_blend = 0.5;
+inline constexpr std::uint32_t gaussian_psf_radius_sigmas = 3;
+inline constexpr std::uint32_t motion_psf_minimum_samples = 64;
+inline constexpr std::uint32_t motion_psf_samples_per_pixel = 32;
 inline constexpr double psf_off_center_limit = 0.25;
 inline constexpr std::uint32_t psf_minimum_side = 3;
 inline constexpr std::uint32_t psf_maximum_side = core::psf_dimension_max;
@@ -30,41 +32,9 @@ inline constexpr std::uint32_t restoration_minimum_guard = 32;
 inline constexpr std::uint32_t restoration_guard_radius_factor = 4;
 inline constexpr std::uint64_t restoration_native_control = std::uint64_t{8} * 1024 * 1024;
 inline constexpr std::uint64_t restoration_native_per_pixel = 40;
-struct GaussianPsf {
-    static constexpr double minimum_sigma = 0.3;
-    static constexpr double maximum_sigma = 5;
-    static constexpr std::uint32_t radius_sigmas = 3;
-    double sigma = 1;
-    bool operator==(const GaussianPsf&) const = default;
-};
-struct MotionPsf {
-    static constexpr double minimum_length = 1;
-    static constexpr double maximum_length = 31;
-    static constexpr double minimum_angle = -180;
-    static constexpr double maximum_angle = 180;
-    static constexpr double default_length = 5;
-    static constexpr std::uint32_t minimum_samples = 64;
-    static constexpr std::uint32_t samples_per_pixel = 32;
-    double length = default_length;
-    double angle = 0;
-    bool operator==(const MotionPsf&) const = default;
-};
-struct FilePsf {
-    std::string path;
-    bool operator==(const FilePsf&) const = default;
-};
-using Psf = std::variant<GaussianPsf, MotionPsf, FilePsf>;
-struct WienerParameters {
-    Psf psf = GaussianPsf{};
-    double k = wiener_default_k;
-    double blend = restoration_default_blend;
-    bool operator==(const WienerParameters&) const = default;
-};
 class Wiener {
   public:
-    static constexpr double minimum_k = 1e-5;
-    static constexpr double maximum_k = 1;
-    [[nodiscard]] static core::Result<Wiener> create(WienerParameters p = {});
+    [[nodiscard]] static core::Result<Wiener> create(const WienerParameters& p = {});
     [[nodiscard]] const WienerParameters& parameters() const& noexcept {
         return parameters_;
     }
@@ -150,7 +120,6 @@ struct RestorationCharge {
 [[nodiscard]] std::string_view status_name(RestorationStatus value) noexcept;
 [[nodiscard]] std::string_view reason_name(RestorationReason value) noexcept;
 [[nodiscard]] bool valid_restoration_paths(const Restoration& method) noexcept;
-[[nodiscard]] bool valid_wiener_parameters(const WienerParameters& parameters);
 [[nodiscard]] bool valid_restoration_observations(const RestorationReport& report);
 [[nodiscard]] bool valid_restoration_extent(const RestorationReport& report, image::Extent extent);
 [[nodiscard]] bool valid_restoration(const RestorationReport& report, const Restoration& method);

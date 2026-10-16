@@ -3,6 +3,7 @@
 #include "contrast.hpp"
 
 #include "docenhance/methods/contrast.hpp"
+#include "docenhance/methods/parameters.hpp"
 
 #include <nlohmann/json.hpp>
 #include <string>

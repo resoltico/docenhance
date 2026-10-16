@@ -5,6 +5,7 @@
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/denoising.hpp"
+#include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/opencv/nlm.hpp"
 #include "observed_mat_allocator.hpp"
 
@@ -64,9 +65,11 @@ int measure() {
                 ((x * multiplier) + y) % (std::uint32_t{UINT16_MAX} + 1));
         }
     }
-    const auto method =
-        methods::Nlm::create({.patch = methods::nlm_max_patch, .search = methods::nlm_max_search})
-            .value();
+    const auto method = methods::Nlm::create({
+                                                 .patch = methods::nlm_patch_domain.maximum,
+                                                 .search = methods::nlm_search_domain.maximum,
+                                             })
+                            .value();
     if (!denoise::native_tile(input.view().as_const(), output.view(), method, budget)) {
         return 1;
     }

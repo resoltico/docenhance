@@ -4,6 +4,7 @@
 
 #include "bundle_native.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
@@ -48,11 +49,11 @@ std::filesystem::path published_bundle(const TemporaryDirectory& temporary, cons
     }
     app::Invocation invocation;
     invocation.command = app::Command::process;
-    invocation.subject = utf8_spelling(input);
-    invocation.output_directory = utf8_spelling(temporary.path / name);
-    invocation.output_mode = "bw";
-    invocation.binarize = "fixed";
-    invocation.fixed_threshold = "0.5";
+    invocation.operands = {utf8_spelling(input)};
+    invocation.option(app::OptionId::out_dir) = utf8_spelling(temporary.path / name);
+    invocation.option(app::OptionId::output_mode) = "bw";
+    invocation.option(app::OptionId::binarize) = "fixed";
+    invocation.option(app::OptionId::fixed_threshold) = "0.5";
     auto request = app::prepare_process(invocation);
     REQUIRE(request);
     const auto published = processor.process(*request, {});
@@ -70,7 +71,7 @@ std::ios::openmode binary_with(std::ios::openmode extra) {
 core::Result<app::Verified> read_back(const std::filesystem::path& directory) {
     app::Invocation invocation;
     invocation.command = app::Command::verify;
-    invocation.subject = utf8_spelling(directory);
+    invocation.operands = {utf8_spelling(directory)};
     auto request = app::prepare_verify(invocation);
     REQUIRE(request);
     host::Verifier verifier;
@@ -209,9 +210,9 @@ TEST_CASE("A reusable native processor observes one context per execution", "[ho
     host::Verifier verifier;
     app::Invocation invocation;
     invocation.command = app::Command::verify;
-    invocation.subject = first.string();
+    invocation.operands = {first.string()};
     const auto a = verifier.verify(app::prepare_verify(invocation).value(), {});
-    invocation.subject = second.string();
+    invocation.operands = {second.string()};
     const auto b = verifier.verify(app::prepare_verify(invocation).value(), {});
     REQUIRE(a);
     REQUIRE(b);
@@ -224,11 +225,11 @@ TEST_CASE("A reusable native processor observes one context per execution", "[ho
 
 namespace docenhance::tests {
 TEST_CASE("An invalid run context is refused before filesystem processing", "[host][bundle]") {
-    app::Invocation const invocation{
-        .command = app::Command::process,
-        .subject = "nonexistent-input.png",
-        .output_directory = "nonexistent-parent/result",
-    };
+    app::Invocation raw_invocation;
+    raw_invocation.command = app::Command::process;
+    raw_invocation.operands = {"nonexistent-input.png"};
+    raw_invocation.option(app::OptionId::out_dir) = "nonexistent-parent/result";
+    const app::Invocation invocation = std::move(raw_invocation);
     auto request = app::prepare_process(invocation);
     REQUIRE(request);
     host::Processor processor{invalid_context};

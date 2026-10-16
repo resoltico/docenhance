@@ -7,6 +7,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/contrast.hpp"
+#include "docenhance/methods/parameters.hpp"
 
 #include <algorithm>
 #include <cmath>

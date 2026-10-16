@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
+#include "docenhance/methods/parameters.hpp"
 #include "docenhance/methods/progress.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/stages.hpp"
@@ -36,8 +38,8 @@ class ReturningProcessor final : public app::Processor {
 app::Invocation invocation() {
     app::Invocation value;
     value.command = app::Command::process;
-    value.subject = "input.png";
-    value.output_directory = "output";
+    value.operands = {"input.png"};
+    value.option(app::OptionId::out_dir) = "output";
     return value;
 }
 const core::Error& error(const app::Outcome& value) {
@@ -48,8 +50,8 @@ TEST_CASE("Restoration partial failures preserve bounded observations and reject
           "[app][restoration]") {
     UnusedVerifier verifier;
     auto request = invocation();
-    request.deblur = "wiener";
-    request.psf = "gaussian";
+    request.option(app::OptionId::deblur) = "wiener";
+    request.option(app::OptionId::psf) = "gaussian";
     methods::RestorationReport known{
         .status = methods::RestorationStatus::failed,
         .reason = methods::RestorationReason::processing_failure,
@@ -98,10 +100,10 @@ TEST_CASE("A later completed stage cannot follow a selected unstarted or failed 
           "[app]") {
     UnusedVerifier verifier;
     auto v = invocation();
-    v.illumination = "surface";
-    v.background_strength = "0";
-    v.denoise = "nlm";
-    v.denoise_blend = "0";
+    v.option(app::OptionId::illumination) = "surface";
+    v.option(app::OptionId::background_strength) = "0";
+    v.option(app::OptionId::denoise) = "nlm";
+    v.option(app::OptionId::denoise_blend) = "0";
     const auto admitted = app::prepare_process(v);
     REQUIRE(admitted);
     const auto& plan = std::get<app::ContinuousPlan>(admitted->plan());
