@@ -47,10 +47,16 @@ function EncodeJson($Value) {
 function PayloadDigest([byte[]]$Bytes) {
     return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($Bytes)).ToLowerInvariant()
 }
+function ReceiptBytesUsed {
+    [long]$total = 0
+    foreach ($file in Get-ChildItem -LiteralPath $root -File -ErrorAction Stop) {
+        $total += [long]$file.Length
+    }
+    return $total
+}
 function WriteReceipt([string]$Name, [byte[]]$Bytes, [int]$Ceiling) {
     # Control writes are attempted even after inspection expiry; actual I/O is not interruptible.
-    $used = (Get-ChildItem -LiteralPath $root -File | Measure-Object Length -Sum).Sum
-    if ($null -eq $used) { $used = 0 }
+    $used = ReceiptBytesUsed
     if ($Bytes.Length -gt $Ceiling -or $used + $Bytes.Length -gt $maximumOutputBytes) {
         throw "Receipt $Name cannot fit its reserved output portion"
     }
@@ -64,8 +70,7 @@ function SaveBulk([string]$Name, $Value, [int]$RemainingBulkFiles) {
         $null = RemainingMilliseconds
         $bytes = EncodeJson $Value
         $null = RemainingMilliseconds
-        $used = (Get-ChildItem -LiteralPath $root -File | Measure-Object Length -Sum).Sum
-        if ($null -eq $used) { $used = 0 }
+        $used = ReceiptBytesUsed
         # Reserve 64 KiB for commands/result, plus 2 KiB omission space per later bulk file.
         $available = $maximumOutputBytes - 65536 - $used - 2048 * $RemainingBulkFiles
         if ($bytes.Length -gt $available) { $reason = 'bulk_payload_exceeds_available_portion' }
@@ -530,6 +535,12 @@ try {
                 completeness = 'unearned' })
         }
         WriteReceipt 'result.json' $resultBytes 16384
-    } catch { Write-Warning "Terminal receipt persistence failed: $($_.Exception.Message)"; $failures.Add('Terminal receipt could not be persisted') }
+    } catch {
+        Write-Warning "Terminal receipt persistence failed: $($_.Exception.Message)"
+        $firstExceptionPrefix = if ($null -eq $firstCollectorFailure) { 'unavailable/not-recorded' } else {
+            $firstCollectorFailure.Substring(0,[Math]::Min(600,$firstCollectorFailure.Length)) }
+        Write-Warning ("First collector exception (bounded prefix): " + $firstExceptionPrefix)
+        $failures.Add('Terminal receipt could not be persisted')
+    }
 }
 if ($failures.Count) { Write-Error 'Selected CRT prerequisite collection incomplete; inspect available bounded receipts' }
