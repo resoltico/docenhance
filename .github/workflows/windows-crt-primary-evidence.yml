@@ -1,0 +1,35 @@
+# REVIEW TEXT ONLY: future path .github/workflows/windows-crt-primary-evidence.yml
+# ONE atomic branch push requires separate root authorization. No action authorized here.
+name: Windows selected static CRT prerequisite
+on:
+  push:
+    branches: [codex/windows-crt-evidence-2026-10-19]
+permissions:
+  contents: read
+jobs:
+  selected-static-crt:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+      - name: Read selected installed native x64 static CRT evidence
+        shell: pwsh
+        run: |
+          ./tools/collect-windows-crt.ps1 -OutputDirectory "${{ runner.temp }}/crt-primary-receipts"
+      - name: Upload bounded summaries only
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: windows-static-crt-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/crt-primary-receipts/selection.json
+            ${{ runner.temp }}/crt-primary-receipts/archives.json
+            ${{ runner.temp }}/crt-primary-receipts/sources.json
+            ${{ runner.temp }}/crt-primary-receipts/commands.json
+            ${{ runner.temp }}/crt-primary-receipts/result.json
+          if-no-files-found: error
+          retention-days: 7
