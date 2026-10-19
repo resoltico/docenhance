@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
 # REVIEW TEXT ONLY. No authorization to run this collector accompanies this file.
-# Installation/source archives are read-only. No compiler, linker, build, test or hook.
+# Targeted installed-file/header reads only; no LIB/DUMPBIN, compiler, link, test or hook.
 [CmdletBinding()]
 param([Parameter(Mandatory)][string]$OutputDirectory)
 Set-StrictMode -Version Latest
@@ -18,13 +18,10 @@ $maximumOutputBytes = 2097152
 $commandRawLimit = 16777216
 $commandSeconds = 30
 $maximumMembers = 24
-$memberCount = 0
 $selectionPayload = $null
 $firstCollectorFailure = $null
 $activeArchiveRecord = $null
 $activeSourceRecord = $null
-$privateRoot = Join-Path $env:RUNNER_TEMP ('crt-members-' + [Guid]::NewGuid().ToString('N'))
-$null = New-Item -ItemType Directory -Path $privateRoot
 
 function RemainingMilliseconds {
     $remaining = 480000 - ([DateTime]::UtcNow - $started).TotalMilliseconds
@@ -87,153 +84,146 @@ function SaveBulk([string]$Name, $Value, [int]$RemainingBulkFiles) {
     try { WriteReceipt $Name $bytes ($maximumOutputBytes - 65536) }
     catch { $failures.Add("Persistence $Name failed: $($_.Exception.Message)"); Write-Warning "Persistence $Name failed" }
 }
-function Inspect([string]$Tool, [string[]]$Arguments) {
-    $info = [Diagnostics.ProcessStartInfo]::new()
-    $info.FileName = $Tool
-    $info.UseShellExecute = $false
-    $info.RedirectStandardOutput = $true
-    $info.RedirectStandardError = $true
-    foreach ($argument in $Arguments) { $info.ArgumentList.Add($argument) }
-    $process = [Diagnostics.Process]::new()
-    $process.StartInfo = $info
-    $clock = [Diagnostics.Stopwatch]::StartNew()
-    $output = [IO.MemoryStream]::new()
-    $errorOutput = [IO.MemoryStream]::new()
-    $buffers = @([byte[]]::new(8192), [byte[]]::new(8192))
-    $streams = @($null, $null)
-    $tasks = @($null, $null)
-    $done = @($false, $false)
-    $rawBytes = 0
-    $status = 'not_started'
-    $reason = 'global_timeout'
-    $didStart = $false
-    $startAttempted = $false
-    $joined = $false
-    $observedExit = $null
-    $firstFailure = $null
-    $stdout = $null
-    $cleanupErrors = [Collections.Generic.List[string]]::new()
-    $cleanupStarted = $null
-    $workSeconds = 0.0
-    try {
-        $null = RemainingMilliseconds
-        $reason = 'start_failure'
-        $startAttempted = $true
-        if (-not $process.Start()) { throw 'Process.Start did not confirm launch' }
-        $didStart = $true
-        $status = 'running'
-        $reason = 'read_failure'
-        $streams = @($process.StandardOutput.BaseStream, $process.StandardError.BaseStream)
-        for ($i = 0; $i -lt 2; $i++) {
-            $tasks[$i] = $streams[$i].ReadAsync($buffers[$i], 0, $buffers[$i].Length)
-        }
-        while (-not ($done[0] -and $done[1])) {
-            $reason = 'global_timeout'
-            $globalRemaining = RemainingMilliseconds
-            $reason = 'command_timeout'
-            $commandRemaining = 1000 * $commandSeconds - $clock.Elapsed.TotalMilliseconds
-            if ($commandRemaining -le 0) { throw 'Inspection exceeded 30 seconds' }
-            for ($i = 0; $i -lt 2; $i++) {
-                if ($done[$i] -or -not $tasks[$i].IsCompleted) { continue }
-                $reason = 'read_failure'
-                $count = $tasks[$i].GetAwaiter().GetResult()
-                if ($count -eq 0) { $done[$i] = $true; continue }
-                $rawBytes += $count
-                $reason = 'raw_bound'
-                if ($rawBytes -gt $commandRawLimit) { throw 'Inspection exceeded 16 MiB raw stream bound' }
-                $reason = 'read_failure'
-                $sink = if ($i -eq 0) { $output } else { $errorOutput }
-                $sink.Write($buffers[$i], 0, $count)
-                $tasks[$i] = $streams[$i].ReadAsync($buffers[$i], 0, $buffers[$i].Length)
-            }
-            if (-not ($done[0] -and $done[1])) {
-                $reason = 'global_timeout'; $globalRemaining = RemainingMilliseconds
-                $reason = 'command_timeout'
-                $commandRemaining = 1000 * $commandSeconds - $clock.Elapsed.TotalMilliseconds
-                if ($commandRemaining -le 0) { throw 'Inspection exceeded 30 seconds' }
-                [Threading.Thread]::Sleep([int][Math]::Max(1,[Math]::Min(5,[Math]::Min($globalRemaining,$commandRemaining))))
-            }
-        }
-        $reason = 'global_timeout'; $globalRemaining = RemainingMilliseconds
-        $reason = 'command_timeout'
-        $commandRemaining = 1000 * $commandSeconds - $clock.Elapsed.TotalMilliseconds
-        if ($commandRemaining -le 0) { throw 'Inspection exceeded 30 seconds before join' }
-        $joinMilliseconds = [int][Math]::Max(1,[Math]::Min(1000,[Math]::Min($globalRemaining,$commandRemaining)))
-        $reason = 'join_failure'
-        $joined = $process.WaitForExit($joinMilliseconds)
-        if (-not $joined) {
-            $reason = 'global_timeout'; $null = RemainingMilliseconds
-            $reason = 'command_timeout'
-            if ($clock.Elapsed.TotalSeconds -ge $commandSeconds) { throw 'Inspection deadline expired while joining' }
-            $reason = 'join_failure'; throw 'Inspection did not join after EOF within admitted wait'
-        }
-        $observedExit = $process.ExitCode
-        $reason = 'nonzero_exit'
-        if ($observedExit -ne 0) {
-            $stderr = [Text.Encoding]::Default.GetString($errorOutput.ToArray())
-            throw "Inspection exit ${observedExit}: $($stderr.Substring(0,[Math]::Min(600,$stderr.Length)))"
-        }
-        $reason = 'read_failure'
-        $stdout = [Text.Encoding]::Default.GetString($output.ToArray())
-        $reason = 'global_timeout'; $null = RemainingMilliseconds
-        $reason = 'command_timeout'
-        if ($clock.Elapsed.TotalSeconds -ge $commandSeconds) { throw 'Inspection exceeded 30 seconds before completion' }
-        $status = 'completed'; $reason = 'normal_exit'
-    } catch {
-        $firstFailure = $_.Exception
-        $status = if ($didStart) { 'failed_after_start' } elseif ($startAttempted) { 'start_not_confirmed' } else { 'not_started' }
-    } finally {
-        $workSeconds = $clock.Elapsed.TotalSeconds
-        $cleanupStarted = [Diagnostics.Stopwatch]::StartNew()
-        if ($didStart -and -not $joined) {
-            try { if (-not $process.HasExited) { $process.Kill($true) } }
-            catch { $cleanupErrors.Add("Kill/exit observation: $($_.Exception.Message)") }
-            try { $joined = $process.WaitForExit(5000); if (-not $joined) { $cleanupErrors.Add('Cleanup join unconfirmed after 5000 ms') } }
-            catch { $cleanupErrors.Add("Cleanup join: $($_.Exception.Message)") }
-        }
-        if ($didStart) {
-            try { if ($process.HasExited) { $observedExit = $process.ExitCode } }
-            catch { $cleanupErrors.Add("Exit observation: $($_.Exception.Message)") }
-        }
-        foreach ($owner in @($process,$output,$errorOutput)) {
-            try { $owner.Dispose() }
-            catch { $cleanupErrors.Add("Dispose: $($_.Exception.Message)") }
-        }
-        if ($cleanupErrors.Count -and $null -eq $firstFailure) {
-            $firstFailure = [Exception]::new($cleanupErrors[0])
-            $status = 'failed_after_start'; $reason = 'cleanup_failure'
-        }
-        # Receipt insertion occurs after contained cleanup, retaining the FIRST real failure.
-        $commands.Add([ordered]@{ tool = $Tool; arguments = $Arguments; start_attempted = $startAttempted;
-            did_start = if ($startAttempted -and -not $didStart) { $null } else { $didStart };
-            start_confirmed = $didStart;
-            status = $status; terminal_reason = $reason; first_error = if ($firstFailure) { $firstFailure.Message } else { $null };
-            joined = $joined; observed_exit_code = $observedExit; raw_bytes = $rawBytes;
-            inspection_seconds = $workSeconds; cleanup_seconds = $cleanupStarted.Elapsed.TotalSeconds;
-            cleanup_errors = $cleanupErrors.ToArray(); elapsed_seconds = $clock.Elapsed.TotalSeconds })
+
+# Reviewed action02 identity expectations; this targeted reader never recollects its broad census.
+$action02Binding = ConvertFrom-Json -AsHashtable @'
+{
+  "selected": {
+    "VSCMD_VER": "18.10.3",
+    "VisualStudioVersion": "18.0",
+    "VCToolsVersion": "14.51.36231",
+    "VCToolsInstallDir": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\",
+    "VSINSTALLDIR": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\",
+    "WindowsSdkDir": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+    "WindowsSDKVersion": "10.0.26100.0\\",
+    "WindowsSDKLibVersion": "10.0.26100.0\\",
+    "UniversalCRTSdkDir": "C:\\Program Files (x86)\\Windows Kits\\10\\",
+    "UCRTVersion": "10.0.26100.0",
+    "VSCMD_ARG_HOST_ARCH": "x64",
+    "VSCMD_ARG_TGT_ARCH": "x64"
+  },
+  "tools": {
+    "cl.exe": {
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\cl.exe",
+      "bytes": 893288,
+      "sha256": "b0a1818ebae6da7f18230a84e76ce839212584ac4c2ab55b97a0d5268085da57",
+      "file_version": "19.51.36260.0",
+      "product_version": "14.51.36260.0"
+    },
+    "link.exe": {
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\link.exe",
+      "bytes": 3701088,
+      "sha256": "a8c42e25c91ca2453e1110540ac08f0fc12d7539454a11b9af8baeecb469837d",
+      "file_version": "14.51.36260.0",
+      "product_version": "14.51.36260.0"
+    },
+    "lib.exe": {
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\lib.exe",
+      "bytes": 23384,
+      "sha256": "d8dae02a50c7571c6c0ea5cd7a853830aaca8fad13f8f4be147828d51dd4adec",
+      "file_version": "14.51.36260.0",
+      "product_version": "14.51.36260.0"
+    },
+    "dumpbin.exe": {
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\HostX64\\x64\\dumpbin.exe",
+      "bytes": 23376,
+      "sha256": "357c989e1c926841df4e6e97c25a60b205b30110cd6db39bde8d81a627e48ebb",
+      "file_version": "14.51.36260.0",
+      "product_version": "14.51.36260.0"
     }
-    if ($null -ne $firstFailure) { throw $firstFailure }
-    return $stdout
+  },
+  "providers": [
+    {
+      "path": "C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\ucrt\\x64\\libucrt.lib",
+      "bytes": 43342854,
+      "sha256": "ea2ffa5d9b1ebc3fa76f34c364471750db8951b341dbccbc1bef628ef1a20e39",
+      "file_version": null,
+      "product_version": null
+    },
+    {
+      "path": "C:\\Program Files (x86)\\Windows Kits\\10\\lib\\10.0.26100.0\\ucrt\\x64\\libucrtd.lib",
+      "bytes": 44189856,
+      "sha256": "082a3e21ff32beeee86864da52fcaf861b80b09d80b4f77fdc0a39ff549ad0cb",
+      "file_version": null,
+      "product_version": null
+    }
+  ],
+  "sources": {
+    "malloc_base.cpp": {
+      "path": "C:\\Program Files (x86)\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\heap\\malloc_base.cpp",
+      "bytes": 1635,
+      "sha256": "5e8799cca0bf2bb47e14f77f11fc1275db51d27c34c013ff1d929e2f1793d62b",
+      "file_version": null,
+      "product_version": null
+    },
+    "free_base.cpp": {
+      "path": "C:\\Program Files (x86)\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\heap\\free_base.cpp",
+      "bytes": 3656,
+      "sha256": "fdd31fc5aa5d34dec658d7b293f559ad623f978c777b17f214ca60cfcdd54fb6",
+      "file_version": null,
+      "product_version": null
+    },
+    "free.cpp": {
+      "path": "C:\\Program Files (x86)\\Windows Kits\\10\\Source\\10.0.26100.0\\ucrt\\heap\\free.cpp",
+      "bytes": 1723,
+      "sha256": "728fb1d774506edb5b8b69ae21af85809585e31b72890edcb79b25877ee44b48",
+      "file_version": null,
+      "product_version": null
+    }
+  },
+  "prior_failures": [
+    {
+      "original_length": 80,
+      "character_truncated": false,
+      "message": "Narrow symbol retention bound reached in libucrt.lib; full relation not retained"
+    },
+    {
+      "original_length": 64,
+      "character_truncated": false,
+      "message": "Member excerpt bound reached in libucrt.lib; relation incomplete"
+    },
+    {
+      "original_length": 81,
+      "character_truncated": false,
+      "message": "Narrow symbol retention bound reached in libucrtd.lib; full relation not retained"
+    },
+    {
+      "original_length": 65,
+      "character_truncated": false,
+      "message": "Member excerpt bound reached in libucrtd.lib; relation incomplete"
+    },
+    {
+      "original_length": 65,
+      "character_truncated": false,
+      "message": "Member excerpt bound reached in libucrtd.lib; relation incomplete"
+    },
+    {
+      "original_length": 78,
+      "character_truncated": false,
+      "message": "No narrow provider member discovered in libcpmt.lib; relation remains unearned"
+    },
+    {
+      "original_length": 79,
+      "character_truncated": false,
+      "message": "No narrow provider member discovered in libcpmtd.lib; relation remains unearned"
+    },
+    {
+      "original_length": 71,
+      "character_truncated": false,
+      "message": "Source relation incomplete at excerpt/coverage boundary: debug_heap.cpp"
+    },
+    {
+      "original_length": 72,
+      "character_truncated": false,
+      "message": "Source relation incomplete at excerpt/coverage boundary: new_handler.cpp"
+    }
+  ]
 }
-function RelevantLines([string]$Text, [int]$Limit = 160) {
-    $null = RemainingMilliseconds
-    $lines = @($Text -split '\r?\n' | Where-Object {
-        $_ -match '(?i)(malloc|free|new_handler|newhandler|new_mode|newmode|new_scalar|new_array|operator new|operator delete|heapalloc|heapfree|relocations|external|archive member name|machine \(x64\))'
-    })
-    $retained = @($lines | Select-Object -First $Limit)
-    $characterClipped = @($retained | Where-Object { $_.Length -gt 260 }).Count
-    $null = RemainingMilliseconds
-    return [ordered]@{ matching_lines = $lines.Count; retained_lines = $retained.Count; retained_limit = $Limit;
-        line_count_truncated = $lines.Count -gt $Limit; character_truncated = $characterClipped -gt 0;
-        character_clipped_lines = $characterClipped; original_retained_line_lengths = @($retained | ForEach-Object { $_.Length });
-        truncated = $lines.Count -gt $Limit -or $characterClipped -gt 0;
-        lines = @($retained | ForEach-Object { $_.Substring(0,[Math]::Min(260,$_.Length)) }) }
-}
+'@
 try {
     if (-not [OperatingSystem]::IsWindows() -or [Runtime.InteropServices.RuntimeInformation]::OSArchitecture -ne 'X64') {
         throw 'One native x64 Windows host is required'
     }
-    # EXACT selection/activation owner: tools/ci_windows.ps1 at f39.
     $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
     $null = RemainingMilliseconds
     $installation = (& $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath)
@@ -243,179 +233,182 @@ try {
     & $devshell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
     $null = RemainingMilliseconds
     if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw 'MSVC developer environment was not activated' }
-    $toolPaths = [ordered]@{}
-    $toolIdentities = [ordered]@{}
-    foreach ($tool in @('cl.exe', 'link.exe', 'lib.exe', 'dumpbin.exe')) {
+    $versions = [ordered]@{}; $tools = [ordered]@{}; $search = [ordered]@{}
+    $selectionPayload = [ordered]@{ scope = 'targeted helper declarations/configuration and free.cpp expressions only';
+        installation = $installation; selected = $versions; tools = $tools; ordered_search = $search;
+        workflow_commit = $env:GITHUB_SHA; runner_os = $env:RUNNER_OS; runner_arch = $env:RUNNER_ARCH;
+        action02_head = '9e42d253c7b4d0e9a1bf831bf055c45a60b16800';
+        action02_failed_status_preserved = 'prerequisite_incomplete'; prior_nine_failures_unchanged = $action02Binding.prior_failures;
+        interpretation = 'Identity rebind only; no native inspection command, compilation, link or forwarding proof' }
+    foreach ($key in $action02Binding.selected.Keys) {
+        $actual = [Environment]::GetEnvironmentVariable($key)
+        $versions[$key] = $actual
+        if ($actual -cne $action02Binding.selected[$key]) { throw "Selected context drift from action02: $key" }
+    }
+    foreach ($name in @('cl.exe','link.exe','lib.exe','dumpbin.exe')) {
         $null = RemainingMilliseconds
-        $selected = Get-Command $tool -CommandType Application -ErrorAction Stop | Select-Object -First 1
-        $toolPaths[$tool] = $selected.Source
-        $toolIdentities[$tool] = Identity $selected.Source
-        if ($selected.Source -notlike (Join-Path $env:VCToolsInstallDir 'bin\Hostx64\x64\*')) {
-            throw "Selected $tool is outside the selected native x64 toolset"
+        $selected = Get-Command $name -CommandType Application -ErrorAction Stop | Select-Object -First 1
+        $tools[$name] = Identity $selected.Source
+        $expected = $action02Binding.tools[$name]
+        if ($tools[$name].path -ine $expected.path -or $tools[$name].bytes -ne $expected.bytes -or $tools[$name].sha256 -cne $expected.sha256) {
+            throw "Selected tool identity drift from action02: $name"
         }
     }
-    $allowlistedEnvironment = [ordered]@{}
-    foreach ($name in @('VSCMD_VER','VisualStudioVersion','VCToolsVersion','VCToolsInstallDir',
-        'VSINSTALLDIR','WindowsSdkDir','WindowsSDKVersion','WindowsSDKLibVersion',
-        'UniversalCRTSdkDir','UCRTVersion','VSCMD_ARG_HOST_ARCH','VSCMD_ARG_TGT_ARCH')) {
-        $allowlistedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name)
+    foreach ($key in @('PATH','LIB','LIBPATH','INCLUDE')) {
+        $search[$key] = @([Environment]::GetEnvironmentVariable($key) -split ';' | Where-Object { $_ })
     }
-    $search = [ordered]@{}
-    foreach ($name in @('PATH','LIB','LIBPATH','INCLUDE')) {
-        # Ordered build-tool search paths only; no other environment values are collected.
-        $search[$name] = @([Environment]::GetEnvironmentVariable($name) -split ';' | Where-Object { $_ })
-    }
-    $selectionPayload = [ordered]@{ installation = $installation;
-        vswhere = Identity $vswhere; activation = Identity $devshell;
-        selected = $allowlistedEnvironment; ordered_search = $search; tools = $toolIdentities;
-        workflow_commit = $env:GITHUB_SHA; runner_os = $env:RUNNER_OS; runner_arch = $env:RUNNER_ARCH;
-        claim = 'Installed selected tools only; no compiler invocation or actual product link/runtime proof' }
-    $archiveNames = @('libcmt.lib','libcmtd.lib','libucrt.lib','libucrtd.lib',
-        'libvcruntime.lib','libvcruntimed.lib','libcpmt.lib','libcpmtd.lib')
-    foreach ($name in $archiveNames) {
+    foreach ($expected in $action02Binding.providers) {
         $null = RemainingMilliseconds
-        $first = $null
-        $considered = [Collections.Generic.List[string]]::new()
-        foreach ($directory in $search['LIB']) {
-            $candidate = Join-Path $directory $name
-            $considered.Add($candidate)
+        $name = [IO.Path]::GetFileName($expected.path)
+        $first = $null; $considered = [Collections.Generic.List[string]]::new()
+        foreach ($directory in $search.LIB) {
+            $candidate = Join-Path $directory $name; $considered.Add($candidate)
             if (Test-Path -LiteralPath $candidate -PathType Leaf) { $first = $candidate; break }
         }
-        if ($null -eq $first) {
-            $receipts.Add([ordered]@{ archive = $name; status = 'missing'; searched_in_order = $considered })
-            $failures.Add("Missing FIRST-resolved static CRT archive $name")
-            continue
+        if ($null -eq $first) { throw "Missing selected action02 provider $name" }
+        $identity = Identity $first
+        $record = [ordered]@{ archive = $identity; searched_in_order = $considered;
+            status = 'identity_acquired_comparison_pending'; pending_stage = 'compare_action02_identity';
+            first_failure = $null; relation_completeness = 'no symbol/member recollection in targeted supplement' }
+        $receipts.Add($record); $activeArchiveRecord = $record
+        if ($identity.path -ine $expected.path -or $identity.bytes -ne $expected.bytes -or $identity.sha256 -cne $expected.sha256) {
+            throw "Selected provider identity drift from action02: $name"
         }
-        $archive = Identity $first
-        $record = [ordered]@{ archive = $archive; status = 'identity_acquired_inspection_pending';
-            resolution = 'FIRST existing name in activated LIB order';
-            configuration = if ($name -match 'd\.lib$') { '/MTd Debug' } else { '/MT Release/RelWithDebInfo' };
-            searched_in_order = $considered;
-            selected_provider_context = [ordered]@{ vc_tools = $env:VCToolsInstallDir;
-                universal_crt_sdk = $env:UniversalCRTSdkDir; ucrt_version = $env:UCRTVersion };
-            expected = $null; relevant_members = @(); narrow_archive_symbols = $null;
-            member_inspections = [Collections.Generic.List[object]]::new();
-            last_completed_stage = 'identity_acquired'; pending_stage = 'provider_root_validation';
-            first_failure = $null; relation_completeness = 'unearned_inspection_pending' }
-        $receipts.Add($record)
-        $activeArchiveRecord = $record
-        $expectedRoot = if ($name -like 'libucrt*') {
-            Join-Path $env:UniversalCRTSdkDir ('Lib\' + $env:UCRTVersion + '\ucrt\x64')
-        } else { Join-Path $env:VCToolsInstallDir 'lib\x64' }
-        $record.expected = Join-Path $expectedRoot $name
-        if ([IO.Path]::GetFullPath($first) -ne [IO.Path]::GetFullPath($record.expected)) {
-            $record.status = 'first_resolution_outside_selected_provider_root'
-            $record.pending_stage = $null
-            $record.relation_completeness = 'unearned_provider_refusal'
-            $failures.Add("FIRST resolved $name is outside its selected provider root; no substitute inspected")
-            $activeArchiveRecord = $null
-            continue
-        }
-        $record.last_completed_stage = 'provider_root_validated'
-        $record.pending_stage = 'member_list'
-        $membersText = Inspect $toolPaths['lib.exe'] @('/nologo','/list',$first)
-        $members = @($membersText -split '\r?\n' | Where-Object {
-            $_ -match '(?i)(^|[\\/])(malloc|free|malloc_base|free_base|new_handler|newhandler|new_mode|newmode|new_scalar|new_array|debug_heap)\.obj$'
-        } | Select-Object -Unique)
-        $record.relevant_members = $members
-        $record.last_completed_stage = 'member_list_read'
-        $record.pending_stage = 'archive_symbol_inspection'
-        if ($members.Count -eq 0 -and $name -in @('libucrt.lib','libucrtd.lib','libcpmt.lib','libcpmtd.lib')) {
-            $failures.Add("No narrow provider member discovered in $name; relation remains unearned")
-        }
-        $symbols = Inspect $toolPaths['dumpbin.exe'] @('/nologo','/linkermember:1',$first)
-        $record.narrow_archive_symbols = RelevantLines $symbols 160
-        $record.last_completed_stage = 'archive_symbols_read'
-        $record.pending_stage = 'selected_member_inspection'
-        $record.status = 'archive_symbols_acquired_member_inspection_pending'
-        $archiveIncomplete = $members.Count -eq 0 -and $name -in @('libucrt.lib','libucrtd.lib','libcpmt.lib','libcpmtd.lib')
-        foreach ($member in $members) {
-            $null = RemainingMilliseconds
-            if ($memberCount -ge $maximumMembers) {
-                $archiveIncomplete = $true
-                $failures.Add('Provider-member bound 24 reached; remaining relations unearned')
-                break
-            }
-            $memberCount++
-            # Read-only ORIGINAL archive: LIB extraction only materializes one selected member
-            # in fresh private runner scratch, never in checkout/artifact output. No edits/relink.
-            $objectPath = Join-Path $privateRoot ('member-' + $memberCount + '.obj')
-            $null = Inspect $toolPaths['lib.exe'] @('/nologo',$first,('/extract:' + $member),('/out:' + $objectPath))
-            if (-not (Test-Path -LiteralPath $objectPath -PathType Leaf)) { throw 'Selected provider member was not materialized' }
-            $object = Get-Item -LiteralPath $objectPath
-            if ($object.Length -gt 1048576) { throw 'Selected member exceeds 1 MiB private scratch bound' }
-            $detail = Inspect $toolPaths['dumpbin.exe'] @('/nologo','/headers','/symbols','/relocations',$objectPath)
-            $record.member_inspections.Add([ordered]@{ archive_member = $member;
-                member_identity = Identity $objectPath; evidence = RelevantLines $detail 120;
-                limitation = 'Symbol/relocation names do not prove legal original forwarding or allocator semantics' })
-        }
-        if ($record.narrow_archive_symbols.truncated) {
-            $archiveIncomplete = $true
-            $failures.Add("Narrow symbol retention bound reached in $name; full relation not retained")
-        }
-        foreach ($inspection in $record.member_inspections) {
-            if ($inspection.evidence.truncated) { $archiveIncomplete = $true; $failures.Add("Member excerpt bound reached in $name; relation incomplete") }
-        }
-        $record.last_completed_stage = 'bounded_member_inspections_finished'
-        $record.pending_stage = $null
-        $record.status = if ($archiveIncomplete) { 'inspection_incomplete' } else { 'bounded_inspection_completed' }
-        $record.relation_completeness = if ($archiveIncomplete) { 'unearned_incomplete' } else { 'initial identity/symbol evidence only; no forwarding proof' }
-        $activeArchiveRecord = $null
+        $record.status = 'identity_equal_action02'; $record.pending_stage = $null; $activeArchiveRecord = $null
     }
-    # Exact candidate leaves under selected roots only; no recursive source/drive inventory.
-    $sourceRoots = @(
-        (Join-Path $env:VCToolsInstallDir 'crt\src\vcruntime'),
-        (Join-Path $env:UniversalCRTSdkDir ('Source\' + $env:UCRTVersion + '\ucrt\heap')),
-        (Join-Path $env:UniversalCRTSdkDir ('Source\' + $env:UCRTVersion + '\ucrt\misc')))
-    $sourceNames = @('malloc.cpp','free.cpp','malloc_base.cpp','free_base.cpp','debug_heap.cpp',
-        'new_handler.cpp','new_scalar.cpp','new_array.cpp','new_mode.cpp')
-    foreach ($directory in $sourceRoots) {
-        foreach ($name in $sourceNames) {
-            $null = RemainingMilliseconds
-            $path = Join-Path $directory $name
-            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-                $sourceReceipts.Add([ordered]@{ path = $path; status = 'not_present_at_selected_candidate' })
-                continue
+    $sdkInclude = Join-Path $env:UniversalCRTSdkDir ('Include\' + $env:UCRTVersion + '\ucrt')
+    $sdkSource = Join-Path $env:UniversalCRTSdkDir ('Source\' + $env:UCRTVersion + '\ucrt')
+    $vcInclude = Join-Path $env:VCToolsInstallDir 'include'
+    $targets = @(
+        @{ root = $sdkInclude; leaf = 'corecrt_malloc.h'; role = 'ordinary SDK include candidate'; symbols = @('_malloc_base','_free_base'); before = 3; after = 6 },
+        @{ root = $sdkInclude; leaf = 'malloc.h'; role = 'ordinary SDK include candidate'; symbols = @('_malloc_base','_free_base'); before = 3; after = 6 },
+        @{ root = $sdkInclude; leaf = 'crtdbg.h'; role = 'ordinary SDK include candidate'; symbols = @('_malloc_dbg','_free_dbg'); before = 3; after = 6 },
+        @{ root = $sdkInclude; leaf = 'corecrt.h'; role = 'SDK exception/import macro candidate'; symbols = @('_CRT_NOEXCEPT','_ACRTIMP'); before = 2; after = 2 },
+        @{ root = $vcInclude; leaf = 'vcruntime.h'; role = 'VC exception/import macro candidate'; symbols = @('_CRT_NOEXCEPT','_VCRTIMP'); before = 2; after = 2 },
+        @{ root = (Join-Path $sdkSource 'inc'); leaf = 'corecrt_internal.h'; role = 'INTERNAL header candidate, not presumed project-usable'; symbols = @('_malloc_base','_free_base'); before = 3; after = 6 },
+        @{ root = (Join-Path $sdkSource 'inc'); leaf = 'corecrt_internal_debug_heap.h'; role = 'INTERNAL header candidate, not presumed project-usable'; symbols = @('_malloc_dbg','_free_dbg'); before = 3; after = 6 },
+        @{ root = (Join-Path $sdkSource 'heap'); leaf = 'malloc_base.cpp'; role = 'actual Release helper definition candidate'; symbols = @('_malloc_base'); before = 2; after = 4 },
+        @{ root = (Join-Path $sdkSource 'heap'); leaf = 'free_base.cpp'; role = 'actual Release helper definition candidate'; symbols = @('_free_base'); before = 2; after = 4 },
+        @{ root = (Join-Path $sdkSource 'heap'); leaf = 'free.cpp'; role = 'actual public free Debug/Release call expressions'; symbols = @('_free_dbg','_free_base'); before = 2; after = 2 }
+    )
+    foreach ($target in $targets) {
+        $null = RemainingMilliseconds
+        $path = Join-Path $target.root $target.leaf
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $sourceReceipts.Add([ordered]@{ path = $path; role = $target.role; status = 'missing_exact_candidate'; selector_symbols = $target.symbols })
+            continue
+        }
+        $identity = Identity $path
+        $sourceRecord = [ordered]@{ identity = $identity; role = $target.role; selector_symbols = $target.symbols;
+            status = 'identity_acquired_read_pending'; last_completed_stage = 'identity_acquired';
+            pending_stage = 'identity_and_size_admission'; first_failure = $null;
+            relation_completeness = 'unearned pending bounded quoted declarations/guards' }
+        $sourceReceipts.Add($sourceRecord); $activeSourceRecord = $sourceRecord
+        if ($action02Binding.sources.ContainsKey($target.leaf)) {
+            $expected = $action02Binding.sources[$target.leaf]
+            if ($identity.path -ine $expected.path -or $identity.bytes -ne $expected.bytes -or $identity.sha256 -cne $expected.sha256) {
+                throw "Selected source identity drift from action02: $($target.leaf)"
             }
-            $identity = Identity $path
-            $sourceRecord = [ordered]@{ identity = $identity; status = 'identity_acquired_inspection_pending';
-                provenance = 'Selected VS/SDK installed directory, versions in selection.json; no archive-source build equivalence inferred';
-                selected_source_root = $directory; candidate_leaf = $name;
-                last_completed_stage = 'identity_acquired'; pending_stage = 'source_size_admission';
-                first_failure = $null; relation_completeness = 'unearned_inspection_pending' }
-            $sourceReceipts.Add($sourceRecord)
-            $activeSourceRecord = $sourceRecord
-            if ($identity.bytes -gt 1048576) { throw 'Selected source exceeds 1 MiB bounded read' }
+        }
+        if ($identity.bytes -gt 1048576) { throw 'Selected source exceeds 1 MiB bounded read' }
+        $null = RemainingMilliseconds; $sourceRecord.pending_stage = 'source_read_and_narrow_selection'
+        $lines = [IO.File]::ReadAllLines($path); $null = RemainingMilliseconds
+        $indexes = [Collections.Generic.SortedSet[int]]::new()
+        $anchorLines = [Collections.Generic.List[object]]::new()
+        $requiredRole = $target.role -like 'actual*' -or $target.leaf -ceq 'crtdbg.h'
+        $macroRole = $target.role -like '*macro candidate'
+        $callRole = $target.leaf -ceq 'free.cpp'
+        # Classify only leading comment fragments using the already retained conservative rule.
+        # This lexical selection is not a C++ or preprocessor parser.
+        $codeLines = [string[]]::new($lines.Length)
+        $candidateInBlockComment = $false
+        for ($i = 0; $i -lt $lines.Length; $i++) {
             $null = RemainingMilliseconds
-            $sourceRecord.pending_stage = 'source_read'
-            $lines = [IO.File]::ReadAllLines($path)
-            $sourceRecord.last_completed_stage = 'source_read'
-            $sourceRecord['source_lines'] = $lines.Length
-            $sourceRecord.pending_stage = 'coverage_and_excerpt'
+            $candidateText = $lines[$i].Trim()
+            if ($candidateInBlockComment) {
+                $close = $candidateText.IndexOf('*/')
+                if ($close -lt 0) { $codeLines[$i] = ''; continue }
+                $candidateInBlockComment = $false
+                $candidateText = $candidateText.Substring($close + 2).Trim()
+            }
+            while ($candidateText.StartsWith('/*')) {
+                $close = $candidateText.IndexOf('*/',2)
+                if ($close -lt 0) { $candidateInBlockComment = $true; $candidateText = ''; break }
+                $candidateText = $candidateText.Substring($close + 2).Trim()
+            }
+            $lineComment = $candidateText.IndexOf('//')
+            if ($lineComment -ge 0) { $candidateText = $candidateText.Substring(0,$lineComment).TrimEnd() }
+            # Conservatively recognize remaining inline block openers too, so an unstarred
+            # subsequent comment line cannot become a declaration candidate.
+            while (($inlineOpen = $candidateText.IndexOf('/*')) -ge 0) {
+                $inlineClose = $candidateText.IndexOf('*/',$inlineOpen + 2)
+                if ($inlineClose -lt 0) {
+                    $candidateInBlockComment = $true
+                    $candidateText = $candidateText.Substring(0,$inlineOpen).TrimEnd(); break
+                }
+                $candidateText = $candidateText.Substring(0,$inlineOpen) + ' ' + $candidateText.Substring($inlineClose + 2)
+            }
+            $codeLines[$i] = $candidateText
+        }
+        for ($i = 0; $i -lt $lines.Length; $i++) {
             $null = RemainingMilliseconds
-            $indexes = [Collections.Generic.SortedSet[int]]::new()
+            $candidateText = $codeLines[$i]
+            if (-not $candidateText.Length) { continue }
+            foreach ($symbol in $target.symbols) {
+                $escaped = [Regex]::Escape($symbol)
+                $kind = $null; $spanStart = $i; $spanEnd = $i; $closed = $false
+                if ($macroRole) {
+                    if ($candidateText -notmatch ('^#\s*define\s+' + $escaped + '(?=\s|\(|$)')) { continue }
+                    $kind = 'named_macro_definition'
+                    $last = [Math]::Min($lines.Length - 1,$i + $target.after)
+                    for ($j = $i; $j -le $last; $j++) {
+                        $spanEnd = $j
+                        if (-not $codeLines[$j].TrimEnd().EndsWith('\')) { $closed = $true; break }
+                    }
+                } else {
+                    if ($candidateText.StartsWith('#')) { continue }
+                    $match = [Regex]::Match($candidateText, ('(?<![A-Za-z0-9_])' + $escaped + '\s*\('))
+                    if (-not $match.Success) { continue }
+                    if ($callRole) {
+                        $kind = 'public_free_helper_call_expression'
+                    } else {
+                        # Reject obvious expressions; require concrete type AND __cdecl prefix.
+                        if ($candidateText -match '^(return|co_return|throw|if|while|for|switch)\b') { continue }
+                        $prefix = $candidateText.Substring(0,$match.Index)
+                        if ($prefix -match '(?<![=!<>])=(?!=)' -or $prefix -match '[;{}]') { continue }
+                        for ($j = $i - 1; $j -ge [Math]::Max(0,$i - $target.before); $j--) {
+                            if ($prefix -match '\b__cdecl\b' -and $prefix -match '\b(void|size_t|char|unsigned|int)\b') { break }
+                            $previous = $codeLines[$j]
+                            if ($previous.StartsWith('#') -or $previous -match '[;{}=]') { break }
+                            $prefix = $previous + ' ' + $prefix; $spanStart = $j
+                        }
+                        if ($prefix -notmatch '\b__cdecl\b' -or $prefix -notmatch '\b(void|size_t|char|unsigned|int)\b') { continue }
+                        $kind = 'typed_cdecl_declaration_or_definition_candidate'
+                    }
+                    $last = [Math]::Min($lines.Length - 1,$i + $target.after)
+                    $tail = ''
+                    for ($j = $i; $j -le $last; $j++) {
+                        $spanEnd = $j; $tail += ' ' + $codeLines[$j]
+                        # A visible close plus actual declaration/body/call terminator is required.
+                        if ($tail.Contains(')') -and ($tail.Contains(';') -or (-not $callRole -and $tail.Contains('{')))) {
+                            $closed = $true; break
+                        }
+                    }
+                }
+                $contextStart = [Math]::Max(0,$i - $target.before)
+                $contextEnd = [Math]::Min($lines.Length - 1,$i + $target.after)
+                for ($j = $contextStart; $j -le $contextEnd; $j++) { $null = $indexes.Add($j) }
+                $anchorLines.Add([ordered]@{ symbol = $symbol; original_line = $i + 1; candidate_kind = $kind;
+                    required = $requiredRole; local_context_first_line = $contextStart + 1; local_context_last_line = $contextEnd + 1;
+                    typed_prefix_first_line = $spanStart + 1;
+                    necessary_span_first_line = $contextStart + 1; necessary_span_last_line = $spanEnd + 1;
+                    necessary_span_closed_in_local_context = $closed; required_span_retained = $false })
+            }
+        }
             $meaningful = [Collections.Generic.List[int]]::new()
-            $inBlockComment = $false
-            for ($i = 0; $i -lt $lines.Length; $i++) {
+            for ($i = 0; $i -lt $codeLines.Length; $i++) {
                 $null = RemainingMilliseconds
-                if ($lines[$i] -match '(?i)(copyright|malloc\(|free\(|new_handler|newmode|heapalloc|heapfree|return .*alloc|return .*free)') {
-                    for ($j = [Math]::Max(0,$i - 1); $j -le [Math]::Min($lines.Length - 1,$i + 1); $j++) { $null = $indexes.Add($j) }
-                }
-                # Local conservative coverage test, not a source-language parser.
-                # Strip ordinary whole-line/header comments so dropping blanks/copyright cannot
-                # turn full meaningful-source disclosure into a supposedly partial excerpt.
-                $trimmed = $lines[$i].Trim()
-                if ($inBlockComment) {
-                    $close = $trimmed.IndexOf('*/')
-                    if ($close -lt 0) { continue }
-                    $inBlockComment = $false; $trimmed = $trimmed.Substring($close + 2).Trim()
-                }
-                while ($trimmed.StartsWith('/*')) {
-                    $close = $trimmed.IndexOf('*/',2)
-                    if ($close -lt 0) { $inBlockComment = $true; $trimmed = ''; break }
-                    $trimmed = $trimmed.Substring($close + 2).Trim()
-                }
-                if ($trimmed.Length -and -not $trimmed.StartsWith('//')) { $meaningful.Add($i) }
+                if ($codeLines[$i].Trim().Length) { $meaningful.Add($i) }
             }
             $retainedIndexes = @($indexes | Select-Object -First 24)
             $characterClipped = @($retainedIndexes | Where-Object { $lines[$_].Length -gt 200 }).Count
@@ -430,7 +423,7 @@ try {
                 })
             }
             $lost = $indexes.Count -gt 24 -or $characterClipped -gt 0 -or $fullMeaningfulCoverage
-            if ($lost) { $failures.Add("Source relation incomplete at excerpt/coverage boundary: $name") }
+            if ($lost) { $failures.Add("Source relation incomplete at excerpt/coverage boundary: $($target.leaf)") }
             $completedSourceFields = [ordered]@{ identity = $identity;
                 status = if ($fullMeaningfulCoverage) { 'identity_only_full_meaningful_source_withheld' } else { 'installed_candidate_read' };
                 provenance = 'Selected VS/SDK installed directory, versions in selection.json; no archive-source build equivalence inferred';
@@ -449,14 +442,34 @@ try {
             $sourceRecord.pending_stage = 'post_excerpt_deadline_check'
             $null = RemainingMilliseconds
             $sourceRecord.pending_stage = $null
-            $activeSourceRecord = $null
+
+        foreach ($candidate in $anchorLines) {
+            $spanRetained = $candidate.necessary_span_closed_in_local_context -and -not $fullMeaningfulCoverage
+            for ($j = $candidate.necessary_span_first_line - 1; $j -lt $candidate.necessary_span_last_line; $j++) {
+                if ($j -notin $retainedIndexes -or $lines[$j].Length -gt 200) { $spanRetained = $false }
+            }
+            $candidate.required_span_retained = $spanRetained
+            if ($candidate.required -and -not $spanRetained) {
+                $failures.Add("Required candidate/span not retained: $($target.leaf):$($candidate.original_line) $($candidate.symbol)")
+            }
         }
+        $sourceRecord['candidates'] = $anchorLines.ToArray()
+        $sourceRecord['original_line_numbers'] = 'candidate/excerpt/span fields are original one-based positions'
+        $sourceRecord['configuration_scope'] = 'Bounded local context ONLY; enclosing conditions/macros not visible remain unearned'
+        $sourceRecord['project_header_status'] = $target.role
+        $missing = @($target.symbols | Where-Object { $symbol = $_; -not @($anchorLines | Where-Object { $_.symbol -ceq $symbol }).Count })
+        $sourceRecord['missing_candidate_symbols'] = $missing
+        $sourceRecord['required_role'] = $requiredRole
+        $sourceRecord['required_retained_span_incomplete'] = $requiredRole -and ($missing.Count -gt 0 -or @($anchorLines | Where-Object { -not $_.required_span_retained }).Count -gt 0)
+        if ($sourceRecord.required_retained_span_incomplete) {
+            $sourceRecord.relation_completeness = 'unearned_incomplete_required_candidate_or_retained_span'
+            if ($missing.Count) { $failures.Add("Required declaration/call candidate absent: $($target.leaf)") }
+        }
+        $sourceRecord.pending_stage = $null; $activeSourceRecord = $null
     }
-    foreach ($required in @('malloc_base.cpp', 'free_base.cpp', 'new_handler.cpp')) {
-        if (-not @($sourceReceipts | Where-Object {
-            $_.Contains('identity') -and [IO.Path]::GetFileName($_.identity.path) -eq $required
-        }).Count) {
-            $failures.Add("Missing selected installed source candidate $required; no forwarding relation substituted")
+    foreach ($leaf in @('malloc_base.cpp','free_base.cpp','free.cpp','crtdbg.h')) {
+        if (-not @($sourceReceipts | Where-Object { $_.Contains('identity') -and [IO.Path]::GetFileName($_.identity.path) -ceq $leaf }).Count) {
+            $failures.Add("Required targeted source/header candidate missing: $leaf")
         }
     }
 } catch {
@@ -506,7 +519,7 @@ try {
         Write-Warning 'Command receipt persistence failed; terminal result is independently attempted'
     }
     try {
-        $result = [ordered]@{ status = if ($failures.Count) { 'prerequisite_incomplete' } else { 'initial_receipt_collected' };
+        $result = [ordered]@{ status = if ($failures.Count) { 'prerequisite_incomplete' } else { 'targeted_source_receipt_collected' };
             first_collector_exception = if ($null -eq $firstCollectorFailure) { $null } else {
                 $firstCollectorFailure.Substring(0,[Math]::Min(600,$firstCollectorFailure.Length)) };
             failure_count = $failures.Count; retained_failure_limit = 48;
@@ -518,6 +531,11 @@ try {
             unconfirmed_starts = @($commands | Where-Object { $_.start_attempted -and -not $_.start_confirmed }).Count;
             unconfirmed_joins = @($commands | Where-Object { $_.did_start -and -not $_.joined }).Count;
             started_utc = $started.ToString('o'); finished_utc = [DateTime]::UtcNow.ToString('o');
+            scope = 'Targeted declaration/signature/configuration and free.cpp expression supplement ONLY';
+            prior_action02_nine_failures_unchanged = $action02Binding.prior_failures;
+            prior_action02_status = 'prerequisite_incomplete';
+            native_inspection_commands_planned = 0; selected_text_semantic_review_required = $true;
+            source_ABI_completion_claimed = $false;
             limits = [ordered]@{ artifact_bytes = $maximumOutputBytes; command_raw_bytes = $commandRawLimit;
                 command_seconds = $commandSeconds; total_inspection_seconds = 480; selected_members = $maximumMembers;
                 private_member_bytes_each_postcheck = 1048576; reserved_control_bytes = 65536;
