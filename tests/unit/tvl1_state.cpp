@@ -123,9 +123,13 @@ TEST_CASE("TV-L1 all ten mutable role aliases and fidelity reject before pending
     const std::vector<double> values(6, 0);
     planes.fill(values);
     REQUIRE(methods::tvl1_iteration(planes.field(), 1.5, scheduler));
-    const std::array roles{
-        planes.f.view(), planes.u.view(), planes.bar.view(), planes.px.view(), planes.py.view(),
-    };
+    const auto roles = std::to_array<image::PlaneView<double>>({
+        planes.f.view(),
+        planes.u.view(),
+        planes.bar.view(),
+        planes.px.view(),
+        planes.py.view(),
+    });
     std::stop_source stop;
     request_stop(stop);
     const core::Cancellation pending{stop.get_token()};

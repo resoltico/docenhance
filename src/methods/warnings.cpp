@@ -17,7 +17,6 @@
 #include "docenhance/methods/surface_facts.hpp"
 #include "docenhance/methods/tvl1_facts.hpp"
 
-#include <array>
 #include <cmath>
 #include <optional>
 #include <variant>
@@ -47,12 +46,14 @@ core::WarningList warnings(const Tvl1Facts& facts) noexcept {
 }
 core::WarningList warnings(const WienerFacts& facts, bool after_transform) noexcept {
     core::WarningList result{};
-    result.front() = core::Warning::restoration_inference;
+    auto& [inference, transformed, off_center, reserved] = result;
+    static_cast<void>(reserved);
+    inference = core::Warning::restoration_inference;
     if (after_transform) {
-        std::get<1>(result) = core::Warning::psf_after_transform;
+        transformed = core::Warning::psf_after_transform;
     }
     if (std::hypot(facts.psf.centroid_x, facts.psf.centroid_y) > psf_off_center_limit) {
-        std::get<2>(result) = core::Warning::psf_off_center;
+        off_center = core::Warning::psf_off_center;
     }
     return result;
 }

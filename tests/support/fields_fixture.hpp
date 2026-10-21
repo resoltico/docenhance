@@ -165,7 +165,6 @@ template <> struct core::Fields<tests::WireCompleted> {
         core::field("denoising", &tests::WireCompleted::denoising),
     };
 };
-template <> inline constexpr bool core::sparse_fields<tests::WireCompleted> = true;
 template <> struct core::Fields<tests::WireStages> {
     static constexpr auto list = std::tuple{
         core::field("illumination", &tests::WireStages::illumination),
@@ -208,3 +207,6 @@ template <> struct core::Fields<tests::WireEmpty> {
     static constexpr auto list = std::tuple{};
 };
 } // namespace docenhance
+
+template <>
+inline constexpr bool docenhance::core::sparse_fields<docenhance::tests::WireCompleted> = true;

@@ -52,5 +52,7 @@ template <> struct core::Fields<methods::StageReports> {
 template <> struct core::Fields<methods::CompletedStages> {
     static constexpr auto list = core::Fields<methods::StageReports>::list;
 };
-template <> inline constexpr bool core::sparse_fields<methods::CompletedStages> = true;
 } // namespace docenhance
+
+template <>
+inline constexpr bool docenhance::core::sparse_fields<docenhance::methods::CompletedStages> = true;
