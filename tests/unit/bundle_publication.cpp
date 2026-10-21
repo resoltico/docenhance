@@ -17,11 +17,13 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdio>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <ios>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -75,6 +77,25 @@ std::error_code occupied_after_gate(const std::filesystem::path& /*from*/,
         return std::make_error_code(std::errc::io_error);
     }
     return std::make_error_code(std::errc::io_error);
+}
+struct ValidationRefusal {
+    unsigned calls = 0;
+    bool throws = false;
+    std::string detail;
+};
+core::Result<void> refuse_completed_validation(void* const state, const std::string& /*directory*/,
+                                               const core::Cancellation& /*cancellation*/) {
+    auto& refusal = *static_cast<ValidationRefusal*>(state);
+    if (++refusal.calls == 1) {
+        return {};
+    }
+    if (refusal.throws) {
+        throw std::runtime_error("Injected validation exception");
+    }
+    return std::unexpected(core::Error{
+        .code = core::ErrorCode::input,
+        .message = std::move(refusal.detail),
+    });
 }
 unsigned closed_streams = 0;
 int close_stream(std::FILE* file) {
@@ -158,6 +179,39 @@ TEST_CASE("Postcommit integrity failure retains completed publication", "[bundle
     CHECK(result.error().publication == core::Publication::completed);
     CHECK(std::filesystem::is_directory(output));
     CHECK(std::filesystem::exists(output / record::record_name));
+}
+TEST_CASE("Completed publication retains explicit verifier detail and generic "
+          "fallbacks",
+          "[bundle][publication]") {
+    const TemporaryDirectory temporary{"docenhance-verifier-detail"};
+    const auto output = temporary.path / "result";
+    const std::string content = "committed bytes remain available";
+    const std::array files{
+        fs::BundleFile{.relative = "result.png", .bytes = bytes(content)},
+    };
+    const std::string detail = "Exact verifier refusal: " + std::string(256, 'x');
+    ValidationRefusal refusal{.calls = 0, .throws = false, .detail = detail};
+    bool expect_detail = true;
+    SECTION("explicit nonempty detail is preserved") {}
+    SECTION("empty detail retains the preallocated fallback") {
+        refusal.detail.clear();
+        expect_detail = false;
+    }
+    SECTION("throwing validator retains the preallocated fallback") {
+        refusal.throws = true;
+        expect_detail = false;
+    }
+    const auto result =
+        fs::publish_bundle(utf8_spelling(output), files, {}, fs::rename_exclusive,
+                           {.state = &refusal, .validate = refuse_completed_validation});
+    REQUIRE(!result);
+    CHECK(refusal.calls == 2);
+    CHECK(result.error().error.code == core::ErrorCode::output_verify);
+    CHECK(result.error().publication == core::Publication::completed);
+    CHECK(file_contents(output / "result.png") == content);
+    CHECK(result.error().error.message ==
+          (expect_detail ? detail
+                         : "Publication completed but bundle integrity could not be confirmed"));
 }
 TEST_CASE("Staged bundle disagreement prevents any commit", "[bundle][publication]") {
     const TemporaryDirectory temporary{"docenhance-bundle-stage"};

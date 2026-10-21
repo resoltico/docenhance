@@ -84,11 +84,16 @@ PublishResult<void> commit_bundle(Stage& stage, const std::filesystem::path& tar
                                                : std::move(stage.uncertain));
     }
     // No cancellation after the cutoff: observations explain an authorized irreversible effect.
-    const auto verified = validation.validate == nullptr
-                              ? core::Result<void>{}
-                              : validation.validate(validation.state, utf8_spelling(target), {});
-    if (stage.owner.matches(target) && verified) {
+    auto verified = validation.validate == nullptr
+                        ? core::Result<void>{}
+                        : validation.validate(validation.state, utf8_spelling(target), {});
+    const bool owns_target = stage.owner.matches(target);
+    if (owns_target && verified) {
         return {};
+    }
+    if (owns_target && !verified && !verified.error().message.empty()) {
+        static_assert(std::is_nothrow_move_assignable_v<std::string>);
+        stage.integrity.error.message = std::move(verified.error().message);
     }
     return std::unexpected(std::move(stage.integrity));
 }

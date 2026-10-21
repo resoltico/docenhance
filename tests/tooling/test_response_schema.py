@@ -354,3 +354,25 @@ class ResponseSchemaTests(unittest.TestCase):
         ):
             with self.subTest(readonly_change=change):
                 self.assertFalse(validator.is_valid(readonly | change))
+
+    def test_shared_version_schema_accepts_build_text_and_refuses_empty_or_nul(self) -> None:
+        """Portable schema text is distinct from the native runtime's exact-build validation."""
+        properties = response_branch("version", "platform")["properties"]
+        response = header("version", 0) | {
+            name: copy.deepcopy(properties[name]["const"])
+            for name in ("methods", "supported_formats", "input_support", "dependency_lock_sha256")
+        }
+        validator = Draft202012Validator(SCHEMA)
+        for platform, compiler in (
+            ("Linux-x86_64", "GNU 13.3.0"),
+            ("Linux-aarch64", "GNU 13.3.0"),
+            ("Darwin-arm64", "AppleClang 17.0.0"),
+            ("Windows-AMD64", "MSVC 19.50"),
+        ):
+            with self.subTest(platform=platform, compiler=compiler):
+                validator.validate(response | {"platform": platform, "compiler": compiler})
+        valid = response | {"platform": "Linux-x86_64", "compiler": "GNU 13.3.0"}
+        for field in ("platform", "compiler"):
+            for invalid in ("", "native\x00build"):
+                with self.subTest(field=field, invalid=invalid):
+                    self.assertFalse(validator.is_valid(valid | {field: invalid}))

@@ -32,17 +32,22 @@ from reference_closure import (
     verify_gnu_pch,
 )
 
-REFERENCE_LAYERS = ("app", "core", "exec", "image", "methods")
+REFERENCE_LAYERS = ("app", "core", "exec", "image", "methods", "record")
+REFERENCE_EXCLUSIONS = {
+    "src/methods/restoration_working.cpp",
+    "src/record/json.cpp",
+    "src/record/inventory.cpp",
+}
 
 
 def reference_sources() -> list[str]:
-    """Complete pure owners, excluding the separately exercised FFT orchestration body."""
+    """Complete pure owners; native orchestration and JSON I/O stay separately exercised."""
     sources: list[str] = []
     for layer in REFERENCE_LAYERS:
         sources.extend(
             path.relative_to(ROOT).as_posix()
             for path in sorted((ROOT / "src" / layer).glob("*.cpp"))
-            if path.relative_to(ROOT).as_posix() != "src/methods/restoration_working.cpp"
+            if path.relative_to(ROOT).as_posix() not in REFERENCE_EXCLUSIONS
         )
     return sources
 
@@ -130,6 +135,8 @@ def build_reference(
         str(ROOT / "include"),
         "-I",
         str(ROOT / "tests/support"),
+        "-I",
+        str(ROOT / "src/methods"),
         "-I",
         str(directory / "generated"),
     ]

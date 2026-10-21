@@ -4,24 +4,17 @@
 
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"
-#include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
 #include "docenhance/image/output.hpp"
 #include "docenhance/image/source_facts.hpp"
 #include "docenhance/methods/stage_reports.hpp"
-#include "docenhance/record/codec.hpp"
-#include "docenhance/record/json.hpp"
 #include "docenhance/record/record_version.hpp"
 #include "docenhance/record/request.hpp"
 #include "docenhance/record/source.hpp"
 #include "validation.hpp"
 
 #include <cstdint>
-#include <expected>
-#include <new>
-#include <string>
 #include <string_view>
-#include <utility>
 namespace docenhance::record {
 namespace {
 bool identity(std::string_view digest, std::uint64_t bytes, std::uint64_t limit) {
@@ -73,29 +66,5 @@ bool validate(const RunRecord& value) {
            value.assets.size() <= 2 && source_agrees(value) && assets_agree(value) &&
            execution_agrees(value);
 }
-core::Result<std::string> serialize(const RunRecord& value) {
-    try {
-        auto encoded = Codec::encode(value);
-        if (!encoded) {
-            return std::unexpected(std::move(encoded.error()));
-        }
-        auto bytes = encoded->dump(2, ' ', false, Json::error_handler_t::strict) + "\n";
-        auto admitted = admit_json(
-            bytes,
-            {.bytes = record_max_bytes, .depth = record_max_depth, .events = record_max_events});
-        if (!admitted) {
-            if (admitted.error().code == core::ErrorCode::resource) {
-                return std::unexpected(std::move(admitted.error()));
-            }
-            return core::failure(core::ErrorCode::invariant,
-                                 "The run record exceeds its closed metadata domain");
-        }
-        return bytes;
-    } catch (const std::bad_alloc&) {
-        return core::failure(core::ErrorCode::resource, "Writing the run record exhausted memory");
-    } catch (const Json::exception&) {
-        return core::failure(core::ErrorCode::invariant,
-                             "The run record contains malformed identity text");
-    }
-}
+
 } // namespace docenhance::record

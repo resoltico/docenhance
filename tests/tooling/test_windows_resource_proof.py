@@ -296,3 +296,35 @@ class WindowsResourceProofTests(unittest.TestCase):
                 require_windows_resource_proof(
                     changed, changed["steps"][native["steps"].index(owner)]
                 )
+
+    def test_snapshot_creates_pristine_parent_and_refuses_existing_or_file_owner(self) -> None:
+        """A missing out parent is healthy; existing proof or nondirectory parents refuse."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "out/windows-resource-proof"
+            with (
+                patch.object(proof, "ROOT", root),
+                patch.object(proof, "OUT", output),
+                patch("windows_resource_proof.platform.system", return_value="Windows"),
+                patch("windows_resource_proof.sources", return_value={}),
+                patch("windows_resource_proof.release_directories", return_value={}),
+                patch.dict("os.environ", {"GITHUB_SHA": "a" * 40}),
+            ):
+                self.assertFalse(output.parent.exists())
+                proof.snapshot()
+                saved = (output / "snapshot.json").read_bytes()
+                self.assertEqual(json.loads(saved)["head"], "a" * 40)
+                with self.assertRaises(FileExistsError):
+                    proof.snapshot()
+                self.assertEqual((output / "snapshot.json").read_bytes(), saved)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / "out").write_text("preserve this file")
+            with (
+                patch.object(proof, "ROOT", root),
+                patch.object(proof, "OUT", root / "out/windows-resource-proof"),
+                patch("windows_resource_proof.platform.system", return_value="Windows"),
+                self.assertRaises(OSError),
+            ):
+                proof.snapshot()
+            self.assertEqual((root / "out").read_text(), "preserve this file")

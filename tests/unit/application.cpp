@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/execution_control.hpp"
 #include "docenhance/app/invocation.hpp"
@@ -137,12 +138,12 @@ TEST_CASE("Execution controls admit bounded workers and whole MiB budgets indepe
     CHECK(!app::ExecutionControl::create({}, 262145 * mib));
     CHECK(!app::ExecutionControl::create({}, (64 * mib) + 1));
     CHECK(!app::ExecutionControl::create({}, std::numeric_limits<std::uint64_t>::max()));
-    const std::stop_source stop;
+    std::stop_source stop;
     const auto control =
         app::ExecutionControl::create(7, 64 * mib, core::Cancellation{stop.get_token()});
     REQUIRE(control);
     CHECK(!control.value().cancellation().requested(core::Checkpoint::admission));
-    REQUIRE(stop.request_stop());
+    REQUIRE(request_stop(stop));
     CHECK(control.value().cancellation().requested(core::Checkpoint::admission));
 }
 TEST_CASE("Execution option admission retains integer grammar and prevents processing effects") {

@@ -304,8 +304,10 @@ The last three commands compile the same first-party reference cases used by Cat
 compiler explicitly, as the required jobs do: `--compiler` otherwise defaults to the host `c++`,
 which on macOS is Apple clang. Use `"$(brew --prefix llvm)/bin/clang++"` there for the analysis compiler. They are **not** a second application build framework or evidence that the native CLI/dependencies build. They are useful for rapid numerical and parser validation while dependency acquisition is unavailable.
 
-The standalone route compiles every source in the core, execution, image, application and method
-partitions, observes headers during that same compilation, and directly links all fresh objects.
+The standalone route compiles the pure core, execution, image, application, method and record
+source partitions, observes headers during that same compilation, and directly links all fresh
+objects. Its exact exclusions are the FFT orchestration body and the two JSON reading/writing
+bodies; the real record value validators remain in the dependency-free link.
 Registered package headers and private native prefixes are refused, including system-marked
 includes. It uses the production environment-injection policy and compiler-detected system roots.
 Opaque consumed GNU precompiled headers are refused; the GNU route exercises that refusal with

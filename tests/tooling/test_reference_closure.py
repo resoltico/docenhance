@@ -309,3 +309,36 @@ class ReferenceClosureTests(unittest.TestCase):
                     self.assertNotIn("REFERENCE memory_cases", result.stdout)
                     diagnostic = "no assertions" if mode == "empty" else "fixture assertion failed"
                     self.assertIn(diagnostic, result.stderr)
+
+    def test_actual_private_method_header_resolves_without_expanding_admission(self) -> None:
+        """The standalone owner finds the same private method header as its real CMake target."""
+        with tempfile.TemporaryDirectory(prefix="reference-private-") as temporary:
+            directory = Path(temporary)
+            source = directory / "private.cpp"
+            source.write_text(
+                '#include "morphology_working_detail.hpp"\n'
+                "int main() { return docenhance::methods::morphology_bands(65) != 64; }\n"
+            )
+            compiler = self.compiler()
+            minimum = json.loads((ROOT / "deps/tools.json").read_text())["cmake"]["minimum"]
+            check_reference_suite.generate_build_facts(directory, compiler, minimum)
+            executable = check_reference_suite.build_reference(
+                compiler, ["-std=c++23"], [source], directory, 1
+            )
+            self.assertTrue((directory / "reference-0.o").is_file())
+            subprocess.run([str(executable)], check=True, timeout=15)
+
+    def test_every_pure_record_owner_stays_and_only_json_owners_leave(self) -> None:
+        """Real record validation closes app admission without importing JSON or dropping owners."""
+        sources = check_reference_suite.reference_sources()
+        owners = {path.relative_to(ROOT).as_posix() for path in (ROOT / "src/record").glob("*.cpp")}
+        excluded = {"src/record/json.cpp", "src/record/inventory.cpp"}
+        self.assertEqual(owners - set(sources), excluded)
+        self.assertIn("src/record/record.cpp", sources)
+        self.assertIn("src/app/response_validation.cpp", sources)
+        inventory = [ROOT / source for source in sources]
+        inventory.append(ROOT / "tests/support/standalone_main.cpp")
+        check_reference_suite.validate_source_inventory(inventory)
+        for extra in excluded:
+            with self.subTest(extra=extra), self.assertRaises(REFUSALS):
+                check_reference_suite.validate_source_inventory([*inventory, ROOT / extra])

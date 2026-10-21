@@ -114,7 +114,8 @@ core::Result<void> constrain_discovery(Json& schema, app::Command command, bool 
     }
     auto& properties = schema.at("properties");
     for (const auto& [key, value] : actual->items()) {
-        if (key != "command" && key != "schema_version" && key != "version" && key != "exit_code") {
+        if (key != "command" && key != "schema_version" && key != "version" && key != "exit_code" &&
+            key != "platform" && key != "compiler") {
             properties.at(key).update(Json{{"const", value}});
         }
         if (key == "methods" && command == app::Command::methods && !help) {

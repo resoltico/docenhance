@@ -75,7 +75,7 @@ def snapshot() -> None:
     if platform.system() != "Windows":
         message = "Windows CRT proof requires actual Windows execution"
         raise ValueError(message)
-    OUT.mkdir(exist_ok=False)
+    OUT.mkdir(parents=True, exist_ok=False)
     write_json(
         OUT / "snapshot.json",
         {

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "cancellation_probe.hpp"
 #include "docenhance/codec/png_output.hpp"
 #include "docenhance/color/profile.hpp"
 #include "docenhance/core/cancellation.hpp"
@@ -92,13 +93,13 @@ TEST_CASE("NLM immutable blend admission precedes eager application and preserve
 TEST_CASE("Eager NLM observes pending cancellation without returning fictional completed Facts") {
     core::Budget budget{nlm_source_budget};
     {
-        const std::stop_source stop;
+        std::stop_source stop;
         NlmSourceFixture fixture{budget, image::SampleModel::rgb,
                                  core::Cancellation{stop.get_token()}};
         REQUIRE(extract_nlm_source(fixture));
         const auto initial = gamma_bits(fixture.luminance.view().storage());
         const auto held = budget.used();
-        static_cast<void>(stop.request_stop());
+        static_cast<void>(request_stop(stop));
         const auto stopped = apply_nlm_fixture(fixture, {.h = 0.1, .patch = 3, .search = 7});
         REQUIRE(!stopped);
         CHECK(stopped.error().code == core::ErrorCode::cancelled);

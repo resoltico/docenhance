@@ -20,7 +20,9 @@
 #include "docenhance/record/json.hpp"
 #include "docenhance/record/record.hpp"
 #include "docenhance/record/request.hpp"
+#include "docenhance/record/schema.hpp"
 #include "docenhance/record/source.hpp"
+#include "docenhance/report/response.hpp"
 #include "execution_fixture.hpp"
 #include "png_depth_fixture.hpp"
 #include "wire_response_fixture.hpp"
@@ -30,6 +32,7 @@
 #include <cstdint>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -335,4 +338,40 @@ TEST_CASE("Failure receivers retain cancellation effects and read-only absence o
     readonly["failed_stage"] = "illumination";
     CHECK(!record::Codec::decode<app::WireResponse>(readonly));
 }
+TEST_CASE("Shared version schema preserves Text while typed responses bind actual native build") {
+    auto outcome = discovery(app::Command::version);
+    const auto capabilities = std::get<app::Methods>(outcome.payload).capabilities;
+    outcome.payload = app::Version{.capabilities = capabilities};
+    const auto encoded = wire(outcome);
+    REQUIRE(record::Codec::decode<app::WireResponse>(encoded));
+    for (const auto* const field : {"platform", "compiler"}) {
+        auto changed = encoded;
+        changed[field] = encoded.at(field).get<std::string>() + "-foreign";
+        CHECK(!record::Codec::decode<app::WireResponse>(changed));
+    }
+    const auto schema = report::response_schema();
+    const auto typed =
+        record::Schema::of<app::Response<app::Command::version, app::ResponseVersion>>();
+    REQUIRE(schema);
+    REQUIRE(typed);
+    if (!schema || !typed) {
+        throw std::runtime_error("Actual response schemas are required");
+    }
+    bool found = false;
+    for (const auto& branch : schema.value().at("oneOf")) {
+        const auto& properties = branch.at("properties");
+        if (properties.contains("platform")) {
+            found = true;
+            for (const auto* const field : {"platform", "compiler"}) {
+                CHECK(properties.at(field) == typed.value().at("properties").at(field));
+                CHECK(!properties.at(field).contains("const"));
+            }
+            CHECK(properties.at("dependency_lock_sha256").contains("const"));
+            CHECK(properties.at("version").contains("const"));
+            CHECK(properties.at("methods").contains("const"));
+        }
+    }
+    CHECK(found);
+}
+
 } // namespace docenhance::tests

@@ -580,7 +580,7 @@
       "explanation": "This exact alignas(uint16_t) built-in unsigned-char providing array has four bytes for two actual uint16 objects {32768,0x3141}. Actual std::memcpy-return typed creation and its bounded two-element span use C++23 implicit lifetime/adopted LWG4064; static assertions bind uint8 to unsigned char and uint16 width2. The real original array supplies only one-byte direct/padding-only admission ranges at offsets0/2, never byte-value access after typed creation. All owners remain local/alive and each actual binarizer rejects before access/polls/workspace/stores. A std::array destination wrapper lacks this providing-array premise; this is no cast/lifetime framework or in-place alias permission.",
       "occurrences": 1
     },
-    "tests/support/cancellation_probe.hpp:clang-tidy/misc-const-correctness@8051a1dd3dba47166f9e24f502834045f78cd318a8c827c8ddce110940372bc0": {
+    "tests/support/cancellation_probe.hpp:clang-tidy/misc-const-correctness@19ef76b037a53ec083a34a0c12ec54f39e1ac859f9fe640214f13fcc36d40acf": {
       "explanation": "The test helper needs a mutable std::stop_source reference because libc++ declares request_stop non-const. libstdc++ permits the call on const and clang-tidy otherwise recommends an incompatible const reference; this single test boundary keeps both standard libraries compiling.",
       "occurrences": 1
     },

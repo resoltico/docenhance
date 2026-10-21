@@ -1354,14 +1354,12 @@
         "platform": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^[^\\u0000]+$",
-          "const": "Linux-aarch64"
+          "pattern": "^[^\\u0000]+$"
         },
         "compiler": {
           "type": "string",
           "minLength": 1,
-          "pattern": "^[^\\u0000]+$",
-          "const": "GNU 13.3.0"
+          "pattern": "^[^\\u0000]+$"
         }
       },
       "required": [

@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "cancellation_probe.hpp"
 #include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/codec/png_stream.hpp"
 #include "docenhance/core/memory.hpp"
@@ -227,8 +228,8 @@ TEST_CASE("Actual native PNG byte reads preserve failure priority and caller own
     }
 }
 TEST_CASE("Malformed PNG admission before a pending stop retains its real error", "[png]") {
-    const std::stop_source source;
-    static_cast<void>(source.request_stop());
+    std::stop_source source;
+    static_cast<void>(request_stop(source));
     const core::Cancellation control{source.get_token()};
     core::Budget budget{codec_budget};
     const std::array<std::uint8_t, 8> bad_signature{};

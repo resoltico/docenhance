@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "cancellation_probe.hpp"
 #include "docenhance/color/interpretation.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
@@ -102,12 +103,12 @@ TEST_CASE("Actual interpretation source failures and pending stop preserve priva
     }
     core::Budget budget{nlm_source_budget};
     {
-        const std::stop_source stop;
+        std::stop_source stop;
         NlmSourceFixture fixture{budget, image::SampleModel::rgb,
                                  core::Cancellation{stop.get_token()}};
         const auto held = budget.used();
         const auto before = gamma_bits(fixture.luminance.view().storage());
-        static_cast<void>(stop.request_stop());
+        static_cast<void>(request_stop(stop));
         const auto read = extract_nlm_source(fixture);
         REQUIRE(!read);
         CHECK(read.error().code == core::ErrorCode::cancelled);

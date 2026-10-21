@@ -200,8 +200,8 @@ TEST_CASE("Working consumers reject cold invalid roles before cancellation and p
     auto wrong_mask = image::Plane<std::uint8_t>::allocate(budget, 31, 32).value();
     std::ranges::fill(source.view().storage(), 0.5);
     std::ranges::fill(wrong_mask.view().storage(), 0);
-    const std::stop_source stop;
-    static_cast<void>(stop.request_stop());
+    std::stop_source stop;
+    static_cast<void>(request_stop(stop));
     const exec::Scheduler healthy{exec::Concurrency::resolve(1, 1, 0, 0).value()};
     const exec::Scheduler stopped{exec::Concurrency::resolve(1, 1, 0, 0).value(),
                                   core::Cancellation{stop.get_token()}};

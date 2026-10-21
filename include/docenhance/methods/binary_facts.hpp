@@ -70,9 +70,8 @@ struct FixedFacts : ClassificationFacts {
 
 namespace docenhance {
 template <> struct core::EnumNames<methods::ClassificationReason> {
-    static constexpr std::array list{
-        std::pair{methods::ClassificationReason::none, std::string_view{"none"}},
-    };
+    static constexpr auto list =
+        std::to_array({std::pair{methods::ClassificationReason::none, std::string_view{"none"}}});
 };
 template <> struct core::Fields<methods::ClassificationFacts> {
     using Value = methods::ClassificationFacts;
