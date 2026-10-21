@@ -71,7 +71,7 @@
     {
       "name": "tsan",
       "inherits": "base",
-      "displayName": "ThreadSanitizer (the schedule); set CC/CXX to the pinned LLVM clang",
+      "displayName": "ThreadSanitizer (first-party and Little CMS); set CC/CXX to the pinned LLVM clang",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "DE_ENABLE_TSAN": true,

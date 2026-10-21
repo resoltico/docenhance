@@ -17,7 +17,7 @@ import check_build_coverage
 import ninja_lint_coverage
 from architecture_api import find_clang_query
 from audit_build import read_cache
-from check_reference_suite import STRICT_WARNINGS
+from reference_closure import STRICT_WARNINGS
 
 
 class NinjaLintTests(unittest.TestCase):

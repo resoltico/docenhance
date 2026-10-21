@@ -3,14 +3,16 @@
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/core/result.hpp"
+#include "docenhance/methods/parameters.hpp"
+#include "docenhance/methods/plan.hpp"
 #include "docenhance/methods/restoration.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
-#include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 namespace docenhance::tests {
 namespace {
 app::Invocation restoration_invocation() {
@@ -53,7 +55,17 @@ TEST_CASE("Restoration admission retains explicit option presence", "[app][resto
     i.option(app::OptionId::output_mode) = "bw";
     i.option(app::OptionId::deblur) = "off";
     i.option(app::OptionId::psf).reset();
-    CHECK(!app::prepare_process(i));
+    const auto binary_off = app::prepare_process(i);
+    REQUIRE(binary_off);
+    CHECK(std::holds_alternative<methods::BinaryOutput>(binary_off->plan().output));
+    CHECK(std::holds_alternative<methods::RestorationOff>(
+        binary_off->plan().photometric.restoration));
+    i.option(app::OptionId::deblur) = "wiener";
+    i.option(app::OptionId::psf) = "gaussian";
+    const auto binary_selected = app::prepare_process(i);
+    REQUIRE(binary_selected);
+    CHECK(std::holds_alternative<methods::BinaryOutput>(binary_selected->plan().output));
+    CHECK(std::holds_alternative<methods::Wiener>(binary_selected->plan().photometric.restoration));
 }
 TEST_CASE("PSF selectors reject incompatible options even at default or empty values",
           "[app][restoration]") {
@@ -97,27 +109,33 @@ TEST_CASE("Restoration kernel path identity survives request moves", "[app][rest
     REQUIRE(admitted);
     auto moved = std::move(*admitted);
     REQUIRE(moved.ready());
-    const auto& path = std::get<methods::FilePsf>(
-                           std::get<methods::Wiener>(
-                               std::get<app::ContinuousPlan>(moved.plan()).photometric.restoration)
-                               .parameters()
-                               .psf)
-                           .path;
     const auto expected_path = i.option(app::OptionId::psf_file);
+    REQUIRE(expected_path);
     if (!expected_path.has_value()) {
-        FAIL("The file PSF invocation must retain its path");
-        return;
+        throw std::logic_error("Required test observation is absent");
     }
-    CHECK(path == *expected_path);
-    auto second = app::prepare_process(restoration_invocation()).value();
+    REQUIRE(moved.psf_path());
+    const auto& moved_path = moved.psf_path();
+    if (!moved_path.has_value()) {
+        throw std::logic_error("Required request PSF path is absent");
+    }
+    CHECK(moved_path.value() == expected_path.value());
+    CHECK(!admitted->ready());
+    CHECK(std::holds_alternative<methods::Kernel>(
+        std::get<methods::Wiener>(moved.plan().photometric.restoration).parameters().psf));
+    auto another = app::prepare_process(restoration_invocation());
+    REQUIRE(another);
+    auto second = std::move(*another);
     second = std::move(moved);
     CHECK(second.ready());
-    CHECK(std::get<methods::FilePsf>(
-              std::get<methods::Wiener>(
-                  std::get<app::ContinuousPlan>(second.plan()).photometric.restoration)
-                  .parameters()
-                  .psf)
-              .path == *expected_path);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    CHECK(!moved.ready());
+    REQUIRE(second.psf_path());
+    const auto& second_path = second.psf_path();
+    if (!second_path.has_value()) {
+        throw std::logic_error("Required request PSF path is absent");
+    }
+    CHECK(second_path.value() == expected_path.value());
     for (const auto& invalid :
          {std::string{}, std::string{"bad\0name", 8}, std::string{"bad\xffname"}}) {
         i.option(app::OptionId::psf_file) = invalid;
@@ -141,10 +159,8 @@ TEST_CASE("Restoration admission validates finite bounded values with zero blend
     i.option(app::OptionId::deblur_blend) = "0";
     auto admitted = app::prepare_process(i);
     REQUIRE(admitted);
-    CHECK(std::get<methods::Wiener>(
-              std::get<app::ContinuousPlan>(admitted->plan()).photometric.restoration)
-              .parameters()
-              .blend == 0);
+    CHECK(std::get<methods::Wiener>(admitted->plan().photometric.restoration).parameters().blend ==
+          0);
     i.option(app::OptionId::psf).reset();
     CHECK(!app::prepare_process(i));
     i.option(app::OptionId::psf) = "kernel";

@@ -14,56 +14,5 @@ The private libtiff build modifies `tif_jpeg.c` for per-handle charged JPEG cont
 `tif_zip.c` to require completed Deflate striles, including checksum trailers. Original libtiff source notices remain intact; the adapter
 header and build recipe are project-owned. Native packages retain libtiff's original license.
 
-The private OpenCV build compiles checked private copies of `matrix.cpp` for Mat allocation order
-and `dxt.cpp` for immediate ownership of the four DFT factory contexts before initialization
-and matching-signature dispatch into its six typed numerical kernels.
-The locked upstream cache remains unchanged; the copies retain their complete upstream source
-notices and licenses. The build hooks are project-owned and do not relicense these upstream files.
-
-## OpenCV NLM source notice
-
-The native NLM source retains this upstream notice in addition to OpenCV's repository license.
-Packaged license inventories include the original source files carrying it.
-
-```text
-/*M///////////////////////////////////////////////////////////////////////////////////////
-//
-//  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
-//
-//  By downloading, copying, installing or using the software you agree to this license.
-//  If you do not agree to this license, do not download, install,
-//  copy or use the software.
-//
-//
-//                        Intel License Agreement
-//                For Open Source Computer Vision Library
-//
-// Copyright (C) 2000, Intel Corporation, all rights reserved.
-// Third party copyrights are property of their respective icvers.
-//
-// Redistribution and use in source and binary forms, with or without modification,
-// are permitted provided that the following conditions are met:
-//
-//   * Redistribution's of source code must retain the above copyright notice,
-//     this list of conditions and the following disclaimer.
-//
-//   * Redistribution's in binary form must reproduce the above copyright notice,
-//     this list of conditions and the following disclaimer in the documentation
-//     and/or other materials provided with the distribution.
-//
-//   * The name of Intel Corporation may not be used to endorse or promote products
-//     derived from this software without specific prior written permission.
-//
-// This software is provided by the copyright holders and contributors "as is" and
-// any express or implied warranties, including, but not limited to, the implied
-// warranties of merchantability and fitness for a particular purpose are disclaimed.
-// In no event shall the Intel Corporation or contributors be liable for any direct,
-// indirect, incidental, special, exemplary, or consequential damages
-// (including, but not limited to, procurement of substitute goods or services;
-// loss of use, data, or profits; or business interruption) however caused
-// and on any theory of liability, whether in contract, strict liability,
-// or tort (including negligence or otherwise) arising in any way out of
-// the use of this software, even if advised of the possibility of such damage.
-//
-//M*/
-```
+The pocketfft header is installed unchanged. Native-package license inventories retain both its
+repository license and complete header so the inline upstream attributions remain present.

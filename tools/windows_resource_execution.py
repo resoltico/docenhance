@@ -1,0 +1,178 @@
+# SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+# SPDX-License-Identifier: MPL-2.0
+"""The selected Windows shell's scoped Debug producer and actual resource execution."""
+
+from __future__ import annotations
+
+import os
+import re
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+from native_journal import snapshot_ctest_output
+from native_output import archive_ctest_output
+from process_execution import CapturePolicy, bounded_capture
+from test_evidence import complete_junit, report_xml
+from windows_resource_artifacts import identity
+from windows_resource_producer import compilation, native_context
+from windows_resource_records import CASES, capture_maps, native_records
+
+ROOT = Path(__file__).resolve().parents[1]
+OUT = ROOT / "out/windows-resource-proof"
+
+
+def run(command: list[str], name: str, cap: float, deadline: float, record: dict[str, Any]) -> None:
+    """Bound concrete build output and refuse truncation instead of hiding linker evidence."""
+    remaining = min(cap, deadline - time.monotonic())
+    if remaining <= 0:
+        message = "Windows producer deadline exhausted"
+        raise ValueError(message)
+    log = OUT / (name + ".log")
+    step: dict[str, Any] = {"argv": command, "cap_seconds": remaining}
+    record.setdefault("commands", []).append(step)
+    entered = time.monotonic()
+    try:
+        step["exit_code"] = bounded_capture(
+            command,
+            dict(os.environ),
+            log,
+            remaining,
+            CapturePolicy(2 * 1024 * 1024, lambda: None, 1),
+        )
+    finally:
+        error = sys.exception()
+        step["error"] = repr(error) if error is not None else None
+        step["elapsed_seconds"] = time.monotonic() - entered
+        if log.exists():
+            step["log"] = identity(log)
+    if step["exit_code"] != 0 or b"[engine output omitted:" in log.read_bytes():
+        message = f"Windows {name} failed or its retained diagnostic was truncated"
+        raise ValueError(message)
+
+
+def debug_producer(deadline: float, record: dict[str, Any]) -> None:
+    """Configure the actual private Debug deps, then only the two EXE producer closures."""
+    if (ROOT / "out/dev").exists():
+        message = "Debug proof requires its fresh private producer directory"
+        raise ValueError(message)
+    run(["cmake", "--preset", "dev"], "debug-configure", 180, deadline, record)
+    run(
+        ["cmake", "--build", "out/dev", "--target", "de_native-configure", "--parallel", "2"],
+        "debug-dependencies",
+        1800,
+        deadline,
+        record,
+    )
+    run(
+        [
+            "cmake",
+            "--build",
+            "out/dev/app",
+            "--target",
+            "de_fft_resources",
+            "de_restoration_resources",
+            "--parallel",
+            "2",
+        ],
+        "debug-targets",
+        600,
+        deadline,
+        record,
+    )
+    build = ROOT / "out/dev"
+    record["producer"], record["maps"] = {}, []
+    compilation(build, record["producer"], debug=True)
+    capture_maps(build, OUT / "debug", record["maps"], debug=True)
+    directives(record, "debug", deadline)
+
+
+def directives(record: dict[str, Any], phase: str, deadline: float) -> None:
+    """Read real direct-object DEFAULTLIB directives with the selected native tool."""
+    producer = record["producer"]
+    tool = Path(producer["linker"]["path"]).with_name("dumpbin.exe")
+    record["dumpbin"] = identity(tool)
+    record["CRT_context"] = native_context(debug=phase == "debug")
+    for target in producer["targets"]:
+        name = phase + "-" + target["target"] + "-directives"
+        run([str(tool), "/DIRECTIVES", target["object"]["path"]], name, 10, deadline, record)
+        text = (OUT / (name + ".log")).read_text(encoding="utf-8")
+        matches = re.findall(r'/DEFAULTLIB:(?:"([^"\r\n]+)"|([^\s]+))', text, re.IGNORECASE)
+        libraries = {(quoted or bare).casefold().removesuffix(".lib") for quoted, bare in matches}
+        expected = "libcmtd" if phase == "debug" else "libcmt"
+        if expected not in libraries or libraries & {"msvcrt", "msvcrtd"}:
+            message = "Actual direct observer DEFAULTLIB static CRT differs"
+            raise ValueError(message)
+        target["actual_DEFAULTLIB"] = sorted(libraries)
+
+
+def debug_cases(deadline: float, record: dict[str, Any]) -> None:
+    """Retain fresh complete raw/JUnit after the owned child group has unwound."""
+    build, directory = ROOT / "out/dev/app", OUT / "debug"
+    owner = directory.lstat()
+    expected_owner = [owner.st_dev, owner.st_ino]
+    record["selected_owner"] = {"path": str(directory), "identity": expected_owner}
+    before = snapshot_ctest_output(build)
+    command = [
+        "ctest",
+        "--test-dir",
+        str(build),
+        "-R",
+        "^(fft-native-resources|restoration-native-resources)$",
+        "--no-tests=error",
+        "--stop-on-failure",
+        "--parallel",
+        "1",
+        "--timeout",
+        "90",
+        "--output-junit",
+        str(directory / "ctest.xml"),
+    ]
+    record["argv"] = command
+    remaining = min(185, deadline - time.monotonic() - 30)
+    if remaining <= 0:
+        message = "Debug test admission exhausted its archive reserve"
+        raise ValueError(message)
+    failure: BaseException | None = None
+    exit_code: int | None = None
+    finished = False
+    try:
+        exit_code = bounded_capture(
+            command,
+            dict(os.environ),
+            OUT / "debug-tests.log",
+            remaining,
+            CapturePolicy(2 * 1024 * 1024, lambda: None, 1),
+        )
+        finished = True
+    finally:
+        failure = None if finished else sys.exception()
+        record["exit_code"] = exit_code
+        record["child_error"] = repr(failure) if failure is not None else None
+        try:
+            archive_ctest_output(build, directory, before, deadline, len(CASES))
+        except BaseException as error:
+            record["archive_error"] = repr(error)
+            if failure is not None:
+                failure.add_note(f"Windows diagnostic archival also failed: {error!r}")
+                raise failure from error
+            raise
+    if failure is not None:
+        raise failure
+    if exit_code != 0:
+        message = f"Debug resource CTest failed: {exit_code}"
+        raise ValueError(message)
+    exact_debug_junit(directory / "ctest.xml")
+    record["evidence"] = native_records(directory, expected_owner)
+
+
+def exact_debug_junit(path: Path) -> None:
+    """Only Debug requires exactly two cases and truthful zero-adverse suite counters."""
+    complete_junit(path, set(CASES))
+    suite = report_xml(path.read_text(encoding="utf-8"))
+    if suite.get("tests") != "2" or any(
+        suite.get(key, "0") != "0" for key in ("failures", "errors", "skipped", "disabled")
+    ):
+        message = "Debug JUnit suite counters differ from two executed healthy resource cases"
+        raise ValueError(message)

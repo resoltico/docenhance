@@ -12,31 +12,44 @@ import subprocess
 import sys
 import tempfile
 import zlib
-from fractions import Fraction
 from functools import cache
 from pathlib import Path
 from typing import Any
 
-from continuous_fixtures import Fixture
+import cli_defaults
+from continuous_fixtures import decode_output
 from contract_reference import option_projection, reviewed_methods, reviewed_options
 from jsonschema import Draft202012Validator
 
 SCHEMA = Path(__file__).resolve().parents[2] / "schemas/command-response.schema.json"
-WIRE_VERSION = json.loads(SCHEMA.read_bytes())["properties"]["schema_version"]["const"]
+
+
+def response_version() -> int:
+    """Every actual native response alternative carries the same positive wire version."""
+    branches = json.loads(SCHEMA.read_bytes())["oneOf"]
+    versions = [branch["properties"]["schema_version"]["const"] for branch in branches]
+    if not versions or any(type(value) is not int or value <= 0 for value in versions):
+        message = "Native response branches lack positive integral schema versions"
+        raise ValueError(message)
+    if any(value != versions[0] for value in versions):
+        message = "Native response alternatives disagree about their schema version"
+        raise ValueError(message)
+    version: object = versions[0]
+    if type(version) is not int:
+        message = "Native response version is not an integer"
+        raise TypeError(message)
+    return version
+
+
+WIRE_VERSION = response_version()
 RECORD_VERSION = json.loads(SCHEMA.with_name("run-record.schema.json").read_bytes())["properties"][
     "record"
 ]["properties"]["version"]["const"]
 COMMAND_TIMEOUT_SECONDS = 30
 SHA256_HEX_LENGTH = 64
+BINARY_METHOD_VERSION = 2
 EXIT_INVOCATION = 2
 EXIT_PROCESSING = 4
-PNG_FILTER_NONE = 0
-PNG_FILTER_SUB = 1
-PNG_FILTER_UP = 2
-PNG_FILTER_AVERAGE = 3
-PNG_FILTER_PAETH = 4
-BYTE_MODULUS = 256
-HALF = 2
 HELP_COMMANDS = ("", "process", "verify", "methods", "version")
 REJECTED_INVOCATIONS = (
     ["plan"],
@@ -123,34 +136,13 @@ def write_gray_png(path: Path, samples: bytes) -> None:
 
 
 def read_gray_png(path: Path) -> bytes:
-    """Read the single-row grayscale fixture output using PNG's lossless row filters."""
-    data = path.read_bytes()
-    parts = []
-    offset = 8
-    while offset < len(data):
-        size = struct.unpack(">I", data[offset : offset + 4])[0]
-        kind = data[offset + 4 : offset + 8]
-        payload = data[offset + 8 : offset + 8 + size]
-        if kind == b"IDAT":
-            parts.append(payload)
-        offset += size + 12
-    decoded = zlib.decompress(b"".join(parts))
-    filter_kind = decoded[0]
-    samples = bytearray(decoded[1:])
-    for index, value in enumerate(samples):
-        left = samples[index - 1] if index else 0
-        if filter_kind == PNG_FILTER_NONE:
-            continue
-        if filter_kind in {PNG_FILTER_SUB, PNG_FILTER_PAETH}:
-            samples[index] = (value + left) % BYTE_MODULUS
-        elif filter_kind == PNG_FILTER_UP:
-            samples[index] = value
-        elif filter_kind == PNG_FILTER_AVERAGE:
-            samples[index] = (value + (left // HALF)) % BYTE_MODULUS
-        else:
-            message = f"unexpected PNG filter {filter_kind}"
-            raise ContractError(message)
-    return bytes(samples)
+    """Read strict physical grayPNG1 as logical0/1; no display-byte expansion."""
+    image = decode_output(path.read_bytes())
+    expect(
+        image.depth == 1 and image.color == 0 and image.height == 1,
+        "single-row physical binary output",
+    )
+    return bytes(p[0] for p in image.pixels)
 
 
 def discovery_cases(exe: Path) -> None:
@@ -160,6 +152,14 @@ def discovery_cases(exe: Path) -> None:
     expect(
         version["supported_formats"] == ["png", "jpeg", "tiff"],
         "reviewed PNG/JPEG/TIFF admission advertised",
+    )
+    expect(
+        version["input_support"]
+        == [
+            {"format": name, "output_modes": ["preserve", "gray", "bw"]}
+            for name in ("png", "jpeg", "tiff")
+        ],
+        "common fixed pipeline input/mode discovery",
     )
     expect(len(version["dependency_lock_sha256"]) == SHA256_HEX_LENGTH, "lock digest")
     expect(
@@ -172,7 +172,8 @@ def discovery_cases(exe: Path) -> None:
             expect(method["id"] in text, "help includes each implemented method")
         expect("G01" not in text, "help keeps common geometry outside the method catalog")
         expect("png: preserve, gray, bw" in text, "help reports PNG modes")
-        expect("jpeg: preserve, gray\n" in text, "help reports scoped JPEG modes")
+        expect("jpeg: preserve, gray, bw" in text, "help reports common JPEG modes")
+        expect("tiff: preserve, gray, bw" in text, "help reports common TIFF modes")
         response = call_json(exe, [*([command] if command else []), "--help", "--json"])
         expect(response["exit_code"] == 0, f"{command} help exit code")
         expect(isinstance(response["options"], list), f"{command} help options")
@@ -241,11 +242,15 @@ def processing_case(exe: Path) -> None:
                 "--json",
             ],
         )
-        expect(response["method"] == "B03", "reported method")
+        selection = response["record"]["request"]["binarization"]
+        expect(
+            selection["method"] == "B03" and selection["version"] == BINARY_METHOD_VERSION,
+            "reported current method",
+        )
         expect(response["publication"] == "completed", "published result")
         target = output / "result.png"
         expect(response["output"] == str(target), "reported output path")
-        expect(read_gray_png(target) == bytes([0, 0, 255, 255]), "threshold output")
+        expect(read_gray_png(target) == bytes([0, 0, 1, 1]), "threshold output")
 
 
 def literal_filename_cases(exe: Path) -> None:
@@ -276,104 +281,11 @@ def literal_filename_cases(exe: Path) -> None:
             )
             expect(response["publication"] == "completed", f"literal {name} is processed")
             expect(
-                read_gray_png(root / output / "result.png") == bytes([0, 0, 255, 255]),
+                read_gray_png(root / output / "result.png") == bytes([0, 0, 1, 1]),
                 "literal input produces the expected pixels",
             )
             expect(source.read_bytes() == original, "literal source remains unchanged")
             call_json(exe, ["verify", output, "--json"], cwd=root)
-
-
-def default_cases(exe: Path) -> None:
-    """Compare actual admitted records with the defaults advertised in the reviewed contract."""
-    all_options = reviewed_options()
-    defaults = {item["name"]: item["default"] for item in all_options if "default" in item}
-    with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
-        source = root / "source.png"
-        side = 32
-        source.write_bytes(Fixture(side, side, ((200,),) * (side * side)).encoded())
-        for descriptor in all_options:
-            if "process" in descriptor["scope"] and descriptor["metavar"]:
-                output = root / "refused"
-                arguments = ["process", str(source)]
-                if descriptor["name"] != "--out-dir":
-                    arguments.extend(["--out-dir", str(output)])
-                response = call_json(
-                    exe,
-                    [*arguments, descriptor["name"], "", "--json"],
-                    EXIT_INVOCATION,
-                )
-                expect(response["publication"] == "not_started", "empty value refuses execution")
-                expect(not output.exists(), "empty value publishes nothing")
-        records = []
-        for index, options in enumerate(
-            (
-                [],
-                ["--output-mode", "bw"],
-                ["--output-mode", "bw", "--binarize", "fixed"],
-                ["--illumination", "surface"],
-                ["--denoise", "nlm"],
-            )
-        ):
-            out = root / str(index)
-            call_json(exe, ["process", str(source), "--out-dir", str(out), *options, "--json"])
-            call_json(exe, ["verify", str(out), "--json"])
-            records.append(json.loads((out / "run.json").read_text()))
-        groups = (
-            (
-                records[0]["request"]["operation"]["parameters"],
-                {
-                    "output_mode": "--output-mode",
-                    "depth": "--bit-depth",
-                    "alpha": "--alpha",
-                    "profile": "--profile-policy",
-                },
-            ),
-            (
-                records[1]["request"]["operation"]["parameters"],
-                {"window": "--sauvola-window", "k": "--sauvola-k", "r": "--sauvola-r"},
-            ),
-            (records[2]["request"]["operation"]["parameters"], {"threshold": "--fixed-threshold"}),
-            (
-                records[3]["execution"]["illumination"]["requested"],
-                {
-                    "strength": "--background-strength",
-                    "max_gain": "--background-max-gain",
-                    "target": "--background-target",
-                    "cell": "--background-cell",
-                    "quantile": "--background-quantile",
-                    "smooth": "--background-smooth",
-                },
-            ),
-            (
-                records[4]["request"]["denoising"]["parameters"],
-                {
-                    "h": "--nlm-h",
-                    "patch": "--nlm-patch",
-                    "search": "--nlm-search",
-                    "blend": "--denoise-blend",
-                },
-            ),
-        )
-        for actual, names in groups:
-            for key, option in names.items():
-                value = defaults[option]
-                expected = (
-                    float(Fraction(value)) if isinstance(actual[key], (int, float)) else value
-                )
-                if option == "--bit-depth":
-                    expected = "automatic" if value == "auto" else value
-                expect(
-                    actual[key] == expected, f"{option}: executed default matches reviewed default"
-                )
-        expect(records[1]["request"]["operation"]["method"]["id"] == "B02", "default bw is B02")
-        expect(defaults["--binarize"] == "sauvola", "reviewed default binary selector")
-        for stage, option in (("illumination", "--illumination"), ("denoising", "--denoise")):
-            expect(defaults[option] == "off", f"{stage} defaults to off")
-            expect(
-                records[0]["execution"][stage]["status"] == "disabled", f"{stage} remains disabled"
-            )
-        expect(not records[0]["request"]["protection_supplied"], "default has no mask")
 
 
 def main() -> int:
@@ -385,7 +297,8 @@ def main() -> int:
     unavailable_cases(exe)
     processing_case(exe)
     literal_filename_cases(exe)
-    default_cases(exe)
+    cli_defaults.default_cases(exe)
+    cli_defaults.execution_cases(exe)
     print("PASS: real-executable CLI contract")
     return 0
 

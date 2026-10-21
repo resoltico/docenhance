@@ -25,15 +25,33 @@ struct Stage {
     bool owned = false;
     bool retained = false;
     bool committed = false;
-    core::Error uncertain{
-        .code = core::ErrorCode::publication_unknown,
-        .message = "Publication cannot be reconciled; inspect output and retained staging",
+    PublishFailure uncertain{
+        .error =
+            {
+                .code = core::ErrorCode::publication_unknown,
+                .message = "Publication cannot be reconciled; inspect output and retained staging",
+            },
         .publication = core::Publication::unknown,
     };
-    core::Error integrity{
-        .code = core::ErrorCode::output_verify,
-        .message = "Publication completed but bundle integrity could not be confirmed",
+    PublishFailure integrity{
+        .error =
+            {
+                .code = core::ErrorCode::output_verify,
+                .message = "Publication completed but bundle integrity could not be confirmed",
+            },
         .publication = core::Publication::completed,
+    };
+    PublishFailure cleanup_uncertain{
+        .error =
+            {
+                .code = core::ErrorCode::publication_unknown,
+                .message = "Publication did not finish; staging cleanup could not be confirmed",
+            },
+        .publication = core::Publication::unknown,
+    };
+    core::Error failure{
+        .code = core::ErrorCode::resource,
+        .message = "A publication operation failed",
     };
     Stage() = default;
     Stage(const Stage&) = delete;
@@ -97,7 +115,7 @@ struct Stage {
         }
     }
 };
-[[nodiscard]] core::Error abandon(Stage& stage, core::Error error);
+[[nodiscard]] PublishFailure abandon(Stage& stage, core::Error error) noexcept;
 [[nodiscard]] core::Result<void> reserve_stage(Stage& stage, const std::filesystem::path& target,
                                                const core::Cancellation& cancellation);
 [[nodiscard]] core::Result<BundleSlot> place(Stage& stage, std::string_view relative);

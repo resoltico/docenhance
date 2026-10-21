@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import shutil
 import subprocess
@@ -181,3 +183,44 @@ de_commit_build_identity()
         inner.write_text(inner.read_text() + '\nset(CPACK_PACKAGE_FILE_NAME "wrong-current")\n')
         with self.assertRaisesRegex(ValueError, "must agree"):
             package_selection.current_package(owner)
+
+    def test_pocketfft_recipe_edit_refuses_old_binding_and_admits_fresh_owner(self) -> None:
+        """The actual installer bytes participate in host configuration identity."""
+        for name in ("cmake", "deps", "fuzz"):
+            shutil.copytree(ROOT / name, self.source / name)
+        for name in ("tools/fuzz_manifest.py",):
+            target = self.source / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / name, target)
+        (self.source / "CMakeLists.txt").write_text(f"""cmake_minimum_required(VERSION 4.4)
+include("{ROOT.as_posix()}/cmake/BuildPolicy.cmake")
+project(Binding C CXX)
+set(PROJECT_SOURCE_DIR "{self.source.as_posix()}")
+list(APPEND CMAKE_MODULE_PATH "{ROOT.as_posix()}/cmake")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+include(Options)
+include(CompilerPolicy)
+de_validate_native_configuration()
+include(DependencyPlan)
+include(BuildIdentity)
+de_commit_build_identity()
+""")
+        owner = self.root / "owner"
+        self.configure(owner, "unused")
+        identity = owner / "build-identity.json"
+        original = identity.read_bytes()
+        recipe_name = "cmake/dependencies/pocketfft/CMakeLists.txt"
+        recipe = self.source / recipe_name
+        self.assertEqual(
+            json.loads(original)[recipe_name], hashlib.sha256(recipe.read_bytes()).hexdigest()
+        )
+        recipe.write_text(recipe.read_text() + "\n# A real recipe-only identity change.\n")
+        result = self.run_command(str(self.cmake), "-S", str(self.source), "-B", str(owner))
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Build inputs changed", result.stdout + result.stderr)
+        self.assertEqual(identity.read_bytes(), original)
+        fresh = self.root / "fresh"
+        self.configure(fresh, "unused")
+        actual = json.loads((fresh / "build-identity.json").read_text())
+        self.assertEqual(actual[recipe_name], hashlib.sha256(recipe.read_bytes()).hexdigest())
+        self.assertNotEqual(actual[recipe_name], json.loads(original)[recipe_name])

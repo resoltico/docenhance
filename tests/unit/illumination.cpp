@@ -9,24 +9,33 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/linear.hpp"
-#include "docenhance/image/numeric.hpp"
+#include "docenhance/exec/concurrency.hpp"
+#include "docenhance/exec/scheduler.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
+#include "docenhance/methods/plan.hpp"
+#include "docenhance/methods/report_values.hpp"
 #include "docenhance/methods/surface.hpp"
-#include "linear_fixture.hpp"
+#include "docenhance/methods/surface_facts.hpp"
+#include "docenhance/methods/surface_working.hpp"
+#include "docenhance/methods/working.hpp"
 #include "surface_detail.hpp"
+#include "surface_working_detail.hpp"
 
 #include <algorithm>
-#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <limits>
+#include <optional>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <variant>
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t surface_budget = std::size_t{32} * 1024 * 1024;
@@ -41,23 +50,57 @@ methods::Surface options(bool automatic = false) {
                                     })
         .value();
 }
-constexpr double dark_paper = 0.8;
-// Paper with 0.05 dark content: a 2 x 2 block of cells, or every cell outside the first column.
-void paint_dark(LinearFixture& source, bool everywhere) {
-    constexpr double ink = 0.05;
-    source.fill(dark_paper);
-    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
-        for (std::uint32_t x = 0; x < source.extent().width; ++x) {
+bool surface_predicate_true(std::optional<bool> value) {
+    return value.value_or(false);
+}
+void paint_dark(image::PlaneView<double> source, bool everywhere) {
+    for (std::uint32_t y = 0; y < source.height(); ++y) {
+        for (std::uint32_t x = 0; x < source.width(); ++x) {
             const auto column = x / cell;
             const auto row = y / cell;
             const bool dark = everywhere ? column != 0 : column < 2 && row >= 1 && row < 3;
-            if (dark) {
-                std::ranges::fill(source.row(y).subspan(std::size_t{x} * image::rgb_channels,
-                                                        image::rgb_channels),
-                                  ink);
-            }
+            source.row(y).subspan(x, 1).front() = dark ? 0.05 : 0.8;
         }
     }
+}
+core::Result<methods::SurfaceFit> fit_coefficients(const methods::Surface& method,
+                                                   methods::Working working) {
+    auto counts = methods::eligibility(working);
+    if (!counts) {
+        return std::unexpected(std::move(counts.error()));
+    }
+    const auto grid = methods::surface_grid(
+        {.width = working.luminance.width(), .height = working.luminance.height()}, method);
+    if (!grid) {
+        return std::unexpected(grid.error());
+    }
+    return methods::fit_surface(method, working, {.counts = *counts}, *grid);
+}
+methods::SurfacePredicates
+contradicted_surface_predicates(methods::SurfaceMeasurements measurements, std::size_t i) {
+    auto candidate = measurements;
+    double coverage = 1;
+    switch (i) {
+    case 0:
+        coverage = 0;
+        break;
+    case 1:
+        candidate.luminance_q90 = 0;
+        break;
+    case 2:
+        candidate.background_q50 = 0;
+        break;
+    case 3:
+        candidate.variation = 0;
+        break;
+    case 4:
+        candidate.paper_fraction = 0;
+        break;
+    default:
+        candidate.dark_fraction = 0;
+        break;
+    }
+    return methods::surface_decisions(candidate, coverage);
 }
 } // namespace
 TEST_CASE("I01 factory and application admission reject contradictions before I/O",
@@ -85,298 +128,259 @@ TEST_CASE("I01 factory and application admission reject contradictions before I/
     request.option(app::OptionId::protect_mask) = "mask.png";
     REQUIRE(app::prepare_process(request));
     request.option(app::OptionId::output_mode) = "bw";
-    CHECK(!app::prepare_process(request));
+    const auto binary = app::prepare_process(request);
+    REQUIRE(binary);
+    CHECK(binary->plan().protection);
+    CHECK(binary->mask_path() == "mask.png");
+    const auto* const output = std::get_if<methods::BinaryOutput>(&binary->plan().output);
+    REQUIRE(output);
+    CHECK(std::holds_alternative<methods::Sauvola>(output->method));
+    request.option(app::OptionId::binarize) = "fixed";
+    const auto fixed = app::prepare_process(request);
+    REQUIRE(fixed);
+    CHECK(fixed->plan().protection);
+    CHECK(fixed->mask_path() == "mask.png");
+    const auto* const fixed_output = std::get_if<methods::BinaryOutput>(&fixed->plan().output);
+    REQUIRE(fixed_output);
+    CHECK(std::holds_alternative<methods::FixedThreshold>(fixed_output->method));
 }
 TEST_CASE("Disabled algebra and all-protected input avoid fit allocation exactly",
           "[surface][identity]") {
-    core::Budget input_budget{surface_budget};
-    LinearFixture source{input_budget, page};
-    source.fill(paper);
-    auto mask = image::Plane<std::uint8_t>::allocate(input_budget, page.width, page.height).value();
+    core::Budget owner{surface_budget};
+    auto source = image::Plane<double>::allocate(owner, page.width, page.height).value();
+    std::ranges::fill(source.view().storage(), paper);
+    auto mask = image::Plane<std::uint8_t>::allocate(owner, page.width, page.height).value();
     std::ranges::fill(mask.view().storage(), 1);
-    core::Budget empty_budget{0};
-    methods::IlluminationReport report;
-    auto protected_model = methods::SurfaceModel::prepare({source, mask.view().as_const()},
-                                                          options(), empty_budget, {}, report);
-    REQUIRE(protected_model);
-    CHECK(!protected_model->active());
-    CHECK(report.reason == methods::IlluminationReason::no_eligible_samples);
-    CHECK(report.protected_samples == std::uint64_t{page.width} * page.height);
-    auto params = options().parameters();
-    params.strength = 0;
-    auto const zero = methods::Surface::create(params).value();
-    auto model = methods::SurfaceModel::prepare({source, {}}, zero, empty_budget, {}, report);
-    REQUIRE(model);
-    CHECK(!model->active());
-    CHECK(empty_budget.used() == 0);
-    std::array<double, image::rgb_channels> pixel{paper, paper, paper};
-    REQUIRE(model->apply({}, pixel, {}, report, {}));
-    CHECK(pixel.front() == paper);
+    core::Budget empty{0};
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    const auto protected_result =
+        methods::apply(options(), {source.view(), mask.view().as_const(), empty, scheduler});
+    REQUIRE(protected_result);
+    CHECK(protected_result->reason == methods::SurfaceReason::no_eligible_samples);
+    CHECK(protected_result->counts.protected_samples == std::uint64_t{page.width} * page.height);
+    auto p = options().parameters();
+    p.strength = 0;
+    const auto zero =
+        methods::apply(methods::Surface::create(p).value(), {source.view(), {}, empty, scheduler});
+    REQUIRE(zero);
+    CHECK(zero->reason == methods::SurfaceReason::zero_strength);
+    CHECK(!zero->solver);
+    CHECK(!zero->measurements);
+    CHECK(source.view().row(0).front() == paper);
+    CHECK(empty.used() == 0);
 }
-TEST_CASE("I01 measurement, fit, interpolation and application preserve protected samples",
+TEST_CASE("I01 actual fit interpolation and eager application preserve protected samples",
           "[surface]") {
     core::Budget budget{surface_budget};
-    LinearFixture source{budget, page};
-    source.fill(paper);
+    auto source = image::Plane<double>::allocate(budget, page.width, page.height).value();
+    std::ranges::fill(source.view().storage(), paper);
     auto mask = image::Plane<std::uint8_t>::allocate(budget, page.width, page.height).value();
     std::ranges::fill(mask.view().storage(), 0);
     mask.view().row(0).front() = 1;
-    constexpr double protected_dark = 0.01;
-    std::ranges::fill(source.row(0).first(image::rgb_channels), protected_dark);
-    auto params = options().parameters();
-    params.strength = 1;
-    params.max_gain = 2;
-    params.target = 1;
-    const auto method = methods::Surface::create(params).value();
+    source.view().row(0).front() = 0.01;
+    auto p = options().parameters();
+    p.target = 1;
+    p.max_gain = 2;
+    const auto method = methods::Surface::create(p).value();
     const auto held = budget.used();
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
     {
-        methods::IlluminationReport report;
-        auto model = methods::SurfaceModel::prepare({source, mask.view().as_const()}, method,
-                                                    budget, {}, report);
-        REQUIRE(model);
-        REQUIRE(model->active());
-        CHECK(report.protected_samples == 1);
-        REQUIRE(report.solver);
-        if (report.solver) {
-            CHECK(report.solver->residual <= report.solver->tolerance);
+        const auto fit =
+            fit_coefficients(method, {source.view(), mask.view().as_const(), budget, scheduler});
+        REQUIRE(fit);
+        REQUIRE(fit->facts.solver.has_value());
+        if (!fit->facts.solver.has_value()) {
+            throw std::logic_error("Required fitted surface observation is absent");
         }
-        constexpr double tolerance = 1e-10;
-        CHECK(std::abs(model->background(0, 0).value() - paper) < tolerance);
-        CHECK(std::abs(model->background(page.width - 1, page.height - 1).value() - paper) <
-              tolerance);
-        auto const pixels =
-            source.row(0); // Internal test destination is explicitly independent of fitting now.
-        report.progress = methods::StageProgress::evaluating;
-        REQUIRE(model->apply({}, pixels, mask.view().as_const(), report, {}));
-        CHECK(pixels.front() == protected_dark);
-        CHECK(pixels.subspan(image::rgb_channels, 1).front() > paper);
-        CHECK(report.evaluated_samples == page.width - 1);
-        CHECK(report.status == methods::IlluminationStatus::unresolved);
-        CHECK(report.changed_samples != 0);
+        CHECK(fit->facts.solver.value().residual <= fit->facts.solver.value().tolerance);
+        CHECK(std::abs(methods::surface_background_value(fit->grid, fit->logarithms.view(),
+                                                         {.x = 0, .y = 0}) -
+                       paper) < 1e-10);
+        CHECK(std::abs(
+                  methods::surface_background_value(fit->grid, fit->logarithms.view(),
+                                                    {.x = page.width - 1, .y = page.height - 1}) -
+                  paper) < 1e-10);
     }
+    CHECK(budget.used() == held);
+    const auto facts =
+        methods::apply(method, {source.view(), mask.view().as_const(), budget, scheduler});
+    REQUIRE(facts);
+    CHECK(facts->counts.protected_samples == 1);
+    CHECK(facts->counts.evaluated == 511);
+    CHECK(facts->counts.changed == 511);
+    CHECK(source.view().row(0).front() == 0.01);
+    CHECK(source.view().row(0).subspan(1, 1).front() > paper);
+    CHECK(source.view().row(page.height - 1).back() > paper);
+    CHECK(methods::validate(*facts, p, page));
     CHECK(budget.used() == held);
 }
 TEST_CASE("I01 automatic skip and explicit inapplicability are not numerical failure",
           "[surface][auto]") {
     core::Budget budget{surface_budget};
-    LinearFixture source{budget, page};
-    source.fill(paper);
-    methods::IlluminationReport report;
-    {
-        auto skipped =
-            methods::SurfaceModel::prepare({source, {}}, options(true), budget, {}, report);
-        REQUIRE(skipped);
-        CHECK(!skipped->active());
-        CHECK(report.status == methods::IlluminationStatus::skipped);
-        CHECK(report.reason == methods::IlluminationReason::automatic_predicates);
-        REQUIRE(report.predicates.at(3).has_value());
-        CHECK(report.predicates.at(3) == false);
-    }
-    source.fill(0);
-    auto refused = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
+    auto source = image::Plane<double>::allocate(budget, page.width, page.height).value();
+    std::ranges::fill(source.view().storage(), paper);
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    const auto skipped = methods::apply(options(true), {source.view(), {}, budget, scheduler});
+    REQUIRE(skipped);
+    CHECK(skipped->disposition == methods::Disposition::skipped);
+    CHECK(skipped->reason == methods::SurfaceReason::automatic_predicates);
+    CHECK(skipped->auto_predicates.background_variation == false);
+    std::ranges::fill(source.view().storage(), 0);
+    const auto refused = methods::apply(options(), {source.view(), {}, budget, scheduler});
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::method_inapplicable);
-    auto skipped = methods::SurfaceModel::prepare({source, {}}, options(true), budget, {}, report);
-    REQUIRE(skipped);
-    CHECK(report.status == methods::IlluminationStatus::skipped);
+    const auto black = methods::apply(options(true), {source.view(), {}, budget, scheduler});
+    REQUIRE(black);
+    CHECK(black->disposition == methods::Disposition::skipped);
 }
-TEST_CASE("I01 resource refusal and phase cancellation refund scratch", "[surface][resource]") {
-    core::Budget input_budget{surface_budget};
-    LinearFixture source{input_budget, page};
-    source.fill(paper);
-    methods::IlluminationReport report;
+TEST_CASE("I01 resource refusal and actual phase cancellation refund scratch",
+          "[surface][resource]") {
+    core::Budget owner{surface_budget};
+    auto source = image::Plane<double>::allocate(owner, page.width, page.height).value();
+    std::ranges::fill(source.view().storage(), paper);
     core::Budget empty{0};
-    auto refused = methods::SurfaceModel::prepare({source, {}}, options(), empty, {}, report);
+    const exec::Scheduler healthy{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    const auto refused = methods::apply(options(), {source.view(), {}, empty, healthy});
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::resource);
     CHECK(empty.used() == 0);
-    for (const auto phase : {core::Checkpoint::measurement, core::Checkpoint::solving}) {
-        core::Budget budget{surface_budget};
-        CheckpointStop const stop{phase, 0};
-        auto cancelled = methods::SurfaceModel::prepare({source, {}}, options(), budget,
-                                                        stop.cancellation(), report);
-        REQUIRE(!cancelled);
-        CHECK(cancelled.error().code == core::ErrorCode::cancelled);
-        CHECK(budget.used() == 0);
+    for (const auto phase :
+         {core::Checkpoint::measurement, core::Checkpoint::solving, core::Checkpoint::processing}) {
+        core::Budget scratch{surface_budget};
+        const CheckpointStop stop{phase, 0};
+        const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value(),
+                                        stop.cancellation()};
+        const auto result = methods::apply(options(), {source.view(), {}, scratch, scheduler});
+        REQUIRE(!result);
+        CHECK(result.error().code == core::ErrorCode::cancelled);
+        CHECK(source.view().row(0).front() == paper);
+        CHECK(scratch.used() == 0);
     }
-    core::Budget budget{surface_budget};
-    auto model = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
-    REQUIRE(model);
-    const CheckpointStop stop{core::Checkpoint::processing, 0};
-    const image::RowRange origin;
-    std::array<double, image::rgb_channels> pixel{paper, paper, paper};
-    const auto cancelled = model->apply(origin, pixel, {}, report, stop.cancellation());
-    REQUIRE(!cancelled);
-    CHECK(pixel.front() == paper);
 }
-TEST_CASE("I01 automatic predicates each carry their independent decision", "[surface][auto]") {
-    constexpr double bright = 0.8;
-    constexpr double median = 0.7;
-    constexpr double variation = 0.2;
-    constexpr double paper_fraction = 0.8;
-    constexpr double dark = 0.1;
-    methods::IlluminationReport report;
-    report.cells = 10;
-    report.measured_cells = 10;
-    report.measurements = methods::SurfaceMeasurements{
-        .luminance_q90 = bright,
-        .variation = variation,
-        .paper_fraction = paper_fraction,
-        .dark_fraction = dark,
+TEST_CASE("I01 automatic predicates each retain their independent decision", "[surface][auto]") {
+    const methods::SurfaceMeasurements measurements{
+        .background_q50 = 0.7,
+        .luminance_q90 = 0.8,
+        .variation = 0.2,
+        .paper_fraction = 0.8,
+        .dark_fraction = 0.1,
     };
-    report.measurements->background_q50 = median;
-    REQUIRE(methods::surface_eligible(report));
+    const auto healthy = methods::surface_decisions(measurements, 1);
+    REQUIRE(std::ranges::all_of(healthy.values(), surface_predicate_true));
     for (std::size_t i = 0; i < methods::surface_predicates; ++i) {
-        auto candidate = report;
-        switch (i) {
-        case 0:
-            candidate.measured_cells = 0;
-            break;
-        case 1:
-            candidate.measurements->luminance_q90 = 0;
-            break;
-        case 2:
-            candidate.measurements->background_q50 = 0;
-            break;
-        case 3:
-            candidate.measurements->variation = 0;
-            break;
-        case 4:
-            candidate.measurements->paper_fraction = 0;
-            break;
-        default:
-            candidate.measurements->dark_fraction = 0;
-            break;
-        }
-        CHECK(!methods::surface_eligible(candidate));
-        REQUIRE(candidate.predicates.at(i).has_value());
-        CHECK(candidate.predicates.at(i) == false);
+        const auto predicates = contradicted_surface_predicates(measurements, i);
+        CHECK(predicates.values().at(i) == false);
+        CHECK(!std::ranges::all_of(predicates.values(), surface_predicate_true));
     }
 }
-
-TEST_CASE("I01 exact required budget succeeds and one-byte-short refusal refunds",
+TEST_CASE("I01 exact measured eager budget succeeds and one byte short refunds",
           "[surface][resources]") {
-    core::Budget source_budget{surface_budget};
-    LinearFixture source{source_budget, page};
-    source.fill(paper);
-    const auto fits = [&](std::size_t bytes) {
-        core::Budget budget{bytes};
-        bool success = false;
-        {
-            methods::IlluminationReport report;
-            auto result =
-                methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
-            success = result.has_value();
-            if (!success) {
-                CHECK(result.error().code == core::ErrorCode::resource);
-            }
-        }
-        CHECK(budget.used() == 0);
-        return success;
-    };
-    std::size_t lower = 0;
-    std::size_t upper = surface_budget;
-    REQUIRE(fits(upper));
-    while (lower < upper) {
-        const auto middle = lower + ((upper - lower) / 2);
-        if (fits(middle)) {
-            upper = middle;
-        } else {
-            lower = middle + 1;
-        }
-    }
-    REQUIRE(lower > 0);
-    CHECK(fits(lower));
-    CHECK(!fits(lower - 1));
-    CHECK(source.row(0).front() == paper);
+    core::Budget owner{surface_budget};
+    auto source = image::Plane<double>::allocate(owner, page.width, page.height).value();
+    std::ranges::fill(source.view().storage(), paper);
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    core::Budget measured{surface_budget};
+    REQUIRE(methods::apply(options(), {source.view(), {}, measured, scheduler}));
+    CHECK(measured.used() == 0);
+    const auto required = measured.peak();
+    REQUIRE(required > 0);
+    core::Budget exact{required};
+    REQUIRE(methods::apply(options(), {source.view(), {}, exact, scheduler}));
+    CHECK(exact.used() == 0);
+    core::Budget short_budget{required - 1};
+    const auto refused = methods::apply(options(), {source.view(), {}, short_budget, scheduler});
+    REQUIRE(!refused);
+    CHECK(refused.error().code == core::ErrorCode::resource);
+    CHECK(short_budget.used() == 0);
+    CHECK(source.view().row(0).front() == paper);
 }
-
-TEST_CASE("I01 singleton and wholly protected lattice have defined measurements",
+TEST_CASE("I01 singleton and protected lattice retain defined actual measurements",
           "[surface][statistics]") {
     core::Budget budget{surface_budget};
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
     {
-        LinearFixture singleton{budget, {.width = 1, .height = 1}};
-        singleton.fill(paper);
-        methods::IlluminationReport report;
-        const auto model =
-            methods::SurfaceModel::prepare({singleton, {}}, options(), budget, {}, report);
-        REQUIRE(model);
-        CHECK(model->background(0, 0).value() == paper);
-        REQUIRE(report.measurements);
-        if (report.measurements) {
-            CHECK(report.measurements->count == 1);
+        auto source = image::Plane<double>::allocate(budget, 1, 1).value();
+        source.view().row(0).front() = paper;
+        const auto facts = methods::apply(options(), {source.view(), {}, budget, scheduler});
+        REQUIRE(facts);
+        REQUIRE(facts->measurements.has_value());
+        if (!facts->measurements.has_value()) {
+            throw std::logic_error("Required fitted surface observation is absent");
         }
+        CHECK(facts->measurements.value().count == 1);
+        CHECK(facts->measurements.value().background_q90 == paper);
     }
-    constexpr std::uint32_t width = 1025;
-    LinearFixture source{budget, {.width = width, .height = 1}};
-    source.fill(paper);
-    auto mask = image::Plane<std::uint8_t>::allocate(budget, width, 1).value();
-    for (std::uint32_t x = 0; x < width; ++x) {
+    auto source = image::Plane<double>::allocate(budget, 1025, 1).value();
+    std::ranges::fill(source.view().storage(), paper);
+    auto mask = image::Plane<std::uint8_t>::allocate(budget, 1025, 1).value();
+    for (std::uint32_t x = 0; x < 1025; ++x) {
         mask.view().row(0).subspan(x, 1).front() = static_cast<std::uint8_t>(x % 2 == 0);
     }
-    auto params = options().parameters();
-    params.cell = 32;
-    methods::IlluminationReport report;
-    const auto result = methods::SurfaceModel::prepare({source, mask.view().as_const()},
-                                                       methods::Surface::create(params).value(),
-                                                       budget, {}, report);
-    REQUIRE(result);
-    REQUIRE(report.measurements);
-    if (report.measurements) {
-        CHECK(report.measurements->fallback);
-        CHECK(report.measurements->stride == 2);
-        CHECK(report.measurements->count == width / 2);
+    auto p = options().parameters();
+    p.cell = 32;
+    const auto facts = methods::apply(methods::Surface::create(p).value(),
+                                      {source.view(), mask.view().as_const(), budget, scheduler});
+    REQUIRE(facts);
+    REQUIRE(facts->measurements.has_value());
+    if (!facts->measurements.has_value()) {
+        throw std::logic_error("Required fitted surface observation is absent");
     }
+    CHECK(facts->measurements.value().fallback);
+    CHECK(facts->measurements.value().stride == 2);
+    CHECK(facts->measurements.value().count == 512);
 }
-TEST_CASE("Solid dark content is left unmeasured and spanned from surrounding paper",
+TEST_CASE("Solid dark content stays unmeasured and actual coefficients span surrounding paper",
           "[surface][dark]") {
-    constexpr image::Extent extent{.width = 48, .height = 32};
-    constexpr std::uint32_t block_cells = 4;
-    constexpr std::uint32_t dark_everywhere = 20; // 6 x 4 cells less the first column.
-    constexpr double field_tolerance = 1e-6;
     core::Budget budget{surface_budget};
-    LinearFixture source{budget, extent};
-    paint_dark(source, false);
-    methods::IlluminationReport report;
-    const auto model = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
-    REQUIRE(model);
-    REQUIRE(model->active());
-    CHECK(report.dark_cells == block_cells);
-    CHECK(report.measured_cells == report.cells - block_cells);
-    CHECK(std::abs(report.background_reference.value_or(0) - dark_paper) < field_tolerance);
-    CHECK(std::abs(model->background(cell, 2 * cell).value() - dark_paper) < field_tolerance);
-    paint_dark(source, true);
-    methods::IlluminationReport refused_report;
-    const auto refused =
-        methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, refused_report);
+    auto source = image::Plane<double>::allocate(budget, 48, 32).value();
+    paint_dark(source.view(), false);
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    {
+        const auto fit = fit_coefficients(options(), {source.view(), {}, budget, scheduler});
+        REQUIRE(fit);
+        CHECK(fit->facts.dark_cells == 4);
+        CHECK(fit->facts.measured_cells == fit->facts.cells - 4);
+        REQUIRE(fit->facts.background_reference);
+        if (!fit->facts.background_reference.has_value()) {
+            throw std::logic_error("Required fitted background reference is absent");
+        }
+        CHECK(std::abs(*fit->facts.background_reference - 0.8) < 1e-6);
+        CHECK(std::abs(methods::surface_background_value(fit->grid, fit->logarithms.view(),
+                                                         {.x = cell, .y = 2 * cell}) -
+                       0.8) < 1e-6);
+    }
+    paint_dark(source.view(), true);
+    const auto refused = fit_coefficients(options(), {source.view(), {}, budget, scheduler});
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::method_inapplicable);
-    CHECK(refused_report.dark_cells == dark_everywhere);
+    const auto skipped = methods::apply(options(true), {source.view(), {}, budget, scheduler});
+    REQUIRE(skipped);
+    CHECK(skipped->dark_cells == 20);
 }
-} // namespace docenhance::tests
-
-namespace docenhance::tests {
-TEST_CASE("Moving a fitted surface leaves an inactive empty owner", "[surface]") {
+TEST_CASE("Moving actual fitted coefficient storage empties its owner without stale borrowing",
+          "[surface]") {
     core::Budget budget{surface_budget};
-    LinearFixture source{budget, page};
-    source.fill(paper);
-    methods::IlluminationReport report;
-    auto original = methods::SurfaceModel::prepare({source, {}}, options(), budget, {}, report);
-    REQUIRE(original);
-    REQUIRE(original->active());
-    const auto active = original->active();
-    const auto background = original->background(0, 0).value();
-    auto* const emptied = &*original;
-    auto retained = std::move(*original);
-    REQUIRE(!emptied->active());
-    REQUIRE(emptied->grid().extent == image::Extent{});
-    REQUIRE(!emptied->background(0, 0));
-    std::array<double, image::rgb_channels> pixel{paper, paper, paper};
-    REQUIRE(!emptied->apply({}, pixel, {}, report, {}));
-    REQUIRE(retained.active() == active);
-    REQUIRE(retained.background(0, 0).value() == background);
-    *emptied = std::move(retained);
-    REQUIRE(emptied->active() == active);
-    REQUIRE(emptied->background(0, 0).value() == background);
+    auto source = image::Plane<double>::allocate(budget, page.width, page.height).value();
+    std::ranges::fill(source.view().storage(), paper);
+    const auto held = budget.used();
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    {
+        auto fit = fit_coefficients(options(), {source.view(), {}, budget, scheduler});
+        REQUIRE(fit);
+        const auto background = methods::surface_background_value(
+            fit->grid, fit->logarithms.view().as_const(), {.x = 0, .y = 0});
+        auto retained = std::move(fit->logarithms);
+        CHECK(fit->logarithms.empty());
+        CHECK(fit->logarithms.width() == 0);
+        CHECK(fit->logarithms.height() == 0);
+        CHECK(methods::surface_background_value(fit->grid, retained.view().as_const(),
+                                                {.x = 0, .y = 0}) == background);
+        fit->logarithms = std::move(retained);
+        // NOLINTNEXTLINE(bugprone-use-after-move)
+        CHECK(retained.empty());
+        CHECK(methods::surface_background_value(fit->grid, fit->logarithms.view().as_const(),
+                                                {.x = 0, .y = 0}) == background);
+    }
+    CHECK(budget.used() == held);
 }
 } // namespace docenhance::tests

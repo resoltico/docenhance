@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Dependency lock validation and cache verification. Never opens a network connection.
 
-Git entries pin the *tag object*, not merely a mutable tag name. Archive entries
+Git entries pin a release-tag object or an exact immutable commit. Archive entries
 pin the bytes. Receipts hash every source file and are checked before each build.
 """
 
@@ -66,8 +66,10 @@ def _validate_git(dep: Dependency) -> None:
     if not dep["repository"].startswith("https://"):
         msg = "Only HTTPS Git sources are supported"
         raise DependencyError(msg)
-    if not dep["ref"].startswith("refs/tags/"):
-        msg = "Only explicitly named release tags are supported"
+    tagged = dep["ref"].startswith("refs/tags/")
+    committed = dep["ref"] == dep["object"] and dep["object_type"] == "commit"
+    if not tagged and not committed:
+        msg = "Git sources require a named release tag or the exact pinned commit"
         raise DependencyError(msg)
 
 
@@ -138,7 +140,7 @@ def validate_licenses(dep: Dependency, source: Path) -> None:
 
 
 def verify_git(dep: Dependency, source: Path) -> str:
-    """Check the pinned tag object, its type, the checkout and a clean tree; return the commit."""
+    """Check the pinned Git object, its type, checkout and clean tree; return the commit."""
     obj = run("git", "rev-parse", dep["ref"], cwd=source)
     if obj != dep["object"]:
         msg = f"Git release object mismatch: {dep['name']}"

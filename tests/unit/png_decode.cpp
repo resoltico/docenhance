@@ -1,9 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/codec/png.hpp"
+#include "docenhance/codec/continuous_png.hpp"
+#include "docenhance/codec/png_stream.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/raster.hpp"
 #include "png_context.hpp"
 #include "png_fixture.hpp"
 
@@ -15,11 +18,12 @@
 #include <cstdint>
 #include <iterator>
 #include <span>
+#include <stop_token>
 #include <vector>
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t codec_budget = std::size_t{8} * 1024 * 1024;
-bool native_png_refusal(const codec::PngContext& context) {
+bool native_png_refusal(const codec::PngContext& context, codec::PngInput* const input) {
     // Every resource owner is in the test's caller, outside this jump frame.
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -32,7 +36,36 @@ bool native_png_refusal(const codec::PngContext& context) {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
+    if (input != nullptr) {
+        codec::install_png_reader(context, *input);
+        png_read_info(context.png, context.info);
+        return false;
+    }
     png_error(context.png, "controlled native PNG refusal");
+}
+struct NativePngInput {
+    std::span<const std::uint8_t> bytes;
+    std::stop_source stop;
+    bool refuse = false;
+    unsigned reads = 0;
+};
+bool native_read(void* const state, std::span<std::uint8_t> output) noexcept {
+    auto& input = *static_cast<NativePngInput*>(state);
+    ++input.reads;
+    if (input.refuse) {
+        static_cast<void>(input.stop.request_stop());
+        return false;
+    }
+    if (output.size() > input.bytes.size()) {
+        return false;
+    }
+    std::ranges::copy(input.bytes.first(output.size()), output.begin());
+    input.bytes = input.bytes.subspan(output.size());
+    return true;
+}
+void check_refusal(const core::Result<image::Raster>& decoded, core::ErrorCode error) {
+    REQUIRE(!decoded);
+    CHECK(decoded.error().code == error);
 }
 GrayFixture sample_fixture(unsigned depth, bool interlaced, std::uint32_t width) {
     GrayFixture fixture{
@@ -47,7 +80,19 @@ GrayFixture sample_fixture(unsigned depth, bool interlaced, std::uint32_t width)
     }
     return fixture;
 }
-void verify_samples(image::PlaneView<const std::uint8_t> decoded, const GrayFixture& fixture) {
+void verify_gray_rows(image::PlaneView<const std::uint8_t> decoded, const GrayFixture& fixture,
+                      const std::vector<std::uint8_t>& expected) {
+    for (std::uint32_t y = 0; y < decoded.height(); ++y) {
+        const auto row = std::span{expected}.subspan(std::size_t{y} * fixture.width, fixture.width);
+        CHECK(std::ranges::equal(decoded.row(y), row));
+    }
+}
+void verify_samples(const image::Raster& raster, const GrayFixture& fixture) {
+    CHECK(raster.shape.width == fixture.width);
+    CHECK(raster.shape.height == fixture.height);
+    CHECK(raster.shape.model == image::SampleModel::gray);
+    CHECK(raster.shape.depth == image::SampleDepth::byte());
+    const auto decoded = raster.pixels.view();
     CHECK(decoded.width() == fixture.width);
     CHECK(decoded.height() == fixture.height);
     const unsigned maximum = (1U << fixture.depth) - 1U;
@@ -56,18 +101,16 @@ void verify_samples(image::PlaneView<const std::uint8_t> decoded, const GrayFixt
     for (const auto sample : fixture.samples) {
         expected.push_back(static_cast<std::uint8_t>(sample * 255U / maximum));
     }
-    for (std::uint32_t y = 0; y < decoded.height(); ++y) {
-        const auto row = std::span{expected}.subspan(std::size_t{y} * fixture.width, fixture.width);
-        CHECK(std::ranges::equal(decoded.row(y), row));
-    }
+    verify_gray_rows(decoded, fixture, expected);
 }
 void check_samples(const GrayFixture& fixture) {
     const auto bytes = make_gray_png(fixture);
     core::Budget budget{codec_budget};
     {
-        const auto decoded = codec::decode_grayscale_png(bytes, budget);
+        const auto decoded =
+            codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded);
         REQUIRE(decoded);
-        verify_samples(decoded->view(), fixture);
+        verify_samples(*decoded, fixture);
     }
     CHECK(budget.used() == 0);
 }
@@ -82,11 +125,11 @@ TEST_CASE("A protected PNG error returns to its native frame and refunds codec o
           "[png][ownership]") {
     core::Budget budget{codec_budget};
     {
-        codec::PngContext context{budget, false};
+        const codec::PngContext context{budget, false};
         REQUIRE(context.png != nullptr);
         REQUIRE(context.info != nullptr);
         REQUIRE(budget.used() > 0);
-        REQUIRE(native_png_refusal(context));
+        REQUIRE(native_png_refusal(context, nullptr));
         const auto error = context.error(core::ErrorCode::input);
         CHECK(error.code == core::ErrorCode::input);
         CHECK(error.message == "controlled native PNG refusal");
@@ -109,7 +152,8 @@ TEST_CASE("Every truncated PNG prefix is rejected and refunds its decoder budget
     const auto bytes = make_gray_png(sample_fixture(4, true, 9));
     core::Budget budget{codec_budget};
     for (std::size_t size = 0; size < bytes.size(); ++size) {
-        const auto decoded = codec::decode_grayscale_png(std::span{bytes}.first(size), budget);
+        const auto decoded = codec::decode_png_raster(std::span{bytes}.first(size), budget,
+                                                      image::ProfilePolicy::embedded);
         REQUIRE(!decoded);
         CHECK(decoded.error().code == core::ErrorCode::input);
         CHECK(budget.used() == 0);
@@ -118,22 +162,27 @@ TEST_CASE("Every truncated PNG prefix is rejected and refunds its decoder budget
 TEST_CASE("PNG limits can only tighten and codec allocation refusal refunds every block", "[png]") {
     const auto bytes = make_gray_png(sample_fixture(8, false, 9));
     core::Budget budget{codec_budget};
-    CHECK(codec::decode_grayscale_png(bytes, budget, {.encoded_bytes = bytes.size() - 1})
-              .error()
-              .code == core::ErrorCode::resource);
-    CHECK(codec::decode_grayscale_png(bytes, budget, {.pixels = 80}).error().code ==
-          core::ErrorCode::resource);
-    CHECK(codec::decode_grayscale_png(bytes, budget, {.pixels = 0}).error().code ==
-          core::ErrorCode::argument);
-    CHECK(codec::decode_grayscale_png(bytes, budget, {.pixels = 40'000'001}).error().code ==
-          core::ErrorCode::argument);
-    CHECK(codec::decode_grayscale_png(bytes, budget, {.encoded_bytes = 0}).error().code ==
-          core::ErrorCode::argument);
+    check_refusal(codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded, {},
+                                           {.encoded_bytes = bytes.size() - 1}),
+                  core::ErrorCode::resource);
+    check_refusal(
+        codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded, {}, {.pixels = 80}),
+        core::ErrorCode::resource);
+    check_refusal(
+        codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded, {}, {.pixels = 0}),
+        core::ErrorCode::argument);
+    check_refusal(codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded, {},
+                                           {.pixels = 40'000'001}),
+                  core::ErrorCode::argument);
+    check_refusal(codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded, {},
+                                           {.encoded_bytes = 0}),
+                  core::ErrorCode::argument);
     CHECK(budget.used() == 0);
     for (const std::size_t limit : {0U, 64U, 1024U, 4096U, 16384U, 32768U}) {
         core::Budget constrained{limit};
         {
-            const auto decoded = codec::decode_grayscale_png(bytes, constrained);
+            const auto decoded =
+                codec::decode_png_raster(bytes, constrained, image::ProfilePolicy::embedded);
             REQUIRE(!decoded);
             CHECK(decoded.error().code == core::ErrorCode::resource);
         }
@@ -144,9 +193,51 @@ TEST_CASE("PNG CRC checking is identical on the memory path", "[png]") {
     auto bytes = make_gray_png(sample_fixture(8, false, 2));
     bytes.at(29) ^= 1U;
     core::Budget budget{codec_budget};
-    const auto decoded = codec::decode_grayscale_png(bytes, budget);
+    const auto decoded = codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded);
     REQUIRE(!decoded);
     CHECK(decoded.error().code == core::ErrorCode::input);
+    CHECK(budget.used() == 0);
+}
+TEST_CASE("Actual native PNG byte reads preserve failure priority and caller ownership", "[png]") {
+    const auto bytes = make_gray_png(sample_fixture(8, false, 2));
+    for (const bool refuse : {false, true}) {
+        NativePngInput source{.bytes = bytes, .stop = {}, .refuse = refuse};
+        core::Budget budget{codec_budget};
+        {
+            const codec::PngContext context{budget, false,
+                                            core::Cancellation{source.stop.get_token()}};
+            REQUIRE(context.ready());
+            codec::PngInput input{
+                .state = &source,
+                .read = native_read,
+                .remaining = refuse ? std::size_t{8} : bytes.size(),
+            };
+            CHECK(native_png_refusal(context, &input) == refuse);
+            CHECK(source.reads > 0);
+            if (refuse) {
+                CHECK(context.error(core::ErrorCode::input).code == core::ErrorCode::input);
+                CHECK(source.stop.stop_requested());
+            } else {
+                CHECK(!source.stop.stop_requested());
+                CHECK(png_get_image_width(context.png, context.info) == 2);
+                CHECK(png_get_image_height(context.png, context.info) == 9);
+            }
+        }
+        CHECK(budget.used() == 0);
+    }
+}
+TEST_CASE("Malformed PNG admission before a pending stop retains its real error", "[png]") {
+    const std::stop_source source;
+    static_cast<void>(source.request_stop());
+    const core::Cancellation control{source.get_token()};
+    core::Budget budget{codec_budget};
+    const std::array<std::uint8_t, 8> bad_signature{};
+    check_refusal(
+        codec::decode_png_raster(bad_signature, budget, image::ProfilePolicy::embedded, control),
+        core::ErrorCode::input);
+    const auto bytes = make_gray_png(sample_fixture(8, false, 2));
+    check_refusal(codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded, control),
+                  core::ErrorCode::cancelled);
     CHECK(budget.used() == 0);
 }
 } // namespace docenhance::tests

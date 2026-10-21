@@ -14,6 +14,7 @@ import tempfile
 import zlib
 from pathlib import Path
 
+from continuous_fixtures import decode_output
 from jsonschema import Draft202012Validator
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +70,31 @@ def verify_response(result: subprocess.CompletedProcess[bytes], expected: int) -
     return value
 
 
+def check_binary_artifact(directory: Path) -> None:
+    """The exact2x2 path fixture produces logical PNG1 and a complete current record."""
+    actual = decode_output((directory / "result.png").read_bytes())
+    if (actual.width, actual.height, actual.depth, actual.color, actual.pixels) != (
+        2,
+        2,
+        1,
+        0,
+        ((0,), (1,), (1,), (0,)),
+    ):
+        message = "Committed path fixture is not the independently expected physicalPNG1"
+        raise AssertionError(message)
+    record = json.loads((directory / "run.json").read_bytes())
+    request = record["request"]["binarization"]
+    facts = record["execution"]["binarization"]
+    if (request["method"], request["version"], facts["black_samples"], facts["white_samples"]) != (
+        "B03",
+        2,
+        2,
+        2,
+    ):
+        message = "Committed current Fixed request and actual classification disagree"
+        raise AssertionError(message)
+
+
 def valid_paths(binary: Path, root: Path, source: Path) -> int:
     """Unicode spelling remains exact; POSIX backslashes remain filename characters."""
     names = ["Rīga-文書-📄", "decomposed-e\u0301", 'quoted-"-line\n']
@@ -89,6 +115,7 @@ def valid_paths(binary: Path, root: Path, source: Path) -> int:
                 f"Published and reported paths differ: {response['output']!r} != {str(expected)!r}"
             )
             raise AssertionError(msg)
+        check_binary_artifact(target)
     return len(names)
 
 
@@ -142,6 +169,7 @@ def refused_delivery(binary: Path, root: Path, source: Path) -> int:
     if result.returncode != OUTPUT_ERROR or result.stderr or not (target / "result.png").is_file():
         msg = "Response delivery refusal lost the committed result or caused a misleading response"
         raise AssertionError(msg)
+    check_binary_artifact(target)
     return 1
 
 

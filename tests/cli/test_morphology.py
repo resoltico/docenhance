@@ -10,13 +10,15 @@ import sys
 import tempfile
 from pathlib import Path
 
+from composition_reference import terminal_fixed
 from continuous_fixtures import GRAY_ALPHA, Fixture
+from illumination_io import LINEAR, require_output, run
 from jsonschema import Draft202012Validator
 from morphology_reference import background
 from test_cli import SCHEMA, call_json, expect
 from test_continuous import transfer_decode
 from test_denoising import composition
-from test_illumination import LINEAR, colored_transport, oriented_protection, require_output, run
+from test_illumination import colored_transport, oriented_protection
 
 FIELD_TOLERANCE = 1e-12
 
@@ -40,19 +42,16 @@ def independent(exe: Path, root: Path) -> None:
                 exe, root, source, ["--illumination", "morph", "--background-radius", str(radius)]
             )
             output = require_output(output)
-            light = report["illumination"]
-            expect(light["method"] == {"id": "I02", "method_version": 1}, "I02 identity")
+            light = report["record"]["execution"]["illumination"]
+            expect(light["method"] == "I02", "I02 identity")
             validator = Draft202012Validator(json.loads(SCHEMA.read_text()))
-            for schema_field, value in (
-                ("morphology", None),
-                ("auto_predicates", light["auto_predicates"] | {"coverage": False}),
-            ):
-                malformed = report | {"illumination": light | {schema_field: value}}
-                expect(
-                    not validator.is_valid(malformed),
-                    "I02 rejects incomplete and foreign schema fields",
-                )
-            detail = light["morphology"]
+            expect(validator.is_valid(report), "actual I02 response passes emitted schema")
+            malformed = json.loads(json.dumps(report))
+            malformed["record"]["execution"]["illumination"]["auto_predicates"] = {
+                "coverage": False
+            }
+            expect(not validator.is_valid(malformed), "foreign I01 field is closed out")
+            detail = light["analysis"]
             expect(abs(detail["target"] - target) < FIELD_TOLERANCE, "independent source target")
             expect(
                 abs(detail["background_min"] - min(field)) < FIELD_TOLERANCE,
@@ -80,7 +79,11 @@ def independent(exe: Path, root: Path) -> None:
             record_path = bundle / "run.json"
             original = record_path.read_bytes()
             altered = json.loads(original)
-            altered["execution"]["illumination"]["method"]["id"] = "I01"
+            altered["execution"]["illumination"]["method"] = "I01"
+            record_path.write_text(json.dumps(altered), encoding="utf-8")
+            call_json(exe, ["verify", str(bundle), "--json"], 3)
+            altered = json.loads(original)
+            altered["execution"]["illumination"]["analysis"] = None
             record_path.write_text(json.dumps(altered), encoding="utf-8")
             call_json(exe, ["verify", str(bundle), "--json"], 3)
             record_path.write_bytes(original)
@@ -100,7 +103,6 @@ def strict_and_noops(exe: Path, root: Path) -> None:
         ["--illumination", "morph", "--background-radius", "257"],
         ["--illumination", "morph", "--background-radius", "1e2"],
         ["--illumination", "morph", "--background-radius", ""],
-        ["--illumination", "morph", "--output-mode", "bw"],
     )
     for options in invalid:
         run(exe, root, fixture, options, 2)
@@ -109,7 +111,9 @@ def strict_and_noops(exe: Path, root: Path) -> None:
         output, report = run(exe, root, fixture, ["--illumination", "morph", option, value])
         expect(output == baseline, "I02 algebraic identity")
         expect(
-            report["illumination"]["morphology"]["field_bytes"] == 0, "no full field for identity"
+            report["record"]["execution"]["illumination"]["analysis"] is None
+            and report["record"]["execution"]["illumination"]["counts"]["evaluated"] == 0,
+            "algebraic identity has no fabricated analysis or pixel evaluation",
         )
     mask = root / "mask.png"
     mask.write_bytes(Fixture(8, 4, ((1,),) * 32, depth=1).encoded())
@@ -121,7 +125,10 @@ def strict_and_noops(exe: Path, root: Path) -> None:
         output == baseline and mask.read_bytes() == before,
         "all protected identity and immutable mask",
     )
-    expect(report["illumination"]["reason"] == "no_eligible_samples", "all protected reason")
+    expect(
+        report["record"]["execution"]["illumination"]["reason"] == "no_eligible_samples",
+        "all protected reason",
+    )
     mask.write_bytes(Fixture(4, 8, ((1,),) * 32, depth=1).encoded())
     run(
         exe,
@@ -137,67 +144,115 @@ def strict_and_noops(exe: Path, root: Path) -> None:
         all(pixel == (255,) for pixel in output.pixels), "I02 analyzes composited alpha luminance"
     )
     expect(
-        report["conversion"]["alpha_flattened_pixels"] == len(alpha.pixels),
+        report["record"]["execution"]["interpretation"]["alpha_composited_pixels"]
+        == len(alpha.pixels),
         "alpha interpretation precedes I02",
     )
     black = Fixture(8, 4, ((0,),) * 32, metadata=LINEAR)
     output, report = run(exe, root, black, ["--illumination", "morph"])
     expect(
-        output is not None and report["illumination"]["status"] == "no_change",
+        output is not None
+        and report["record"]["execution"]["illumination"]["disposition"] == "no_change",
         "all black complete identity",
     )
 
 
-def lazy_failure_progress(exe: Path, root: Path) -> None:
-    """Later refusals preserve successful I02 preparation without invented evaluation."""
+def failure_prefix(exe: Path, root: Path) -> None:
+    """Eager completed I02 survives a later stage failure; acquisition precedes all stages."""
     fixture = Fixture(9, 5, ((128,),) * 45, metadata=LINEAR)
-    _, refused = run(
+    illumination = ["--illumination", "morph", "--background-radius", "1"]
+    _, healthy = run(exe, root, fixture, illumination)
+    completed = healthy["record"]["execution"]["illumination"]
+    expect(
+        completed["analysis"] is not None
+        and completed["counts"]["evaluated"] == len(fixture.pixels),
+        "actual healthy I02 completed before the matched refusal",
+    )
+    _, refused = run(exe, root, fixture, [*illumination, "--denoise", "nlm"], 4)
+    expect(refused["error"]["code"] == "E_METHOD_INAPPLICABLE", "actual search refusal survives")
+    expect(
+        refused["completed"] == {"illumination": completed}
+        and refused["failed_stage"] == "denoising"
+        and refused["publication"] == "not_started",
+        "completed prefix retained without staging",
+    )
+    psf = root / "malformed-psf.png"
+    for zero_blend in (False, True):
+        denoising = ["--denoise", "nlm", "--denoise-blend", "0"] if zero_blend else []
+        restoration = ["--deblur", "wiener", "--psf", "kernel", "--psf-file"]
+        _, absent = run(
+            exe,
+            root,
+            fixture,
+            [*illumination, *denoising, *restoration, str(root / "absent-psf.png")],
+            3,
+        )
+        expect(
+            absent["error"]["code"] == "E_INPUT"
+            and absent["failed_stage"] is None
+            and absent["completed"] == {}
+            and absent["publication"] == "not_started",
+            "failed byte acquisition reports no invented numerical work",
+        )
+        psf.write_bytes(b"invalid")
+        _, malformed = run(
+            exe, root, fixture, [*illumination, *denoising, *restoration, str(psf)], 3
+        )
+        expect(
+            malformed["error"]["code"] == "E_INPUT"
+            and malformed["failed_stage"] == "restoration"
+            and malformed["publication"] == "not_started",
+            "actual PSF decode owner failed",
+        )
+        expected = {"illumination": completed}
+        if zero_blend:
+            _, identity = run(exe, root, fixture, [*illumination, *denoising])
+            expected["denoising"] = identity["record"]["execution"]["denoising"]
+            expect(expected["denoising"]["reason"] == "zero_blend", "actual identity completed")
+        expect(malformed["completed"] == expected, "all and only actual completed stages survive")
+
+
+def binary_composition(exe: Path, root: Path) -> None:
+    """Independent closing/blur/gain feeds terminal Q16 and physical PNG1."""
+    width, height = 9, 5
+    values = [0.04 + 0.45 * x / (width - 1) for _ in range(height) for x in range(width)]
+    fixture = Fixture(
+        width, height, tuple((round(y * 65535),) for y in values), depth=16, metadata=LINEAR
+    )
+    values = [p[0] / 65535 for p in fixture.pixels]
+    field = background(values, width, height, 1)
+    expected = terminal_fixed(
+        [min(1, y * min(2, max(1, 0.7 / max(b, 0.02)))) for y, b in zip(values, field, strict=True)]
+    )
+    output, response = run(
         exe,
         root,
         fixture,
-        ["--illumination", "morph", "--background-radius", "1", "--denoise", "nlm"],
-        4,
-    )
-    expect(refused["error"]["code"] == "E_METHOD_INAPPLICABLE", "native search refusal survives")
-    expect(
-        refused["illumination"]["progress"] == "prepared"
-        and refused["illumination"]["status"] == "unresolved",
-        "prepared I02 survives search refusal",
-    )
-    expect(
-        refused["illumination"]["application"]["evaluated_samples"] == 0,
-        "search refusal does not observe illumination",
-    )
-    expect(
-        refused["denoising"]["progress"] == "preparing" and refused["publication"] == "not_started",
-        "known pre-staging refusal",
-    )
-    for zero_blend in (False, True):
-        options = [
+        [
             "--illumination",
             "morph",
             "--background-radius",
             "1",
-            "--deblur",
-            "wiener",
-            "--psf",
-            "kernel",
-            "--psf-file",
-            str(root / "absent-psf.png"),
-        ]
-        if zero_blend:
-            options += ["--denoise", "nlm", "--denoise-blend", "0"]
-        _, refused = run(exe, root, fixture, options, 3)
-        expect(refused["error"]["code"] == "E_INPUT", "missing PSF retains actual asset refusal")
-        expect(
-            refused["illumination"]["progress"] == "prepared"
-            and refused["illumination"]["status"] == "unresolved",
-            "PSF load leaves I02 unobserved",
-        )
-        expect(
-            refused["denoising"]["progress"] == "completed", "identity denoising already settled"
-        )
-        expect(refused["restoration"]["progress"] == "preparing", "PSF owner attempted preparation")
+            "--background-target",
+            "0.7",
+            "--output-mode",
+            "bw",
+            "--binarize",
+            "fixed",
+            "--fixed-threshold",
+            "0.5",
+        ],
+    )
+    expect(
+        require_output(output).depth == 1 and require_output(output).pixels == expected,
+        "I02 BW output matches independent terminal logical bits",
+    )
+    facts = response["record"]["execution"]["binarization"]
+    expect(
+        facts["black_samples"] == sum(p == (0,) for p in expected)
+        and facts["white_samples"] == sum(p == (1,) for p in expected),
+        "terminal counts",
+    )
 
 
 def main() -> None:
@@ -207,11 +262,12 @@ def main() -> None:
         root = Path(directory)
         independent(exe, root)
         strict_and_noops(exe, root)
-        lazy_failure_progress(exe, root)
+        failure_prefix(exe, root)
+        binary_composition(exe, root)
         colored_transport(exe, root, "morph")
         oriented_protection(exe, root, "morph")
         composition(exe, root, "morph")
-    print("PASS: five I02 numerical, admission, color and orientation groups")
+    print("PASS: I02 numerical, admission, color, orientation and failure controls")
 
 
 if __name__ == "__main__":

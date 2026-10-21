@@ -1,23 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/core/cancellation.hpp"
-#include "docenhance/core/memory.hpp"
+#include "docenhance/core/fields.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/linear.hpp"
-#include "docenhance/image/numeric.hpp"
-#include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/method_catalog.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
 
 #include <cstdint>
-#include <functional>
-#include <optional>
-#include <span>
-#include <string_view>
-#include <utility>
+#include <tuple>
 #include <variant>
 namespace docenhance::methods {
 class Unsharp {
@@ -36,68 +27,32 @@ class Unsharp {
 };
 struct SharpenOff {};
 using Sharpening = std::variant<SharpenOff, Unsharp>;
-enum class SharpenStatus { unresolved, disabled, no_change, applied, failed };
-enum class SharpenReason { none, zero_amount, no_eligible_samples, no_effect, processing_failure };
 struct ExcursionRange {
     double low = 0;
     double high = 0;
     bool operator==(const ExcursionRange&) const = default;
 };
-struct SharpenReport {
-    SharpenStatus status = SharpenStatus::disabled;
-    SharpenReason reason = SharpenReason::none;
-    StageProgress progress = StageProgress::not_started;
-    [[nodiscard]] bool complete() const noexcept {
-        return progress == StageProgress::completed;
-    }
-    std::optional<UnsharpParameters> requested = std::nullopt;
-    std::optional<ExcursionRange> pre_clamp = std::nullopt;
-    std::uint64_t eligible_samples = 0;
-    std::uint64_t protected_samples = 0;
-    std::uint64_t context_samples = 0;
-    std::uint64_t evaluated_samples = 0;
-    std::uint64_t corrected_samples = 0;
-    std::uint64_t changed_samples = 0;
-    std::uint64_t clipped_low_samples = 0;
-    std::uint64_t clipped_high_samples = 0;
-    std::uint64_t preparation_charge_peak = 0;
-    bool operator==(const SharpenReport&) const = default;
-};
-[[nodiscard]] std::string_view status_name(SharpenStatus value) noexcept;
-[[nodiscard]] std::string_view reason_name(SharpenReason value) noexcept;
-[[nodiscard]] core::Result<double> unsharp_candidate(double f, double blurred,
-                                                     const Unsharp& method);
-[[nodiscard]] bool valid_sharpen_observations(const SharpenReport& report);
-[[nodiscard]] bool valid_sharpen_extent(const SharpenReport& report, image::Extent extent);
-[[nodiscard]] bool valid_sharpen(const SharpenReport& report, const Sharpening& method);
-struct SharpenExecution {
-    SharpenExecution(core::Budget& b, core::Cancellation c, SharpenReport& r, image::RowUse use)
-        : budget(b), cancellation(std::move(c)), report(r), preparation_use(use) {}
-    std::reference_wrapper<core::Budget> budget;
-    core::Cancellation cancellation;
-    std::reference_wrapper<SharpenReport> report;
-    image::RowUse preparation_use;
-};
-class SharpenModel {
-  public:
-    [[nodiscard]] static core::Result<SharpenModel>
-    prepare(image::LinearSource& source, image::PlaneView<const std::uint8_t> mask,
-            const Unsharp& method, const SharpenExecution& execution);
-    [[nodiscard]] bool active() const noexcept {
-        return !blurred_.view().empty();
-    }
-    [[nodiscard]] core::Result<void> apply(image::RowRange range, std::span<double> rgb,
-                                           image::PlaneView<const std::uint8_t> mask,
-                                           SharpenReport& report,
-                                           const core::Cancellation& cancellation) const;
-
-  private:
-    [[nodiscard]] core::Result<image::Rgb>
-    map_pixel(const image::Rgb& before, image::RowRange position, SharpenReport& report) const;
-    SharpenModel(image::Extent extent, Unsharp method, image::Plane<double> blurred)
-        : extent_(extent), method_(method), blurred_(std::move(blurred)) {}
-    image::Extent extent_;
-    Unsharp method_;
-    image::Plane<double> blurred_;
-};
+[[nodiscard]] constexpr bool validate(ExcursionRange range) noexcept {
+    return core::in_range(range.low, -sharpen_amount_domain.maximum,
+                          1 + sharpen_amount_domain.maximum) &&
+           core::in_range(range.high, -sharpen_amount_domain.maximum,
+                          1 + sharpen_amount_domain.maximum) &&
+           range.low <= range.high;
+}
+// Finite Unit entering f and fitted blurred value, with an admitted method.
+// Returns finite RAW excursions, which can lie outside Unit before clipping.
+[[nodiscard]] double unsharp_candidate(double f, double blurred, const Unsharp& method) noexcept;
 } // namespace docenhance::methods
+
+namespace docenhance {
+template <> struct core::Fields<methods::ExcursionRange> {
+    static constexpr auto domain = core::Range<double>{
+        .minimum = -methods::sharpen_amount_domain.maximum,
+        .maximum = 1 + methods::sharpen_amount_domain.maximum,
+    };
+    static constexpr auto list = std::tuple{
+        core::field("low", &methods::ExcursionRange::low, domain),
+        core::field("high", &methods::ExcursionRange::high, domain),
+    };
+};
+} // namespace docenhance

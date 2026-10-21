@@ -67,7 +67,7 @@ def parameter_projection(parameter: dict[str, Any]) -> dict[str, str]:
 
 
 def catalog_projection(entry: dict[str, Any]) -> dict[str, Any]:
-    """Discovery has richer entries; persistent v14 method identities stay id/version only."""
+    """Project actual selectable descriptors into their complete discovery wire entries."""
     return {
         **{key: entry[key] for key in ("id", "method_version", "name", "family", "selectors")},
         "parameters": [parameter_projection(parameter) for parameter in entry["parameters"]],

@@ -17,6 +17,10 @@ RGBA = 6
 BYTE_BITS = 8
 WORD_BITS = 16
 BYTE_MASK = 255
+CHUNK_OVERHEAD = 12
+IHDR_BYTES = 13
+FILTER_MAX = 4
+ICC_NAME_MAX = 79
 CHANNELS = {GRAY: 1, RGB: 3, INDEXED: 1, GRAY_ALPHA: 2, RGBA: 4}
 ADAM7 = (
     (0, 0, 8, 8),
@@ -45,6 +49,9 @@ def paeth(left: int, above: int, corner: int) -> int:
 
 def prediction(kind: int, left: int, above: int, corner: int) -> int:
     """Return one of all five lossless PNG row filter predictors."""
+    if not 0 <= kind <= FILTER_MAX:
+        msg = "Invalid PNG filter kind"
+        raise ValueError(msg)
     predictors = (0, left, above, (left + above) // 2, paeth(left, above, corner))
     return predictors[kind]
 
@@ -119,48 +126,75 @@ class Fixture:
         return bytes(result)
 
 
+def _read_chunk(data: bytes) -> tuple[bytes, bytes, bytes]:
+    """Check the exact declared frame and CRC before chunk-order admission."""
+    if len(data) < CHUNK_OVERHEAD:
+        message = "Truncated PNG chunk"
+        raise ValueError(message)
+    size = int.from_bytes(data[:4], "big")
+    if size > len(data) - CHUNK_OVERHEAD:
+        message = "Output chunk extent mismatch"
+        raise ValueError(message)
+    name, body = data[4:8], data[8 : 8 + size]
+    crc = int.from_bytes(data[8 + size : 12 + size], "big")
+    if not name.isalpha() or name[2] & 32 or zlib.crc32(name + body) != crc:
+        message = "Output chunk name or CRC mismatch"
+        raise ValueError(message)
+    return name, body, data[CHUNK_OVERHEAD + size :]
+
+
 def chunks(data: bytes) -> dict[bytes, list[bytes]]:
-    """Read output chunks, rejecting truncation, CRC errors and trailing bytes."""
+    """Read exact PNG framing, CRCs, singleton headers, contiguous IDAT and final IEND."""
     if not data.startswith(SIGNATURE):
-        msg = "Invalid output signature"
-        raise ValueError(msg)
+        message = "Invalid output signature"
+        raise ValueError(message)
     data = data[len(SIGNATURE) :]
     result: dict[bytes, list[bytes]] = {}
+    idat_finished = False
     while data:
-        size = int.from_bytes(data[:4], "big")
-        name, body = data[4:8], data[8 : 8 + size]
-        crc = int.from_bytes(data[8 + size : 12 + size], "big")
-        if len(body) != size or zlib.crc32(name + body) != crc:
-            msg = "Output chunk size or CRC mismatch"
-            raise ValueError(msg)
+        name, body, data = _read_chunk(data)
+        size = len(body)
+        if not result and name != b"IHDR":
+            message = "IHDR must be first"
+            raise ValueError(message)
+        if name == b"IHDR" and (result or size != IHDR_BYTES):
+            message = "IHDR must be one complete header"
+            raise ValueError(message)
+        if name in (b"iCCP", b"pHYs") and name in result:
+            message = "Duplicate output metadata"
+            raise ValueError(message)
+        if name == b"IDAT" and idat_finished:
+            message = "Noncontiguous IDAT"
+            raise ValueError(message)
+        if b"IDAT" in result and name != b"IDAT":
+            idat_finished = True
         result.setdefault(name, []).append(body)
-        data = data[12 + size :]
         if name == b"IEND":
-            if data:
-                msg = "Output has trailing bytes"
-                raise ValueError(msg)
+            if size or data or b"IDAT" not in result:
+                message = "Invalid final IEND or absent image data"
+                raise ValueError(message)
             return result
-    msg = "Output has no IEND"
-    raise ValueError(msg)
+    message = "Output has no IEND"
+    raise ValueError(message)
 
 
-def decode_output(data: bytes) -> Fixture:
-    """Decode raw noninterlaced output integers without using the production codec."""
-    metadata = chunks(data)
-    width, height, depth, color, compression, filtering, interlace = struct.unpack(
-        ">IIBBBBB", metadata[b"IHDR"][0]
-    )
-    if compression or filtering or interlace or depth not in (BYTE_BITS, WORD_BITS):
-        msg = "Unexpected output encoding"
-        raise ValueError(msg)
-    bpp = CHANNELS[color] * depth // BYTE_BITS
-    row_bytes = width * bpp
-    stream = zlib.decompress(b"".join(metadata[b"IDAT"]))
-    if len(stream) != height * (row_bytes + 1):
-        msg = "Unexpected decoded output extent"
-        raise ValueError(msg)
+def inflate(data: bytes, expected: int | None = None) -> bytes:
+    """One complete zlib stream, with no ignored compressed suffix or oversized raster."""
+    decoder = zlib.decompressobj()
+    result = decoder.decompress(data, 0 if expected is None else expected + 1)
+    if not decoder.eof or decoder.unused_data or decoder.unconsumed_tail:
+        message = "Incomplete zlib stream or compressed suffix"
+        raise ValueError(message)
+    if expected is not None and len(result) != expected:
+        message = "Unexpected decoded output extent"
+        raise ValueError(message)
+    return result
+
+
+def unfilter(stream: bytes, height: int, row_bytes: int, bpp: int) -> list[bytes]:
+    """Reconstruct original unfiltered packed rows before any low-bit sample expansion."""
     prior = bytes(row_bytes)
-    pixels: list[Pixel] = []
+    rows = []
     for y in range(height):
         at = y * (row_bytes + 1)
         kind, filtered = stream[at], stream[at + 1 : at + 1 + row_bytes]
@@ -169,12 +203,46 @@ def decode_output(data: bytes) -> Fixture:
             left = row[index - bpp] if index >= bpp else 0
             corner = prior[index - bpp] if index >= bpp else 0
             row.append((value + prediction(kind, left, prior[index], corner)) & BYTE_MASK)
+        rows.append(bytes(row))
+        prior = bytes(row)
+    return rows
+
+
+def decode_output(data: bytes) -> Fixture:
+    """Decode opaque PNG8/16 integers or physical PNG1 logical0/1; never display-expand bits."""
+    metadata = chunks(data)
+    width, height, depth, color, compression, filtering, interlace = struct.unpack(
+        ">IIBBBBB", metadata[b"IHDR"][0]
+    )
+    if any(name not in (b"IHDR", b"IDAT", b"IEND", b"iCCP", b"pHYs") for name in metadata):
+        message = "Unexpected canonical output metadata"
+        raise ValueError(message)
+    if not width or not height or compression or filtering or interlace:
+        message = "Unexpected output encoding"
+        raise ValueError(message)
+    if color not in (GRAY, RGB) or depth not in (1, BYTE_BITS, WORD_BITS):
+        message = "Unsupported output precision or color"
+        raise ValueError(message)
+    if depth == 1 and (color != GRAY or b"iCCP" in metadata):
+        message = "PNG1 output must be grayscale without ICC"
+        raise ValueError(message)
+    bpp = max(1, CHANNELS[color] * depth // BYTE_BITS)
+    row_bytes = (width * CHANNELS[color] * depth + 7) // BYTE_BITS
+    stream = inflate(b"".join(metadata[b"IDAT"]), height * (row_bytes + 1))
+    pixels: list[Pixel] = []
+    for row in unfilter(stream, height, row_bytes, bpp):
+        if depth == 1:
+            tail = (8 - width % 8) % 8
+            if tail and row[-1] & ((1 << tail) - 1):
+                message = "Nonzero original PNG1 unused row bits"
+                raise ValueError(message)
+            pixels.extend(((row[x // 8] >> (7 - x % 8)) & 1,) for x in range(width))
+            continue
         stride = depth // BYTE_BITS
         samples = [int.from_bytes(row[i : i + stride], "big") for i in range(0, row_bytes, stride)]
         pixels.extend(
             tuple(samples[i : i + CHANNELS[color]]) for i in range(0, len(samples), CHANNELS[color])
         )
-        prior = bytes(row)
     return Fixture(width, height, tuple(pixels), color, depth)
 
 
@@ -186,7 +254,11 @@ def exif(orientation: int) -> bytes:
 def profile_from_output(data: bytes) -> bytes:
     """Extract and decompress the actual serialized profile for independent inspection."""
     packed = chunks(data)[b"iCCP"][0]
-    return zlib.decompress(packed[packed.index(b"\0") + 2 :])
+    name_end = packed.index(b"\0")
+    if not 1 <= name_end <= ICC_NAME_MAX or packed[name_end + 1 : name_end + 2] != b"\0":
+        message = "Invalid ICC PNG compression framing"
+        raise ValueError(message)
+    return inflate(packed[name_end + 2 :])
 
 
 def gamma_profile(profile: bytes, gamma: float) -> bytes:
@@ -207,3 +279,51 @@ def gamma_profile(profile: bytes, gamma: float) -> bytes:
         result[at + 8 : at + 12] = struct.pack(">I", len(curve))
     result[84:100] = b"\0" * 16
     return bytes(result)
+
+
+def decoder_controls() -> None:
+    """Independent strict packed-row positives and CRC/zlib/tail rejection controls."""
+
+    def refused(data: bytes) -> None:
+        try:
+            decode_output(data)
+        except (ValueError, zlib.error):
+            return
+        message = "Malformed independent PNG decoder control was accepted"
+        raise AssertionError(message)
+
+    for width in (1, 7, 8, 9, 15, 16, 17):
+        pixels: tuple[Pixel, ...] = tuple(((x + y) % 2,) for y in range(5) for x in range(width))
+        fixture = Fixture(width, 5, pixels, depth=1)
+        if decode_output(fixture.encoded()).pixels != pixels:
+            message = "Logical packed sample decoder changed physical bits"
+            raise AssertionError(message)
+        header = struct.pack(">IIBBBBB", width, 5, 1, GRAY, 0, 0, 0)
+        raw = b"".join(
+            b"\0" + pack_samples([p[0] for p in pixels[y * width : (y + 1) * width]], 1)
+            for y in range(5)
+        )
+
+        def framed(payload: bytes, header: bytes = header) -> bytes:
+            return (
+                SIGNATURE + chunk(b"IHDR", header) + chunk(b"IDAT", payload) + chunk(b"IEND", b"")
+            )
+
+        refused(framed(zlib.compress(raw) + b"suffix"))
+        corrupt = bytearray(fixture.encoded())
+        corrupt[-1] ^= 1
+        refused(bytes(corrupt))
+        if width % 8:
+            altered = bytearray(raw)
+            altered[(width + 7) // 8] |= 1
+            refused(framed(zlib.compress(altered)))
+    for depth in (8, 16):
+        maximum = (1 << depth) - 1
+        for color, channels in ((GRAY, 1), (RGB, 3)):
+            pixels = tuple(
+                tuple((i * 37 + c * 13) % maximum for c in range(channels)) for i in range(15)
+            )
+            fixture = Fixture(3, 5, pixels, color=color, depth=depth)
+            if decode_output(fixture.encoded()) != fixture:
+                message = "Existing independent8/16-bit decode API changed"
+                raise AssertionError(message)

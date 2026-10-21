@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "source_snapshot.hpp"
-
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/source_facts.hpp"
+#include "docenhance/fs/digest.hpp"
+#include "docenhance/fs/snapshot.hpp"
 #include "file_access.hpp"
 
 #include <algorithm>
@@ -17,10 +17,11 @@
 #include <utility>
 
 namespace docenhance::fs {
-core::Result<core::Buffer> read_source_snapshot(const std::string& input, core::Budget& budget,
-                                                const core::Cancellation& cancellation,
-                                                std::size_t maximum_bytes) {
-    if (maximum_bytes == 0 || maximum_bytes > image::source_encoded_bytes_max) {
+namespace {
+core::Result<core::Buffer> read_snapshot_bytes(const std::string& input, core::Budget& budget,
+                                               const core::Cancellation& cancellation,
+                                               std::size_t maximum_bytes) {
+    if (maximum_bytes == 0 || maximum_bytes > core::source_encoded_bytes_max) {
         return core::failure(core::ErrorCode::argument, "Invalid encoded source byte ceiling");
     }
     if (cancellation.requested(core::Checkpoint::decode)) {
@@ -62,5 +63,19 @@ core::Result<core::Buffer> read_source_snapshot(const std::string& input, core::
                              "Source changed size or could not be finished");
     }
     return bytes;
+}
+} // namespace
+core::Result<Snapshot> read_source_snapshot(const std::string& input, core::Budget& budget,
+                                            const core::Cancellation& cancellation,
+                                            std::size_t maximum_bytes) {
+    auto bytes = read_snapshot_bytes(input, budget, cancellation, maximum_bytes);
+    if (!bytes) {
+        return std::unexpected(std::move(bytes.error()));
+    }
+    auto identity = identify(bytes->bytes(), cancellation);
+    if (!identity) {
+        return std::unexpected(std::move(identity.error()));
+    }
+    return Snapshot{.encoded = std::move(*bytes), .identity = std::move(*identity)};
 }
 } // namespace docenhance::fs

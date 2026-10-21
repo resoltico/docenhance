@@ -4,17 +4,47 @@
 
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
+import copy
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from jsonschema import ValidationError
 
-from document_quality import frozen_digest, read_json
+import quality_acquisition as acquisition
+from parameter_contract import merged_options
+from quality_commands import command_options
+from quality_inputs import FrozenEvidence
+from quality_json import ROOT, frozen_digest
+from quality_plan import validate_plan
 from quality_protocol import BUNDLE_ROLES
+from quality_provenance import QualityProvenance, admit_provenance
+from quality_provenance_contract import PROVENANCE_KEYS, provenance_shape
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
+
+
+@dataclass(frozen=True)
+class QualityInputs:
+    """One owned plan/reference acquisition and its selected pre-effect execution premises."""
+
+    plan: dict[str, Any]
+    root: Path
+    executable: Path
+    snapshots: FrozenEvidence
+    build: dict[str, Any]
+    provenance: QualityProvenance | None
+
+
+def admit_evaluation(plan: dict[str, Any], root: Path, executable: Path) -> QualityInputs:
+    """No journal, directory or child exists before the same acquired premises admit."""
+    plan = copy.deepcopy(plan)
+    validate_plan(plan)
+    snapshots = FrozenEvidence(plan, root)
+    build = admit(plan, root, executable, replay_options, snapshots)
+    provenance = admit_provenance(plan, root, executable, snapshots)
+    return QualityInputs(plan, root, executable, snapshots, build, provenance)
 
 
 def evidence_error(error: Exception) -> str:
@@ -28,48 +58,36 @@ def evidence_error(error: Exception) -> str:
 
 
 def digest(path: Path) -> str:
-    """Hash ordinary bytes in bounded chunks."""
-    with path.open("rb") as stream:
-        return hashlib.file_digest(stream, "sha256").hexdigest()
-
-
-def confined(root: Path, name: str) -> Path:
-    """Evidence identities stay confined and cannot redirect through links."""
-    path = root / name
-    if (
-        Path(name).is_absolute()
-        or ".." in Path(name).parts
-        or not path.resolve().is_relative_to(root)
-    ):
-        message = "Evaluation path escapes its corpus root"
-        raise ValueError(message)
-    if any(part.is_symlink() for part in (path, *path.parents)):
-        message = "Evaluation evidence must not redirect through symbolic links"
-        raise ValueError(message)
-    return path
+    """Fingerprint one regular initial-extent snapshot through its actual owned descriptor."""
+    return acquisition.fingerprint(path)["sha256"]
 
 
 def reference(root: Path, ref: dict[str, Any]) -> Path:
     """Admission checks bytes independently of the declared receipt or asset contents."""
-    path = confined(root, ref["path"])
+    path = acquisition.confined(root, ref["path"])
     if digest(path) != ref["sha256"]:
         message = "Frozen referenced bytes differ: " + ref["path"]
         raise ValueError(message)
     return path
 
 
-def command_options(command: list[str], source: str, executable: Path) -> tuple[str, list[str]]:
-    """A role freezes full argv; replay substitutes only the output destination."""
-    if command[:3] != [str(executable), "process", source] or command[-1] != "--json":
-        message = "Frozen command must bind selected executable, process source and JSON delivery"
+def replay_options(options: list[str], root: Path) -> None:
+    """Admit current processing option pairs without allowing evidence to redirect outputs."""
+    contract = acquisition.acquire_json_file(ROOT / "spec/cli-contract.json")
+    methods = acquisition.acquire_json_file(ROOT / "spec/method-contract.json")
+    allowed = {
+        option["name"]
+        for option in merged_options(contract, methods)
+        if option["metavar"] and "process" in option["scope"] and option["name"] != "--out-dir"
+    }
+    if len(options) % 2 or any(
+        options[index] not in allowed for index in range(0, len(options), 2)
+    ):
+        message = "Replay requires processing option/value pairs without output override"
         raise ValueError(message)
-    options = command[3:-1]
-    names = options[::2]
-    if len(options) % 2 or len(set(names)) != len(names) or names.count("--out-dir") != 1:
-        message = "Frozen command requires unique option/value pairs and one output directory"
-        raise ValueError(message)
-    index = names.index("--out-dir") * 2
-    return options[index + 1], options[:index] + options[index + 2 :]
+    for index in range(0, len(options), 2):
+        if options[index] in {"--protect-mask", "--psf-file"}:
+            acquisition.confined(root, options[index + 1])
 
 
 def admit(
@@ -77,33 +95,35 @@ def admit(
     root: Path,
     executable: Path,
     check_options: Callable[[list[str], Path], None],
+    snapshots: FrozenEvidence,
 ) -> dict[str, Any]:
     """Refuse drift before assessment; receipt identity stays outside the protocol self-hash."""
     protocol = plan["protocol"]
     if digest(executable) != protocol["executable_sha256"]:
         message = "Executable differs from the reviewed evaluation identity"
         raise ValueError(message)
-    receipt = read_json(reference(root, plan["preregistration"]).read_bytes())
+    receipt = snapshots.value(plan["preregistration"])
     if (
         set(receipt) != {"protocol_sha256"}
         or receipt.get("protocol_sha256") != plan["protocol_sha256"]
     ):
         message = "Independent preregistration receipt references another protocol"
         raise ValueError(message)
-    build = read_json(reference(root, protocol["build_provenance"]).read_bytes())
+    build = snapshots.value(protocol["build_provenance"])
     if (
-        set(build) != {"source_commit", "executable_sha256", "build"}
+        set(build) != PROVENANCE_KEYS
         or build.get("source_commit") != protocol["source_commit"]
         or build.get("executable_sha256") != protocol["executable_sha256"]
         or not isinstance(build.get("build"), dict)
     ):
         message = "Reviewed build provenance differs from frozen source/executable"
         raise ValueError(message)
+    provenance_shape(build)
     reference(root, protocol["review_protocol"])
-    admit_reviews(protocol, root)
+    admit_reviews(protocol, snapshots)
     samples = {sample["id"]: sample for sample in protocol["corpus"]}
     for sample in samples.values():
-        if digest(confined(root, sample["path"])) != sample["sha256"]:
+        if digest(acquisition.confined(root, sample["path"])) != sample["sha256"]:
             message = "Source input changed after corpus freezing"
             raise ValueError(message)
     admit_pages(protocol, root, executable, check_options)
@@ -131,7 +151,7 @@ def admit_pages(
             destination, options = command_options(
                 command, samples[page["sample"]]["path"], executable
             )
-            destinations.append(confined(root, destination))
+            destinations.append(acquisition.confined(root, destination))
             check_options(options, root)
             for i in range(0, len(options), 2):
                 if options[i] in {"--protect-mask", "--psf-file"}:
@@ -141,9 +161,9 @@ def admit_pages(
             raise ValueError(message)
 
 
-def admit_reviews(protocol: dict[str, Any], root: Path) -> None:
+def admit_reviews(protocol: dict[str, Any], snapshots: FrozenEvidence) -> None:
     """Retained assignment and tuning receipts bind reviewed identities, not just file existence."""
-    assignment = read_json(reference(root, protocol["assignment"]).read_bytes())
+    assignment = snapshots.value(protocol["assignment"])
     expected = [
         {
             "sample": page["sample"],
@@ -170,7 +190,7 @@ def admit_reviews(protocol: dict[str, Any], root: Path) -> None:
         message = "Blinded assignment differs from frozen pages and panel"
         raise ValueError(message)
     if protocol["tuning"]["receipt"] is not None:
-        tuning = read_json(reference(root, protocol["tuning"]["receipt"]).read_bytes())
+        tuning = snapshots.value(protocol["tuning"]["receipt"])
         inputs = [sample for sample in protocol["corpus"] if sample["split"] == "tuning"]
         if set(tuning) != {"tuning_corpus_sha256"} or tuning[
             "tuning_corpus_sha256"

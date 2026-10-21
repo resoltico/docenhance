@@ -1,15 +1,18 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/color/converter.hpp"
+#include "docenhance/color/interpretation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/numeric.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "png_depth_fixture.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -35,24 +38,48 @@ void attempt(std::span<const std::uint8_t> profile, docenhance::image::SampleMod
             source.metadata.icc = budget.allocate(profile.size()).value();
             std::memcpy(source.metadata.icc.bytes().data(), profile.data(), profile.size());
         }
-        auto converter =
-            de::color::Converter::create(source, de::image::Continuous::create({}).value(), budget);
-        if (converter) {
-            const auto shape = (*converter)->descriptor().shape;
-            auto output = de::image::Plane<std::uint8_t>::allocate(
-                budget, de::image::raster_row_bytes(shape).value(), 1);
-            if (output) {
-                const auto result =
-                    (*converter)->row(0, output->view().row(0), de::image::RowUse::output);
-                de::fuzz::require(
-                    result.has_value() || result.error().code == de::core::ErrorCode::input ||
-                        result.error().code == de::core::ErrorCode::resource,
-                    "native ICC samples produce valid output or a named input/resource failure");
+        const de::image::PngShape shape{
+            .width = 1,
+            .height = 1,
+            .model = model,
+            .depth = docenhance::tests::fixture_png_depth(16),
+        };
+        const de::image::InterpretationPolicy policy{};
+        auto interpreter = de::color::Interpretation::create(source, policy, shape, budget);
+        if (interpreter) {
+            const auto descriptor = (*interpreter)->descriptor();
+            de::fuzz::require(descriptor.output == shape, "ICC output shape remains admitted");
+            auto reader = interpreter.value()->reader();
+            de::fuzz::require(reader.has_value(), "ICC interpreter admits its exclusive reader");
+            std::array<double, 3> first{};
+            std::array<double, 3> second{};
+            const auto read = [&](std::span<double> output) {
+                return model == de::image::SampleModel::gray
+                           ? reader.value().read_gray(0, 0, output.first(1))
+                           : reader.value().read_rgb(0, 0, output);
+            };
+            const auto initial = read(first);
+            de::fuzz::require((*interpreter)->descriptor() == descriptor,
+                              "ICC read returns observations without mutating its descriptor");
+            const auto repeated = read(second);
+            de::fuzz::require(initial.has_value() == repeated.has_value(),
+                              "ICC sample outcome repeats");
+            if (initial) {
+                de::fuzz::require(de::image::valid_unit_samples(first),
+                                  "ICC interpretation returns finite unit samples");
+                de::fuzz::require(*initial == *repeated && first == second,
+                                  "ICC linear samples and owned observations repeat exactly");
+            } else {
+                de::fuzz::require(initial.error().code == repeated.error().code &&
+                                      (initial.error().code == de::core::ErrorCode::input ||
+                                       initial.error().code == de::core::ErrorCode::resource),
+                                  "native ICC samples repeat named input/resource failure");
             }
-        }
-        if (!converter) {
-            de::fuzz::require(converter.error().code == de::core::ErrorCode::input ||
-                                  converter.error().code == de::core::ErrorCode::resource,
+            de::fuzz::require((*interpreter)->descriptor() == descriptor,
+                              "repeated ICC extraction cannot accumulate observations");
+        } else {
+            de::fuzz::require(interpreter.error().code == de::core::ErrorCode::input ||
+                                  interpreter.error().code == de::core::ErrorCode::resource,
                               "raw ICC refuses only input or resource failures");
         }
         de::fuzz::require(budget.used() <= memory_limit,

@@ -1,21 +1,19 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/fs/psf_png.hpp"
+#include "docenhance/codec/psf_png.hpp"
 
 #include "cancellation_probe.hpp"
-#include "docenhance/codec/psf_png.hpp"
-#include "docenhance/color/converter.hpp"
+#include "docenhance/color/profile.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/fs/digest.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/fs/snapshot.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source_facts.hpp"
 #include "png_fixture.hpp"
-#include "source_snapshot.hpp"
 #include "temporary_directory.hpp"
 
 #include <algorithm>
@@ -23,6 +21,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <ios>
@@ -71,10 +70,11 @@ void insert_metadata(std::vector<std::uint8_t>& png, std::string_view name,
 }
 std::vector<std::uint8_t> valid_gray_iccp() {
     core::Budget budget{psf_codec_budget};
-    const auto raster = codec::decode_psf_png(coefficient_png(), budget).value();
-    const auto converter =
-        color::Converter::create(raster, image::Continuous::create({}).value(), budget).value();
-    const auto encoded = stored_deflate(converter->descriptor().profile);
+    const auto canonical = color::make_output_profile(budget, true).value();
+    std::vector<std::uint8_t> profile(canonical.size());
+    std::ranges::transform(canonical.bytes(), profile.begin(),
+                           [](std::byte value) { return std::to_integer<std::uint8_t>(value); });
+    const auto encoded = stored_deflate(profile);
     std::vector<std::uint8_t> declaration{'P', 'S', 'F', 0, 0};
     declaration.insert(declaration.end(), encoded.begin(), encoded.end());
     return declaration;
@@ -86,6 +86,10 @@ void write_psf(const std::filesystem::path& path, std::span<const std::uint8_t> 
     }
     stream.close();
     REQUIRE(stream);
+}
+core::Result<image::Raster> decode_psf_snapshot(const fs::Snapshot& snapshot,
+                                                core::Budget& budget) {
+    return codec::decode_psf_png(snapshot.encoded.bytes(), budget);
 }
 void compare_coefficient_bytes(const image::Raster& raster, unsigned depth) {
     const auto raw =
@@ -106,7 +110,9 @@ TEST_CASE("PSF PNG coefficients retain raw 8 and 16 bit network bytes and rectan
         for (const auto height : {3U, 5U}) {
             core::Budget budget{psf_codec_budget};
             {
-                auto decoded = codec::decode_psf_png(coefficient_png(3, height, depth), budget);
+                auto decoded = codec::decode_psf_png(
+                    std::as_bytes(std::span<const std::uint8_t>{coefficient_png(3, height, depth)}),
+                    budget);
                 REQUIRE(decoded);
                 CHECK(decoded->shape.width == 3);
                 CHECK(decoded->shape.height == height);
@@ -125,7 +131,8 @@ TEST_CASE("PSF PNG ignores interpretation declarations without changing stored c
             auto bytes = coefficient_png(3, 5, 16);
             insert_metadata(bytes, declaration, payload);
             core::Budget budget{psf_codec_budget};
-            auto decoded = codec::decode_psf_png(bytes, budget);
+            auto decoded =
+                codec::decode_psf_png(std::as_bytes(std::span<const std::uint8_t>{bytes}), budget);
             REQUIRE(decoded);
             compare_coefficient_bytes(*decoded, 16);
         }
@@ -139,7 +146,8 @@ TEST_CASE("PSF PNG also ignores valid ICC and EXIF orientation declarations", "[
     insert_metadata(bytes, "eXIf", exif);
     insert_metadata(bytes, "iCCP", valid_gray_iccp());
     core::Budget budget{psf_codec_budget};
-    const auto result = codec::decode_psf_png(bytes, budget);
+    const auto result =
+        codec::decode_psf_png(std::as_bytes(std::span<const std::uint8_t>{bytes}), budget);
     REQUIRE(result);
     CHECK(result->shape.width == 3);
     CHECK(result->shape.height == 5);
@@ -148,26 +156,30 @@ TEST_CASE("PSF PNG also ignores valid ICC and EXIF orientation declarations", "[
 TEST_CASE("PSF PNG domain refusals happen before pixel allocation", "[io][restoration]") {
     for (const auto depth : {1U, 2U, 4U}) {
         core::Budget budget{0};
-        const auto result = codec::decode_psf_png(coefficient_png(3, 3, depth), budget);
+        const auto result = codec::decode_psf_png(
+            std::as_bytes(std::span<const std::uint8_t>{coefficient_png(3, 3, depth)}), budget);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::input);
         CHECK(budget.used() == 0);
     }
     for (const auto color : {2U, 3U, 4U, 6U}) {
         core::Budget budget{0};
-        const auto result = codec::decode_psf_png(coefficient_png(3, 3, 8, color), budget);
+        const auto result = codec::decode_psf_png(
+            std::as_bytes(std::span<const std::uint8_t>{coefficient_png(3, 3, 8, color)}), budget);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::input);
     }
     for (const auto width : {1U, 2U, 4U, 131U}) {
         core::Budget budget{0};
-        const auto result = codec::decode_psf_png(coefficient_png(width, 3), budget);
+        const auto result = codec::decode_psf_png(
+            std::as_bytes(std::span<const std::uint8_t>{coefficient_png(width, 3)}), budget);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::input);
     }
     for (const auto height : {1U, 4U, 131U}) {
         core::Budget budget{0};
-        const auto result = codec::decode_psf_png(coefficient_png(3, height), budget);
+        const auto result = codec::decode_psf_png(
+            std::as_bytes(std::span<const std::uint8_t>{coefficient_png(3, height)}), budget);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::input);
     }
@@ -187,7 +199,8 @@ TEST_CASE("PSF PNG rejects transparency, bad framing, CRC and animation", "[io][
             bytes.resize(bytes.size() - 1);
         }
         core::Budget budget{psf_codec_budget};
-        const auto result = codec::decode_psf_png(bytes, budget);
+        const auto result =
+            codec::decode_psf_png(std::as_bytes(std::span<const std::uint8_t>{bytes}), budget);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::input);
         CHECK(budget.used() == 0);
@@ -197,13 +210,15 @@ TEST_CASE("PSF encoded and charged-buffer refusal never downsample or retain sto
           "[io][restoration]") {
     const auto bytes = coefficient_png(codec::psf_dimension_max, codec::psf_dimension_max, 16);
     core::Budget refused{1};
-    const auto refused_result = codec::decode_psf_png(bytes, refused);
+    const auto refused_result =
+        codec::decode_psf_png(std::as_bytes(std::span<const std::uint8_t>{bytes}), refused);
     REQUIRE(!refused_result);
     CHECK(refused_result.error().code == core::ErrorCode::resource);
     CHECK(refused.used() == 0);
     core::Budget budget{psf_codec_budget};
     {
-        const auto decoded = codec::decode_psf_png(bytes, budget);
+        const auto decoded =
+            codec::decode_psf_png(std::as_bytes(std::span<const std::uint8_t>{bytes}), budget);
         REQUIRE(decoded);
         CHECK(decoded->shape.width == codec::psf_dimension_max);
         CHECK(decoded->shape.height == codec::psf_dimension_max);
@@ -211,7 +226,8 @@ TEST_CASE("PSF encoded and charged-buffer refusal never downsample or retain sto
     CHECK(budget.used() == 0);
     auto oversized = coefficient_png();
     insert_metadata(oversized, "tEXt", std::vector<std::uint8_t>(codec::psf_encoded_bytes_max, 1));
-    const auto encoded_result = codec::decode_psf_png(oversized, budget);
+    const auto encoded_result =
+        codec::decode_psf_png(std::as_bytes(std::span<const std::uint8_t>{oversized}), budget);
     REQUIRE(!encoded_result);
     CHECK(encoded_result.error().code == core::ErrorCode::resource);
     CHECK(budget.used() == 0);
@@ -228,18 +244,21 @@ TEST_CASE("PSF snapshot retains Unicode identity and enforces its byte ceiling b
     write_psf(path, bytes);
     core::Budget budget{psf_codec_budget};
     {
-        const auto loaded = fs::load_psf_png(utf8_spelling(path), budget);
+        const auto loaded =
+            fs::read_source_snapshot(utf8_spelling(path), budget, {}, codec::psf_encoded_bytes_max);
         REQUIRE(loaded);
         const auto expected = fs::identify(std::as_bytes(std::span{bytes}));
         REQUIRE(expected);
-        CHECK(loaded->source.sha256 == expected->sha256);
-        CHECK(loaded->source.bytes == bytes.size());
-        compare_coefficient_bytes(loaded->raster, 16);
+        CHECK(loaded->identity.sha256 == expected->sha256);
+        CHECK(loaded->identity.bytes == bytes.size());
+        const auto decoded = decode_psf_snapshot(*loaded, budget);
+        REQUIRE(decoded);
+        compare_coefficient_bytes(*decoded, 16);
     }
     CHECK(budget.used() == 0);
     const CheckpointStop cancelled{core::Checkpoint::decode, 0};
     for (const auto maximum :
-         {std::size_t{0}, static_cast<std::size_t>(image::source_encoded_bytes_max) + 1}) {
+         {std::size_t{0}, static_cast<std::size_t>(core::source_encoded_bytes_max) + 1}) {
         const auto result = fs::read_source_snapshot(utf8_spelling(path), budget,
                                                      cancelled.cancellation(), maximum);
         REQUIRE(!result);
@@ -256,7 +275,8 @@ TEST_CASE("PSF file size is refused before charging an encoded snapshot", "[io][
     const auto path = directory.path / "oversized.png";
     write_psf(path, std::vector<std::uint8_t>(codec::psf_encoded_bytes_max + 1, 0));
     core::Budget budget{0};
-    const auto refused = fs::load_psf_png(utf8_spelling(path), budget);
+    const auto refused =
+        fs::read_source_snapshot(utf8_spelling(path), budget, {}, codec::psf_encoded_bytes_max);
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::resource);
     CHECK(refused.error().message.contains("encoded input ceiling"));
@@ -270,7 +290,8 @@ TEST_CASE("Every PSF decode checkpoint cancels with a full refund", "[io][restor
         const CheckpointStop stop{core::Checkpoint::decode, allowed};
         core::Budget budget{psf_codec_budget};
         {
-            const auto decoded = codec::decode_psf_png(bytes, budget, stop.cancellation());
+            const auto decoded = codec::decode_psf_png(
+                std::as_bytes(std::span<const std::uint8_t>{bytes}), budget, stop.cancellation());
             if (decoded) {
                 CHECK(!CheckpointStop::stopped());
                 CHECK(allowed > 0);

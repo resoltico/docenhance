@@ -7,21 +7,27 @@ from __future__ import annotations
 import dataclasses
 import json
 import statistics
-import struct
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
 
-from continuous_fixtures import GRAY_ALPHA, RGB, Fixture, decode_output, exif
+from composition_reference import terminal_fixed
+from continuous_fixtures import GRAY_ALPHA, RGB, Fixture, exif
+from illumination_io import (
+    DEPTH,
+    LINEAR,
+    WORD_MAX,
+    gray_fixture,
+    require_output,
+    run,
+    source_values,
+)
 from illumination_reference import Plane, quantile, surface
-from test_cli import call_json, expect
+from test_cli import expect
 from test_continuous import transfer_decode
 
-WORD_MAX = 65535
 OPAQUE_ALPHA = 255
 FIRST_MARK_ROW = 3
-DEPTH = 16
 ORIENTATIONS = 8
 QUALITY_WIDTH = 192
 QUALITY_HEIGHT = 96
@@ -29,49 +35,6 @@ MODEL_TOLERANCE = 3e-5
 MODEL_SMOOTH = 2
 BACKGROUND_REDUCTION = 0.40
 CONTRAST_RETENTION = 0.75
-LINEAR = ((b"gAMA", struct.pack(">I", 100000)),)
-
-
-def require_output(output: Fixture | None) -> Fixture:
-    """Return a nonoptional result; never let optimized Python erase an assertion."""
-    if output is None:
-        msg = "Expected a completed output fixture"
-        raise AssertionError(msg)
-    return output
-
-
-def run(
-    exe: Path, root: Path, fixture: Fixture, options: list[str], code: int = 0
-) -> tuple[Fixture | None, dict[str, Any]]:
-    """Execute the real host, validate its response, and protect source bytes and existing paths."""
-    source = root / "source.png"
-    source.write_bytes(fixture.encoded())
-    before = set(root.iterdir())
-    output = root / f"out-{len(before)}"
-    result = call_json(
-        exe, ["process", str(source), "--out-dir", str(output), *options, "--json"], code
-    )
-    expect(source.read_bytes() == fixture.encoded(), "illumination never overwrites source")
-    if code:
-        expect(
-            set(root.iterdir()) == before, "illumination refusal leaves no final or staging path"
-        )
-        return None, result
-    expect(result["conversion"]["verified"], "illumination output verified before commit")
-    expect(result["illumination"]["progress"] == "completed", "reported illumination is complete")
-    return decode_output((output / "result.png").read_bytes()), result
-
-
-def gray_fixture(width: int, height: int, values: list[float]) -> Fixture:
-    """Quantized high-precision source with declared linear-gray samples."""
-    return Fixture(
-        width, height, tuple((round(v * WORD_MAX),) for v in values), depth=DEPTH, metadata=LINEAR
-    )
-
-
-def source_values(fixture: Fixture) -> list[float]:
-    """Normalize declared linear-gray codes directly in the independent scalar reference."""
-    return [pixel[0] / WORD_MAX for pixel in fixture.pixels]
 
 
 def identity_and_mask_validation(exe: Path, root: Path) -> None:
@@ -114,16 +77,23 @@ def admission_and_failures(exe: Path, root: Path) -> None:
         ["--illumination", "surface", "--background-quantile", "0.5"],
         ["--illumination", "surface", "--background-cell", "1e2"],
         ["--illumination", "off", "--background-strength", "0"],
-        ["--illumination", "surface", "--output-mode", "bw"],
         ["--illumination", "unknown"],
     ):
         run(exe, root, fixture, options, 2)
     black = gray_fixture(16, 8, [0.0] * 128)
     _, failed = run(exe, root, black, ["--illumination", "surface"], 4)
     expect(failed["error"]["code"] == "E_METHOD_INAPPLICABLE", "explicit applicability failure")
-    expect(failed["illumination"]["status"] == "failed", "failed stage diagnostics retained")
+    expect(
+        failed["failed_stage"] == "illumination"
+        and failed["completed"] == {}
+        and failed["publication"] == "not_started",
+        "truthful failed stage without invented facts",
+    )
     _, skipped = run(exe, root, black, ["--illumination", "auto"])
-    expect(skipped["illumination"]["status"] == "skipped", "automatic inapplicability skips")
+    expect(
+        skipped["record"]["execution"]["illumination"]["disposition"] == "skipped",
+        "automatic inapplicability skips",
+    )
 
 
 def independent_model(exe: Path, root: Path) -> None:
@@ -166,10 +136,10 @@ def independent_model(exe: Path, root: Path) -> None:
         max(abs(a - b) for a, b in zip(actual, expected, strict=True)) < MODEL_TOLERANCE,
         "all independently fitted samples",
     )
-    report = response["illumination"]
-    expect(report["protected_samples"] == sum(protected), "mask count")
+    report = response["record"]["execution"]["illumination"]
+    expect(report["counts"]["protected"] == sum(protected), "mask count")
     expect(
-        report["application"]["evaluated_samples"] == len(values) - sum(protected),
+        report["counts"]["evaluated"] == len(values) - sum(protected),
         "verification does not double-count",
     )
     expect(report["solver"]["residual"] <= report["solver"]["tolerance"], "true solver residual")
@@ -248,7 +218,8 @@ def colored_transport(exe: Path, root: Path, selection: str = "surface") -> None
         "neutral-axis color transport",
     )
     expect(
-        response["illumination"]["application"]["evaluated_samples"] == len(fixture.pixels) - 1,
+        response["record"]["execution"]["illumination"]["counts"]["evaluated"]
+        == len(fixture.pixels) - 1,
         "color diagnostics count once",
     )
     gray, _ = run(exe, root, fixture, [*options, "--output-mode", "gray"])
@@ -267,7 +238,8 @@ def quality_cases(exe: Path, root: Path) -> dict[str, float]:
     baseline, _ = run(exe, root, uniform, [])
     output, response = run(exe, root, uniform, ["--illumination", "auto"])
     expect(
-        response["illumination"]["status"] == "skipped" and output == baseline,
+        response["record"]["execution"]["illumination"]["disposition"] == "skipped"
+        and output == baseline,
         "P01 already-good no-op",
     )
     background = [0.45 + 0.5 * x / (width - 1) for _y in range(height) for x in range(width)]
@@ -289,7 +261,10 @@ def quality_cases(exe: Path, root: Path) -> dict[str, float]:
         ],
     )
     output = require_output(output)
-    expect(response["illumination"]["status"] == "applied", "P02 auto applicability")
+    expect(
+        response["record"]["execution"]["illumination"]["disposition"] == "applied",
+        "P02 auto applicability",
+    )
     actual = [transfer_decode(p[0] / WORD_MAX) for p in output.pixels]
     before = [v for v, p in zip(values, marks, strict=True) if not p]
     after = [v for v, p in zip(actual, marks, strict=True) if not p]
@@ -314,6 +289,57 @@ def quality_cases(exe: Path, root: Path) -> dict[str, float]:
     }
 
 
+def binary_composition(exe: Path, root: Path) -> None:
+    """I01 applies before terminal Q16; protection preserves Y without bypassing classification."""
+    width, height = 19, 17
+    fixture = gray_fixture(
+        width, height, [0.08 + 0.45 * x / (width - 1) for _ in range(height) for x in range(width)]
+    )
+    values = source_values(fixture)
+    protected = [i % 11 == 0 for i in range(len(values))]
+    mask = root / "binary-protection.png"
+    mask.write_bytes(Fixture(width, height, tuple((int(p),) for p in protected)).encoded())
+    field = surface(Plane(values, width, height, protected), 8, MODEL_SMOOTH)
+    expected_y = [
+        y if keep else min(1, y * min(3, max(1, 0.7 / max(b, 0.02))))
+        for y, b, keep in zip(values, field, protected, strict=True)
+    ]
+    output, response = run(
+        exe,
+        root,
+        fixture,
+        [
+            "--illumination",
+            "surface",
+            "--background-cell",
+            "8",
+            "--background-smooth",
+            "2",
+            "--background-target",
+            "0.7",
+            "--background-max-gain",
+            "3",
+            "--protect-mask",
+            str(mask),
+            "--output-mode",
+            "bw",
+            "--binarize",
+            "fixed",
+            "--fixed-threshold",
+            "0.5",
+        ],
+    )
+    actual = require_output(output)
+    expected = terminal_fixed(expected_y)
+    expect(actual.depth == 1 and actual.pixels == expected, "independent I01 terminal bits")
+    facts = response["record"]["execution"]["binarization"]
+    expect(
+        facts["black_samples"] == sum(p == (0,) for p in expected)
+        and facts["white_samples"] == sum(p == (1,) for p in expected),
+        "protected photometric destinations are still classified",
+    )
+
+
 def main() -> None:
     """Run against the executable; an isolated temporary directory owns every output."""
     exe = Path(sys.argv[1]).resolve()
@@ -325,7 +351,8 @@ def main() -> None:
         oriented_protection(exe, root)
         colored_transport(exe, root)
         quality = quality_cases(exe, root)
-    print("PASS: six illumination groups; " + json.dumps(quality, sort_keys=True))
+        binary_composition(exe, root)
+    print("PASS: illumination references; " + json.dumps(quality, sort_keys=True))
 
 
 if __name__ == "__main__":

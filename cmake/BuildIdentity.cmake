@@ -80,12 +80,11 @@ set(de_recipe_files deps/tools.json deps/lock.json deps/features.json
   cmake/BuildPolicy.cmake cmake/BuildEnvironment.cmake cmake/BuildIdentity.cmake cmake/CompilerPolicy.cmake
   cmake/Options.cmake cmake/Superbuild.cmake cmake/DependencyPlan.cmake cmake/NativeHardening.cmake
   cmake/DependencyPaths.cmake cmake/DependencyFeatures.cmake cmake/Dependencies.cmake cmake/ProjectOptions.cmake
-  cmake/TargetOptions.cmake
+  cmake/TargetOptions.cmake cmake/PocketFFT.cmake
   cmake/dependencies/picosha2/CMakeLists.txt cmake/dependencies/json/CMakeLists.txt
+  cmake/dependencies/pocketfft/CMakeLists.txt
   cmake/dependencies/zlib/CMakeLists.txt cmake/dependencies/tiff/CMakeLists.txt
   cmake/dependencies/tiff/docenhance_tiff.h)
-file(GLOB de_hooks RELATIVE "${PROJECT_SOURCE_DIR}" "${PROJECT_SOURCE_DIR}/cmake/opencv-hooks/*.cmake")
-list(APPEND de_recipe_files ${de_hooks})
 foreach(name IN LISTS de_recipe_files)
   file(SHA256 "${PROJECT_SOURCE_DIR}/${name}" digest)
   de_identity_field("${name}" "${digest}")

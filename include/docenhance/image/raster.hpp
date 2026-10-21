@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "docenhance/core/fields.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
@@ -9,8 +10,12 @@
 #include <compare>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <optional>
 #include <span>
+#include <string_view>
+#include <tuple>
+#include <utility>
 #include <variant>
 
 namespace docenhance::image {
@@ -160,3 +165,26 @@ struct Coordinate {
                                         SampleDepth depth) noexcept;
 void write_sample(std::span<std::uint8_t> bytes, SampleDepth depth, std::uint16_t sample) noexcept;
 } // namespace docenhance::image
+
+namespace docenhance {
+template <> struct core::Fields<image::RasterShape> {
+    using Value = image::RasterShape;
+    static constexpr auto list = std::tuple{
+        core::field("width", &Value::width, core::Count{}),
+        core::field("height", &Value::height, core::Count{}),
+        core::field("channels", &Value::model),
+        core::field("bit_depth", &Value::depth),
+    };
+};
+template <> struct core::Fields<image::Resolution> {
+    using Value = image::Resolution;
+    static constexpr auto positive = core::Range<std::uint32_t>{
+        .minimum = 1,
+        .maximum = std::numeric_limits<std::uint32_t>::max(),
+    };
+    static constexpr auto list = std::tuple{
+        core::field("x_ppm", &Value::x, positive),
+        core::field("y_ppm", &Value::y, positive),
+    };
+};
+} // namespace docenhance

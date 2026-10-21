@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-// Generated from spec/run-record.schema.json by tools/generate_spec.py.
 #pragma once
 namespace docenhance::record {
-inline constexpr unsigned record_version = 14U;
+// Current hard wire break. The native schema emitter reads the same typed constant.
+inline constexpr unsigned record_version = 15U;
 } // namespace docenhance::record

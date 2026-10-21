@@ -4,9 +4,9 @@
 
 #include "docenhance/codec/tiff.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/image/source_facts.hpp"
 
 #include <array>
 #include <cstddef>
@@ -56,8 +56,8 @@ unsigned type_size(unsigned type) noexcept {
     return type < sizes.size() ? std::span{sizes}.subspan(type, 1).front() : 0;
 }
 bool signature(std::span<const std::uint8_t> bytes) noexcept {
-    return bytes.size() >= classic_header_bytes &&
-           bytes.size() <= image::source_encoded_bytes_max && has_tiff_signature(bytes);
+    return bytes.size() >= classic_header_bytes && bytes.size() <= core::source_encoded_bytes_max &&
+           has_tiff_signature(bytes);
 }
 bool big_header(const TiffIfd& ifd) noexcept {
     return ifd.bytes.size() >= big_header_bytes &&

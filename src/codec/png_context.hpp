@@ -45,6 +45,11 @@ struct PngMemory {
 #ifdef _MSC_VER
 #pragma warning(pop)
 #endif
+struct CanonicalRowState {
+    std::uint32_t expected_width{};
+    bool noncanonical_tail = false;
+    bool invalid_layout = false;
+};
 class PngContext {
   public:
     PngContext(core::Budget& budget, bool write, const core::Cancellation& cancellation = {});
@@ -59,6 +64,7 @@ class PngContext {
     png_structp png = nullptr;
     png_infop info = nullptr;
     PngOutput output;
+    CanonicalRowState canonical;
     int passes = 1;
     bool writing;
 };

@@ -24,7 +24,25 @@ import architecture_api
 import architecture_build
 import run_native_suite
 
-LAYER_COUNT = 14
+EXPECTED_LAYERS = frozenset(
+    [
+        "app",
+        "cli",
+        "codec",
+        "color",
+        "core",
+        "entry",
+        "exec",
+        "fft",
+        "fs",
+        "host",
+        "image",
+        "methods",
+        "pipeline",
+        "record",
+        "report",
+    ]
+)
 
 
 def manifest_of(
@@ -67,12 +85,12 @@ class ManifestTests(unittest.TestCase):
     def test_committed_manifest_is_valid(self) -> None:
         """Every layer names declared layers and packages, and nothing depends on itself."""
         self.assertEqual(architecture.manifest_errors(self.manifest), [])
-        self.assertEqual(len(self.manifest.layers), LAYER_COUNT)
+        self.assertEqual(set(self.manifest.layers), EXPECTED_LAYERS)
 
     def test_reach_follows_the_declared_graph(self) -> None:
         """A layer reaches what its dependencies reach, and no more."""
         self.assertEqual(self.manifest.reach("core"), set())
-        self.assertEqual(self.manifest.reach("methods"), {"image", "exec", "core"})
+        self.assertEqual(self.manifest.reach("methods"), {"fft", "image", "exec", "core"})
         self.assertNotIn("cli", self.manifest.reach("app"))
         self.assertEqual(self.manifest.package_reach("core"), set())
         self.assertIn("nlohmann_json", self.manifest.package_reach("cli"))
@@ -95,7 +113,7 @@ class ManifestTests(unittest.TestCase):
 
     def test_headers_map_to_their_package(self) -> None:
         """A header is attributed to the package that declares it, by prefix or by name."""
-        self.assertEqual(self.manifest.package_of_header("opencv2/core.hpp"), "opencv")
+        self.assertEqual(self.manifest.package_of_header("png.h"), "png")
         self.assertEqual(self.manifest.package_of_header("nlohmann/json_fwd.hpp"), "nlohmann_json")
         self.assertEqual(self.manifest.package_of_header("lcms2.h"), "lcms")
         self.assertIsNone(self.manifest.package_of_header("string_view"))
@@ -186,7 +204,7 @@ class SourceRuleTests(unittest.TestCase):
         """What the layers really include is what the manifest allows."""
         for directive, name in (
             ("docenhance/core/result.hpp", "app"),
-            ("nlohmann/json.hpp", "report"),
+            ("nlohmann/json.hpp", "record"),
             ("png.h", "codec"),
             ("docenhance/version.hpp", "app"),
             ("string_view", "core"),
@@ -201,7 +219,8 @@ class SourceRuleTests(unittest.TestCase):
             ("nlohmann/json.hpp", "cli"),
             ("nlohmann/json.hpp", "app"),
             ("nlohmann/json.hpp", "image"),
-            ("opencv2/core.hpp", "methods"),
+            ("nlohmann/json.hpp", "report"),
+            ("png.h", "methods"),
             ("fstream", "core"),
             ("iostream", "app"),
             ("docenhance/ghost/thing.hpp", "cli"),
@@ -212,17 +231,21 @@ class SourceRuleTests(unittest.TestCase):
                 f"{name} must not name {directive}",
             )
 
-    def test_public_headers_may_not_name_a_package(self) -> None:
-        """A third-party header is allowed in an implementation file, never in an interface."""
+    def test_public_packages_require_the_actual_interface_owner(self) -> None:
+        """Record exports its reviewed JSON type; report cannot name the package directly."""
         directive = "#include <nlohmann/json.hpp>\n"
-        self.assertEqual(
-            architecture.file_errors(self.manifest, "report", directive, public=False),
-            [],
-        )
-        self.assertEqual(
-            len(architecture.file_errors(self.manifest, "report", directive, public=True)),
-            1,
-        )
+        for public in (False, True):
+            with self.subTest(public=public):
+                self.assertEqual(
+                    architecture.file_errors(self.manifest, "record", directive, public=public),
+                    [],
+                )
+                self.assertEqual(
+                    len(
+                        architecture.file_errors(self.manifest, "report", directive, public=public)
+                    ),
+                    1,
+                )
 
     def test_documentation_must_list_every_layer(self) -> None:
         """A layer missing from the documented table is reported against the document."""

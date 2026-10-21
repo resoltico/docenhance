@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-add_executable(de_tests unit/illumination_states.cpp unit/prepared_observations.cpp unit/lifecycle.cpp unit/stage_outcomes.cpp unit/report_publication.cpp unit/value_contracts.cpp unit/geometry.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
-  unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/png_streams.cpp unit/png_decode.cpp unit/tiff_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/psf_png.cpp unit/restoration_contract.cpp unit/restoration_states.cpp unit/restoration_admission.cpp unit/otsu.cpp unit/otsu_reference.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/morphology.cpp unit/tvl1.cpp unit/contrast.cpp unit/clahe.cpp unit/sharpening.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
-target_include_directories(de_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/codec" "${PROJECT_SOURCE_DIR}/src/fs" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
-target_link_libraries(de_tests PRIVATE de_app de_record de_core de_exec de_image de_methods de_codec de_fs de_cli de_host de_color de_opencv Catch2::Catch2WithMain)
+add_executable(de_tests unit/verify_artifacts.cpp unit/run_publication.cpp unit/publication_determinism.cpp unit/finite_fields.cpp unit/response_fields.cpp unit/response_verification_fields.cpp unit/render.cpp unit/illumination_states.cpp unit/prepared_observations.cpp unit/lifecycle.cpp unit/gamma_cancellation.cpp unit/stage_outcomes.cpp unit/report_publication.cpp unit/value_contracts.cpp unit/geometry.cpp unit/execution_states.cpp unit/filesystem_identity.cpp unit/reference.cpp unit/ownership.cpp unit/input_admission.cpp unit/application.cpp unit/io.cpp unit/transport.cpp
+  unit/binary_working.cpp unit/binary_numerical.cpp unit/binary_maximum.cpp unit/binary_resources.cpp unit/binary_controls.cpp unit/binary_admission.cpp unit/fft.cpp unit/restoration_working.cpp unit/restoration_working_controls.cpp unit/command_delivery.cpp unit/execution_boundaries.cpp unit/utf8.cpp unit/working.cpp unit/gamma_working.cpp unit/levels_working.cpp unit/clahe_working.cpp unit/unsharp_working.cpp unit/contrast_facts.cpp unit/sharpen_facts.cpp unit/binary_facts.cpp unit/nlm_facts.cpp unit/tvl1_facts.cpp unit/morphology_facts.cpp unit/surface_facts.cpp unit/restoration_facts.cpp unit/stage_reports.cpp unit/warnings.cpp unit/scalar_boundaries.cpp unit/gaussian_producers.cpp unit/fields_codec.cpp unit/string_domains.cpp unit/source_fields.cpp unit/request_fields.cpp unit/record_fields.cpp unit/process_failures.cpp unit/png_streams.cpp unit/png_decode.cpp unit/tiff_decode.cpp unit/jpeg_decode.cpp unit/jpeg_samples.cpp unit/binarization.cpp unit/psf_png.cpp unit/restoration_contract.cpp unit/restoration_states.cpp unit/restoration_admission.cpp unit/otsu.cpp unit/otsu_reference.cpp unit/cancellation.cpp unit/cancellation_io.cpp unit/continuous.cpp unit/color_readers.cpp unit/continuous_io.cpp unit/denoising.cpp unit/denoising_source.cpp unit/nlm_baseline.cpp unit/nlm_receiver_baseline.cpp unit/nlm_working.cpp unit/nlm_producers.cpp unit/statistic_planes.cpp unit/morphology.cpp unit/morphology_baseline.cpp unit/morphology_working.cpp unit/tvl1.cpp unit/tvl1_state.cpp unit/tvl1_failure_warning.cpp unit/tvl1_stop_handoff.cpp unit/tvl1_working.cpp unit/contrast.cpp unit/clahe.cpp unit/sharpening.cpp unit/illumination.cpp unit/illumination_rows.cpp unit/surface_solver.cpp unit/surface_baseline.cpp unit/surface_hierarchy.cpp unit/surface_working.cpp unit/surface_working_producers.cpp unit/surface_working_resources.cpp unit/record.cpp unit/verify.cpp unit/instant.cpp unit/bundle_access.cpp unit/bundle_publication.cpp unit/bundle_ownership.cpp)
+target_include_directories(de_tests PRIVATE "${PROJECT_BINARY_DIR}/generated" "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/codec" "${PROJECT_SOURCE_DIR}/src/fs" "${PROJECT_SOURCE_DIR}/src/methods" "${PROJECT_SOURCE_DIR}/src/host")
+target_link_libraries(de_tests PRIVATE de_app de_record de_report de_core de_exec de_image de_methods de_codec de_fs de_cli de_host de_color de_pipeline de_fft Catch2::Catch2WithMain)
 de_apply_options(de_tests)
 # The dependency-free reference runner used by tools/check_reference_suite.py, built, linted and run here too.
 add_executable(de_reference_tests support/standalone_main.cpp)
-target_include_directories(de_reference_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support")
+target_include_directories(de_reference_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support" "${PROJECT_SOURCE_DIR}/src/methods")
 target_link_libraries(de_reference_tests PRIVATE de_app de_core de_exec de_image de_methods)
 de_apply_options(de_reference_tests)
 add_test(NAME reference-suite COMMAND de_reference_tests)
@@ -29,8 +29,29 @@ function(de_fuzz_replay name)
 endfunction()
 include(FuzzTargets)
 de_register_fuzz_targets(REPLAY)
+target_include_directories(de_fuzz_replay_illumination PRIVATE "${PROJECT_SOURCE_DIR}/src/methods")
+target_include_directories(de_fuzz_replay_morphology PRIVATE "${PROJECT_SOURCE_DIR}/src/methods")
+# The exact engine/replay callback must do real work on three unique tracked controls.
+add_executable(de_render_liveness support/render_liveness.cpp "${PROJECT_SOURCE_DIR}/fuzz/render.cpp")
+target_include_directories(de_render_liveness PRIVATE "${PROJECT_SOURCE_DIR}/fuzz")
+target_link_libraries(de_render_liveness PRIVATE de_pipeline de_core de_exec de_image de_methods de_codec)
+de_apply_options(de_render_liveness)
+de_register_architecture_client(de_render_liveness "${PROJECT_SOURCE_DIR}/fuzz/render.cpp")
+add_test(NAME render-harness-liveness COMMAND de_render_liveness
+  "${PROJECT_SOURCE_DIR}/fuzz/corpus/render/tiny-fixed-v1"
+  "${PROJECT_SOURCE_DIR}/fuzz/regressions/render/truncated-source-v1"
+  "${PROJECT_SOURCE_DIR}/fuzz/regressions/render/moved-input-v1")
+
+add_test(NAME schemas-current COMMAND "${Python3_EXECUTABLE}"
+  "${PROJECT_SOURCE_DIR}/tools/update_schemas.py" "$<TARGET_FILE:de_schema>" --check)
 include(Catch)
-catch_discover_tests(de_tests DISCOVERY_MODE PRE_TEST SKIP_IS_FAILURE EXTRA_ARGS --reporter xml)
+catch_discover_tests(de_tests DISCOVERY_MODE PRE_TEST SKIP_IS_FAILURE EXTRA_ARGS --reporter xml --abort --invisibles)
+add_executable(de_fields_schema support/fields_schema.cpp support/method_schema_examples.cpp
+  support/contrast_schema_examples.cpp support/string_schema_examples.cpp)
+target_link_libraries(de_fields_schema PRIVATE de_record de_methods de_core de_image nlohmann_json::nlohmann_json)
+de_apply_options(de_fields_schema)
+add_test(NAME fields-schema-contract COMMAND "${Python3_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_fields_schema.py" "$<TARGET_FILE:de_fields_schema>")
 add_test(NAME cli-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_cli.py" "$<TARGET_FILE:docenhance>")
 add_test(NAME usability-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_usability.py" "$<TARGET_FILE:docenhance>")
 set_tests_properties(usability-contract PROPERTIES TIMEOUT 90)
@@ -84,6 +105,9 @@ de_apply_options(de_interrupt_process)
 add_test(NAME interrupt-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_interrupts.py" "$<TARGET_FILE:de_interrupt_process>")
 set_tests_properties(interrupt-contract PROPERTIES TIMEOUT 60)
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/fft_resources.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/aligned_allocation.cmake")
+
 # Developer-only allocation observation; no benchmark result is manufactured by an API estimate.
 add_executable(de_jpeg_resources support/jpeg_resources.cpp)
 target_include_directories(de_jpeg_resources PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/support")
@@ -99,7 +123,7 @@ add_test(NAME denoising-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURREN
 set_tests_properties(denoising-contract PROPERTIES TIMEOUT 90)
 
 add_executable(de_denoising_resources support/denoising_resources.cpp support/allocation_observer.cpp)
-target_link_libraries(de_denoising_resources PRIVATE de_opencv de_methods de_image de_core opencv_core)
+target_link_libraries(de_denoising_resources PRIVATE de_methods de_image de_exec de_core)
 target_compile_definitions(de_denoising_resources PRIVATE DE_ALLOCATION_SANITIZER_OBSERVATION=$<BOOL:${DE_ENABLE_TSAN}>)
 de_apply_options(de_denoising_resources)
 
@@ -146,17 +170,10 @@ set_tests_properties(sharpening-contract PROPERTIES TIMEOUT 90)
 add_test(NAME restoration-contract COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/cli/test_restoration.py" "$<TARGET_FILE:docenhance>")
 set_tests_properties(restoration-contract PROPERTIES TIMEOUT 90)
 
-add_executable(de_restoration_resources support/restoration_resources.cpp support/allocation_observer.cpp)
-target_link_libraries(de_restoration_resources PRIVATE de_opencv de_methods de_image de_core opencv_core)
-target_compile_definitions(de_restoration_resources PRIVATE DE_ALLOCATION_SANITIZER_OBSERVATION=$<BOOL:${DE_ENABLE_TSAN}>)
-de_apply_options(de_restoration_resources)
-add_test(NAME restoration-native-resources COMMAND de_restoration_resources)
-set_tests_properties(restoration-native-resources PROPERTIES TIMEOUT 90)
-
 if(DE_ENABLE_TSAN AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
   # These probes replace new/delete for fault injection. ELF's TSan C++ archive defines
   # the same strong symbols; the primary TSan runtime still observes their malloc/free.
-  foreach(de_allocation_probe de_denoising_resources de_cli_allocation de_resource_limits de_restoration_resources)
+  foreach(de_allocation_probe de_denoising_resources de_cli_allocation de_resource_limits de_restoration_resources de_fft_resources de_core_aligned_null)
     target_link_options(${de_allocation_probe} PRIVATE -fno-sanitize-link-c++-runtime)
   endforeach()
 endif()

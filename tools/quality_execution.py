@@ -1,61 +1,93 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Raw command delivery and confirmed publication remain distinct from artifact agreement."""
+"""Original raw delivery, publication and evidence eligibility are separate observations."""
 
 from __future__ import annotations
 
-from contextlib import suppress
 from typing import TYPE_CHECKING, Any
 
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
-from document_quality import ROOT, read_json
-from quality_evidence import reference
+from quality_acquisition import acquire_json_file, acquire_original_stream
+from quality_attempt import MAX_RESPONSE_BYTES, CaptureAdmission, issue, note_issue
+from quality_json import ROOT, read_json
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 
-MAX_RESPONSE_BYTES = 1024 * 1024
 COHERENT_DELIVERY_EXITS = frozenset({0, 2, 3, 4, 130})
+REFUSAL_CODES = frozenset(
+    {"E_ARGUMENT", "E_INPUT", "E_RESOURCE", "E_METHOD_INAPPLICABLE", "E_NOT_IMPLEMENTED"}
+)
 
 
 def ambiguous_exit(code: int | None) -> bool:
-    """Actual signal/abnormal statuses retain uncertainty; never normalize subprocess integers."""
+    """Keep actual abnormal process integers; an exit alone never undoes a confirmed commit."""
     return code not in COHERENT_DELIVERY_EXITS
 
 
-def bounded_response(stdout: Path) -> dict[str, Any] | None:
-    """Interpret at most one bounded response, retaining full raw bytes through its reference."""
-    if stdout.stat().st_size > MAX_RESPONSE_BYTES:
-        return None
-    with stdout.open("rb") as stream:
-        raw = stream.read(MAX_RESPONSE_BYTES + 1)
-    if len(raw) <= MAX_RESPONSE_BYTES:
-        with suppress(ValueError, UnicodeError, TypeError):
-            value = read_json(raw)
-            if isinstance(value, dict):
-                return value
-    return None
-
-
-def execution_evidence(role: dict[str, Any], root: Path, observed: dict[str, Any]) -> None:
-    """Raw command delivery determines effect truth; ambiguous failures are never replayed."""
-    evidence = role["execution"]
-    response = bounded_response(reference(root, evidence["stdout"]))
-    reference(root, evidence["stderr"])
-    if response is not None:
-        Draft202012Validator(
-            read_json((ROOT / "schemas/command-response.schema.json").read_bytes())
-        ).validate(response)
-    confirmed = response.get("publication") if isinstance(response, dict) else None
-    # Exit 5/7 or missing delivery cannot establish absence, but a confirmed commit survives.
+def execution_evidence(original: dict[str, Any], root: Path, admission: CaptureAdmission) -> bool:
+    """Acquire each original once, preserving complete bound stdout despite later I/O failure."""
+    declared = original["declared"]
+    evidence = declared.get("execution")
+    if evidence is None:
+        return False
+    payload = acquire_original_stream(original, "stdout", root, admission)
+    response = None
+    if payload is not None:
+        try:
+            parsed = read_json(payload)
+            schema = acquire_json_file(ROOT / "schemas/command-response.schema.json")
+            Draft202012Validator(schema).validate(parsed)
+            response = parsed
+            original["response"] = response
+        except (OSError, ValueError, TypeError, MemoryError, ValidationError) as error:
+            note_issue(
+                original,
+                "errors.delivery",
+                issue("schema_refused", original["role_index"], error),
+                admission,
+            )
+    confirmed = response.get("publication") if response is not None else None
     ambiguous = evidence["timed_out"] or ambiguous_exit(evidence["exit_code"]) or confirmed is None
-    effect = "completed" if confirmed == "completed" else "unknown" if ambiguous else confirmed
-    observed["observed_publication"] = effect
-    if response != evidence["response"]:
-        message = "Declared response differs from retained bounded raw stdout"
-        raise ValueError(message)
+    original["observed_publication"] = (
+        "completed" if confirmed == "completed" else "unknown" if ambiguous else confirmed
+    )
+    # Even a failed stderr acquisition cannot erase the same-byte confirmed stdout commit.
+    acquire_original_stream(original, "stderr", root, admission)
+    for name in ("stdout", "stderr"):
+        extent = original[name]["observed_prefix_bytes"]
+        if extent is not None and extent > MAX_RESPONSE_BYTES:
+            note_issue(
+                original, "errors.raw_" + name, issue("overflow", original["role_index"]), admission
+            )
+    if response is None or not coherent_delivery(
+        declared, response, original["observed_publication"], ambiguous=ambiguous
+    ):
+        note_issue(
+            original, "errors.delivery", issue("delivery", original["role_index"]), admission
+        )
+    complete = all(
+        original[name]["retention_state"] == "complete"
+        and original[name]["read_state"] == "eof"
+        and original[name]["closed"] is True
+        for name in ("stdout", "stderr")
+    )
+    return (
+        complete
+        and not any(original["errors"].values())
+        and all(not any(original[name]["errors"].values()) for name in ("stdout", "stderr"))
+    )
+
+
+def coherent_delivery(
+    declared: dict[str, Any], response: dict[str, Any] | None, effect: str, *, ambiguous: bool
+) -> bool:
+    """Classify actual complete delivery without inferring retry safety from exit 5/7."""
+    evidence = declared["execution"]
+    if response != evidence["response"] or evidence["publication"] != effect:
+        return False
     if response is not None and (
         response.get("command") != "process"
         or (
@@ -63,31 +95,20 @@ def execution_evidence(role: dict[str, Any], root: Path, observed: dict[str, Any
             and evidence["exit_code"] != response["exit_code"]
         )
     ):
-        message = "Retained process command or actual exit disagrees with its response"
-        raise ValueError(message)
-    if evidence["publication"] != effect:
-        message = "Effect evidence cannot infer safe retry or erase a confirmed publication"
-        raise ValueError(message)
-    if role["outcome"] == "completed":
-        if evidence["exit_code"] != 0 or evidence["timed_out"] or confirmed != "completed":
-            message = "Completed role lacks successful processing/delivery"
-            raise ValueError(message)
-    elif evidence["exit_code"] == 0 and not evidence["timed_out"]:
-        message = "Failure/refusal cannot carry successful process exit"
-        raise ValueError(message)
-    refusal_codes = {
-        "E_ARGUMENT",
-        "E_INPUT",
-        "E_RESOURCE",
-        "E_METHOD_INAPPLICABLE",
-        "E_NOT_IMPLEMENTED",
-    }
-    known_refusal = response is not None and response.get("error", {}).get("code") in refusal_codes
-    if role["outcome"] == "failed" and known_refusal and not ambiguous:
-        message = "Known admission refusal must be classified as refused"
-        raise ValueError(message)
-    if role["outcome"] == "refused" and (
-        ambiguous or evidence["exit_code"] not in {2, 3, 4} or not known_refusal
-    ):
-        message = "Refusal requires a complete known-effect refusal response"
-        raise ValueError(message)
+        return False
+    if declared["outcome"] == "completed":
+        return (
+            evidence["exit_code"] == 0
+            and not evidence["timed_out"]
+            and response is not None
+            and response.get("publication") == "completed"
+        )
+    if evidence["exit_code"] == 0 and not evidence["timed_out"]:
+        return False
+    known = response is not None and response.get("error", {}).get("code") in REFUSAL_CODES
+    refusal_effect = not ambiguous and effect in {"not_started", "not_published"}
+    if declared["outcome"] == "failed" and known and refusal_effect:
+        return False
+    return declared["outcome"] != "refused" or (
+        refusal_effect and evidence["exit_code"] in {2, 3, 4} and known
+    )

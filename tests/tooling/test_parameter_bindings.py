@@ -42,9 +42,11 @@ int main() {
     std::string borrowed = "kernel.png";
     slots.values[static_cast<std::size_t>(app::OptionId::psf_file)] = std::string_view{borrowed};
     const auto wiener = app::bind_parameters<methods::WienerParameters>(slots);
-    if (!wiener) return 7;
+    if (!wiener || !std::holds_alternative<methods::Kernel>(wiener->psf)) return 7;
+    std::string owned_path;
+    if (!app::assign_supplied(slots, app::OptionId::psf_file, owned_path)) return 8;
     borrowed.assign("overwritten");
-    if (std::get<methods::FilePsf>(wiener->psf).path != "kernel.png") return 8;
+    if (owned_path != "kernel.png") return 9;
     return 0;
 }
 """
@@ -84,7 +86,7 @@ class ParameterBindingTests(unittest.TestCase):
     """Compiled controls reach actual private generated functions, not a Python imitation."""
 
     def test_wrong_slots_and_owned_resource_path(self) -> None:
-        """Wrong scalar/grid/kind slots refuse; an admitted path copy owns its original bytes."""
+        """Wrong slots refuse; the separate resource owner retains its copied path bytes."""
         with tempfile.TemporaryDirectory(prefix="parameter-binding-") as temporary:
             source = SLOT_PROBE.replace(
                 "HEADER", json.dumps((ROOT / "src/app/parameter_bindings.hpp").as_posix())

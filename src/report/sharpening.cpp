@@ -2,27 +2,36 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "sharpening.hpp"
 
-#include "docenhance/methods/sharpening.hpp"
+#include "docenhance/core/result.hpp"
+#include "docenhance/methods/sharpen_facts.hpp"
+#include "docenhance/record/codec.hpp"
 
+#include <expected>
+#include <optional>
 #include <string>
+#include <utility>
 namespace docenhance::report {
-std::string sharpening_text(const methods::SharpenReport& r) {
-    if (!r.requested) {
-        return {};
+core::Result<std::string> sharpening_text(const std::optional<methods::UnsharpFacts>& facts) {
+    if (!facts) {
+        return std::string{};
     }
-    std::string text = "Sharpening: " + std::string(methods::status_name(r.status)) + " (" +
-                       std::string(methods::reason_name(r.reason)) + ")\n";
-    if (r.pre_clamp) {
-        text += "Pre-clamp perceptual range: " + std::to_string(r.pre_clamp->low) + ".." +
-                std::to_string(r.pre_clamp->high) + "\n";
+    auto encoded = record::Codec::encode(*facts);
+    if (!encoded) {
+        return std::unexpected(std::move(encoded.error()));
     }
-    if (r.requested->amount != 0) {
-        text += "W_SHARPENING: Requested amount=" + std::to_string(r.requested->amount) +
-                " can alter faint marks or introduce halos. Inspect the output; eligible "
-                "pre-clamp excursions below zero=" +
-                std::to_string(r.clipped_low_samples) +
-                "; above one=" + std::to_string(r.clipped_high_samples) + "\n";
+    const auto& actual = *facts;
+    std::string text = "Sharpening " + std::string(core::WireTag<methods::UnsharpFacts>::value) +
+                       ": " + encoded->at("disposition").get<std::string>() + " (" +
+                       encoded->at("reason").get<std::string>() +
+                       "); counts=" + encoded->at("counts").dump() +
+                       "; context=" + std::to_string(actual.context_samples) +
+                       "; corrected=" + std::to_string(actual.corrected_samples) + "\n";
+    if (actual.pre_clamp) {
+        text += "Pre-clamp perceptual range: " + encoded->at("pre_clamp").at("low").dump() + ".." +
+                encoded->at("pre_clamp").at("high").dump() + "\n";
     }
+    text += "Sharpening excursions: below zero=" + std::to_string(actual.clipped_low_samples) +
+            "; above one=" + std::to_string(actual.clipped_high_samples) + "\n";
     return text;
 }
 } // namespace docenhance::report

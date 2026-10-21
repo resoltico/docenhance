@@ -35,10 +35,15 @@ All linters are strict and pinned; see [linting and quality gates](docs/quality.
 
 ## Dependency changes
 
-Do not change a tag name while retaining the old object/digest. Verify the release from its official repository, review license and feature changes, update the lock and explicit feature policy, acquire into a clean cache entry, build in a fresh private prefix, run all tests and the configuration/module audit, and retain package-smoke results. Major OpenCV changes require reviewing the **actual** transitive module graph.
+Do not change a tag name while retaining the old object/digest. Verify the release from its official repository, review license and feature changes, update the lock and explicit feature policy, acquire into a clean cache entry, build in a fresh private prefix, run all tests and the configuration/module audit, and retain package-smoke results. Review the actual transitive dependency closure when changing a native provider.
 
 ## Documentation and generated artifacts
 
 Edit the reviewed contracts, then run `python tools/generate_spec.py`; do not hand-edit generated headers/reference pages. The application version lives only in the top-level `project(... VERSION ...)` command; `tools/project_version.py` reads it from there. A change of direction belongs in [design decisions](docs/decisions.md), together with the contracts it affects and what it means for existing behavior.
+
+Wire record/response shapes come from the actual C++ Fields and scalar domains. Regenerate their
+schemas and record fuzz dictionary with the selected native `update-schemas` target, as described
+in [generated contracts](docs/build.md#generated-contracts). Ordinary descriptor generation cannot
+qualify native template instantiation or make ungenerated wire artifacts current.
 
 Use synthetic fixtures in public tests. Never commit private correspondence, medical records, invoices with personal details, or proprietary documents. Describe reproduction steps without publishing sensitive source content.

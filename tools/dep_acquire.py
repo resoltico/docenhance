@@ -27,12 +27,14 @@ DOWNLOAD_TIMEOUT_SECONDS = 120
 
 
 def fetch_git(dep: Dependency, staging: Path) -> None:
-    """Fetch exactly the pinned tag object into an empty staging repository."""
+    """Fetch one exact tag ref or commit object into an empty staging repository."""
     run("git", "-c", "init.defaultBranch=main", "init", str(staging))
     run("git", "config", "core.autocrlf", "false", cwd=staging)
     run("git", "config", "core.eol", "lf", cwd=staging)
     run("git", "config", "core.hooksPath", ".disabled-hooks", cwd=staging)
     run("git", "remote", "add", "origin", dep["repository"], cwd=staging)
+    tagged = dep["ref"].startswith("refs/tags/")
+    fetch_spec = f"{dep['ref']}:{dep['ref']}" if tagged else dep["object"]
     run(
         "git",
         "-c",
@@ -43,11 +45,13 @@ def fetch_git(dep: Dependency, staging: Path) -> None:
         "--depth=1",
         "--no-recurse-submodules",
         "origin",
-        f"{dep['ref']}:{dep['ref']}",
+        fetch_spec,
         cwd=staging,
     )
-    if run("git", "rev-parse", dep["ref"], cwd=staging) != dep["object"]:
-        msg = f"Upstream tag has changed: {dep['name']}"
+    resolved = dep["ref"] if tagged else "FETCH_HEAD"
+    if run("git", "rev-parse", resolved, cwd=staging) != dep["object"]:
+        kind = "tag" if tagged else "commit"
+        msg = f"Upstream {kind} has changed: {dep['name']}"
         raise DependencyError(msg)
     run("git", "checkout", "--detach", f"{dep['object']}^{{commit}}", cwd=staging)
     run("git", "fsck", "--no-reflogs", "--no-dangling", cwd=staging)

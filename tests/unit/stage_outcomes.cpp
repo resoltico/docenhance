@@ -5,50 +5,66 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
-#include "docenhance/methods/contrast.hpp"
-#include "docenhance/methods/denoising.hpp"
-#include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/restoration.hpp"
-#include "docenhance/methods/sharpening.hpp"
-#include "docenhance/methods/stages.hpp"
+#include "file_contents.hpp"
+#include "temporary_directory.hpp"
 
 #include <catch2/catch_test_macros.hpp>
-
+#include <filesystem>
+#include <fstream>
+#include <ios>
 namespace docenhance::tests {
 namespace {
-app::Invocation selected() {
-    app::Invocation v;
-    v.command = app::Command::process;
-    v.operands = {"absent-source.png"};
-    v.option(app::OptionId::out_dir) = "unused-output";
-    v.option(app::OptionId::illumination) = "surface";
-    v.option(app::OptionId::denoise) = "nlm";
-    v.option(app::OptionId::deblur) = "wiener";
-    v.option(app::OptionId::psf) = "gaussian";
-    v.option(app::OptionId::contrast) = "clahe";
-    v.option(app::OptionId::sharpen) = "unsharp";
-    return v;
+app::Invocation selected(const std::filesystem::path& source, const std::filesystem::path& output) {
+    app::Invocation value;
+    value.command = app::Command::process;
+    value.operands = {utf8_spelling(source)};
+    value.option(app::OptionId::out_dir) = utf8_spelling(output);
+    value.option(app::OptionId::illumination) = "surface";
+    value.option(app::OptionId::denoise) = "nlm";
+    value.option(app::OptionId::deblur) = "wiener";
+    value.option(app::OptionId::psf) = "gaussian";
+    value.option(app::OptionId::contrast) = "clahe";
+    value.option(app::OptionId::sharpen) = "unsharp";
+    return value;
 }
 } // namespace
-TEST_CASE("Unstarted selected stages are distinct from a real source acquisition failure",
+TEST_CASE("Unstarted selected stages stay absent after real acquisition or codec failure",
           "[host]") {
-    const auto request = app::prepare_process(selected());
-    REQUIRE(request);
-    const auto& plan = std::get<app::ContinuousPlan>(request->plan());
-    const auto stages = app::initial_stages(plan.photometric);
-    host::Processor processor;
-    const auto result = processor.process(*request, {});
-    REQUIRE(!result);
-    CHECK(result.error().error.code == core::ErrorCode::input);
-    CHECK(result.error().error.publication == core::Publication::not_started);
-    const auto& observed = result.error().stages;
-    REQUIRE(observed.has_value());
-    if (observed) {
-        CHECK(observed->illumination == stages.illumination);
-        CHECK(observed->denoising == stages.denoising);
-        CHECK(observed->restoration == stages.restoration);
-        CHECK(observed->contrast == stages.contrast);
-        CHECK(observed->sharpening == stages.sharpening);
+    const TemporaryDirectory directory{"docenhance-unstarted"};
+    for (const bool acquired : {false, true}) {
+        const auto source = directory.path / (acquired ? "malformed.png" : "absent.png");
+        const auto output = directory.path / (acquired ? "decode-output" : "acquisition-output");
+        if (acquired) {
+            std::ofstream file{source, std::ios::binary};
+            file << "not an image";
+            file.close();
+            REQUIRE(file);
+        }
+        const auto request = app::prepare_process(selected(source, output));
+        REQUIRE(request);
+        host::Processor processor;
+        const auto result = processor.process(*request, {});
+        REQUIRE(!result);
+        const auto& failure = result.error();
+        CHECK(failure.error.code == core::ErrorCode::input);
+        CHECK(failure.publication == core::Publication::not_started);
+        CHECK(!failure.failed_stage);
+        CHECK(!failure.completed.illumination);
+        CHECK(!failure.completed.denoising);
+        CHECK(!failure.completed.restoration);
+        CHECK(!failure.completed.contrast);
+        CHECK(!failure.completed.sharpening);
+        CHECK(!failure.completed.binarization);
+        CHECK(!failure.warning_context.interpretation);
+        if (acquired) {
+            CHECK(file_contents(source) == "not an image");
+        } else {
+            CHECK(!std::filesystem::exists(source));
+        }
+        CHECK(!std::filesystem::exists(output));
+        auto staging = output;
+        staging += ".staging-0";
+        CHECK(!std::filesystem::exists(staging));
     }
 }
 } // namespace docenhance::tests

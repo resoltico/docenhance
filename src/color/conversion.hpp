@@ -5,41 +5,56 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/image/numeric.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <span>
 #include <utility>
+#include <vector>
 
 namespace docenhance::color {
 inline constexpr std::uint32_t conversion_pixels = image::linear_block_pixels;
-struct ConversionState {
+struct InterpretationReaderState;
+struct InterpretationState {
     Context context;
     std::reference_wrapper<const image::Raster> source;
-    image::ToneParameters parameters;
+    image::InterpretationPolicy parameters;
     core::Cancellation cancellation;
-    image::ConversionReport report;
-    core::Buffer profile;
+    image::InterpretationReport report;
     Profile input_profile;
     Profile linear_profile;
-    Transform transform;
+    Transform initial_transform;
+    bool native = false;
     std::optional<double> power_exponent;
+    std::atomic_flag reader_guard;
+    std::vector<std::unique_ptr<InterpretationReaderState>> readers;
+    InterpretationState(const image::Raster& raster, image::InterpretationPolicy policy,
+                        core::Budget& budget, core::Cancellation control);
+};
+struct InterpretationReaderState {
+    std::reference_wrapper<InterpretationState> run;
+    bool leased = false;
+    Transform transform;
     image::Plane<double> input;
     image::Plane<double> linear;
     image::Plane<double> alpha;
-    ConversionState(const image::Raster& raster, image::Continuous operation, core::Budget& budget,
-                    core::Cancellation control)
-        : context(budget), source(raster), parameters(operation.parameters()),
-          cancellation(std::move(control)) {}
+    explicit InterpretationReaderState(InterpretationState& owner) noexcept : run(owner) {}
 };
-[[nodiscard]] core::Result<void> prepare_conversion(ConversionState& state, core::Budget& budget);
-[[nodiscard]] core::Result<void> convert_row(ConversionState& state, std::uint32_t row,
-                                             std::span<std::uint8_t> output, image::RowUse use);
-[[nodiscard]] core::Result<void> read_linear(ConversionState& state, image::RowRange range,
-                                             std::span<double> rgb, image::RowUse use);
+inline InterpretationState::InterpretationState(const image::Raster& raster,
+                                                image::InterpretationPolicy policy,
+                                                core::Budget& budget, core::Cancellation control)
+    : context(budget), source(raster), parameters(policy), cancellation(std::move(control)) {}
+[[nodiscard]] core::Result<void> prepare_interpretation(InterpretationState& state);
+[[nodiscard]] core::Result<void> prepare_readers(InterpretationState& state, core::Budget& budget,
+                                                 unsigned workers);
+[[nodiscard]] core::Result<image::BlockObservation>
+read_interpretation(InterpretationReaderState& state, std::uint32_t row, std::uint32_t first,
+                    std::span<double> output);
 } // namespace docenhance::color

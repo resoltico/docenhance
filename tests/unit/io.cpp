@@ -1,16 +1,20 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/codec/png.hpp"
+#include "docenhance/codec/png_output.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/fs/digest.hpp"
 #include "docenhance/fs/paths.hpp"
-#include "docenhance/fs/png.hpp"
 #include "docenhance/fs/publication.hpp"
+#include "docenhance/fs/snapshot.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/raster.hpp"
 #include "native_publication.hpp"
-#include "png_file_rows.hpp"
 #include "png_fixture.hpp"
 #include "png_transaction.hpp"
 #include "temporary_directory.hpp"
@@ -21,19 +25,110 @@
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <ios>
 #include <iterator>
 #include <span>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t mebibyte = std::size_t{1024} * 1024;
+core::Result<image::Raster> decode_snapshot(const fs::Snapshot& snapshot, core::Budget& budget) {
+    auto typed = image::Plane<std::uint8_t>::allocate(
+        budget, static_cast<std::uint32_t>(snapshot.encoded.size()), 1);
+    if (!typed) {
+        return std::unexpected(std::move(typed.error()));
+    }
+    std::ranges::transform(snapshot.encoded.bytes(), typed->view().row(0).begin(),
+                           [](std::byte byte) { return std::to_integer<std::uint8_t>(byte); });
+    return codec::decode_png_raster(typed->view().row(0), budget, image::ProfilePolicy::embedded);
+}
+// A synchronous FS checkpoint observes actual completed writes without changing the stage.
+// State is reset before publication; this fixture never runs concurrently with another call.
+class PriorBundleWrites {
+  public:
+    explicit PriorBundleWrites(const std::filesystem::path& directory) {
+        stage = directory;
+        observed = false;
+        observation_failed = false;
+    }
+    static bool observe(core::Checkpoint at) noexcept {
+        if (at != core::Checkpoint::staging) {
+            return false;
+        }
+        try {
+            std::error_code first_error;
+            std::error_code second_error;
+            const auto first = std::filesystem::file_size(stage / "result.png", first_error);
+            const auto second =
+                std::filesystem::file_size(stage / "assets" / "protect-mask.png", second_error);
+            observed = observed || (!first_error && !second_error && first == 5 && second == 4);
+        } catch (...) {
+            observation_failed = true;
+        }
+        return false;
+    }
+    [[nodiscard]] static core::Cancellation cancellation() noexcept {
+        return core::Cancellation{{}, observe};
+    }
+    inline static std::filesystem::path stage;
+    inline static bool observed = false, observation_failed = false;
+};
+void check_snapshot_decode(const fs::Snapshot& snapshot, core::Budget& constrained,
+                           std::size_t limit) {
+    const auto decoded = decode_snapshot(snapshot, constrained);
+    if (!decoded) {
+        CHECK(decoded.error().code == core::ErrorCode::resource);
+    }
+    if (limit == mebibyte) {
+        REQUIRE(decoded);
+    }
+}
+void check_source_budget(const std::filesystem::path& original, core::Budget& constrained,
+                         std::size_t limit) {
+    const auto snapshot = fs::read_source_snapshot(utf8_spelling(original / "result.png"),
+                                                   constrained, {}, codec::png_max_encoded_bytes);
+    if (limit == mebibyte) {
+        REQUIRE(snapshot);
+    }
+    if (snapshot) {
+        check_snapshot_decode(*snapshot, constrained, limit);
+    } else {
+        CHECK(snapshot.error().code == core::ErrorCode::resource);
+    }
+    if (limit == 0) {
+        CHECK(!snapshot);
+    }
+}
+void check_codec_publication_refusal(const fs::PublishResult<std::string>& result,
+                                     const std::filesystem::path& output) {
+    if (!result) {
+        CHECK(result.error().error.code == core::ErrorCode::resource);
+        CHECK(result.error().publication == core::Publication::not_started);
+        CHECK(!std::filesystem::exists(output));
+        CHECK(!std::filesystem::exists(utf8_spelling(output) + ".staging-0"));
+    }
+}
+void check_codec_budget(const std::filesystem::path& original, const std::filesystem::path& output,
+                        image::PlaneView<const std::uint8_t> pixels, std::size_t limit) {
+    core::Budget constrained{limit};
+    check_source_budget(original, constrained, limit);
+    CHECK(constrained.used() == 0);
+    const auto result = publish_png_fixture(utf8_spelling(output), binary_png(pixels), constrained);
+    if (limit == mebibyte) {
+        REQUIRE(result);
+    }
+    check_codec_publication_refusal(result, output);
+    CHECK(constrained.used() == 0);
+}
 } // namespace
 
 TEST_CASE("Codec allocations share the caller budget and refund on every path", "[io]") {
@@ -42,35 +137,16 @@ TEST_CASE("Codec allocations share the caller budget and refund on every path", 
     auto image = image::Plane<std::uint8_t>::allocate(source_budget, 2, 1);
     REQUIRE(image);
     image->view().row(0).front() = 0;
-    image->view().row(0).back() = UINT8_MAX;
+    image->view().row(0).back() = 1;
     const auto charged = source_budget.used();
     const auto original = temporary.path / "original";
-    REQUIRE(publish_png_fixture(utf8_spelling(original), image->view().as_const(), source_budget));
+    REQUIRE(publish_png_fixture(utf8_spelling(original), binary_png(image->view().as_const()),
+                                source_budget));
     CHECK(source_budget.used() == charged);
     constexpr auto limits = std::to_array<std::size_t>({0, 64, 1024, 4096, 65536, mebibyte});
     for (const auto limit : limits) {
-        core::Budget constrained{limit};
         const auto output = temporary.path / ("budget-" + std::to_string(limit));
-        {
-            const auto decoded =
-                fs::load_grayscale_png(utf8_spelling(original / "result.png"), constrained);
-            if (!decoded) {
-                CHECK(decoded.error().code == core::ErrorCode::resource);
-            }
-            if (limit == 0) {
-                CHECK(!decoded);
-            }
-        }
-        CHECK(constrained.used() == 0);
-        const auto result =
-            publish_png_fixture(utf8_spelling(output), image->view().as_const(), constrained);
-        if (!result) {
-            CHECK(result.error().code == core::ErrorCode::resource);
-            CHECK(result.error().publication == core::Publication::not_published);
-            CHECK(!std::filesystem::exists(output));
-            CHECK(!std::filesystem::exists(utf8_spelling(output) + ".staging-0"));
-        }
-        CHECK(constrained.used() == 0);
+        check_codec_budget(original, output, image->view().as_const(), limit);
     }
 }
 
@@ -80,13 +156,14 @@ TEST_CASE("Binary output is read back and compared before it is published", "[io
     auto image = image::Plane<std::uint8_t>::allocate(budget, 8, 4);
     REQUIRE(image);
     for (std::uint32_t y = 0; y < image->height(); ++y) {
-        std::ranges::fill(image->view().row(y), y % 2 == 0 ? 0 : UINT8_MAX);
+        std::ranges::fill(image->view().row(y), y % 2 == 0 ? 0 : 1);
     }
     const auto published = temporary.path / "verified";
-    REQUIRE(publish_png_fixture(utf8_spelling(published), image->view().as_const(), budget));
+    REQUIRE(publish_png_fixture(utf8_spelling(published), binary_png(image->view().as_const()),
+                                budget));
 
     // What the verifier compares against, and what it does when the file disagrees with it. A
-    // single flipped byte inside the compressed data must be a refusal, not a published result.
+    // single flipped byte in the final chunk framing must be refused.
     const auto result = published / "result.png";
     std::string bytes;
     {
@@ -102,69 +179,66 @@ TEST_CASE("Binary output is read back and compared before it is published", "[io
         std::ofstream writing{tampered, std::ios::binary};
         writing.write(damaged.data(), static_cast<std::streamsize>(damaged.size()));
     }
-    CHECK(fs::verify_png_image(result, image->view().as_const(), budget));
-    const auto refused = fs::verify_png_image(tampered, image->view().as_const(), budget);
+    const auto healthy = fs::read_source_snapshot(utf8_spelling(result), budget, {}, mebibyte);
+    REQUIRE(healthy);
+    CHECK(
+        codec::compare_png(healthy->encoded.bytes(), binary_png(image->view().as_const()), budget));
+    CHECK(std::to_integer<unsigned>(healthy->encoded.bytes()[24]) == 1);
+    const auto damaged = fs::read_source_snapshot(utf8_spelling(tampered), budget, {}, mebibyte);
+    REQUIRE(damaged);
+    const auto refused =
+        codec::compare_png(damaged->encoded.bytes(), binary_png(image->view().as_const()), budget);
     REQUIRE(!refused);
     CHECK(refused.error().code == core::ErrorCode::output_verify);
 }
 
-namespace {
-// A bundle file whose bytes are known, so a test can check what was published.
-struct TextFile {
-    std::string_view relative;
-    std::string content;
-    bool fail = false;
-};
-core::Result<void> write_text(void* const state, const fs::BundleSlot& slot) {
-    const auto& file = *static_cast<TextFile*>(state);
-    if (file.fail) {
-        return core::failure(core::ErrorCode::output, "This file refuses to be written");
-    }
-    return fs::write_bytes(slot, file.content);
-}
-std::vector<fs::BundleFile> declared(std::span<TextFile> files) {
-    std::vector<fs::BundleFile> bundle;
-    for (auto& file : files) {
-        bundle.push_back({.relative = file.relative, .state = &file, .write = write_text});
-    }
-    return bundle;
-}
-} // namespace
-
 TEST_CASE("A bundle is published whole or not at all", "[io]") {
     const TemporaryDirectory temporary{"docenhance-bundle"};
-    std::array<TextFile, 3> files{
-        TextFile{.relative = "result.png", .content = "image"},
-        TextFile{.relative = "assets/protect-mask.png", .content = "mask"},
-        TextFile{.relative = "run.json", .content = "{}"},
+    constexpr std::string_view image_bytes = "image";
+    constexpr std::string_view mask_bytes = "mask";
+    constexpr std::string_view record_bytes = "{}";
+    std::array files{
+        fs::BundleFile{.relative = "result.png", .bytes = std::as_bytes(std::span{image_bytes})},
+        fs::BundleFile{
+            .relative = "assets/protect-mask.png",
+            .bytes = std::as_bytes(std::span{mask_bytes}),
+        },
+        fs::BundleFile{.relative = "run.json", .bytes = std::as_bytes(std::span{record_bytes})},
     };
+    const auto complete = temporary.path / "complete";
+    REQUIRE(fs::publish_bundle(utf8_spelling(complete), files, {}, fs::rename_exclusive));
+    CHECK(std::filesystem::is_regular_file(complete / "result.png"));
+    CHECK(std::filesystem::is_regular_file(complete / "assets" / "protect-mask.png"));
+    CHECK(std::filesystem::is_regular_file(complete / "run.json"));
 
-    SECTION("every declared file, including one in a directory the bundle owns") {
-        const auto output = temporary.path / "complete";
-        const auto published =
-            fs::publish_bundle(utf8_spelling(output), declared(files), {}, fs::rename_exclusive);
-        REQUIRE(published);
-        CHECK(std::filesystem::exists(output / "result.png"));
-        CHECK(std::filesystem::exists(output / "assets" / "protect-mask.png"));
-        CHECK(std::filesystem::exists(output / "run.json"));
-    }
-
-    SECTION("a file that cannot be written publishes nothing and leaves nothing behind") {
-        files.back().fail = true;
-        const auto output = temporary.path / "refused";
-        const auto published =
-            fs::publish_bundle(utf8_spelling(output), declared(files), {}, fs::rename_exclusive);
+    const auto parent = temporary.path / "negative";
+    REQUIRE(std::filesystem::create_directory(parent));
+    const auto foreign = parent / "unrelated";
+    REQUIRE(std::filesystem::create_directory(foreign));
+    // Both an already-owned directory and an already-owned regular file refuse a third slot.
+    // The real first two writes precede the duplicate guard; this is not cold table admission.
+    for (const auto* const repeated : {"assets", "result.png"}) {
+        files.back().relative = repeated;
+        const auto output = parent / "refused";
+        const PriorBundleWrites observation{parent / "refused.staging-0"};
+        const auto published = fs::publish_bundle(
+            utf8_spelling(output), files, PriorBundleWrites::cancellation(), fs::rename_exclusive);
         REQUIRE(!published);
+        REQUIRE(PriorBundleWrites::observed);
+        CHECK(!PriorBundleWrites::observation_failed);
+        CHECK(published.error().error.code == core::ErrorCode::output);
         CHECK(published.error().publication == core::Publication::not_published);
         CHECK(!std::filesystem::exists(output));
-        // Staging is removed with the directories it created, and nothing else is touched.
+        CHECK(!std::filesystem::exists(parent / "refused.staging-0"));
+        CHECK(std::filesystem::is_directory(foreign));
         std::size_t entries = 0;
-        for ([[maybe_unused]] const auto& entry :
-             std::filesystem::directory_iterator{temporary.path}) {
+        for (const auto& entry : std::filesystem::directory_iterator{parent}) {
+            CHECK(entry.path() == foreign);
             ++entries;
         }
-        CHECK(entries == 0);
+        CHECK(entries == 1);
     }
+    CHECK(std::filesystem::is_regular_file(complete / "run.json"));
 }
 
 TEST_CASE("The native commit refuses even an existing empty directory", "[io]") {
@@ -241,8 +315,13 @@ TEST_CASE("File and memory PNG sources use identical decoding and error policy",
         core::Budget file_budget{mebibyte};
         core::Budget memory_budget{mebibyte};
         {
-            const auto from_file = fs::load_grayscale_png(utf8_spelling(input), file_budget);
-            const auto from_memory = codec::decode_grayscale_png(bytes, memory_budget);
+            const auto snapshot =
+                fs::read_source_snapshot(utf8_spelling(input), file_budget, {}, mebibyte);
+            REQUIRE(snapshot);
+            // Decode the same owned snapshot, never reopen the mutable pathname.
+            const auto from_file = decode_snapshot(*snapshot, file_budget);
+            const auto from_memory =
+                codec::decode_png_raster(bytes, memory_budget, image::ProfilePolicy::embedded);
             REQUIRE(from_file.has_value() == from_memory.has_value());
             if (corrupt) {
                 REQUIRE(!from_file);
@@ -250,12 +329,17 @@ TEST_CASE("File and memory PNG sources use identical decoding and error policy",
                 CHECK(from_file.error().code == core::ErrorCode::input);
             } else {
                 REQUIRE(from_file);
-                CHECK(from_file->image.width() == from_memory->width());
-                CHECK(from_file->image.height() == from_memory->height());
-                CHECK(
-                    std::ranges::equal(from_file->image.view().row(0), from_memory->view().row(0)));
-                CHECK(from_file->source.sha256.size() == core::sha256_hex_length);
-                CHECK(from_file->source.bytes == bytes.size());
+                CHECK(from_file->shape == from_memory->shape);
+                CHECK(from_file->shape.width == fixture.width);
+                CHECK(from_file->shape.height == fixture.height);
+                CHECK(from_file->shape.model == image::SampleModel::gray);
+                CHECK(from_file->shape.depth == image::SampleDepth::byte());
+                CHECK(std::ranges::equal(from_file->pixels.view().row(0),
+                                         from_memory->pixels.view().row(0)));
+                CHECK(from_file->pixels.view().row(0).front() == 0);
+                CHECK(from_file->pixels.view().row(0).back() == 255);
+                CHECK(snapshot->identity.sha256.size() == core::sha256_hex_length);
+                CHECK(snapshot->identity.bytes == bytes.size());
             }
         }
         CHECK(file_budget.used() == 0);

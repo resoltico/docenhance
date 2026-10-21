@@ -1,94 +1,153 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source_facts.hpp"
-#include "docenhance/record/fields.hpp"
+#include "docenhance/record/source.hpp"
 
-#include <nlohmann/json.hpp>
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <optional>
-#include <string_view>
 #include <variant>
 namespace docenhance::record {
 namespace {
-std::string_view color_name(image::JpegColor color) noexcept {
-    if (color == image::JpegColor::gray) {
-        return "gray";
-    }
-    return color == image::JpegColor::rgb ? "rgb" : "ycbcr";
+image::PngFacts decoding(const PngContainer& value) noexcept {
+    return {
+        .width = value.width,
+        .height = value.height,
+        .depth = value.precision,
+        .color_type = value.color_type,
+        .interlaced = value.interlaced,
+    };
 }
-nlohmann::ordered_json resolution(const std::optional<image::Resolution>& value) {
-    return value ? nlohmann::ordered_json{{"x_ppm", value->x}, {"y_ppm", value->y}}
-                 : nlohmann::ordered_json(nullptr);
+image::TiffFacts decoding(const TiffContainer& value) noexcept {
+    return {
+        .width = value.width,
+        .height = value.height,
+        .depth = value.precision,
+        .samples = value.samples,
+        .photometric = value.photometric,
+        .compression = value.compression,
+        .planar = value.planar,
+        .predictor = value.predictor,
+        .alpha = value.alpha,
+        .big = value.bigtiff,
+        .tiled = value.tiled,
+        .orientation = value.orientation,
+        .resolution = value.resolution,
+    };
+}
+std::optional<image::JpegFacts> decoding(const JpegContainer& value) noexcept {
+    const unsigned components =
+        value.component_interpretation == image::JpegColor::gray ? 1 : image::jpeg_components;
+    if (value.components != components || value.component_ids.size() != components ||
+        value.sampling.size() != components) {
+        return std::nullopt;
+    }
+    image::JpegFacts result{
+        .width = value.width,
+        .height = value.height,
+        .color = value.component_interpretation,
+        .process = value.process,
+        .scans = value.scans,
+        .adobe_transform = value.adobe_transform,
+        .jfif_resolution = value.jfif_resolution,
+        .exif_resolution = value.exif_resolution,
+        .jfif_present = value.jfif_present,
+        .exif_present = value.exif_present,
+        .resolution_conflict = value.resolution_conflict,
+    };
+    std::ranges::copy(value.component_ids, result.component_ids.begin());
+    std::ranges::copy(value.sampling, result.sampling.begin());
+    return result;
+}
+PngContainer container(const image::PngFacts& value) {
+    return {
+        .width = value.width,
+        .height = value.height,
+        .precision = value.depth,
+        .color_type = value.color_type,
+        .interlaced = value.interlaced,
+    };
+}
+TiffContainer container(const image::TiffFacts& value) {
+    return {
+        .width = value.width,
+        .height = value.height,
+        .precision = value.depth,
+        .samples = value.samples,
+        .photometric = value.photometric,
+        .compression = value.compression,
+        .planar = value.planar,
+        .predictor = value.predictor,
+        .alpha = value.alpha,
+        .bigtiff = value.big,
+        .tiled = value.tiled,
+        .orientation = value.orientation,
+        .resolution = value.resolution,
+    };
+}
+JpegContainer container(const image::JpegFacts& value) {
+    const unsigned components = value.color == image::JpegColor::gray ? 1 : image::jpeg_components;
+    JpegContainer result{
+        .width = value.width,
+        .height = value.height,
+        .components = components,
+        .component_ids = {},
+        .component_interpretation = value.color,
+        .process = value.process,
+        .scans = value.scans,
+        .sampling = {},
+        .adobe_transform = value.adobe_transform,
+        .jfif_present = value.jfif_present,
+        .exif_present = value.exif_present,
+        .jfif_resolution = value.jfif_resolution,
+        .exif_resolution = value.exif_resolution,
+        .resolution_conflict = value.resolution_conflict,
+    };
+    for (std::size_t i = 0; i < components; ++i) {
+        result.component_ids.push_back(static_cast<std::uint8_t>(value.component_ids.at(i)));
+        result.sampling.push_back(value.sampling.at(i));
+    }
+    return result;
 }
 } // namespace
-nlohmann::ordered_json source_fields(const image::SourceFacts& description) {
-    if (const auto* const png = std::get_if<image::PngFacts>(&description)) {
-        return {
-            {"format", "png"},
-            {"decoder_policy", "bounded-png-1"},
-            {"width", png->width},
-            {"height", png->height},
-            {"precision", png->depth},
-            {"color_type", png->color_type},
-            {"interlaced", png->interlaced},
-        };
+bool validate(const PngContainer& value) noexcept {
+    return value.decoder_policy == PngDecoderPolicy::bounded &&
+           image::valid_source_facts(decoding(value));
+}
+bool validate(const JpegContainer& value) noexcept {
+    const auto facts = decoding(value);
+    return value.decoder_policy == JpegDecoderPolicy::bounded &&
+           value.precision == image::byte_bits && value.coding == JpegCoding::huffman &&
+           value.resolution_precedence == ResolutionPrecedence::exif_then_jfif && facts &&
+           image::valid_source_facts(*facts);
+}
+bool validate(const TiffContainer& value) noexcept {
+    return value.decoder_policy == TiffDecoderPolicy::bounded && value.pages == 1 &&
+           image::valid_source_facts(decoding(value));
+}
+core::Result<SourceContainer> source_container(const image::SourceFacts& value) {
+    if (!image::valid_source_facts(value)) {
+        return core::failure(core::ErrorCode::invariant, "Invalid source container facts");
     }
-    if (const auto* const tiff = std::get_if<image::TiffFacts>(&description)) {
-        return {
-            {"format", "tiff"},
-            {"decoder_policy", "bounded-tiff-striles-1"},
-            {"width", tiff->width},
-            {"height", tiff->height},
-            {"precision", tiff->depth},
-            {"samples", tiff->samples},
-            {"photometric", tiff->photometric},
-            {"compression", tiff->compression},
-            {"planar", tiff->planar},
-            {"predictor", tiff->predictor},
-            {"alpha", tiff->alpha},
-            {"bigtiff", tiff->big},
-            {"tiled", tiff->tiled},
-            {"pages", 1},
-            {"orientation", tiff->orientation.code()},
-            {"resolution", resolution(tiff->resolution)},
-        };
+    return std::visit([](const auto& facts) -> SourceContainer { return container(facts); }, value);
+}
+std::optional<image::SourceFacts> decoded_source(const SourceContainer& value) noexcept {
+    if (const auto* const png = std::get_if<PngContainer>(&value)) {
+        return validate(*png) ? std::optional<image::SourceFacts>{decoding(*png)} : std::nullopt;
     }
-    const auto& jpeg = std::get<image::JpegFacts>(description);
-    const unsigned components = jpeg.color == image::JpegColor::gray ? 1 : image::jpeg_components;
-    nlohmann::ordered_json sampling = nlohmann::ordered_json::array();
-    nlohmann::ordered_json identities = nlohmann::ordered_json::array();
-    for (unsigned i = 0; i < components; ++i) {
-        identities.push_back(jpeg.component_ids.at(i));
-        const auto sample = jpeg.sampling.at(i);
-        sampling.push_back({
-            {"horizontal", sample.horizontal},
-            {"vertical", sample.vertical},
-        });
+    if (const auto* const jpeg = std::get_if<JpegContainer>(&value)) {
+        if (!validate(*jpeg)) {
+            return std::nullopt;
+        }
+        const auto facts = decoding(*jpeg);
+        return facts ? std::optional<image::SourceFacts>{*facts} : std::nullopt;
     }
-    return {
-        {"format", "jpeg"},
-        {"decoder_policy", "jpeg-islow-fancy-no-smoothing-1"},
-        {"width", jpeg.width},
-        {"height", jpeg.height},
-        {"precision", image::byte_bits},
-        {"components", components},
-        {"component_ids", identities},
-        {"component_interpretation", color_name(jpeg.color)},
-        {"coding", "huffman"},
-        {"process", jpeg.process == image::JpegProcess::baseline ? "baseline" : "progressive"},
-        {"scans", jpeg.scans},
-        {"sampling", sampling},
-        {
-            "adobe_transform",
-            jpeg.adobe_transform ? nlohmann::ordered_json(*jpeg.adobe_transform)
-                                 : nlohmann::ordered_json(nullptr),
-        },
-        {"jfif_present", jpeg.jfif_present},
-        {"exif_present", jpeg.exif_present},
-        {"jfif_resolution", resolution(jpeg.jfif_resolution)},
-        {"exif_resolution", resolution(jpeg.exif_resolution)},
-        {"resolution_precedence", "exif_then_jfif"},
-        {"resolution_conflict", jpeg.resolution_conflict},
-    };
+    if (const auto* const tiff = std::get_if<TiffContainer>(&value)) {
+        return validate(*tiff) ? std::optional<image::SourceFacts>{decoding(*tiff)} : std::nullopt;
+    }
+    return std::nullopt;
 }
 } // namespace docenhance::record

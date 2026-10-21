@@ -6,114 +6,58 @@
 from __future__ import annotations
 
 import dataclasses
-import hashlib
-import json
 import struct
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
 
-from continuous_fixtures import Fixture, decode_output, gamma_profile, profile_from_output
-from test_cli import RECORD_VERSION, WIRE_VERSION, call_json, expect
-from test_jpeg import oriented_fixture
+from codec_samples import (
+    check_binary,
+    check_default_sauvola,
+    check_mask_kernel_assets,
+    oriented_fixture,
+    tiff_pattern,
+)
+from composition_reference import final_codes, linear, luminance, terminal_fixed
+from continuous_fixtures import Fixture, gamma_profile, profile_from_output
+from test_cli import call_json, expect
 from tiff_fixtures import Field, TiffFixture, container
+from tiff_io import DATA, process, refused
 
 BYTE_DEPTH = 8
 WORD_DEPTH = 16
 FLATTENED_PIXELS = 3
 RGBA_CHANNELS = 4
-
-DATA = Path(__file__).resolve().parents[1] / "fixtures/tiff"
-
-
-def process(
-    exe: Path, root: Path, encoded: bytes, *options: str
-) -> tuple[Fixture, dict[str, Any], bytes]:
-    """Identify the exact snapshot and verify a coherent, immutable published bundle."""
-    index = len(list(root.iterdir()))
-    source = root / f"input-{index}.data"
-    output = root / f"bundle-{index}"
-    source.write_bytes(encoded)
-    response = call_json(
-        exe, ["process", str(source), "--out-dir", str(output), *options, "--json"]
-    )
-    record = json.loads((output / "run.json").read_bytes())
-    expect(response["publication"] == "completed", "TIFF bundle is published")
-    expect(
-        response["schema_version"] == WIRE_VERSION
-        and record["record"]["version"] == RECORD_VERSION,
-        "current closed wire contracts",
-    )
-    expect(response["source_decoding"]["format"] == "tiff", "signature selects TIFF")
-    expect(record["source"]["decoding"] == response["source_decoding"], "one source mapping")
-    expect(record["source"]["sha256"] == hashlib.sha256(encoded).hexdigest(), "snapshot identity")
-    expect(response["conversion"]["verified"], "real PNG output sample verification")
-    expect(source.read_bytes() == encoded, "source remains untouched")
-    result = (output / "result.png").read_bytes()
-    return decode_output(result), response, result
-
-
-def refused(
-    exe: Path,
-    root: Path,
-    encoded: bytes,
-    error: str = "E_INPUT",
-    *options: str,
-    publication: str = "not_started",
-) -> None:
-    """Refusal reports its actual stage and preserves the source bytes."""
-    index = len(list(root.iterdir()))
-    source, output = root / f"bad-{index}.tif", root / f"refusal-{index}"
-    source.write_bytes(encoded)
-    response = call_json(
-        exe,
-        ["process", str(source), "--out-dir", str(output), *options, "--json"],
-        3 if error == "E_INPUT" else 4,
-    )
-    expect(response["error"]["code"] == error, "explicit refusal class")
-    expect(
-        response["publication"] == publication
-        and not output.exists()
-        and not list(root.glob(f"{output.name}.staging-*")),
-        "no published/staged effects",
-    )
-    expect(source.read_bytes() == encoded, "refused source is untouched")
+PROTECTED_BINARY_SAMPLES = 6
 
 
 def sample_matrix(exe: Path, root: Path) -> None:
     """Independent exact samples span all lossless container alternatives."""
     for path in sorted(DATA.glob("d*-c*-t*-p*-b*-l*.tif")):
         decoded, response, _ = process(exe, root, path.read_bytes())
-        depth = response["source_decoding"]["precision"]
-        channels = response["source_decoding"]["samples"]
-        if channels in (2, RGBA_CHANNELS):
-            expect(response["conversion"]["alpha_flattened_pixels"] > 0, "alpha is interpreted")
-            continue
-        expected = tuple(
-            tuple(
-                (x * 19 + y * 37 + c * 53) % 256
-                if depth == BYTE_DEPTH
-                else (x * 1493 + y * 2039 + c * 8191 + 1) % 65536
-                for c in range(channels)
-            )
-            for y in range(17)
-            for x in range(19)
+        depth = int(path.stem.split("-")[0][1:])
+        channels = int(path.stem.split("-")[1][1:])
+        container_facts = response["record"]["source"]["container"]
+        expect(
+            (container_facts["precision"], container_facts["samples"]) == (depth, channels),
+            "source precision/component observations match independent fixture declarations",
         )
+        if channels in (2, RGBA_CHANNELS):
+            expect(
+                response["record"]["execution"]["interpretation"]["alpha_composited_pixels"] > 0,
+                "alpha is interpreted",
+            )
+            continue
+        expected = tiff_pattern(depth, channels)
         expect(decoded.pixels == expected and decoded.depth == depth, f"exact {path.name} samples")
     for path in sorted(DATA.glob("compression-*.tif")):
         decoded, response, _ = process(exe, root, path.read_bytes())
-        depth = response["source_decoding"]["precision"]
-        expected = tuple(
-            tuple(
-                (x * 19 + y * 37 + c * 53) % 256
-                if depth == BYTE_DEPTH
-                else (x * 1493 + y * 2039 + c * 8191 + 1) % 65536
-                for c in range(3)
-            )
-            for y in range(17)
-            for x in range(19)
+        depth = int(path.stem.split("-")[2][1:])
+        expect(
+            response["record"]["source"]["container"]["precision"] == depth,
+            "compression fixture depth is independent of reported samples",
         )
+        expected = tiff_pattern(depth, 3)
         expect(decoded.pixels == expected, f"lossless {path.name}")
     for path in sorted(DATA.glob("fax-*.tif")):
         decoded, _, _ = process(exe, root, path.read_bytes())
@@ -145,9 +89,11 @@ def palette_alpha_orientation(exe: Path, root: Path) -> None:
     )
     fixture = TiffFixture(4, 1, ((0,), (1,), (128,), (255,)), photo=3)
     decoded, _, _ = process(exe, root, fixture.encoded({320: (3, 768, color_map)}))
-    expected = tuple((palette[i], palette[255 - i], palette[255 - i]) for i in (0, 1, 128, 255))
+    palette_expected = tuple(
+        (palette[i], palette[255 - i], palette[255 - i]) for i in (0, 1, 128, 255)
+    )
     expect(
-        decoded.depth == WORD_DEPTH and decoded.pixels == expected,
+        decoded.depth == WORD_DEPTH and decoded.pixels == palette_expected,
         "palette retains non-8-bit-replicated precision",
     )
     for depth, maximum in ((8, 255), (16, 65535)):
@@ -174,23 +120,20 @@ def palette_alpha_orientation(exe: Path, root: Path) -> None:
                 color=6,
                 depth=depth,
             )
-            png = root / f"alpha-reference-{depth}-{matte}.png"
-            png.write_bytes(straight.encoded())
-            output = root / f"alpha-reference-{depth}-{matte}"
-            call_json(
-                exe, ["process", str(png), "--out-dir", str(output), "--alpha", matte, "--json"]
+            interpreted = linear(straight, int(matte == "white"), None)
+            expected = final_codes(
+                interpreted, [luminance(p) for p in interpreted], depth, gray=False
             )
             expect(
-                decoded.pixels == decode_output((output / "result.png").read_bytes()).pixels,
-                "unassociate first, then existing linear-light compositing",
+                decoded.pixels == expected,
+                "independent unassociation then linear-light alpha composition",
             )
             expect(
-                response["conversion"]["alpha_flattened_pixels"] == FLATTENED_PIXELS,
+                response["record"]["execution"]["interpretation"]["alpha_composited_pixels"]
+                == FLATTENED_PIXELS,
                 "flatten count",
             )
-        refused(
-            exe, root, source.encoded(), "E_INPUT", "--alpha", "reject", publication="not_published"
-        )
+        refused(exe, root, source.encoded(), "E_INPUT", "--alpha", "reject")
         white = TiffFixture(
             2, 1, ((0, alpha_sample), (alpha_sample, alpha_sample)), photo=0, alpha=1, depth=depth
         )
@@ -200,7 +143,7 @@ def palette_alpha_orientation(exe: Path, root: Path) -> None:
             "MINISWHITE inversion follows unassociation",
         )
         invalid_alpha = TiffFixture(1, 1, ((maximum, alpha_sample),), photo=1, alpha=1, depth=depth)
-        refused(exe, root, invalid_alpha.encoded(), "E_INPUT", publication="not_published")
+        refused(exe, root, invalid_alpha.encoded(), "E_INPUT")
     oriented_pixels = ((0,), (40,), (80,), (120,), (160,), (255,))
     for orientation in range(1, 9):
         source = TiffFixture(3, 2, oriented_pixels, orientation=orientation)
@@ -212,7 +155,8 @@ def palette_alpha_orientation(exe: Path, root: Path) -> None:
             "orientation exactly once",
         )
         expect(
-            response["source_decoding"]["orientation"] == orientation, "actual orientation recorded"
+            response["record"]["source"]["container"]["orientation"] == orientation,
+            "actual orientation recorded",
         )
 
 
@@ -226,7 +170,8 @@ def metadata_and_pipeline(exe: Path, root: Path) -> None:
     }
     _, response, encoded_output = process(exe, root, source.encoded(fields))
     expect(
-        response["conversion"]["resolution"] == {"x_ppm": 5000, "y_ppm": 10000},
+        response["record"]["execution"]["interpretation"]["resolution"]
+        == {"x_ppm": 5000, "y_ppm": 10000},
         "oriented density axes",
     )
     mask = root / "oriented-tiff-mask.png"
@@ -238,13 +183,26 @@ def metadata_and_pipeline(exe: Path, root: Path) -> None:
     profile = gamma_profile(profile_from_output(encoded_output), 1.0)
     fields[34675] = (7, len(profile), profile)
     decoded, response, _ = process(exe, root, source.encoded(fields))
-    expect(response["conversion"]["profile_decision"] == "icc", "embedded TIFF ICC applies")
-    overridden, response, _ = process(exe, root, source.encoded(fields), "--profile-policy", "srgb")
     expect(
-        decoded.pixels != overridden.pixels
-        and response["conversion"]["profile_decision"] == "overridden_srgb",
+        response["record"]["execution"]["interpretation"]["profile_decision"] == "icc",
+        "embedded TIFF ICC applies",
+    )
+    overridden, response, _ = process(exe, root, source.encoded(fields), "--profile-policy", "srgb")
+    no_profile = oriented_fixture(Fixture(3, 2, source.pixels), source.orientation)
+    expect(
+        overridden.pixels == no_profile.pixels, "independent source under explicit sRGB override"
+    )
+    expect(
+        decoded.pixels != no_profile.pixels
+        and response["record"]["execution"]["interpretation"]["profile_decision"]
+        == "overridden_srgb",
         "profile override is deliberate and observable",
     )
+    enhancement_pipeline(exe, root)
+
+
+def enhancement_pipeline(exe: Path, root: Path) -> None:
+    """Real TIFF samples enter selected eager photometric stages and complete owned Facts."""
     path = DATA / "d16-c3-t1-p2-b1-l0.tif"
     process(
         exe,
@@ -281,11 +239,10 @@ def metadata_and_pipeline(exe: Path, root: Path) -> None:
             "7",
         )
         expect(
-            response["illumination"]["progress"] == "completed"
-            and response["denoising"]["progress"] == "completed",
+            response["record"]["execution"]["illumination"]["counts"]["evaluated"] == size * size
+            and response["record"]["execution"]["denoising"]["counts"]["evaluated"] == size * size,
             "TIFF composes selected illumination and D01 with verified PNG publication",
         )
-    refused(exe, root, source.encoded(), "E_NOT_IMPLEMENTED", "--output-mode", "bw")
 
 
 def invalid_domains(exe: Path, root: Path) -> None:
@@ -328,6 +285,94 @@ def invalid_domains(exe: Path, root: Path) -> None:
     refused(exe, root, container(fields, [b"\0"], big=False, little=True), "E_RESOURCE")
 
 
+def binary_outputs(exe: Path, root: Path) -> None:
+    """TIFF integer domains admit real PNG1; G01/mask/PSF roles remain independent resources."""
+    pixels = ((0,), (40,), (80,), (120,), (160,), (255,))
+    for depth in (8, 16):
+        samples = tuple((p[0] * (257 if depth == WORD_DEPTH else 1),) for p in pixels)
+        source = TiffFixture(3, 2, samples, depth=depth, orientation=6)
+        expected_source = oriented_fixture(Fixture(3, 2, samples, depth=depth), 6)
+        logical = terminal_fixed([rgb[0] for rgb in linear(expected_source, 1, None)])
+        _, response, data = process(
+            exe, root, source.encoded(), "--output-mode", "bw", "--binarize", "fixed"
+        )
+        check_binary(response, data, Fixture(2, 3, logical, depth=1))
+        call_json(exe, ["verify", str(Path(response["output"]).parent), "--json"])
+    _, bilevel, packed = process(
+        exe,
+        root,
+        (DATA / "bilevel-1-fill1.tif").read_bytes(),
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+    )
+    expected = tuple((int((x * 3 + y) % 2 == 0),) for y in range(17) for x in range(19))
+    check_binary(bilevel, packed, Fixture(19, 17, expected, depth=1))
+    expect(
+        bilevel["record"]["source"]["container"]["precision"] == 1, "original bilevel source domain"
+    )
+    protected_binary(exe, root, pixels)
+
+
+def protected_binary(exe: Path, root: Path, pixels: tuple[tuple[int, ...], ...]) -> None:
+    """Protection and PSF identity retain the same oriented word-source control."""
+    # Own the same last (16-bit) source explicitly, independent of loop assignment.
+    retained_samples = tuple((p[0] * 257,) for p in pixels)
+    source = TiffFixture(3, 2, retained_samples, depth=WORD_DEPTH, orientation=6)
+    retained_source = oriented_fixture(Fixture(3, 2, retained_samples, depth=WORD_DEPTH), 6)
+    logical = terminal_fixed([rgb[0] for rgb in linear(retained_source, 1, None)])
+    mask = root / "binary-oriented-mask.png"
+    mask_bytes = Fixture(2, 3, ((1,),) * 6, depth=1).encoded()
+    mask.write_bytes(mask_bytes)
+    kernel = root / "binary-kernel.png"
+    kernel_bytes = Fixture(3, 3, ((0,),) * 4 + ((255,),) + ((0,),) * 4).encoded()
+    kernel.write_bytes(kernel_bytes)
+    _, response, data = process(
+        exe,
+        root,
+        source.encoded(),
+        "--output-mode",
+        "bw",
+        "--binarize",
+        "fixed",
+        "--illumination",
+        "surface",
+        "--protect-mask",
+        str(mask),
+        "--deblur",
+        "wiener",
+        "--psf",
+        "kernel",
+        "--psf-file",
+        str(kernel),
+        "--deblur-blend",
+        "0",
+    )
+    check_binary(response, data, Fixture(2, 3, logical, depth=1))
+    record = response["record"]
+    expect(
+        record["execution"]["illumination"]["counts"]["protected"] == PROTECTED_BINARY_SAMPLES,
+        "mask protects photometry while all six pixels are still classified",
+    )
+    check_mask_kernel_assets(response, mask_bytes, kernel_bytes)
+    expect(
+        mask.read_bytes() == mask_bytes and kernel.read_bytes() == kernel_bytes,
+        "processing preserves original mask and PSF bytes",
+    )
+    directory = Path(response["output"]).parent
+    call_json(exe, ["verify", str(directory), "--json"])
+    _, implicit, implicit_png = process(exe, root, source.encoded(), "--output-mode", "bw")
+    _, explicit, explicit_png = process(
+        exe, root, source.encoded(), "--output-mode", "bw", "--binarize", "sauvola"
+    )
+    check_default_sauvola((implicit, implicit_png), (explicit, explicit_png))
+    for response in (implicit, explicit):
+        call_json(exe, ["verify", str(Path(response["output"]).parent), "--json"])
+    signed = source.encoded({339: (3, 1, struct.pack("<H", 2))})
+    refused(exe, root, signed, "E_INPUT", "--output-mode", "bw", "--binarize", "fixed")
+
+
 def main() -> None:
     """Run the actual executable boundary suite."""
     exe = Path(sys.argv[1]).resolve()
@@ -337,6 +382,7 @@ def main() -> None:
         palette_alpha_orientation(exe, root)
         metadata_and_pipeline(exe, root)
         invalid_domains(exe, root)
+        binary_outputs(exe, root)
         # Every process uses the shared staged reader; exercise its public read-only route once.
         call_json(exe, ["verify", str(min(root.glob("bundle-*"))), "--json"])
     print("TIFF independent samples, interpretation, pipeline and refusals passed")

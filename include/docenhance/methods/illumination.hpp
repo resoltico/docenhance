@@ -1,32 +1,21 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "docenhance/core/fields.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/linear.hpp"
-#include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/method_catalog.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
 
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
+#include <limits>
 #include <optional>
-#include <span>
+#include <tuple>
 #include <variant>
 
 namespace docenhance::methods {
-// Mask is already in oriented coordinates; an empty view means no protected samples.
-struct IlluminationInput {
-    std::reference_wrapper<image::LinearSource> source;
-    image::PlaneView<const std::uint8_t> protection;
-
-    IlluminationInput(image::LinearSource& linear,
-                      image::PlaneView<const std::uint8_t> mask) noexcept
-        : source(linear), protection(mask) {}
-};
 inline constexpr double illumination_floor = 0.02;
 // The largest admissible max_gain; no illumination correction can brighten a sample further.
 class Surface {
@@ -59,37 +48,8 @@ class Morphology {
     MorphologyParameters parameters_;
 };
 using Illumination = std::variant<IlluminationOff, Surface, Morphology>;
-using IlluminationParameters = std::variant<SurfaceParameters, MorphologyParameters>;
-struct MorphologyMeasurements {
-    std::uint32_t radius{};
-    double sigma{};
-    std::uint32_t gaussian_radius{};
-    std::uint32_t stride{};
-    std::uint32_t count{};
-    bool fallback = false;
-    std::optional<double> analysis_fill = std::nullopt;
-    std::optional<double> target = std::nullopt;
-    double background_q10{};
-    double background_q50{};
-    double background_q90{};
-    double background_min{};
-    double background_max{};
-    std::uint64_t field_bytes{};
-    std::uint64_t preparation_charge_peak{};
-    bool operator==(const MorphologyMeasurements&) const = default;
-};
-enum class IlluminationStatus { unresolved, disabled, no_change, skipped, applied, failed };
-enum class IlluminationReason {
-    none,
-    zero_strength,
-    unit_gain,
-    no_eligible_samples,
-    insufficient_samples,
-    insufficient_cells,
-    automatic_predicates,
-    no_effect,
-    processing_failure,
-};
+inline constexpr unsigned surface_iteration_limit = 500;
+inline constexpr std::uint32_t surface_sample_limit = 1048576;
 struct SolverReport {
     unsigned iterations{};
     double residual{};
@@ -113,46 +73,75 @@ struct SurfaceMeasurements {
 // The six predicates are in documented order: coverage, bright quantile, median background,
 // background variation, paper fraction, dark fraction. Null means not evaluated, never a pass.
 inline constexpr std::size_t surface_predicates = 6;
-struct IlluminationReport {
-    IlluminationStatus status = IlluminationStatus::disabled;
-    StageProgress progress = StageProgress::not_started;
-    [[nodiscard]] bool complete() const noexcept {
-        return progress == StageProgress::completed;
+struct SurfacePredicates {
+    std::optional<bool> coverage = std::nullopt;
+    std::optional<bool> bright_quantile = std::nullopt;
+    std::optional<bool> median_background = std::nullopt;
+    std::optional<bool> background_variation = std::nullopt;
+    std::optional<bool> paper_fraction = std::nullopt;
+    std::optional<bool> dark_fraction = std::nullopt;
+    [[nodiscard]] std::array<std::optional<bool>, surface_predicates> values() const noexcept {
+        return {
+            coverage,       bright_quantile, median_background, background_variation,
+            paper_fraction, dark_fraction,
+        };
     }
-    IlluminationReason reason = IlluminationReason::none;
-    std::optional<IlluminationParameters> requested = std::nullopt;
-    std::optional<std::uint32_t> cell = std::nullopt;
-    std::uint64_t eligible_samples{};
-    std::uint64_t protected_samples{};
-    std::uint32_t cells{};
-    std::uint32_t measured_cells{};
-    // Cells below background_reference / background_max_gain_domain.maximum, left unmeasured as
-    // dark content.
-    std::uint32_t dark_cells{};
-    std::optional<double> background_reference = std::nullopt;
-    std::optional<SolverReport> solver = std::nullopt;
-    std::optional<SurfaceMeasurements> measurements = std::nullopt;
-    std::optional<MorphologyMeasurements> morphology = std::nullopt;
-    std::array<std::optional<bool>, surface_predicates> predicates{};
-    std::uint64_t changed_samples{};
-    std::uint64_t gain_capped_samples{};
-    std::uint64_t saturated_samples{};
-    std::uint64_t evaluated_samples{};
-    double min_gain = 1;
-    double max_gain = 1;
-    bool operator==(const IlluminationReport&) const = default;
+    bool operator==(const SurfacePredicates&) const = default;
 };
-struct IlluminationGain {
-    double target{};
-    double strength{};
-    double max_gain{};
-};
-[[nodiscard]] core::Result<void> apply_illumination_pixel(std::span<double> rgb, double background,
-                                                          IlluminationGain gain,
-                                                          IlluminationReport& report);
-[[nodiscard]] bool valid_morphology_report(const IlluminationReport& report, image::Extent extent,
-                                           bool protection);
-[[nodiscard]] bool valid_illumination_observations(const IlluminationReport& report);
-[[nodiscard]] bool valid_illumination(const IlluminationReport& report, image::Extent extent,
-                                      bool protection);
+[[nodiscard]] bool validate(const SolverReport& solution) noexcept;
+[[nodiscard]] bool validate(const SurfaceMeasurements& measurements) noexcept;
 } // namespace docenhance::methods
+
+namespace docenhance {
+template <> struct core::Fields<methods::SolverReport> {
+    using Value = methods::SolverReport;
+    static constexpr auto nonnegative = core::Range<double>{
+        .minimum = 0,
+        .maximum = std::numeric_limits<double>::max(),
+    };
+    static constexpr auto positive = core::Range<double>{
+        .minimum = std::numeric_limits<double>::denorm_min(),
+        .maximum = std::numeric_limits<double>::max(),
+    };
+    static constexpr auto list = std::tuple{
+        core::field(
+            "iterations", &Value::iterations,
+            core::Range<unsigned>{.minimum = 0, .maximum = methods::surface_iteration_limit}),
+        core::field("residual", &Value::residual, nonnegative),
+        core::field("tolerance", &Value::tolerance, positive),
+    };
+};
+template <> struct core::Fields<methods::SurfaceMeasurements> {
+    using Value = methods::SurfaceMeasurements;
+    static constexpr auto positive_unit = core::Range<double>{
+        .minimum = std::numeric_limits<double>::denorm_min(),
+        .maximum = 1,
+    };
+    static constexpr auto list = std::tuple{
+        core::field("stride", &Value::stride, core::Count{}),
+        core::field(
+            "count", &Value::count,
+            core::Range<std::uint32_t>{.minimum = 1, .maximum = methods::surface_sample_limit}),
+        core::field("fallback", &Value::fallback),
+        core::field("target", &Value::target, positive_unit),
+        core::field("background_q10", &Value::background_q10, positive_unit),
+        core::field("background_q50", &Value::background_q50, positive_unit),
+        core::field("background_q90", &Value::background_q90, positive_unit),
+        core::field("luminance_q90", &Value::luminance_q90, core::Unit{}),
+        core::field("variation", &Value::variation, core::Unit{}),
+        core::field("paper_fraction", &Value::paper_fraction, core::Unit{}),
+        core::field("dark_fraction", &Value::dark_fraction, core::Unit{}),
+    };
+};
+template <> struct core::Fields<methods::SurfacePredicates> {
+    using Value = methods::SurfacePredicates;
+    static constexpr auto list = std::tuple{
+        core::field("coverage", &Value::coverage),
+        core::field("bright_quantile", &Value::bright_quantile),
+        core::field("median_background", &Value::median_background),
+        core::field("background_variation", &Value::background_variation),
+        core::field("paper_fraction", &Value::paper_fraction),
+        core::field("dark_fraction", &Value::dark_fraction),
+    };
+};
+} // namespace docenhance

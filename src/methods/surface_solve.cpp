@@ -21,7 +21,6 @@ constexpr unsigned direction_row = 4;
 constexpr unsigned product_row = 5;
 constexpr unsigned preconditioned_row = 6;
 constexpr unsigned solver_rows = 7;
-constexpr double rhs_floor = 1e-12;
 // Fixed row-major reduction, not a backend-dependent parallel transform_reduce.
 double dot(std::span<const double> left, std::span<const double> right) noexcept {
     double result = 0;
@@ -107,8 +106,9 @@ core::Result<void> solve_surface(const SurfaceSystem& system, image::PlaneView<d
     report = {
         .iterations = 0,
         .residual = 0,
-        .tolerance = surface_relative_tolerance *
-                     std::max(std::sqrt(dot(work.row(rhs_row), work.row(rhs_row))), rhs_floor),
+        .tolerance =
+            surface_relative_tolerance *
+            std::max(std::sqrt(dot(work.row(rhs_row), work.row(rhs_row))), surface_rhs_floor),
     };
     auto current = residual(system, work, logarithms, report, cancellation);
     if (!current || report.residual <= report.tolerance) {

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MPL-2.0
 """Explicit dependency acquisition. Normal configure/build runs verify, never fetch.
 
-Git entries pin the *tag object*, not merely a mutable tag name. Archive entries
+Git entries pin a named release-tag object or an exact immutable commit. Archive entries
 pin the bytes. Receipts hash every source file and are checked before each build.
 No command updates the committed lock automatically.
 """

@@ -89,39 +89,32 @@ class ContractGenerationTests(unittest.TestCase):
         )
         self.assertNotIn("methods", self.contract["options"][0])
 
-    def test_envelope_versions_are_generated_independently_and_require_integers(self) -> None:
-        """Response and record schema authorities can change independently."""
-        record = json.loads((self.root / "spec/run-record.schema.json").read_bytes())
-        response = json.loads((self.root / "spec/command-response.schema.json").read_bytes())
-        record["properties"]["record"]["properties"]["version"]["const"] = 19
-        response["properties"]["schema_version"]["const"] = 20
-        self.write("run-record.schema.json", record)
-        self.write("command-response.schema.json", response)
+    def test_cli_generation_has_no_wire_template_or_version_authority(self) -> None:
+        """Native Fields emission owns wire schemas; option generation cannot overwrite them."""
+        owners = (
+            "include/docenhance/record/record_version.hpp",
+            "include/docenhance/app/response.hpp",
+            "schemas/run-record.schema.json",
+            "schemas/command-response.schema.json",
+        )
+        sentinels = {}
+        for relative in owners:
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"independent typed wire owner\n")
+            sentinels[path] = (path.read_bytes(), path.stat().st_mtime_ns)
+        for name in ("run-record.schema.json", "command-response.schema.json"):
+            self.assertFalse((self.root / "spec" / name).exists())
         outputs = generate_spec.outputs()
-        self.assertIn(
-            "record_version = 19U",
-            outputs[self.root / "include/docenhance/record/record_version.hpp"],
-        )
-        self.assertIn(
-            "response_schema_version = 20U",
-            outputs[self.root / "include/docenhance/app/options.hpp"],
-        )
-        for invalid in (True, 0, -1, 1.5, "14"):
-            for name in ("run-record.schema.json", "command-response.schema.json"):
-                changed_record, changed_response = copy.deepcopy(record), copy.deepcopy(response)
-                if name == "run-record.schema.json":
-                    changed_record["properties"]["record"]["properties"]["version"]["const"] = (
-                        invalid
-                    )
-                else:
-                    changed_response["properties"]["schema_version"]["const"] = invalid
-                self.write("run-record.schema.json", changed_record)
-                self.write("command-response.schema.json", changed_response)
-                with (
-                    self.subTest(name=name, invalid=invalid),
-                    self.assertRaises(ValueError),
-                ):
-                    generate_spec.outputs()
+        for path in sentinels:
+            self.assertNotIn(path, outputs)
+        with patch("sys.argv", ["generate_spec.py"]):
+            self.assertEqual(generate_spec.main(), 0)
+        for path, expected in sentinels.items():
+            self.assertEqual((path.read_bytes(), path.stat().st_mtime_ns), expected)
+        options = outputs[self.root / "include/docenhance/app/options.hpp"]
+        self.assertNotIn("response_schema_version", options)
+        self.assertNotIn("response_confirmed_limit", options)
 
     def test_unchanged_generation_preserves_modification_times(self) -> None:
         """Generating already-current bytes never churns reviewed artifacts."""

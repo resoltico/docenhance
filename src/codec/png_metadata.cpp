@@ -7,7 +7,7 @@
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
 #include "exif.hpp"
 #include "png_chunks.hpp"

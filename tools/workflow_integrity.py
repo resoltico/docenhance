@@ -9,16 +9,25 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
-from ci_contract import NATIVE_RUNNERS, SANITIZERS, require_workflow_coverage
+from ci_contract import (
+    NATIVE_DIAGNOSTIC_FUZZ_CONDITION,
+    NATIVE_RUNNERS,
+    SANITIZERS,
+    fuzz_matrix,
+    require_native_diagnostic_input,
+    require_workflow_coverage,
+)
 from workflow_assertions import (
     action_errors,
     aggregate_job,
     require_evidence_upload,
+    require_native_diagnostics,
     require_strategy,
     required_job,
 )
 from workflow_cache import llvm_cache, source_cache
 from workflow_config import python_errors, workflow
+from workflow_windows_resources import require_windows_resource_proof
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -48,26 +57,6 @@ def required_step(
     return step
 
 
-def fuzz_matrix(major: str) -> dict[str, Any]:
-    """The two required engines and their actual compiler selections."""
-    return {
-        "include": [
-            {
-                "engine": "libfuzzer",
-                "preset": "fuzz",
-                "cc": f"clang-{major}",
-                "cxx": f"clang++-{major}",
-            },
-            {
-                "engine": "afl",
-                "preset": "fuzz-afl",
-                "cc": "afl-clang-fast",
-                "cxx": "afl-clang-fast++",
-            },
-        ]
-    }
-
-
 def sanitizer_job(document: dict[str, Any], major: str) -> None:
     """Both whole-suite sanitizer modes use actual pinned build-step environment."""
     job = required_job(document, "sanitize")
@@ -79,11 +68,16 @@ def sanitizer_job(document: dict[str, Any], major: str) -> None:
     if step.get("env") != {"CC": f"clang-{major}", "CXX": f"clang++-{major}"}:
         msg = "Sanitizer build step does not select the pinned compiler"
         raise ValueError(msg)
+    require_native_diagnostics(job, "${{ matrix.preset }}", "preset", step)
 
 
 def fuzz_job(document: dict[str, Any], major: str, *, weekly: bool) -> None:
     """Both engines execute the complete campaign; comments cannot pin their compiler."""
-    job = required_job(document, "campaign" if weekly else "fuzz")
+    job = required_job(
+        document,
+        "campaign" if weekly else "fuzz",
+        condition=None if weekly else NATIVE_DIAGNOSTIC_FUZZ_CONDITION,
+    )
     require_strategy(job, fuzz_matrix(major))
     required_step(job, "python tools/install_build_tools.py")
     seconds = '"$SECONDS_PER_TARGET"' if weekly else "15"
@@ -150,6 +144,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
         msg = "Required quality workflow must run on every PR and main push"
         raise ValueError(msg)
     require_workflow_coverage(document)
+    require_native_diagnostic_input(document)
     structural = required_job(document, "structural")
     for command in (
         SOURCE_GATE,
@@ -179,8 +174,10 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     required_step(native, "python tools/install_llvm.py")
     source_cache(native, required_step(native, "cmake -P cmake/AcquireDependencies.cmake"))
     required_step(native, "cmake --workflow --preset release", "runner.os != 'Windows'")
-    required_step(native, "./tools/ci_windows.ps1", "runner.os == 'Windows'")
+    native_build = required_step(native, "./tools/ci_windows.ps1", "runner.os == 'Windows'")
     required_step(native, NATIVE_SMOKE, "runner.os != 'Windows'")
+    require_native_diagnostics(native, "release", "platform", native_build)
+    require_windows_resource_proof(native, native_build)
     fuzz_job(document, major, weekly=False)
     sanitizer_job(document, major)
     aggregate_job(document)

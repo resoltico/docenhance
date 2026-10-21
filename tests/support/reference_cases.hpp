@@ -6,6 +6,7 @@
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "require.hpp"
+#include "scalar_boundary_cases.hpp"
 
 #include <algorithm>
 #include <array>
@@ -22,6 +23,11 @@
 #include <variant>
 #include <vector>
 namespace docenhance::tests {
+static_assert(noexcept(image::srgb_decode(0.0)));
+static_assert(noexcept(image::srgb_encode(0.0)));
+static_assert(noexcept(image::luminance(image::Rgb{})));
+static_assert(noexcept(image::transport_luminance(image::Rgb{}, 0.0)));
+static_assert(noexcept(image::blend_perceptual(image::Rgb{}, 0.0, 0.0, 0.0)));
 inline void parser_cases() {
     require(app::parse_finite("1e-2", 0, 1).value() == 0.01, "finite exponent");
     for (const auto* const text : {
@@ -100,25 +106,21 @@ inline void decimal_cases() {
     require(std::signbit(app::parse_finite("-0", -1, 1).value()), "negative zero retained");
 }
 inline void numerical_cases() {
-    require(image::srgb_decode(0).value() == 0, "black decode");
-    require(image::srgb_decode(1).value() == 1, "white decode");
-    require(std::abs(image::srgb_decode(0.04045).value() - (0.04045 / 12.92)) < 1e-14,
+    require(image::srgb_decode(0) == 0, "black decode");
+    require(image::srgb_decode(1) == 1, "white decode");
+    require(image::srgb_encode(1) == std::nextafter(1.0, 0.0),
+            "white encoding retains the actual prescribed binary64 result below one");
+    require(std::abs(image::srgb_decode(0.04045) - (0.04045 / 12.92)) < 1e-14,
             "sRGB low branch boundary");
     for (unsigned i = 0; i <= 4096; ++i) {
         const double encoded = static_cast<double>(i) / 4096.0;
         const auto linear = image::srgb_decode(encoded);
-        const auto roundtrip = image::srgb_encode(linear.value());
-        require(std::abs(encoded - roundtrip.value()) < 3e-8, "sRGB roundtrip");
+        require(std::isfinite(linear) && linear >= 0 && linear <= 1,
+                "decoded transfer output is finite unit data before direct encoding");
+        const auto roundtrip = image::srgb_encode(linear);
+        require(std::abs(encoded - roundtrip) < 3e-8, "sRGB roundtrip");
     }
-    for (const double value : {
-             -0.01,
-             1.01,
-             std::numeric_limits<double>::infinity(),
-             std::numeric_limits<double>::quiet_NaN(),
-         }) {
-        require(!image::srgb_decode(value).has_value(), "bad sRGB decode rejected");
-        require(!image::srgb_encode(value).has_value(), "bad sRGB encode rejected");
-    }
+    quantization_domain_cases();
     const auto colors = std::to_array<image::Rgb>({
         {0, 0, 0},
         {1, 1, 1},
@@ -132,12 +134,10 @@ inline void numerical_cases() {
         for (unsigned k = 0; k <= 100; ++k) {
             const double target = static_cast<double>(k) / 100.0;
             const auto result = image::transport_luminance(rgb, target);
-            require(result.has_value(), "luminance transport exists");
-            require(std::abs(image::luminance(result.value()).value() - target) < 2e-15,
-                    "target luminance");
-            for (const double c : result.value()) {
+            for (const double c : result) {
                 require(c >= 0 && c <= 1, "gamut bounded");
             }
+            require(std::abs(image::luminance(result) - target) < 2e-15, "target luminance");
         }
     }
     std::array<double, 5> values{9, 1, 3, 3, 7};
@@ -158,8 +158,45 @@ inline void numerical_cases() {
             "reflection handles INT64_MIN");
     require(!image::reflect101(0, 0).has_value(), "empty reflection rejected");
 }
+inline void execution_option_cases() {
+    for (const auto* const name : {"--threads", "--memory-limit"}) {
+        require(std::ranges::count(app::option_catalog, name, &app::OptionDescriptor::name) == 1,
+                "each execution option is declared exactly once");
+    }
+    require(std::ranges::any_of(app::option_catalog,
+                                [](const app::OptionDescriptor& option) {
+                                    return option.name == "--threads" &&
+                                           option.id == app::OptionId::threads &&
+                                           option.kind == app::ValueKind::auto_or_integer &&
+                                           option.scope.contains(app::Command::process) &&
+                                           !option.scope.contains(app::Command::root) &&
+                                           !option.scope.contains(app::Command::verify) &&
+                                           !option.scope.contains(app::Command::methods) &&
+                                           !option.scope.contains(app::Command::version) &&
+                                           option.minimum == 1 && option.maximum == 256 &&
+                                           option.default_value == std::string_view{"auto"} &&
+                                           option.domain == "auto; auto | integer [1,256]";
+                                }),
+            "threads owns the process-only auto or 1..256 worker domain");
+    require(std::ranges::any_of(app::option_catalog,
+                                [](const app::OptionDescriptor& option) {
+                                    return option.name == "--memory-limit" &&
+                                           option.id == app::OptionId::memory_limit &&
+                                           option.kind == app::ValueKind::integer &&
+                                           option.scope.contains(app::Command::process) &&
+                                           !option.scope.contains(app::Command::root) &&
+                                           !option.scope.contains(app::Command::verify) &&
+                                           !option.scope.contains(app::Command::methods) &&
+                                           !option.scope.contains(app::Command::version) &&
+                                           option.minimum == 64 && option.maximum == 262144 &&
+                                           option.default_value == std::string_view{"1024"} &&
+                                           option.domain == "1024; integer [64,262144]";
+                                }),
+            "memory limit owns the process-only 64..262144 MiB domain with 1024 default");
+}
 inline void capabilities_cases() {
-    require(app::option_catalog.size() == 50, "compiled target contract size");
+    require(app::option_catalog.size() == 52, "compiled target contract size");
+    execution_option_cases();
     // The reviewed scope of an option is typed, so no layer has to interpret a scope string.
     const auto& out_dir = app::option_catalog.front();
     require(out_dir.name == "--out-dir", "the catalog keeps the reviewed order");

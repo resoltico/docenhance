@@ -34,12 +34,24 @@ def produced(exe: Path, root: Path, name: str, options: list[str]) -> Path:
     raw = (directory / "run.json").read_bytes()
     record = json.loads(raw)
     VALIDATOR.validate(record)
-    expect(response["record"]["sha256"] == hashlib.sha256(raw).hexdigest(), "exact manifest digest")
+    expect(response["record_sha256"] == hashlib.sha256(raw).hexdigest(), "exact manifest digest")
+    expect(response["record"] == record, "delivered full record agrees with immutable record")
     expect(
         record["source"]["sha256"] == hashlib.sha256(source.read_bytes()).hexdigest(),
         "consumed source",
     )
-    call_json(exe, ["verify", str(directory), "--json"])
+    verified = call_json(exe, ["verify", str(directory), "--json"])
+    names = [record["output"]["path"], *(asset["path"] for asset in record["assets"]), "run.json"]
+    expect(
+        [item["path"] for item in verified["confirmed"]] == names,
+        "actual verifier preserves artifact order then exactly one record observation",
+    )
+    for item in verified["confirmed"]:
+        encoded = raw if item["path"] == "run.json" else (directory / item["path"]).read_bytes()
+        expect(
+            item["bytes"] == len(encoded) and item["sha256"] == hashlib.sha256(encoded).hexdigest(),
+            "native observed identity and length match actual complete fixture bytes",
+        )
     return directory
 
 
@@ -72,12 +84,12 @@ def malformed_records(exe: Path, directory: Path) -> None:
         (("record", "version"), 10),
         (("record", "run"), "wrong"),
         (("record", "recorded"), "2026-02-30T00:00:00Z"),
-        (("request", "operation", "parameters", "threshold"), -1),
-        (("request", "operation", "method", "method_version"), 2),
-        (("output", "bit_depth"), 16),
+        (("request", "binarization", "parameters", "threshold"), -1),
+        (("request", "binarization", "version"), 1),
+        (("output", "depth"), 16),
         (("source", "bytes"), -1),
         (("build", "dependency_lock_sha256"), "wrong"),
-        (("request", "protection_supplied"), True),
+        (("request", "protection"), True),
     ):
         altered = copy.deepcopy(good)
         parent: Any = altered
@@ -97,9 +109,12 @@ def malformed_records(exe: Path, directory: Path) -> None:
         expect(not VALIDATOR.is_valid(altered), "closed schema rejects unknown fields")
         path.write_text(json.dumps(altered), encoding="utf-8")
         refused(exe, directory)
-    duplicate = original.replace(b'"version": 14', b'"version": 1, "version": 14', 1)
-    path.write_bytes(duplicate)
-    refused(exe, directory)
+    compact = json.dumps(good, separators=(",", ":")).encode()
+    for spelling in (b'"version"', b'"\\u0076ersion"'):
+        duplicate = compact.replace(b'"version":15', b'"version":15,' + spelling + b":15", 1)
+        expect(duplicate != compact, "duplicate-key mutation attains actual current record field")
+        path.write_bytes(duplicate)
+        refused(exe, directory)
     path.write_bytes(original)
 
 
@@ -111,43 +126,46 @@ def artifact_claims(exe: Path, directory: Path) -> None:
     for field, value in (
         ("width", 9),
         ("height", 5),
-        ("bit_depth", 16),
+        ("depth", 16),
         ("channels", 3),
         ("profile_embedded", not good["output"]["profile_embedded"]),
     ):
         altered = copy.deepcopy(good)
         altered["output"][field] = value
-        if field in {"width", "height", "bit_depth", "channels"}:
-            altered["execution"]["conversion"]["encoded_output"][field] = value
-            altered["execution"]["conversion"]["decoded_input"][field] = value
-            altered["execution"]["illumination"]["eligible_samples"] = (
-                altered["output"]["width"] * altered["output"]["height"]
-            )
-        if field != "profile_embedded":
-            VALIDATOR.validate(altered)
-        else:
-            expect(
-                not VALIDATOR.is_valid(altered),
-                "continuous output must declare its canonical profile",
-            )
+        if field in {"width", "height", "depth", "channels"}:
+            report_key = "bit_depth" if field == "depth" else field
+            interpreted = altered["execution"]["interpretation"]
+            interpreted["output"][report_key] = value
+            interpreted["decoded"][report_key] = value
+            if field in {"width", "height"}:
+                altered["source"]["container"][field] = value
+            elif field == "depth":
+                altered["source"]["container"]["precision"] = value
+            else:
+                altered["source"]["container"]["color_type"] = 2
+        VALIDATOR.validate(altered)
         path.write_text(json.dumps(altered), encoding="utf-8")
         refused(exe, directory)
     path.write_bytes(original)
 
 
 def false_binary(exe: Path, directory: Path) -> None:
-    """A gray PNG with nonbinary samples remains invalid even with its correct digest."""
+    """Correct digests cannot excuse PNG8 substitution or false physicalPNG1 white counts."""
     image = directory / "result.png"
     original_image = image.read_bytes()
     path = directory / "run.json"
     original_record = path.read_bytes()
-    raw = Fixture(8, 4, ((128,),) * 32, color=GRAY).encoded()
-    image.write_bytes(raw)
-    record = json.loads(original_record)
-    record["output"].update(sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw))
-    VALIDATOR.validate(record)
-    path.write_text(json.dumps(record), encoding="utf-8")
-    refused(exe, directory)
+    for fixture in (
+        Fixture(8, 4, ((128,),) * 32, color=GRAY),
+        Fixture(8, 4, ((0,),) * 32, color=GRAY, depth=1),
+    ):
+        raw = fixture.encoded()
+        image.write_bytes(raw)
+        record = json.loads(original_record)
+        record["output"].update(sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw))
+        VALIDATOR.validate(record)
+        path.write_text(json.dumps(record), encoding="utf-8")
+        refused(exe, directory)
     image.write_bytes(original_image)
     path.write_bytes(original_record)
 
@@ -182,9 +200,8 @@ def false_mask(exe: Path, directory: Path) -> None:
         raw = Fixture(8, 4, ((value,),) * 32).encoded()
         mask.write_bytes(raw)
         record = json.loads(original_record)
-        record["protection"]["stored"].update(
-            sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw)
-        )
+        asset = next(value for value in record["assets"] if value["role"] == "protection_mask")
+        asset.update(sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw))
         VALIDATOR.validate(record)
         path.write_text(json.dumps(record), encoding="utf-8")
         refused(exe, directory)
@@ -199,7 +216,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory(prefix="docenhance-bundles-") as temporary:
         root = Path(temporary)
         binary = produced(exe, root, "binary", ["--output-mode", "bw", "--binarize", "fixed"])
-        produced(exe, root, "sauvola", ["--output-mode", "bw"])
+        produced(exe, root, "sauvola", ["--output-mode", "bw", "--binarize", "sauvola"])
         continuous = produced(exe, root, "continuous", [])
         produced(
             exe, root, "illumination", ["--illumination", "surface", "--background-strength", "0"]
@@ -236,7 +253,10 @@ def main() -> None:
                 "--json",
             ],
         )
-        expect(response["illumination"]["status"] == "applied", "actual I01 application")
+        expect(
+            response["record"]["execution"]["illumination"]["disposition"] == "applied",
+            "actual I01 application",
+        )
         VALIDATOR.validate(json.loads((illuminated / "run.json").read_bytes()))
         call_json(exe, ["verify", str(illuminated), "--json"])
         malformed_records(exe, binary)

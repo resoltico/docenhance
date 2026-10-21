@@ -10,7 +10,7 @@
 #include <string>
 namespace docenhance::host {
 struct VerifiedBundle {
-    record::DeclaredBundle declared;
+    record::RunRecord declared;
     core::ContentIdentity record;
 };
 struct ExpectedBundle {

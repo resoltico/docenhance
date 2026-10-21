@@ -7,6 +7,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/record/inventory.hpp"
+#include "docenhance/record/record.hpp"
 
 #include <expected>
 #include <utility>
@@ -27,11 +28,16 @@ core::Result<app::Verified> Verifier::verify(const app::VerifyRequest& request,
         return std::unexpected(checked.error());
     }
     auto& declared = checked->declared;
+    auto inventory = record::inventory(declared);
+    if (!inventory) {
+        return std::unexpected(std::move(inventory.error()));
+    }
+    inventory->push_back({.name = record::record_name, .identity = std::move(checked->record)});
     return app::Verified{
         .directory = request.directory(),
-        .run = std::move(declared.run),
-        .recorded = std::move(declared.recorded),
-        .confirmed = std::move(declared.inventory),
+        .run = std::move(declared.context.identity),
+        .recorded = std::move(declared.context.recorded),
+        .confirmed = std::move(*inventory),
     };
 }
 } // namespace docenhance::host

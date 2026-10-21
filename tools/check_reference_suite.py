@@ -3,10 +3,9 @@
 # SPDX-License-Identifier: MPL-2.0
 """Compile and run the dependency-free reference suites with any compiler.
 
-Which sources those are is not a list kept here: it is every layer that spec/architecture.json
-says uses no third-party package. CMake generates actual build facts from the shared template.
-The suite grows with the project instead of drifting from it, and proves that the layers below the
-adapter really are free of third-party code.
+The complete pure-owner source partition stays selected when library edges change. Actual compiler
+headers and a closed fresh-object link prove independence. CMake generates real build facts and
+toolchain search roots; execution reconciles all ten independent suite callbacks.
 """
 
 from __future__ import annotations
@@ -20,44 +19,53 @@ import sys
 import tempfile
 from pathlib import Path
 
-from architecture import load_manifest
+from architecture import ArchitectureError
 from deps import ROOT
 from parallel import MAX_JOBS, ordered_map
 from project_version import project_version
+from reference_closure import (
+    STRICT_WARNINGS,
+    observe_headers,
+    reconcile_suites,
+    system_roots,
+    validate_flags,
+    verify_gnu_pch,
+)
 
-# Mirrors DE_STRICT_WARNINGS in cmake/ProjectOptions.cmake; check_project.py keeps them identical.
-STRICT_WARNINGS = [
-    "-Wall",
-    "-Wextra",
-    "-Wpedantic",
-    "-Wconversion",
-    "-Wsign-conversion",
-    "-Wshadow",
-    "-Wformat=2",
-    "-Wold-style-cast",
-    "-Wcast-align",
-    "-Wcast-qual",
-    "-Wnon-virtual-dtor",
-    "-Woverloaded-virtual",
-    "-Wdouble-promotion",
-    "-Wimplicit-fallthrough",
-    "-Wmissing-declarations",
-    "-Wundef",
-    "-Wextra-semi",
-]
+REFERENCE_LAYERS = ("app", "core", "exec", "image", "methods")
 
 
 def reference_sources() -> list[str]:
-    """Every first-party source the reference suite can compile on its own."""
-    manifest = load_manifest()
-    free = {name for name in manifest.layers if not manifest.package_reach(name)}
+    """Complete pure owners, excluding the separately exercised FFT orchestration body."""
     sources: list[str] = []
-    for layer in sorted(free):
+    for layer in REFERENCE_LAYERS:
         sources.extend(
             path.relative_to(ROOT).as_posix()
             for path in sorted((ROOT / "src" / layer).glob("*.cpp"))
+            if path.relative_to(ROOT).as_posix() != "src/methods/restoration_working.cpp"
         )
     return sources
+
+
+def validate_source_inventory(sources: list[Path]) -> None:
+    """A production reference link cannot omit an owner, duplicate it or add a foreign object."""
+    production = (ROOT / "src").resolve()
+    canonical = [source.resolve() for source in sources]
+    if any(source.is_relative_to(production) for source in canonical):
+        expected = {ROOT / source for source in reference_sources()}
+        expected.add(ROOT / "tests/support/standalone_main.cpp")
+        if set(canonical) != expected or len(canonical) != len(expected):
+            msg = "Reference source inventory differs from the complete owner partition"
+            raise ArchitectureError(msg)
+
+
+def check_environment() -> None:
+    """Reuse the production compiler/search/link injection refusal before each build."""
+    cmake = shutil.which("cmake")
+    if cmake is None:
+        msg = "Reference environment verification requires CMake"
+        raise RuntimeError(msg)
+    subprocess.run([cmake, "-P", str(ROOT / "cmake/BuildEnvironment.cmake")], check=True)
 
 
 def generate_build_facts(directory: Path, compiler: str, minimum: str) -> Path:
@@ -68,10 +76,14 @@ def generate_build_facts(directory: Path, compiler: str, minimum: str) -> Path:
     (generated / "docenhance").mkdir(parents=True)
     (source / "CMakeLists.txt").write_text(
         f"cmake_minimum_required(VERSION {minimum})\n"
+        'include("${DE_REFERENCE_ENVIRONMENT}")\n'
         "project(Reference LANGUAGES CXX)\n"
         'set(PROJECT_VERSION "${DE_REFERENCE_VERSION}")\n'
         'set(DE_LOCK_SHA256 "${DE_REFERENCE_LOCK}")\n'
-        'configure_file("${DE_REFERENCE_TEMPLATE}" "${DE_REFERENCE_OUTPUT}" @ONLY)\n',
+        'configure_file("${DE_REFERENCE_TEMPLATE}" "${DE_REFERENCE_OUTPUT}" @ONLY)\n'
+        'file(WRITE "${DE_REFERENCE_ROOTS}" "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES};'
+        '${CMAKE_OSX_SYSROOT};${CMAKE_SYSROOT}")\n'
+        'file(WRITE "${DE_REFERENCE_COMPILER_ID}" "${CMAKE_CXX_COMPILER_ID}")\n',
         encoding="utf-8",
     )
     cmake = shutil.which("cmake")
@@ -93,6 +105,9 @@ def generate_build_facts(directory: Path, compiler: str, minimum: str) -> Path:
             f"-DDE_REFERENCE_LOCK:STRING={lock_digest}",
             f"-DDE_REFERENCE_TEMPLATE:FILEPATH={ROOT / 'cmake/version.hpp.in'}",
             f"-DDE_REFERENCE_OUTPUT:FILEPATH={generated / 'docenhance/version.hpp'}",
+            f"-DDE_REFERENCE_ENVIRONMENT:FILEPATH={ROOT / 'cmake/BuildEnvironment.cmake'}",
+            f"-DDE_REFERENCE_ROOTS:FILEPATH={directory / 'toolchain-roots.txt'}",
+            f"-DDE_REFERENCE_COMPILER_ID:FILEPATH={directory / 'compiler-id.txt'}",
         ],
         check=True,
     )
@@ -107,6 +122,9 @@ def build_reference(
     jobs: int,
 ) -> Path:
     """Compile every admitted source once into owned objects, then link the complete set."""
+    validate_flags(flags)
+    validate_source_inventory(sources)
+    check_environment()
     includes = [
         "-I",
         str(ROOT / "include"),
@@ -115,13 +133,21 @@ def build_reference(
         "-I",
         str(directory / "generated"),
     ]
+    roots_file = directory / "toolchain-roots.txt"
+    roots = system_roots(roots_file.read_text().split(";")) if roots_file.is_file() else []
+    roots += [ROOT / "include", ROOT / "tests/support", directory / "generated"]
+    roots += [ROOT / "src" / layer for layer in REFERENCE_LAYERS]
 
     def compile_source(item: tuple[int, Path]) -> Path:
         index, source = item
         target = directory / f"reference-{index}.o"
-        subprocess.run(
-            [compiler, *flags, *includes, "-c", str(source), "-o", str(target)], check=True
+        result = subprocess.run(
+            [compiler, *flags, *includes, "-H", "-c", str(source), "-o", str(target)],
+            capture_output=True,
+            text=True,
+            check=True,
         )
+        observe_headers(result.stderr, Path.cwd(), source, roots)
         return target
 
     objects = ordered_map(compile_source, enumerate(sources), jobs)
@@ -168,12 +194,30 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="docenhance-reference-") as temp:
         directory = Path(temp)
         generate_build_facts(directory, compiler, tools["cmake"]["minimum"])
+        identity = (directory / "compiler-id.txt").read_text()
+        print(f"Reference compiler family: {identity}", flush=True)
+        if identity == "GNU":
+            check_environment()
+            verify_gnu_pch(compiler, flags, directory)
         exe = build_reference(
             compiler, flags, [ROOT / source for source in sources], directory, args.jobs
         )
-        subprocess.run([str(exe)], check=True)
+        result = subprocess.run([str(exe)], capture_output=True, text=True, check=True)
+        counts = reconcile_suites(result.stdout)
+        print(result.stdout, end="")
+        print(
+            f"PASS: {len(counts)} live independent suites; "
+            f"{len(sources)} compiled translation units"
+        )
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except subprocess.CalledProcessError as error:
+        if error.stdout:
+            print(error.stdout, end="")
+        if error.stderr:
+            print(error.stderr, end="", file=sys.stderr)
+        raise SystemExit(error.returncode) from error

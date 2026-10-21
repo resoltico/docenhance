@@ -48,16 +48,21 @@ def command(source: Path, output: Path) -> list[str]:
 
 
 def accepted_samples(exe: Path, root: Path) -> None:
-    """Low bit depths expand predictably; gAMA must not change stored threshold samples."""
+    """Low-bit sources interpret before Q16; physical PNG1 retains logical polarity."""
     for depth, samples in ((1, b"\x40"), (2, b"\x30"), (4, b"\x0f"), (8, b"\x00\xff")):
         source, output = root / f"depth-{depth}.png", root / f"depth-{depth}"
         source.write_bytes(png(depth, 0, samples))
         call_json(exe, command(source, output))
-        expect(read_gray_png(output / "result.png") == b"\0\xff", "stored sample expansion")
+        expect(
+            read_gray_png(output / "result.png") == b"\0\x01", "source precision to terminal Q16"
+        )
     source, output = root / "gamma.png", root / "gamma"
     source.write_bytes(png(8, 0, b"\x7f\x80", chunk(b"gAMA", struct.pack(">I", 100000))))
     call_json(exe, command(source, output))
-    expect(read_gray_png(output / "result.png") == b"\0\xff", "gamma did not change samples")
+    expect(
+        read_gray_png(output / "result.png") == b"\x01\x01",
+        "linear-gamma interpretation precedes terminal Q16",
+    )
     source, output = root / "interlaced.png", root / "interlaced"
     source.write_bytes(
         SIGNATURE
@@ -66,7 +71,18 @@ def accepted_samples(exe: Path, root: Path) -> None:
         + chunk(b"IEND", b"")
     )
     call_json(exe, command(source, output))
-    expect(read_gray_png(output / "result.png") == b"\0\xff", "Adam7 pass combination")
+    expect(read_gray_png(output / "result.png") == b"\0\x01", "Adam7 pass combination")
+    for name, data, expected in (
+        ("gray16", png(16, 0, b"\0\0\xff\xff"), b"\0\x01"),
+        ("rgb", png(8, 2, b"\0\0\0\xff\xff\xff"), b"\0\x01"),
+        ("transparent", png(8, 0, b"\0\xff", chunk(b"tRNS", b"\0\0")), b"\x01\x01"),
+    ):
+        source, output = root / f"admitted-{name}.png", root / f"admitted-{name}"
+        source.write_bytes(data)
+        response = call_json(exe, command(source, output))
+        expect(read_gray_png(output / "result.png") == expected, "interpreted common input domain")
+        expect(response["record"]["output"]["depth"] == 1, "actual output facts are PNG1")
+        call_json(exe, ["verify", str(output), "--json"])
     source, output = root / "dokuments-ā-文.png", root / "rezultāts-文"
     write_gray_png(source, b"\0\xff")
     response = call_json(exe, command(source, output))
@@ -74,7 +90,7 @@ def accepted_samples(exe: Path, root: Path) -> None:
 
 
 def rejected_inputs(exe: Path, root: Path) -> None:
-    """CRC, truncation, color, depth and transparency failures never create an output."""
+    """CRC, truncation, invalid encoding declarations and trailing bytes never create output."""
     valid = png(8, 0, b"\0\xff")
     bad_crc = bytearray(valid)
     bad_crc[29] ^= 1
@@ -83,9 +99,9 @@ def rejected_inputs(exe: Path, root: Path) -> None:
         valid[:20],
         valid[:-5],
         bytes(bad_crc),
-        png(16, 0, b"\0\0\xff\xff"),
-        png(8, 2, b"\0\0\0\xff\xff\xff"),
-        png(8, 0, b"\0\xff", chunk(b"tRNS", b"\0\0")),
+        valid + b"suffix",
+        png(3, 0, b"\0\xff"),
+        png(8, 1, b"\0\xff"),
     ]
     for number, data in enumerate(inputs):
         source, output = root / f"bad-{number}.png", root / f"bad-{number}"
@@ -173,7 +189,7 @@ def exclusive_outputs(exe: Path, root: Path) -> None:
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
         expect(sum(pool.map(publish, range(2))) == 1, "exactly one publisher owns the destination")
-    expect(read_gray_png(target / "result.png") == b"\0\xff", "winner published complete output")
+    expect(read_gray_png(target / "result.png") == b"\0\x01", "winner published complete output")
     expect(not list(root.glob("contended.staging-*")), "losing publisher cleaned its own stage")
 
 

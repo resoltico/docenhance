@@ -78,14 +78,44 @@ class RunnerPathTests(unittest.TestCase):
                 "static_tests": [test["name"] for test in tests],
             }
             (build / "native-tests.json").write_text(json.dumps(manifest))
-            tests.append(
-                {"name": "unit", "command": [manifest["unit_binary"], "--reporter", "xml"]}
-            )
+            unit_command = [
+                str(build / "alias/../unit"),
+                "unit",
+                "--reporter",
+                "xml",
+                "--abort",
+                "--invisibles",
+            ]
+            tests.append({"name": "unit", "command": unit_command})
             listing = {"listings": {"tests": [{"name": "unit", "tags": []}]}}
             with patch(
                 "run_native_suite.subprocess.run",
                 return_value=subprocess.CompletedProcess([], 0, json.dumps(listing)),
             ):
+                self.assertEqual(run_native_suite.registrations(build, tests), {"unit"})
+                wrong_binary = [str(build / "different-unit"), *unit_command[1:]]
+                for label, altered in (
+                    ("missing-abort", [value for value in unit_command if value != "--abort"]),
+                    (
+                        "missing-invisibles",
+                        [value for value in unit_command if value != "--invisibles"],
+                    ),
+                    ("wrong-unit-binary", wrong_binary),
+                    ("extra-trailing-argument", [*unit_command, "extra"]),
+                ):
+                    tests[-1]["command"] = altered
+                    with (
+                        self.subTest(label=label),
+                        self.assertRaisesRegex(
+                            EvidenceError, "actual binary with fail-fast XML evidence"
+                        ),
+                    ):
+                        run_native_suite.registrations(build, tests)
+                tests[-1]["command"] = unit_command
+                tests[-1]["name"] = "different-unit"
+                with self.assertRaisesRegex(EvidenceError, "CTest differs"):
+                    run_native_suite.registrations(build, tests)
+                tests[-1]["name"] = "unit"
                 self.assertEqual(run_native_suite.registrations(build, tests), {"unit"})
                 tests[0]["command"] = [sys.executable, "/different/runner.py", str(scripts[0])]
                 with self.assertRaises(EvidenceError):

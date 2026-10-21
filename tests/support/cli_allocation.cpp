@@ -62,7 +62,8 @@ bool check_unparsed_allocation_transport() {
             "E_RESOURCE: The system refused an allocation\n"
             "Publication: not_started\n"
             "Publication did not start; correct the reported problem before retrying.\n"
-            "An incomplete response or delivery failure does not prove absence of effects.\n";
+            "An incomplete response or delivery failure does not prove absence of effects.\n"
+            "Completed stage facts: none reported\n";
     if (!valid) {
         std::cerr << "Unparsed allocation transport: code=" << code
                   << ", attempts=" << allocation::allocation_attempts.load()

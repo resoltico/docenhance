@@ -60,3 +60,43 @@ def require_workflow_coverage(document: dict[str, Any]) -> None:
             ):
                 message = "Required CI checkout must select the immutable event SHA"
                 raise ValueError(message)
+
+
+NATIVE_DIAGNOSTIC_FUZZ_CONDITION = (
+    "github.event_name != 'workflow_dispatch' || !inputs.native_diagnostic"
+)
+
+
+def require_native_diagnostic_input(document: dict[str, Any]) -> None:
+    """Only an explicit manual boolean opt-in may omit fuzz campaign execution."""
+    expected = {
+        "native_diagnostic": {
+            "description": "Run native diagnostics without fuzz campaigns (not qualification)",
+            "type": "boolean",
+            "required": "false",
+            "default": "false",
+        }
+    }
+    if document.get("on", {}).get("workflow_dispatch") != {"inputs": expected}:
+        message = "Manual native diagnostic input must be an explicit default-false boolean"
+        raise ValueError(message)
+
+
+def fuzz_matrix(major: str) -> dict[str, Any]:
+    """The two required engines and their actual compiler selections."""
+    return {
+        "include": [
+            {
+                "engine": "libfuzzer",
+                "preset": "fuzz",
+                "cc": f"clang-{major}",
+                "cxx": f"clang++-{major}",
+            },
+            {
+                "engine": "afl",
+                "preset": "fuzz-afl",
+                "cc": "afl-clang-fast",
+                "cxx": "afl-clang-fast++",
+            },
+        ]
+    }

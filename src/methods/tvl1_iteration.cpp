@@ -2,22 +2,24 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/parameter_domains.hpp"
 #include "docenhance/methods/tvl1.hpp"
+#include "tvl1_detail.hpp"
 #include "tvl1_operators.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <expected>
-#include <limits>
+#include <span>
+#include <utility>
 namespace docenhance::methods {
 namespace {
 constexpr std::uint32_t interval = 1024;
-bool unit(double v) noexcept {
-    return std::isfinite(v) && v >= 0 && v <= 1;
-}
 bool storage(Tvl1Field f) noexcept {
     const auto same = [&](auto p) {
         return p.width() == f.input.width() && p.height() == f.input.height();
@@ -30,19 +32,10 @@ bool storage(Tvl1Field f) noexcept {
            !image::overlaps(f.extrapolated, f.dual_x) &&
            !image::overlaps(f.extrapolated, f.dual_y) && !image::overlaps(f.dual_x, f.dual_y);
 }
-core::Result<double> dual_pixel(Tvl1Field f, std::uint32_t x, std::uint32_t y) {
+double dual_pixel(Tvl1Field f, std::uint32_t x, std::uint32_t y) noexcept {
     const auto g = tvl1_gradient(f.extrapolated.as_const(), x, y);
     auto& px = f.dual_x.row(y).subspan(x, 1).front();
     auto& py = f.dual_y.row(y).subspan(x, 1).front();
-    const auto center = f.extrapolated.row(y).subspan(x, 1).front();
-    constexpr double projection_error = 8 * std::numeric_limits<double>::epsilon();
-    if (!std::isfinite(center) || center < -1 || center > 2 || !std::isfinite(g.x) ||
-        !std::isfinite(g.y) || !std::isfinite(px) || !std::isfinite(py) ||
-        std::hypot(px, py) > 1 + projection_error || (x + 1 == f.input.width() && px != 0) ||
-        (y + 1 == f.input.height() && py != 0)) {
-        return core::failure(core::ErrorCode::numerical,
-                             "Invalid TV-L1 extrapolated or dual sample");
-    }
     const double cx = px + (tvl1_step * g.x);
     const double cy = py + (tvl1_step * g.y);
     const double divisor = std::max(1.0, std::hypot(cx, cy));
@@ -53,12 +46,9 @@ core::Result<double> dual_pixel(Tvl1Field f, std::uint32_t x, std::uint32_t y) {
     py = ny;
     return update;
 }
-core::Result<double> primal_pixel(Tvl1Field f, std::uint32_t x, std::uint32_t y, double lambda) {
+double primal_pixel(Tvl1Field f, std::uint32_t x, std::uint32_t y, double lambda) noexcept {
     auto& u = f.primal.row(y).subspan(x, 1).front();
     const double input = f.input.row(y).subspan(x, 1).front();
-    if (!unit(input) || !unit(u)) {
-        return core::failure(core::ErrorCode::numerical, "Invalid TV-L1 input or primal sample");
-    }
     const double v = u - (tvl1_step * tvl1_adjoint(f.dual_x.as_const(), f.dual_y.as_const(), x, y));
     const double d = v - input;
     const double next = std::clamp(
@@ -68,57 +58,96 @@ core::Result<double> primal_pixel(Tvl1Field f, std::uint32_t x, std::uint32_t y,
     u = next;
     return update;
 }
-core::Result<double> dual_pass(Tvl1Field f, const core::Cancellation& cancellation) {
+core::Result<double> dual_rows(Tvl1Field f, std::uint32_t first, std::uint32_t last,
+                               const core::Cancellation& cancellation) {
     double maximum = 0;
-    for (std::uint32_t y = 0; y < f.input.height(); ++y) {
+    for (auto y = first; y < last; ++y) {
         for (std::uint32_t x = 0; x < f.input.width(); ++x) {
             if (x % interval == 0 && cancellation.requested(core::Checkpoint::processing)) {
                 return core::cancelled();
             }
-            auto update = dual_pixel(f, x, y);
-            if (!update) {
-                return std::unexpected(update.error());
+            if ((x + 1 == f.input.width() && f.dual_x.row(y).subspan(x, 1).front() != 0) ||
+                (y + 1 == f.input.height() && f.dual_y.row(y).subspan(x, 1).front() != 0)) {
+                return core::failure(core::ErrorCode::numerical,
+                                     "Invalid TV-L1 extrapolated or dual sample");
             }
-            maximum = std::max(maximum, *update);
+            maximum = std::max(maximum, dual_pixel(f, x, y));
         }
     }
     return maximum;
 }
-core::Result<double> primal_pass(Tvl1Field f, double lambda,
-                                 const core::Cancellation& cancellation) {
+core::Result<double> primal_rows(Tvl1Field f, double lambda, std::uint32_t first,
+                                 std::uint32_t last, const core::Cancellation& cancellation) {
     double maximum = 0;
-    for (std::uint32_t y = 0; y < f.input.height(); ++y) {
+    for (auto y = first; y < last; ++y) {
         for (std::uint32_t x = 0; x < f.input.width(); ++x) {
             if (x % interval == 0 && cancellation.requested(core::Checkpoint::processing)) {
                 return core::cancelled();
             }
-            auto update = primal_pixel(f, x, y, lambda);
-            if (!update) {
-                return std::unexpected(update.error());
-            }
-            maximum = std::max(maximum, *update);
+            maximum = std::max(maximum, primal_pixel(f, x, y, lambda));
         }
     }
     return maximum;
+}
+double maximum_update(std::span<const double> partials) noexcept {
+    double maximum = 0;
+    for (const auto value : partials) {
+        maximum = std::max(maximum, value);
+    }
+    return maximum;
+}
+core::Result<double> dual_pass(Tvl1Field field, const exec::Scheduler& scheduler) {
+    const auto bands = tvl1_band_count(field.input.height());
+    std::array<double, tvl1_row_bands_max> partials{};
+    const auto work = [&](std::size_t band) -> core::Result<void> {
+        const auto [first, last] = tvl1_rows(field.input.height(), band);
+        auto result = dual_rows(field, first, last, scheduler.cancellation());
+        if (!result) {
+            return std::unexpected(std::move(result.error()));
+        }
+        std::span{partials}.subspan(band, 1).front() = *result;
+        return {};
+    };
+    if (auto result = scheduler.for_each(bands, exec::WorkRef{work}); !result) {
+        return std::unexpected(std::move(result.error()));
+    }
+    return maximum_update(std::span{partials}.first(bands));
+}
+core::Result<double> primal_pass(Tvl1Field field, double lambda, const exec::Scheduler& scheduler) {
+    const auto bands = tvl1_band_count(field.input.height());
+    std::array<double, tvl1_row_bands_max> partials{};
+    const auto work = [&](std::size_t band) -> core::Result<void> {
+        const auto [first, last] = tvl1_rows(field.input.height(), band);
+        auto result = primal_rows(field, lambda, first, last, scheduler.cancellation());
+        if (!result) {
+            return std::unexpected(std::move(result.error()));
+        }
+        std::span{partials}.subspan(band, 1).front() = *result;
+        return {};
+    };
+    if (auto result = scheduler.for_each(bands, exec::WorkRef{work}); !result) {
+        return std::unexpected(std::move(result.error()));
+    }
+    return maximum_update(std::span{partials}.first(bands));
 }
 } // namespace
 core::Result<Tvl1Updates> tvl1_iteration(Tvl1Field field, double lambda,
-                                         const core::Cancellation& cancellation) {
+                                         const exec::Scheduler& scheduler) {
     if (!storage(field) || !std::isfinite(lambda) || lambda < tv_lambda_domain.minimum ||
         lambda > tv_lambda_domain.maximum) {
         return core::failure(core::ErrorCode::argument,
                              "Invalid TV-L1 iteration storage or fidelity");
     }
-    if (cancellation.requested(core::Checkpoint::processing)) {
+    if (scheduler.cancellation().requested(core::Checkpoint::processing)) {
         return core::cancelled();
     }
-    auto dual = dual_pass(field, cancellation);
+    auto dual = dual_pass(field, scheduler);
     if (!dual) {
-        return std::unexpected(dual.error());
+        return std::unexpected(std::move(dual.error()));
     }
-    auto primal = primal_pass(field, lambda, cancellation);
+    auto primal = primal_pass(field, lambda, scheduler);
     if (!primal) {
-        return std::unexpected(primal.error());
+        return std::unexpected(std::move(primal.error()));
     }
     return Tvl1Updates{.primal = *primal, .dual = *dual};
 }

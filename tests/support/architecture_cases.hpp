@@ -1,6 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "binary_fact_cases.hpp"
+#include "binary_input_cases.hpp"
+#include "binary_numerical_cases.hpp"
+#include "clahe_working_controls.hpp"
+#include "contrast_fact_cases.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/memory.hpp"
@@ -9,8 +14,35 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/binarization.hpp"
-#include "docenhance/methods/fixed_threshold.hpp"
+#include "docenhance/methods/binarization_working.hpp"
+#include "gamma_working_cases.hpp"
+#include "gaussian_band_cases.hpp"
+#include "illumination_receiver_cases.hpp"
+#include "levels_working_cases.hpp"
+#include "morphology_fact_cases.hpp"
+#include "morphology_kernel_cases.hpp"
+#include "morphology_parallel_cases.hpp"
+#include "morphology_working_cases.hpp"
+#include "morphology_working_controls.hpp"
+#include "nlm_fact_cases.hpp"
+#include "nlm_working_cases.hpp"
+#include "nlm_working_controls.hpp"
 #include "require.hpp"
+#include "restoration_fact_cases.hpp"
+#include "sharpen_fact_cases.hpp"
+#include "stage_report_cases.hpp"
+#include "statistic_plane_cases.hpp"
+#include "surface_fact_cases.hpp"
+#include "surface_source_cases.hpp"
+#include "surface_working_boundaries.hpp"
+#include "surface_working_cases.hpp"
+#include "surface_working_controls.hpp"
+#include "tvl1_fact_cases.hpp"
+#include "tvl1_parallel_cases.hpp"
+#include "tvl1_working_controls.hpp"
+#include "unsharp_working_controls.hpp"
+#include "warning_cases.hpp"
+#include "working_cases.hpp"
 
 #include <array>
 #include <cstddef>
@@ -51,7 +83,18 @@ inline void ownership_cases() {
     // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     require(original.empty() && original.width() == 0 && original.view().empty(),
             "a moved-from plane has an empty shape as well as empty storage");
-    require(!methods::fixed_threshold(moved.view(), original.view(), 0.5),
+    std::array<std::uint16_t, 4> codes{0, 32768, 65535, 42};
+    const auto input = image::PlaneView<const std::uint16_t>::create(
+        codes, {.width = 4, .height = 1, .stride = sizeof(codes)});
+    const auto workers = exec::Concurrency::resolve(1, 1, 0, 0);
+    const auto method = methods::FixedThreshold::create(0.5);
+    require(input && workers && method, "moved-destination binary control has admitted inputs");
+    if (!input || !workers || !method) {
+        return;
+    }
+    const exec::Scheduler scheduler{*workers};
+    const auto rejected = methods::binarize(*method, {*input, original.view(), budget, scheduler});
+    require(!rejected && rejected.error().code == core::ErrorCode::argument,
             "a moved-from destination is rejected before row access");
     survivor = core::Buffer{};
     require(survivor.empty(), "the final owner safely releases the escaped ledger");
@@ -93,37 +136,16 @@ inline void view_cases() {
     require(image::overlaps(overlapping, first), "overlap checks are symmetric");
 }
 inline void threshold_cases() {
-    std::array<std::uint8_t, 256> source{};
-    std::array<std::uint8_t, 256> output{};
-    for (std::size_t index = 0; index < source.size(); ++index) {
-        source.at(index) = static_cast<std::uint8_t>(index);
-    }
-    const auto in = image::PlaneView<const std::uint8_t>::create(
-                        source, {.width = 256, .height = 1, .stride = 256})
-                        .value();
-    const auto out =
-        image::PlaneView<std::uint8_t>::create(output, {.width = 256, .height = 1, .stride = 256})
-            .value();
-    require(methods::fixed_threshold(in, out, 0.5).has_value(),
-            "B03 processes the complete sample domain");
-    for (std::size_t index = 0; index < output.size(); ++index) {
-        require(output.at(index) == (index <= 127 ? 0 : 255),
-                "B03 matches the mathematical threshold");
-    }
-    const auto alias =
-        image::PlaneView<std::uint8_t>::create(source, {.width = 256, .height = 1, .stride = 256})
-            .value();
-    require(!methods::fixed_threshold(in, alias, 0.5), "B03 rejects aliasing before writing");
-    require(source.front() == 0 && source.back() == 255, "alias rejection does not mutate input");
-    require(!methods::fixed_threshold(in, out, std::numeric_limits<double>::quiet_NaN()),
-            "NaN is not a threshold");
-    require(!methods::fixed_threshold(in, out, std::numeric_limits<double>::infinity()),
-            "infinity is not a threshold");
-    require(!methods::fixed_threshold(in, out, -0.1), "negative thresholds fail");
-    require(methods::fixed_threshold(in, out, 0).has_value() && output.at(1) == 255,
-            "zero threshold retains nonzero samples");
-    require(methods::fixed_threshold(in, out, 1).has_value() && output.back() == 0,
-            "one threshold blackens every sample");
+    // Exact Q=257*s embedding retains every old normalized sample and threshold endpoint;
+    // full-Q16 equality/adjacent-threshold and byte-overlap controls exercise the actual API.
+    binary_old_embedding_case();
+    binary_fixed_minimal_case();
+    binary_input_alias_cases();
+    require(!methods::FixedThreshold::create(std::numeric_limits<double>::quiet_NaN()),
+            "NaN cannot enter a typed threshold method");
+    require(!methods::FixedThreshold::create(std::numeric_limits<double>::infinity()),
+            "infinity cannot enter a typed threshold method");
+    require(!methods::FixedThreshold::create(-0.1), "negative thresholds fail admission");
 }
 inline void execution_exception_cases() {
     for (const unsigned workers : {1U, 4U}) {
@@ -149,9 +171,10 @@ inline void admission_cases() {
     invocation.option(app::OptionId::output_mode) = "bw";
     invocation.option(app::OptionId::binarize) = "fixed";
     auto accepted = app::prepare_process(invocation);
-    require(accepted.has_value() && std::get<methods::FixedThreshold>(
-                                        std::get<app::BinaryPlan>(accepted->plan()).operation)
-                                            .threshold() == 0.5,
+    require(accepted.has_value() &&
+                std::get<methods::FixedThreshold>(
+                    std::get<methods::BinaryOutput>(accepted->plan().output).method)
+                        .threshold() == 0.5,
             "application admission owns defaults");
     invocation.option(app::OptionId::fixed_threshold) = "NaN";
     require(!app::prepare_process(invocation),
@@ -160,11 +183,70 @@ inline void admission_cases() {
     invocation.option(app::OptionId::out_dir) = std::string{"output\0hidden", 13};
     require(!app::prepare_process(invocation), "paths cannot be silently truncated by C APIs");
 }
+inline void working_method_reference_cases() {
+    working_cases();
+    gamma_working_cases();
+    levels_working_cases();
+    clahe_working_cases();
+    unsharp_working_cases();
+    tvl1_working_cases();
+    tvl1_parallel_state_case();
+    gaussian_band_cases();
+    contrast_fact_cases();
+    sharpen_fact_cases();
+    binary_fact_cases();
+    nlm_cases();
+    nlm_working_control_cases();
+    tvl1_fact_cases();
+    morphology_fact_cases();
+    morphology_phase_boundary_cases();
+    illumination_receiver_cases();
+    morphology_kernel_baseline_cases();
+    morphology_absent_mask_case();
+    morphology_worker_case();
+    morphology_constant_and_excursion_cases();
+    morphology_fallback_case();
+    morphology_gain_boundary_cases();
+    morphology_maximum_worker_case(false);
+    morphology_maximum_worker_case(true);
+    morphology_interval_cases();
+    morphology_negative_zero_case();
+    morphology_resource_cases();
+    morphology_sample_cap_case();
+    morphology_noop_and_cold_cases();
+    morphology_phase_cancel_cases();
+    morphology_map_healthy_case(false);
+    morphology_map_healthy_case(true);
+    morphology_map_stop_case(4154, false);
+    morphology_map_stop_case(4155, false);
+    morphology_map_stop_case(4155, true);
+    surface_fact_cases();
+    surface_source_cases();
+    surface_worker_cases();
+    surface_absent_mask_case();
+    surface_full_fallback_case();
+    surface_dark_reference_case();
+    surface_noop_cases();
+    surface_automatic_cases();
+    surface_gain_cases();
+    surface_resource_cases();
+    surface_cancel_cases();
+    surface_grid_noop_case();
+    surface_hierarchy_working_case();
+    surface_prefix_case(false);
+    surface_prefix_case(true);
+    restoration_fact_cases();
+    stage_report_cases();
+    warning_cases();
+}
 inline void architecture_cases() {
     ownership_cases();
+    statistic_plane_cases();
     view_cases();
     threshold_cases();
     execution_exception_cases();
     admission_cases();
+    working_method_reference_cases();
+    binary_numerical_cases();
 }
 } // namespace docenhance::tests

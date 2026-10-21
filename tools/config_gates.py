@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 import yaml
 
-import check_reference_suite
 import package_source
+import reference_closure
 import size_policy
 from workflow_config import workflow
 
@@ -266,8 +266,8 @@ def warning_sync_errors(root: Path) -> list[str]:
     text = (root / "cmake" / "ProjectOptions.cmake").read_text(encoding="utf-8")
     match = re.search(r"set\(DE_STRICT_WARNINGS([^)]*)\)", text)
     cmake_flags = match.group(1).split() if match else []
-    if cmake_flags != check_reference_suite.STRICT_WARNINGS:
-        return ["DE_STRICT_WARNINGS and check_reference_suite.STRICT_WARNINGS differ"]
+    if cmake_flags != reference_closure.STRICT_WARNINGS:
+        return ["DE_STRICT_WARNINGS and reference_closure.STRICT_WARNINGS differ"]
     return []
 
 

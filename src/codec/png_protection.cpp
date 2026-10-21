@@ -5,10 +5,11 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/image/geometry.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
+#include "encoded_bytes.hpp"
 #include "png_metadata.hpp"
 
 #include <cstddef>
@@ -61,8 +62,9 @@ core::Result<void> normalize(const image::Raster& raster, image::PlaneView<std::
 }
 } // namespace
 core::Result<image::Plane<std::uint8_t>>
-decode_protection_png(std::span<const std::uint8_t> bytes, image::Extent extent,
-                      core::Budget& budget, const core::Cancellation& cancellation) {
+decode_protection_png(std::span<const std::byte> input, image::Extent extent, core::Budget& budget,
+                      const core::Cancellation& cancellation) {
+    const auto bytes = encoded_bytes(input);
     if (cancellation.requested(core::Checkpoint::decode)) {
         return core::cancelled();
     }

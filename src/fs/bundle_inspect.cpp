@@ -73,33 +73,54 @@ core::Result<void> append(BundleSnapshot& result, const std::string& name, core:
         result.record = std::move(bytes);
     } else if (name == "result.png") {
         result.image = std::move(bytes);
-    } else {
+    } else if (name == "assets/protect-mask.png") {
         result.mask = std::move(bytes);
+    } else if (name == "assets/psf.png") {
+        result.psf = std::move(bytes);
+    } else {
+        return core::failure(core::ErrorCode::invariant, "Unadmitted bundle snapshot role");
     }
     return {};
 }
-core::Result<void> read_mask(const BundleDirectory& root, BundleSnapshot& result,
-                             core::Budget& budget, const core::Cancellation& cancellation) {
+core::Result<void> read_assets(const BundleDirectory& root, BundleSnapshot& result,
+                               core::Budget& budget, const core::Cancellation& cancellation) {
     auto assets = root.child("assets");
     if (!assets) {
         return std::unexpected(assets.error());
     }
     auto names = assets->entries();
-    if (!names || names->size() != 1 || names->front() != "protect-mask.png") {
+    if (!names) {
+        return std::unexpected(std::move(names.error()));
+    }
+    if (names->empty() || names->size() > 2 || std::ranges::any_of(*names, [](const auto& name) {
+            return name != "protect-mask.png" && name != "psf.png";
+        })) {
         return core::failure(core::ErrorCode::input, "Bundle assets inventory is not closed");
     }
-    auto mask =
-        read(*assets, "protect-mask.png", core::bundle_max_file_bytes, budget, cancellation);
-    if (!mask) {
-        return std::unexpected(mask.error());
+    for (const auto& name : *names) {
+        const auto limit =
+            name == "psf.png" ? core::psf_encoded_bytes_max : core::bundle_max_file_bytes;
+        auto bytes = read(*assets, name, limit, budget, cancellation);
+        if (!bytes) {
+            return std::unexpected(std::move(bytes.error()));
+        }
+        if (auto stored = append(result, "assets/" + name, std::move(*bytes), cancellation);
+            !stored) {
+            return stored;
+        }
     }
     auto after = assets->entries();
-    if (!after || *after != *names) {
+    if (!after) {
+        return std::unexpected(std::move(after.error()));
+    }
+    std::ranges::sort(*names);
+    std::ranges::sort(*after);
+    if (*after != *names) {
         return core::failure(core::ErrorCode::input,
                              "Bundle assets changed during snapshot acquisition");
     }
     result.contents.directories.emplace_back("assets");
-    return append(result, "assets/protect-mask.png", std::move(*mask), cancellation);
+    return {};
 }
 } // namespace
 core::Result<BundleSnapshot> read_bundle(const std::string& directory, core::Budget& budget,
@@ -116,9 +137,9 @@ core::Result<BundleSnapshot> read_bundle(const std::string& directory, core::Bud
     BundleSnapshot result;
     for (const auto& name : *names) {
         if (name == "assets") {
-            auto mask = read_mask(*root, result, budget, cancellation);
-            if (!mask) {
-                return std::unexpected(mask.error());
+            auto assets = read_assets(*root, result, budget, cancellation);
+            if (!assets) {
+                return std::unexpected(std::move(assets.error()));
             }
             continue;
         }

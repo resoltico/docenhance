@@ -4,20 +4,20 @@
 #include "conversion.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
 #include "docenhance/image/geometry.hpp"
-#include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/image/output.hpp"
+#include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <lcms2.h>
 #include <span>
+#include <utility>
 #include <variant>
 
 namespace docenhance::color {
@@ -27,6 +27,12 @@ struct RowPart {
     std::uint32_t first{};
     std::uint32_t count{};
 };
+unsigned channels(const InterpretationState& state) noexcept {
+    return image::interpretation_category(state.source.get().shape.model) ==
+                   image::InterpretationCategory::gray1
+               ? 1
+               : image::rgb_channels;
+}
 core::Result<double> straight_sample(std::uint16_t stored, std::uint32_t maximum, double opacity,
                                      const image::TiffDeclarations* const tiff) {
     if (opacity == 0) {
@@ -44,176 +50,118 @@ core::Result<double> straight_sample(std::uint16_t stored, std::uint32_t maximum
     }
     return value;
 }
-core::Result<void> gather(ConversionState& state, RowPart part, image::RowUse use) {
-    const auto& source = state.source.get();
-    const unsigned channels = image::is_color(source.shape.model) ? image::rgb_channels : 1;
+core::Result<image::BlockObservation> gather(InterpretationReaderState& state, RowPart part) {
+    const auto& source = state.run.get().source.get();
+    const auto colors = channels(state.run.get());
     const auto bytes = source.shape.depth.bytes();
     const auto stride = image::components(source.shape.model) * bytes;
     const auto maximum =
         source.shape.depth == image::SampleDepth::word() ? image::word_max : image::byte_max;
     const auto* const tiff = std::get_if<image::TiffDeclarations>(&source.metadata.declarations);
-    auto const input = state.input.view().row(0);
-    auto const alpha = state.alpha.view().row(0);
+    const auto input = state.input.view().row(0);
+    const auto alpha = state.alpha.view().row(0);
+    const auto oriented = image::oriented_shape(source.shape, source.metadata.orientation);
+    image::BlockObservation observation;
     for (std::uint32_t i = 0; i < part.count; ++i) {
-        const auto oriented = image::oriented_shape(source.shape, source.metadata.orientation);
-        const auto b = image::rotation_source_coordinate(oriented, state.report.rotation,
+        const auto b = image::rotation_source_coordinate(oriented, state.run.get().report.rotation,
                                                          {.x = part.first + i, .y = part.y});
         const auto p = image::source_coordinate(source.shape, source.metadata.orientation, b);
         const auto pixel = source.pixels.view().row(p.y).subspan(std::size_t{p.x} * stride, stride);
         const double opacity =
             image::has_alpha(source.shape.model)
-                ? static_cast<double>(image::read_sample(
-                      pixel.subspan(std::size_t{channels} * bytes), source.shape.depth)) /
+                ? static_cast<double>(image::read_sample(pixel.subspan(std::size_t{colors} * bytes),
+                                                         source.shape.depth)) /
                       maximum
                 : 1.0;
-        if (opacity < 1 && state.parameters.alpha == image::AlphaPolicy::reject) {
+        if (opacity < 1 && state.run.get().parameters.alpha == image::AlphaPolicy::reject) {
             return core::failure(core::ErrorCode::input,
                                  "Source contains non-opaque samples under --alpha reject");
         }
-        if (opacity < 1 && use == image::RowUse::output) {
-            ++state.report.flattened_pixels;
-        }
+        observation.flattened_pixels += static_cast<std::uint64_t>(opacity < 1);
         alpha.subspan(i, 1).front() = opacity;
-        for (unsigned c = 0; c < channels; ++c) {
-            const auto value = straight_sample(
+        for (unsigned c = 0; c < colors; ++c) {
+            auto value = straight_sample(
                 image::read_sample(pixel.subspan(std::size_t{c} * bytes), source.shape.depth),
                 maximum, opacity, tiff);
             if (!value) {
-                return std::unexpected(value.error());
+                return std::unexpected(std::move(value.error()));
             }
-            input.subspan((std::size_t{i} * channels) + c, 1).front() = *value;
+            input.subspan((std::size_t{i} * colors) + c, 1).front() = *value;
         }
     }
-    return {};
+    return observation;
 }
-core::Result<void> interpret(ConversionState& state, std::uint32_t count) {
-    const unsigned channels =
-        image::is_color(state.source.get().shape.model) ? image::rgb_channels : 1;
+core::Result<void> interpret(InterpretationReaderState& state, std::uint32_t count) {
+    const auto colors = channels(state.run.get());
     const auto input = state.input.view().row(0);
     const auto linear = state.linear.view().row(0);
     if (state.transform) {
+        // The public DBL boundary uses the pinned LCMS float32 native evaluator internally.
+        // Gray has a genuine GrayData/D50/gamma1 destination and one output sample per pixel.
         cmsDoTransform(state.transform.get(), input.data(), linear.data(), count);
-        if (!state.context.good()) {
-            return std::unexpected(state.context.error("PNG color transformation failed"));
+        if (!state.run.get().context.good()) {
+            return std::unexpected(
+                state.run.get().context.error("Source color transformation failed"));
         }
         return {};
     }
-    for (std::uint32_t i = 0; i < count; ++i) {
-        for (unsigned c = 0; c < image::rgb_channels; ++c) {
-            const double sample =
-                input.subspan((std::size_t{i} * channels) + (channels == 1 ? 0 : c), 1).front();
-            const auto value = state.power_exponent
-                                   ? core::Result<double>{std::pow(sample, *state.power_exponent)}
-                                   : image::srgb_decode(sample);
-            if (!value) {
-                return std::unexpected(value.error());
-            }
-            linear.subspan((std::size_t{i} * image::rgb_channels) + c, 1).front() = *value;
-        }
+    for (std::size_t i = 0; i < std::size_t{count} * colors; ++i) {
+        const double sample = input.subspan(i, 1).front();
+        linear.subspan(i, 1).front() = state.run.get().power_exponent
+                                           ? std::pow(sample, *state.run.get().power_exponent)
+                                           : image::srgb_decode(sample);
     }
     return {};
 }
-core::Result<std::array<double, image::rgb_channels>>
-opaque_pixel(ConversionState& state, std::uint32_t pixel, image::RowUse use) {
-    const auto in = state.linear.view().row(0).subspan(std::size_t{pixel} * image::rgb_channels,
-                                                       image::rgb_channels);
-    const double alpha = state.alpha.view().row(0).subspan(pixel, 1).front();
-    const double matte = state.parameters.alpha == image::AlphaPolicy::black ? 0.0 : 1.0;
-    std::array<double, image::rgb_channels> values{};
-    for (unsigned c = 0; c < image::rgb_channels; ++c) {
-        const double value = in.subspan(c, 1).front();
+core::Result<void> composite(InterpretationReaderState& state, std::span<double> output,
+                             image::BlockObservation& observation) {
+    const auto colors = channels(state.run.get());
+    const auto linear = state.linear.view().row(0);
+    const auto alpha = state.alpha.view().row(0);
+    const double matte = state.run.get().parameters.alpha == image::AlphaPolicy::black ? 0.0 : 1.0;
+    for (std::size_t i = 0; i < output.size(); ++i) {
+        const auto value = linear.subspan(i, 1).front();
         if (!std::isfinite(value)) {
             return core::failure(core::ErrorCode::input,
                                  "Color transform produced a non-finite sample");
         }
-        if ((value < 0 || value > 1) && use == image::RowUse::output) {
-            ++state.report.clipped_components;
-        }
-        values.at(c) = (alpha * std::clamp(value, 0.0, 1.0)) + ((1.0 - alpha) * matte);
-    }
-    return values;
-}
-core::Result<void> quantize(ConversionState& state, RowPart part, std::span<std::uint8_t> output,
-                            image::RowUse use) {
-    const auto shape = state.report.output;
-    const auto channels = image::components(shape.model);
-    const auto bytes = shape.depth.bytes();
-    for (std::uint32_t i = 0; i < part.count; ++i) {
-        auto values = opaque_pixel(state, i, use);
-        if (!values) {
-            return std::unexpected(values.error());
-        }
-        const auto at = std::size_t{part.first + i} * channels * bytes;
-        const auto result = image::quantize_linear(
-            shape, *values, output.subspan(at, std::size_t{channels} * bytes));
-        if (!result) {
-            return result;
-        }
+        observation.clipped_components += static_cast<std::uint64_t>(value < 0 || value > 1);
+        const auto opacity = alpha.subspan(i / colors, 1).front();
+        output.subspan(i, 1).front() =
+            (opacity * std::clamp(value, 0.0, 1.0)) + ((1.0 - opacity) * matte);
     }
     return {};
 }
 } // namespace
-core::Result<void> read_linear(ConversionState& state, image::RowRange range, std::span<double> rgb,
-                               image::RowUse use) {
-    const auto width = state.report.output.width;
-    if (range.row >= state.report.output.height || range.first >= width || rgb.empty() ||
-        rgb.size() % image::rgb_channels != 0 ||
-        rgb.size() / image::rgb_channels > conversion_pixels ||
-        rgb.size() / image::rgb_channels > width - range.first) {
+core::Result<image::BlockObservation> read_interpretation(InterpretationReaderState& state,
+                                                          std::uint32_t row, std::uint32_t first,
+                                                          std::span<double> output) {
+    const auto colors = channels(state.run.get());
+    const auto shape = state.run.get().report.output;
+    if (row >= shape.height || first >= shape.width || output.empty() ||
+        output.size() % colors != 0 || output.size() / colors > conversion_pixels ||
+        output.size() / colors > shape.width - first) {
         return core::failure(core::ErrorCode::argument, "Invalid interpreted linear block");
     }
-    if (state.cancellation.requested(core::Checkpoint::processing)) {
+    if (image::overlaps(output, state.linear.view().row(0)) &&
+        output.data() != state.linear.view().row(0).data()) {
+        return core::failure(core::ErrorCode::argument,
+                             "Interpreted output may only alias its scratch at the first sample");
+    }
+    if (state.run.get().cancellation.requested(core::Checkpoint::processing)) {
         return core::cancelled();
     }
-    const auto count = static_cast<std::uint32_t>(rgb.size() / image::rgb_channels);
-    const RowPart part{.y = range.row, .first = range.first, .count = count};
-    auto gathered = gather(state, part, use);
-    if (!gathered) {
-        return gathered;
+    const auto count = static_cast<std::uint32_t>(output.size() / colors);
+    auto observation = gather(state, {.y = row, .first = first, .count = count});
+    if (!observation) {
+        return std::unexpected(std::move(observation.error()));
     }
-    auto interpreted = interpret(state, count);
-    if (!interpreted) {
-        return interpreted;
+    if (auto result = interpret(state, count); !result) {
+        return std::unexpected(std::move(result.error()));
     }
-    for (std::uint32_t i = 0; i < count; ++i) {
-        const auto value = opaque_pixel(state, i, use);
-        if (!value) {
-            return std::unexpected(value.error());
-        }
-        std::ranges::copy(*value, rgb.subspan(std::size_t{i} * image::rgb_channels).begin());
+    if (auto result = composite(state, output, *observation); !result) {
+        return std::unexpected(std::move(result.error()));
     }
-    return {};
-}
-core::Result<void> convert_row(ConversionState& state, std::uint32_t row,
-                               std::span<std::uint8_t> output, image::RowUse use) {
-    const auto required = image::raster_row_bytes(state.report.output);
-    if (!required || output.size() != *required || row >= state.report.output.height) {
-        return core::failure(core::ErrorCode::argument,
-                             "Output row extent does not match its descriptor");
-    }
-    for (std::uint32_t x = 0; x < state.report.output.width;) {
-        if (state.cancellation.requested(core::Checkpoint::processing)) {
-            return core::cancelled();
-        }
-        const RowPart part{
-            .y = row,
-            .first = x,
-            .count = std::min(conversion_pixels, state.report.output.width - x),
-        };
-        auto gathered = gather(state, part, use);
-        if (!gathered) {
-            return gathered;
-        }
-        auto interpreted = interpret(state, part.count);
-        if (!interpreted) {
-            return interpreted;
-        }
-        auto encoded = quantize(state, part, output, use);
-        if (!encoded) {
-            return encoded;
-        }
-        x += part.count;
-    }
-    return {};
+    return *observation;
 }
 } // namespace docenhance::color

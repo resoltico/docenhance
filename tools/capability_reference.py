@@ -59,7 +59,7 @@ def render_methods(families: list[dict[str, Any]], options: list[dict[str, Any]]
     text = "# Methods\n\n" + PREAMBLE
     text += (
         "Discovery lists implemented processing methods. Metadata orientation and exact "
-        "quarter-turn geometry are common operations described in [geometry](geometry.md). "
+        "quarter-turn geometry are common operations described in [geometry](pipeline.md). "
         "Future work is tracked in the [roadmap](roadmap.md).\n\n"
     )
     for family in sorted(families, key=lambda item: item["order"]):

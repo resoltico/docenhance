@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any
 
 from continuous_fixtures import Fixture, chunks
 from contract_reference import reviewed_methods
+from matrix_binary_reference import binary_reference
 from matrix_fixtures import HEIGHT, MARKS, WIDTH, png_sources, tiff_sources
 
 if TYPE_CHECKING:
@@ -27,11 +28,11 @@ STAGE_REPORT = {
     "S01": "sharpening",
     "R01": "restoration",
 }
+RGB_CHANNELS = 3
 BYTE_BITS = 8
 QUARTER_TURN = 90
 LINEAR_TRANSFER_BREAK = 0.0031308
 ENCODED_TRANSFER_BREAK = 0.04045
-FIXED_THRESHOLD = 0.5
 MARK_ROW = 8
 MARK_THRESHOLD = 100
 ORIENTATION_TRANSPOSE = 5
@@ -100,70 +101,12 @@ def alpha_gray(case: Case, source: Fixture, output: Fixture) -> None:
     expected = []
     for pixel in source.pixels:
         alpha = pixel[-1] / maximum if source.color in (4, 6) else 1
-        colors = pixel[:3] if source.color in (2, 6) else pixel[:1] * 3
+        colors = pixel[:3] if source.color in (2, 6) else pixel[:1]
         linear = [alpha * transfer(c / maximum, encode=False) + (1 - alpha) * matte for c in colors]
-        if gray:
+        if gray and len(linear) == RGB_CHANNELS:
             linear = [sum(c * w for c, w in zip(linear, (0.2126, 0.7152, 0.0722), strict=True))]
         expected.append(tuple(math.floor(maximum * transfer(c, encode=True) + 0.5) for c in linear))
     require(output.pixels == tuple(expected), "linear alpha/luminance samples disagree")
-
-
-def binary_reference(case: Case, source: Fixture) -> tuple[tuple[int, ...], ...]:
-    """Direct threshold/window/histogram reference, independent of production kernels."""
-    values = [pixel[0] for pixel in source.pixels]
-    selector = option(case, "--binarize", "sauvola")
-    if selector == "fixed":
-        return tuple((0 if value / 255 <= FIXED_THRESHOLD else 255,) for value in values)
-    if selector == "otsu":
-        bins = [round(4095 * value / 255) for value in values]
-        scores = []
-        for threshold in range(4095):
-            low, high = [v for v in bins if v <= threshold], [v for v in bins if v > threshold]
-            if low and high:
-                scores.append(
-                    (
-                        len(low)
-                        * len(high)
-                        / len(bins) ** 2
-                        * (statistics.mean(low) - statistics.mean(high)) ** 2,
-                        threshold,
-                    )
-                )
-        best = max(score for score, _ in scores)
-        selected = min(t for score, t in scores if best - score <= 1e-12 * max(1, best))
-        return tuple((0 if value <= selected else 255,) for value in bins)
-    return sauvola(source)
-
-
-def reflect(coordinate: int, extent: int) -> int:
-    """REFLECT_101 without duplicating edge samples."""
-    if extent == 1:
-        return 0
-    reduced = coordinate % (2 * (extent - 1))
-    return reduced if reduced < extent else 2 * (extent - 1) - reduced
-
-
-def sauvola(source: Fixture) -> tuple[tuple[int, ...], ...]:
-    """Evaluate each centered 31-square population directly, without rolling sums."""
-    result = []
-    for y in range(source.height):
-        for x in range(source.width):
-            values = [
-                source.pixels[
-                    reflect(y + dy, source.height) * source.width + reflect(x + dx, source.width)
-                ][0]
-                for dy in range(-15, 16)
-                for dx in range(-15, 16)
-            ]
-            total = sum(values)
-            mean = total / len(values)
-            variance_numerator = (
-                len(values) * sum(value * value for value in values) - total * total
-            )
-            deviation = math.sqrt(variance_numerator) / len(values)
-            threshold = mean * (1 + 0.2 * (deviation / 127.5 - 1))
-            result.append((0 if source.pixels[y * source.width + x][0] <= threshold else 255,))
-    return tuple(result)
 
 
 def sample_check(case: Case, output: Fixture, raw: bytes) -> None:
@@ -231,24 +174,37 @@ def source_check(case: Case, source: Fixture, output: Fixture, raw: bytes) -> No
 
 def stage_check(case: Case, response: dict[str, Any]) -> None:
     """Enabled method identities and complete reports must agree with admitted scenarios."""
+    execution = response["record"]["execution"]
     for method in case.methods:
-        if method in STAGE_REPORT:
-            report = response[STAGE_REPORT[method]]
+        family = STAGE_REPORT.get(method, "binarization" if method.startswith("B") else "")
+        if family:
+            facts = execution[family]
             require(
-                report["method"]["id"] == method and report["progress"] == "completed",
+                facts is not None and facts["method"] == method,
                 f"{method} identity/completion disagrees",
             )
-        elif method.startswith("B"):
-            require(response["method"] == method, "binary method identity disagrees")
     if case.group == "benefit":
-        report = response[STAGE_REPORT[case.methods[0]]]
+        facts = execution[STAGE_REPORT[case.methods[0]]]
         require(
-            report["status"] == "applied", "enabled beneficial scenario performed no active work"
+            facts["disposition"] == "applied",
+            "enabled beneficial scenario performed no active work",
         )
     if case.check == "auto-skip":
+        facts = execution["illumination"]
         require(
-            response["illumination"]["status"] == "skipped",
+            facts is not None and facts["disposition"] == "skipped",
             "already-good flat page should skip automatic correction",
+        )
+    if option(case, "--output-mode", "preserve") == "bw":
+        facts = execution["binarization"]
+        output = response["record"]["output"]
+        require(
+            output["depth"] == 1 and output["channels"] == 1,
+            "binary output must be physical grayscale PNG1",
+        )
+        require(
+            facts["black_samples"] + facts["white_samples"] == output["width"] * output["height"],
+            "binary classification must cover every output pixel",
         )
 
 

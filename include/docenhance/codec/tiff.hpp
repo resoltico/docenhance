@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source_facts.hpp"
 
@@ -17,7 +18,7 @@ inline constexpr std::size_t tiff_decoded_unit_max = std::size_t{8} * 1024 * 102
 inline constexpr std::size_t tiff_encoded_unit_max = std::size_t{16} * 1024 * 1024;
 inline constexpr unsigned tiff_units_max = 65536;
 struct TiffLimits {
-    std::uint64_t encoded_bytes = image::source_encoded_bytes_max;
+    std::uint64_t encoded_bytes = core::source_encoded_bytes_max;
     std::uint64_t pixels = image::source_pixels_max;
 };
 [[nodiscard]] bool has_tiff_signature(std::span<const std::uint8_t> bytes) noexcept;

@@ -2,7 +2,7 @@
 
 > Generated from `spec/cli-contract.json` and `spec/method-contract.json` by `tools/generate_spec.py`. Edit those authorities instead.
 
-Discovery lists implemented processing methods. Metadata orientation and exact quarter-turn geometry are common operations described in [geometry](geometry.md). Future work is tracked in the [roadmap](roadmap.md).
+Discovery lists implemented processing methods. Metadata orientation and exact quarter-turn geometry are common operations described in [geometry](pipeline.md). Future work is tracked in the [roadmap](roadmap.md).
 
 ## I01 — Quantile log-surface illumination
 
@@ -83,7 +83,7 @@ Square closing radius in processing pixels; Gaussian sigma = max(0.5, radius/2).
 
 ## D01 — NLM-L1 on 16-bit perceptual codes
 
-Family: **denoising**. Method version: **1**.
+Family: **denoising**. Method version: **2**.
 
 - `--denoise nlm`: explicit.
 
@@ -145,7 +145,7 @@ Primal and dual update tolerance at two consecutive checkpoints.
 
 ## R01 — Known-PSF regularized Fourier restoration
 
-Family: **restoration**. Method version: **1**.
+Family: **restoration**. Method version: **2**.
 
 - `--deblur wiener`: explicit.
 
@@ -297,13 +297,13 @@ Soft threshold in equivalent 8-bit perceptual points.
 
 ## B01 — Otsu
 
-Family: **binarization**. Method version: **1**.
+Family: **binarization**. Method version: **2**.
 
 - `--binarize otsu`: explicit.
 
 ## B02 — Sauvola
 
-Family: **binarization**. Method version: **1**.
+Family: **binarization**. Method version: **2**.
 
 - `--binarize sauvola`: explicit.
 
@@ -327,7 +327,7 @@ Normalized deviation scale.
 
 ## B03 — Fixed threshold
 
-Family: **binarization**. Method version: **1**.
+Family: **binarization**. Method version: **2**.
 
 - `--binarize fixed`: explicit.
 
@@ -335,4 +335,4 @@ Family: **binarization**. Method version: **1**.
 
 **Domain/default:** 0.5; finite [0,1].
 
-Black iff the normalized stored grayscale sample is at most T.
+Black iff the normalized terminal Q16 code is at most T.

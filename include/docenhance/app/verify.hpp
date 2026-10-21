@@ -43,9 +43,10 @@ class VerifyRequest {
 };
 [[nodiscard]] core::Result<VerifyRequest> prepare_verify(const app::Invocation& invocation);
 
-// What a bundle agreed with. Confirming a bundle establishes that its artifacts are the ones its
-// record names; it does not establish who produced them, and it never reruns the processing that
-// the record describes.
+// Observed artifact identities in declared order, followed by the identity of the same run.json
+// bytes parsed and checked during verification. The record's declared inventory remains artifact-
+// only. Agreement establishes neither authorship nor the recorded processing events; verification
+// never reruns processing and the record never contains its own digest.
 struct Verified {
     std::string directory;
     std::string run;

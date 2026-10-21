@@ -10,11 +10,11 @@ import re
 from datetime import datetime
 from typing import Any
 
-# The reviewed policy removes the external command parser. Retained native objects, features and
-# affected call paths are unchanged: stream-only zlib excludes gzip-file APIs, CPU NLM/DFT
-# excludes OpenCV imgcodecs/OpenJPEG/Jasper, and classic JPEG decoding excludes TurboJPEG.
-# This digest binds the full reviewed policy; native audits still verify its actual build.
-FEATURE_DIGEST = "632d35cf5ff116bd7faecf11fd548b33a71447096d3c24a89c8ee7a0f0260afc"
+# The exact feature policy binds the retained native source pins and selected call paths.
+# Stream-only zlib excludes gzip-file APIs; classic JPEG decoding excludes TurboJPEG.
+# Actual native audits independently verify those exclusions. Changed feature bytes invalidate
+# these reviews; this source binding is not a declaration of vulnerability-free dependencies.
+FEATURE_DIGEST = "36a33fd8b2b0e73b9eaf4a8450a35b43dc1d26cf2d4285c69ebbbc4c82cdc0e3"
 
 
 def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: bytes) -> bool:
@@ -46,22 +46,18 @@ def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: byt
         ) == "216c70c020aa53f0c40920d155f808b6b59c9acb" and digest == (
             "9157e2317af5754627743a6505e394b87b7170c04490e9924a997980fe35d792"
         )
-    if key == ("opencv", "OSV-2023-444"):  # advisory-review: OSV-2023-444
-        return dependency.get(
-            "object"
-        ) == "9e2ede9628a55ec2742a1b180d3e69b0322281b9" and digest == (
-            "12a786006836a0b529e089dfb4b5991eb5396b42b4024a7ee761441ba2eaacd3"
-        )
     # OSV-2026-1068's reported call path uses tj3Compress8 (TurboJPEG API),
     # not the classic JPEG decompression adapter. The private feature policy
     # disables that API, and audit_build.jpeg_turbo_failures independently
     # rejects its compiled translation units and installed archive.
-    # jpeg_abort itself is shared code and may remain linked.
+    # jpeg_abort itself is shared code and may remain linked. The current evidence
+    # differs only in OSV schema_version 1.9.0 -> 1.9.1; all other bound fields
+    # are identical. Keep that exact new fingerprint, not a schema-version exemption.
     if key == ("jpeg", "OSV-2026-1068"):  # advisory-review: OSV-2026-1068
         return dependency.get(
             "object"
         ) == "c85e6b905bf237038faa936dab160ebfc5da0344" and digest == (
-            "bb96bc1003bf11f1d8205488219bceff8417ad58a5265c145fa6c7b16998e814"
+            "87afd0b015021306ab5148093a72e28490ab31569b6934d342b6402ba5c334cb"
         )
 
     return False

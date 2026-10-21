@@ -8,14 +8,11 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
-#include "docenhance/host/verifier.hpp"
-#include "docenhance/record/inventory.hpp"
 #include "docenhance/record/record.hpp"
-#include "png_fixture.hpp"
 #include "temporary_directory.hpp"
+#include "verify_fixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
-#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -25,42 +22,17 @@
 #include <vector>
 
 namespace docenhance::tests {
-namespace {
-record::RunContext pinned_context() {
-    return {.identity = std::string(32, 'a'), .recorded = "2026-01-01T00:00:00Z"};
-}
-// A published bundle to read back, produced by the real processing path.
-std::filesystem::path published_bundle(const TemporaryDirectory& temporary, const std::string& name,
-                                       host::Processor& processor) {
-    const auto input = temporary.path / (name + "-page.png");
-    const GrayFixture fixture{
-        .width = 8,
-        .height = 4,
-        .depth = 8,
-        .interlaced = false,
-        .samples = std::vector<std::uint8_t>(std::size_t{8} * 4, 128),
-    };
-    const auto encoded = make_gray_png(fixture);
+void write_verified_source(const std::filesystem::path& input,
+                           const std::vector<std::uint8_t>& encoded) {
     {
         std::ofstream writing{input, std::ios::binary};
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         writing.write(reinterpret_cast<const char*>(encoded.data()),
                       static_cast<std::streamsize>(encoded.size()));
     }
-    app::Invocation invocation;
-    invocation.command = app::Command::process;
-    invocation.operands = {utf8_spelling(input)};
-    invocation.option(app::OptionId::out_dir) = utf8_spelling(temporary.path / name);
-    invocation.option(app::OptionId::output_mode) = "bw";
-    invocation.option(app::OptionId::binarize) = "fixed";
-    invocation.option(app::OptionId::fixed_threshold) = "0.5";
-    auto request = app::prepare_process(invocation);
-    REQUIRE(request);
-    const auto published = processor.process(*request, {});
-    REQUIRE(published);
-    return temporary.path / name;
 }
 
+namespace {
 // MSVC gives openmode a signed underlying type, so the flags are combined as unsigned values.
 std::ios::openmode binary_with(std::ios::openmode extra) {
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
@@ -68,27 +40,19 @@ std::ios::openmode binary_with(std::ios::openmode extra) {
                                            static_cast<unsigned>(extra));
 }
 
-core::Result<app::Verified> read_back(const std::filesystem::path& directory) {
-    app::Invocation invocation;
-    invocation.command = app::Command::verify;
-    invocation.operands = {utf8_spelling(directory)};
-    auto request = app::prepare_verify(invocation);
-    REQUIRE(request);
-    host::Verifier verifier;
-    return verifier.verify(*request, {});
-}
 } // namespace
 
 TEST_CASE("A bundle agrees with the record it was published with", "[verify]") {
     host::Processor processor{pinned_context};
     const TemporaryDirectory temporary{"docenhance-verify"};
     const auto bundle = published_bundle(temporary, "run", processor);
+    const auto expected =
+        verified_expected_files(bundle, {record::image_name, record::record_name});
     const auto confirmed = read_back(bundle);
     REQUIRE(confirmed);
     CHECK(confirmed->run == std::string(32, 'a'));
     CHECK(confirmed->recorded == "2026-01-01T00:00:00Z");
-    REQUIRE(confirmed->confirmed.size() == 1);
-    CHECK(confirmed->confirmed.front().name == std::string(record::image_name));
+    check_verified_files(*confirmed, expected);
 
     // A bundle is read where it is, not where it was written: every declared path is relative.
     const auto moved = temporary.path / "moved";
@@ -153,7 +117,9 @@ TEST_CASE(
     CHECK(!inactive.file(utf8_spelling(file)));
     CHECK(!inactive.child(utf8_spelling(temporary.path)));
     CHECK(!inactive.entries());
-    auto owner = fs::BundleDirectory::open(temporary.path).value();
+    auto opened = fs::BundleDirectory::open(temporary.path);
+    REQUIRE(opened);
+    auto owner = std::move(*opened);
     auto retained = std::move(owner);
     CHECK(retained.file("owned.txt"));
     // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
@@ -207,13 +173,8 @@ TEST_CASE("A reusable native processor observes one context per execution", "[ho
     const auto first = published_bundle(temporary, "first", processor);
     const auto second = published_bundle(temporary, "second", processor);
     REQUIRE(context_calls == 2);
-    host::Verifier verifier;
-    app::Invocation invocation;
-    invocation.command = app::Command::verify;
-    invocation.operands = {first.string()};
-    const auto a = verifier.verify(app::prepare_verify(invocation).value(), {});
-    invocation.operands = {second.string()};
-    const auto b = verifier.verify(app::prepare_verify(invocation).value(), {});
+    const auto a = read_back(first);
+    const auto b = read_back(second);
     REQUIRE(a);
     REQUIRE(b);
     CHECK(a->run == std::string(32, 'a'));
@@ -236,6 +197,6 @@ TEST_CASE("An invalid run context is refused before filesystem processing", "[ho
     const auto refused = processor.process(*request, {});
     REQUIRE(!refused);
     CHECK(refused.error().error.code == core::ErrorCode::invariant);
-    CHECK(refused.error().error.publication == core::Publication::not_started);
+    CHECK(refused.error().publication == core::Publication::not_started);
 }
 } // namespace docenhance::tests

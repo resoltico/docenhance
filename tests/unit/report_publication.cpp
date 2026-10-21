@@ -49,29 +49,31 @@ TEST_CASE("Human failures preserve publication state independently of error code
     });
     for (const auto& [state, code, name, identifier] : cases) {
         // E_OUTPUT_VERIFY covers both sides of commit; the code alone cannot decide recovery.
-        const auto outcome = app::failure(
-            invocation, {.code = code, .message = "Observed failure", .publication = state});
+        const auto outcome =
+            app::failure(invocation, {.code = code, .message = "Observed failure"}, state);
         const auto text = report::render(outcome, report::Format::text);
-        REQUIRE(text.out.empty());
-        REQUIRE(text.err.starts_with(std::string(identifier) + ": Observed failure\n"));
-        REQUIRE(text.err.contains("Publication: " + std::string(name) + "\n"));
-        REQUIRE(text.err.contains("incomplete response or delivery failure"));
-        REQUIRE(!text.err.contains("Execution did not start"));
+        REQUIRE(text);
+        REQUIRE(text->out.empty());
+        REQUIRE(text->err.starts_with(std::string(identifier) + ": Observed failure\n"));
+        REQUIRE(text->err.contains("Publication: " + std::string(name) + "\n"));
+        REQUIRE(text->err.contains("incomplete response or delivery failure"));
+        REQUIRE(!text->err.contains("Execution did not start"));
         const auto json = report::render(outcome, report::Format::json);
-        REQUIRE(json.err.empty());
-        REQUIRE(json.out.contains("\"publication\": \"" + std::string(name) + "\""));
+        REQUIRE(json);
+        REQUIRE(json->err.empty());
+        REQUIRE(json->out.contains("\"publication\": \"" + std::string(name) + "\""));
         if (state == core::Publication::completed || state == core::Publication::unknown) {
-            REQUIRE(text.err.contains("inspect"));
-            REQUIRE(text.err.contains("Do not retry blindly"));
-            REQUIRE(!text.err.contains("before retrying"));
+            REQUIRE(text->err.contains("inspect"));
+            REQUIRE(text->err.contains("Do not retry blindly"));
+            REQUIRE(!text->err.contains("before retrying"));
         } else {
-            REQUIRE(text.err.contains("correct the reported problem before retrying"));
+            REQUIRE(text->err.contains("correct the reported problem before retrying"));
         }
         if (state == core::Publication::completed) {
-            REQUIRE(text.err.contains("docenhance verify DIRECTORY"));
+            REQUIRE(text->err.contains("docenhance verify DIRECTORY"));
         }
         if (state == core::Publication::unknown) {
-            REQUIRE(text.err.contains("staging entries"));
+            REQUIRE(text->err.contains("staging entries"));
         }
     }
 }

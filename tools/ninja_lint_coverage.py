@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from audit_build import read_cache
-from check_reference_suite import STRICT_WARNINGS
 from command_arguments import command_arguments
+from reference_closure import STRICT_WARNINGS
 
 REQUIRED_TIDY = ("--warnings-as-errors=*", "--extra-arg=-Wno-unknown-warning-option", "--use-color")
 WRAPPER_MINIMUM = 6

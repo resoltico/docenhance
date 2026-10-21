@@ -2,163 +2,184 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/host/processor.hpp"
 
-#include "continuous.hpp"
+#include "docenhance/app/execution_control.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
-#include "docenhance/core/identity.hpp"
 #include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/fs/paths.hpp"
-#include "docenhance/fs/png.hpp"
-#include "docenhance/image/geometry.hpp"
-#include "docenhance/image/plane.hpp"
-#include "docenhance/methods/binarization.hpp"
-#include "docenhance/methods/otsu.hpp"
+#include "docenhance/fs/snapshot.hpp"
+#include "docenhance/image/output.hpp"
+#include "docenhance/pipeline/render.hpp"
 #include "docenhance/record/record.hpp"
 #include "run_publication.hpp"
 
 #include <cstdint>
 #include <expected>
+#include <new>
 #include <optional>
+#include <type_traits>
 #include <utility>
-#include <variant>
 namespace docenhance::host {
 namespace {
-core::Result<void> rotate_binary(image::Plane<std::uint8_t>& source, image::QuarterTurn rotation,
-                                 core::Budget& budget, const core::Cancellation& cancellation) {
-    if (rotation.degrees() == 0) {
-        return {};
-    }
-    const auto shape =
-        image::rotated_shape({.width = source.width(), .height = source.height()}, rotation);
-    auto rotated = image::Plane<std::uint8_t>::allocate(budget, shape.width, shape.height);
-    if (!rotated) {
-        return std::unexpected(rotated.error());
-    }
-    auto applied =
-        image::rotate_plane(source.view().as_const(), rotated->view(), rotation, cancellation);
-    if (!applied) {
-        return applied;
-    }
-    source = std::move(*rotated);
-    return {};
-}
-core::Result<app::PublishedBinary> binary(const app::ProcessRequest& request,
-                                          const methods::Binarization& method,
-                                          const core::Cancellation& cancellation,
-                                          const record::RunContext& context) {
-    if (cancellation.requested(core::Checkpoint::admission)) {
-        return core::cancelled();
-    }
-    core::Budget budget{core::binary_processing_budget};
-    auto loaded = fs::load_grayscale_png(request.input(), budget, cancellation);
-    if (!loaded) {
-        return std::unexpected(loaded.error());
-    }
-    auto& source = loaded->image;
-    auto rotated = rotate_binary(source, request.rotation(), budget, cancellation);
-    if (!rotated) {
-        return std::unexpected(rotated.error());
-    }
-    if (cancellation.requested(core::Checkpoint::allocation)) {
-        return core::cancelled();
-    }
-    auto destination =
-        image::Plane<std::uint8_t>::allocate(budget, source.width(), source.height());
-    if (!destination) {
-        return std::unexpected(destination.error());
-    }
-    const auto scratch = methods::scratch_bytes(method, source.width(), 1);
-    if (!scratch) {
-        return std::unexpected(scratch.error());
-    }
-    const auto concurrency = exec::Concurrency::resolve(std::nullopt, exec::detected_concurrency(),
-                                                        budget.available(), *scratch);
-    if (!concurrency) {
-        return std::unexpected(concurrency.error());
-    }
-    const exec::Scheduler scheduler{*concurrency, cancellation};
-    std::optional<methods::OtsuObservation> otsu;
-    const auto applied = [&] -> core::Result<void> {
-        if (std::holds_alternative<methods::Otsu>(method)) {
-            auto observed = methods::otsu(source.view().as_const(), destination->view(),
-                                          {.scheduler = scheduler, .budget = budget});
-            if (!observed) {
-                return std::unexpected(observed.error());
-            }
-            otsu = *observed;
-            return {};
-        }
-        return methods::binarize(source.view().as_const(), destination->view(), method,
-                                 {.scheduler = scheduler, .budget = budget});
-    }();
-    if (!applied) {
-        return std::unexpected(applied.error());
-    }
-    auto published = publish_run({
-        .output_directory = request.output_directory(),
-        .artwork =
-            BinaryArtwork{
-                .samples = destination->view().as_const(),
-                .method = method,
-                .otsu = otsu,
-            },
-        .budget = budget,
-        .cancellation = cancellation,
-        .context = context,
-        .source = loaded->source,
-        .source_name = fs::file_name(request.input()),
-        .source_decoding = loaded->description,
-        .rotation = request.rotation(),
-
-    });
-    if (!published) {
-        return std::unexpected(std::move(published.error()));
-    }
-    return app::PublishedBinary{
-        .output = std::move(published->output),
-        .run = std::move(published->run),
-        .record = std::move(published->record),
-        .source_decoding = loaded->description,
-        .otsu = otsu,
-        .rotation = request.rotation(),
+// Owned error/context and budget survive unwind; no return metadata is allocated after effect.
+struct Processing {
+    app::ProcessFailure failure{
+        .error = {.code = core::ErrorCode::resource, .message = "Processing allocation failed"},
     };
+    std::optional<core::Budget> budget;
+    bool publication_started = false;
+    [[nodiscard]] app::ProcessResult refused() {
+        if (budget && failure.diagnostics) {
+            failure.diagnostics->charged_peak_bytes = budget->peak();
+        }
+        return std::unexpected(std::move(failure));
+    }
+    [[nodiscard]] app::ProcessResult escaped(core::Error unknown) {
+        if (publication_started) {
+            // A publisher that escaped supplied no confirmed state; preserve the ambiguity.
+            failure.error = std::move(unknown);
+            failure.publication = core::Publication::unknown;
+        }
+        return refused();
+    }
+};
+core::Result<pipeline::Input> acquire(const app::ProcessRequest& request, core::Budget& budget,
+                                      const core::Cancellation& cancellation) {
+    auto source = fs::read_source_snapshot(request.input(), budget, cancellation,
+                                           core::source_encoded_bytes_max);
+    if (!source) {
+        return std::unexpected(std::move(source.error()));
+    }
+    pipeline::Input input;
+    input.encoded().source = std::move(source->encoded);
+    input.encoded().source_identity = std::move(source->identity);
+    if (request.mask_path()) {
+        auto mask = fs::read_source_snapshot(*request.mask_path(), budget, cancellation,
+                                             core::source_encoded_bytes_max);
+        if (!mask) {
+            return std::unexpected(std::move(mask.error()));
+        }
+        input.encoded().mask = std::move(mask->encoded);
+        input.encoded().mask_identity = std::move(mask->identity);
+    }
+    if (request.psf_path()) {
+        auto psf = fs::read_source_snapshot(*request.psf_path(), budget, cancellation,
+                                            core::psf_encoded_bytes_max);
+        if (!psf) {
+            return std::unexpected(std::move(psf.error()));
+        }
+        input.encoded().psf = std::move(psf->encoded);
+        input.encoded().psf_identity = std::move(psf->identity);
+    }
+    return input;
 }
-
+app::ProcessResult render_and_publish(const app::ProcessRequest& request,
+                                      record::RunContext context, const exec::Scheduler& scheduler,
+                                      Processing& processing) {
+    if (!processing.budget) {
+        processing.failure.error = {
+            .code = core::ErrorCode::invariant,
+            .message = "Processing budget was not initialized",
+        };
+        return processing.refused();
+    }
+    auto& budget = *processing.budget;
+    auto input = acquire(request, budget, scheduler.cancellation());
+    if (!input) {
+        processing.failure.error = std::move(input.error());
+        return processing.refused();
+    }
+    // These small identities survive the consumed snapshots; the source is never reopened.
+    auto source = input->encoded().source_identity;
+    auto mask = input->encoded().mask_identity;
+    auto source_name = fs::file_name(request.input());
+    auto rendered = pipeline::render(std::move(*input), request.plan(), budget, scheduler);
+    if (!rendered) {
+        processing.failure.error = std::move(rendered.error().error);
+        processing.failure.failed_stage = rendered.error().failed_stage;
+        processing.failure.completed = rendered.error().completed;
+        processing.failure.warning_context = rendered.error().warning_context;
+        return processing.refused();
+    }
+    static_cast<methods::StageReports&>(processing.failure.completed) = rendered->stages;
+    processing.failure.warning_context.interpretation = rendered->interpretation;
+    RunPublication run{
+        .request = request,
+        .rendering = *rendered,
+        .budget = budget,
+        .scheduler = scheduler,
+        .context = std::move(context),
+        .source = std::move(source),
+        .source_name = std::move(source_name),
+        .mask = std::move(mask),
+        .publication_started = processing.publication_started,
+    };
+    return publish_run(run, processing.failure);
+}
 } // namespace
 app::ProcessResult Processor::process(const app::ProcessRequest& request,
-                                      const core::Cancellation& cancellation) {
-    if (!request.ready()) {
-        return app::process_failure({
-            .code = core::ErrorCode::argument,
-            .message = "Processing request no longer owns valid admitted paths",
-        });
-    }
-
-    if (cancellation.requested(core::Checkpoint::admission)) {
-        return app::process_failure(core::cancelled().error());
-    }
-    const auto context = context_source_();
-    if (!core::valid_hexadecimal(context.identity, core::run_identity_hex_length) ||
-        !core::valid_instant(context.recorded)) {
-        return app::process_failure(
-            {.code = core::ErrorCode::invariant, .message = "Invalid execution run context"});
-    }
-    if (const auto* const method = std::get_if<app::BinaryPlan>(&request.plan())) {
-        auto result = binary(request, method->operation, cancellation, context);
-        if (!result) {
-            return app::process_failure(std::move(result.error()));
+                                      const app::ExecutionControl& control) {
+    const auto cancellation = control.cancellation();
+    static_assert(std::is_nothrow_move_constructible_v<app::ProcessFailure>);
+    static_assert(std::is_nothrow_move_assignable_v<app::ProcessFailure>);
+    static_assert(std::is_nothrow_copy_assignable_v<methods::StageReports>);
+    static_assert(std::is_nothrow_copy_assignable_v<image::InterpretationReport>);
+    Processing processing;
+    core::Error unexpected{
+        .code = core::ErrorCode::invariant,
+        .message = "Unexpected processing failure",
+    };
+    core::Error unknown{
+        .code = core::ErrorCode::publication_unknown,
+        .message = "Processing did not report publication; inspect output before retrying",
+    };
+    try {
+        if (!request.ready()) {
+            return app::process_failure(
+                {
+                    .code = core::ErrorCode::argument,
+                    .message = "Processing request no longer owns valid admitted paths",
+                },
+                core::Publication::not_started);
         }
-        return std::move(*result);
+        if (cancellation.requested(core::Checkpoint::admission)) {
+            return app::process_failure(core::cancelled().error(), core::Publication::not_started);
+        }
+        auto context = context_source_();
+        if (!record::validate(context)) {
+            return app::process_failure(
+                {
+                    .code = core::ErrorCode::invariant,
+                    .message = "Invalid execution run context",
+                },
+                core::Publication::not_started);
+        }
+        processing.budget.emplace(control.memory_limit());
+        const auto& budget = *processing.budget;
+        auto concurrency = exec::Concurrency::resolve(
+            control.workers(), exec::detected_concurrency(), budget.available(), 0);
+        if (!concurrency) {
+            processing.failure.error = std::move(concurrency.error());
+            return processing.refused();
+        }
+        const exec::Scheduler scheduler{*concurrency, cancellation};
+        constexpr auto mib = std::uint64_t{1024} * 1024;
+        processing.failure.diagnostics = app::Diagnostics{
+            .threads = scheduler.workers(),
+            .memory_limit_mib = budget.limit() / mib,
+            .charged_peak_bytes = budget.peak(),
+        };
+        return render_and_publish(request, std::move(context), scheduler, processing);
+    } catch (const std::bad_alloc&) {
+        // The resource diagnostic was allocated before any processing or publication effect.
+        return processing.escaped(std::move(unknown));
+    } catch (...) {
+        processing.failure.error = std::move(unexpected);
+        return processing.escaped(std::move(unknown));
     }
-    auto stages = app::initial_stages(std::get<app::ContinuousPlan>(request.plan()).photometric);
-    auto result = continuous(request, {.cancellation = cancellation, .context = context}, stages);
-    if (!result) {
-        return app::process_failure(std::move(result.error()), std::move(stages));
-    }
-    return std::move(*result);
 }
 } // namespace docenhance::host

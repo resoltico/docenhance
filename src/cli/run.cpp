@@ -77,7 +77,10 @@ bool deliver_bytes(std::string_view bytes, std::ostream& stream) {
 int emit(const Outcome& outcome, bool json, std::ostream& out, std::ostream& err) {
     const auto format = json ? report::Format::json : report::Format::text;
     const auto rendered = report::render(outcome, format);
-    if (!deliver_bytes(rendered.out, out) || !deliver_bytes(rendered.err, err)) {
+    if (!rendered) {
+        return static_cast<int>(docenhance::core::ExitCode::output);
+    }
+    if (!deliver_bytes(rendered->out, out) || !deliver_bytes(rendered->err, err)) {
         return static_cast<int>(docenhance::core::ExitCode::output);
     }
     return static_cast<int>(outcome.exit_code());

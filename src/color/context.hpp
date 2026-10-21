@@ -7,6 +7,7 @@
 #include "docenhance/image/raster.hpp"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <functional>
 #include <lcms2.h>
@@ -16,11 +17,31 @@
 
 namespace docenhance::color {
 inline constexpr std::size_t native_block_count = 1024;
+// No lock escapes a callback, and nested realloc uses only already-locked helpers.
+// A concrete metadata lock never throws, allocates, or stays held across native transformation.
+class MetadataLock {
+  public:
+    explicit MetadataLock(std::atomic_flag& flag) noexcept : flag_(flag) {
+        while (flag_.get().test_and_set(std::memory_order_acquire)) {
+        }
+    }
+    MetadataLock(const MetadataLock&) = delete;
+    MetadataLock& operator=(const MetadataLock&) = delete;
+    MetadataLock(MetadataLock&&) = delete;
+    MetadataLock& operator=(MetadataLock&&) = delete;
+    ~MetadataLock() {
+        flag_.get().clear(std::memory_order_release);
+    }
+
+  private:
+    std::reference_wrapper<std::atomic_flag> flag_;
+};
 struct ColorMemory {
     std::reference_wrapper<core::Budget> budget;
     std::array<core::Buffer, native_block_count> blocks;
-    bool exhausted = false;
-    bool failed = false;
+    std::atomic_flag guard;
+    std::atomic<bool> exhausted{false};
+    std::atomic<bool> failed{false};
 };
 class Context {
   public:
@@ -34,7 +55,8 @@ class Context {
         return context_;
     }
     [[nodiscard]] bool good() const noexcept {
-        return context_ != nullptr && !memory_.failed && !memory_.exhausted;
+        return context_ != nullptr && !memory_.failed.load(std::memory_order_relaxed) &&
+               !memory_.exhausted.load(std::memory_order_relaxed);
     }
     [[nodiscard]] core::Error error(std::string message) const;
 
@@ -59,6 +81,7 @@ output_profile(const Context& context, core::Budget& budget, bool gray,
                const core::Cancellation& cancellation = {});
 [[nodiscard]] Curve srgb_transfer(const Context& context);
 [[nodiscard]] Profile linear_rgb_profile(const Context& context);
+[[nodiscard]] Profile linear_gray_profile(const Context& context);
 [[nodiscard]] core::Result<Profile> source_profile(const Context& context,
                                                    const image::Raster& source);
 [[nodiscard]] core::Result<void> validate_declarations(const image::RasterMetadata& metadata);

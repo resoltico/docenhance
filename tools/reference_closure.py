@@ -1,0 +1,185 @@
+# SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
+# SPDX-License-Identifier: MPL-2.0
+"""Observed header, closed command and executed-suite admission for standalone references."""
+
+from __future__ import annotations
+
+import re
+import subprocess
+from pathlib import Path
+
+from architecture import ArchitectureError, load_manifest
+from compile_db import header_trace
+from deps import ROOT
+
+# Mirrors DE_STRICT_WARNINGS in cmake/ProjectOptions.cmake.
+STRICT_WARNINGS = [
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic",
+    "-Wconversion",
+    "-Wsign-conversion",
+    "-Wshadow",
+    "-Wformat=2",
+    "-Wold-style-cast",
+    "-Wcast-align",
+    "-Wcast-qual",
+    "-Wnon-virtual-dtor",
+    "-Woverloaded-virtual",
+    "-Wdouble-promotion",
+    "-Wimplicit-fallthrough",
+    "-Wmissing-declarations",
+    "-Wundef",
+    "-Wextra-semi",
+]
+REFERENCE_SUITES = (
+    "parser_cases",
+    "decimal_cases",
+    "numerical_cases",
+    "capabilities_cases",
+    "memory_cases",
+    "architecture_cases",
+    "schedule_cases",
+    "box_mean_cases",
+    "sharpening_cases",
+    "otsu_cases",
+)
+
+
+def validate_flags(flags: list[str]) -> None:
+    """No library, archive, object, search, discard or injected compiler option is admitted."""
+    admitted = {
+        *STRICT_WARNINGS,
+        "-std=c++23",
+        "-Werror",
+        "-fno-fast-math",
+        "-ffp-contract=off",
+        "-fsanitize=address,undefined",
+        "-fno-sanitize-recover=all",
+        "-fno-omit-frame-pointer",
+        "-g",
+    }
+    if rejected := set(flags) - admitted:
+        msg = f"Unsupported reference flags: {sorted(rejected)}"
+        raise ArchitectureError(msg)
+
+
+def system_roots(paths: list[str]) -> list[Path]:
+    """Narrow real CMake implicit paths to compiler, C++ library, OS and selected SDK roots."""
+    roots = []
+    for name in paths:
+        path = Path(name).resolve()
+        spelling = path.as_posix()
+        sdk = next((parent for parent in (path, *path.parents) if parent.suffix == ".sdk"), None)
+        compiler = re.search(
+            r"/(?:lib/clang/[^/]+/include|include/c\+\+/[^/]+|"
+            r"gcc/[^/]+/[^/]+/include(?:-fixed)?)$",
+            spelling,
+        )
+        operating_system = spelling == "/usr/include" or spelling.startswith("/usr/include/")
+        if sdk is not None:
+            roots.append(sdk)
+        elif re.search(r"/lib/clang/[^/]+/include$", spelling):
+            # Sanitized Clang also traces resource/share/asan_ignorelist.txt as an input.
+            roots.append(path.parent)
+        elif compiler or operating_system:
+            roots.append(path)
+    return sorted(set(roots))
+
+
+def observe_headers(trace: str, directory: Path, source: Path, allowed_roots: list[Path]) -> None:
+    """Audit the same object compilation's canonical headers; package rejection comes first."""
+    manifest = load_manifest()
+    roots = [path.resolve() for path in allowed_roots]
+    private = [(ROOT / name).resolve() for name in (".cache", "out")]
+    for spelled, canonical in header_trace(trace, str(directory), str(source)):
+        path = Path(canonical)
+        names = (Path(spelled).as_posix(), path.as_posix())
+        package = any(manifest.package_of_header(name) for name in names)
+        # pocketfft is refused even before the native package is admitted to the manifest.
+        pocketfft = any("pocketfft" in Path(name).name for name in names)
+        if package or pocketfft or any(path.is_relative_to(base) for base in private):
+            msg = f"Reference reaches native/package header: {source}: {path}"
+            raise ArchitectureError(msg)
+        if not any(path.is_relative_to(base) for base in roots):
+            msg = f"Reference reaches unowned header: {source}: {path}"
+            raise ArchitectureError(msg)
+
+
+def reconcile_suites(output: str) -> dict[str, int]:
+    """Require exactly the ten ordered callbacks with positive actual assertion work."""
+    records = [line.split() for line in output.splitlines() if line.startswith("REFERENCE ")]
+    if any(
+        len(record) != len(("REFERENCE", "name", "count"))
+        or not record[2].isascii()
+        or not record[2].isdigit()
+        for record in records
+    ):
+        msg = "Malformed reference assertion receipt"
+        raise ArchitectureError(msg)
+    if tuple(record[1] for record in records) != REFERENCE_SUITES:
+        msg = "Reference suite census/order differs from the ten required callbacks"
+        raise ArchitectureError(msg)
+    counts = {record[1]: int(record[2]) for record in records}
+    if any(count == 0 for count in counts.values()):
+        msg = "Reference callback executed no assertions"
+        raise ArchitectureError(msg)
+    return counts
+
+
+def verify_gnu_pch(compiler: str, flags: list[str], directory: Path) -> None:
+    """Exercise GNU's real automatic PCH path, with healthy and package-only controls."""
+    validate_flags(flags)
+    control = directory / "pch-control"
+    control.mkdir()
+    native = control / "nlohmann/json.hpp"
+    native.parent.mkdir()
+    native.write_text("inline constexpr int observed_value = 17;\n", encoding="utf-8")
+    source = control / "control.cpp"
+    source.write_text(
+        '#include "bridge.h"\nint main() { return observed_value != 17; }\n', encoding="utf-8"
+    )
+    header = control / "bridge.h"
+    header.write_text("inline constexpr int observed_value = 17;\n", encoding="utf-8")
+    arguments = [compiler, *flags, "-I", str(control)]
+    target = control / "control.o"
+
+    def compile_object() -> str:
+        result = subprocess.run(
+            [*arguments, "-H", "-c", str(source), "-o", str(target)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        return result.stderr
+
+    observe_headers(compile_object(), control, source, [control])
+    executable = control / "control"
+    subprocess.run([compiler, *flags, str(target), "-o", str(executable)], check=True)
+    subprocess.run([str(executable)], check=True)
+    header.write_text('#include "nlohmann/json.hpp"\n', encoding="utf-8")
+    refuse_trace(compile_object(), control, source, "native/package header")
+    subprocess.run(
+        [*arguments, "-x", "c++-header", str(header), "-o", str(header) + ".gch"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    trace = compile_object()
+    if re.search(r"^! (.+)$", trace, flags=re.MULTILINE) is None:
+        msg = "GNU automatic PCH control did not actually consume its precompiled header"
+        raise ArchitectureError(msg)
+    refuse_trace(trace, control, source, "consumed precompiled header")
+    print("PASS: real GNU owned-header, package-header and consumed-PCH controls")
+
+
+def refuse_trace(trace: str, directory: Path, source: Path, diagnostic: str) -> None:
+    """Require the intended actual observer refusal, never an unrelated compiler failure."""
+    try:
+        observe_headers(trace, directory, source, [directory])
+    except ArchitectureError as error:
+        if diagnostic in str(error):
+            return
+        raise
+    msg = f"Reference observer accepted the {diagnostic} control"
+    raise ArchitectureError(msg)

@@ -31,8 +31,7 @@ struct Methods {
     Capabilities capabilities;
 };
 using Failure = ProcessFailure;
-using Payload =
-    std::variant<Help, Version, Methods, Processed, PublishedContinuous, Verified, Failure>;
+using Payload = std::variant<Help, Version, Methods, Published, Verified, Failure>;
 struct Outcome {
     app::Command command = app::Command::root;
     // Every response identifies the build that produced it, whatever the payload.
@@ -45,5 +44,6 @@ struct Outcome {
 };
 [[nodiscard]] Outcome dispatch(const app::Invocation& invocation, Processor& processor,
                                Verifier& verifier, const core::Cancellation& cancellation = {});
-[[nodiscard]] Outcome failure(const app::Invocation& invocation, core::Error error);
+[[nodiscard]] Outcome failure(const app::Invocation& invocation, core::Error error,
+                              core::Publication publication = core::Publication::not_started);
 } // namespace docenhance::app

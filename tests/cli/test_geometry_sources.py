@@ -9,7 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from geometry_reference import binary_samples, source_codecs, strict_options
+from geometry_admission import strict_options
+from geometry_reference import binary_samples, source_codecs
 
 
 def main() -> None:

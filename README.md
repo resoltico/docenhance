@@ -7,13 +7,13 @@ A C++ command-line project for improving the readability of contemporary and his
 > **Capability boundary: PNG/JPEG/TIFF input to continuous-tone PNG representation, opt-in I01/I02 illumination and D01/D02 denoising, C01/C02/C03 contrast, S01 sharpening, R01 known-PSF restoration, exact metadata orientation, G02 quarter-turns, and three binarizers.**
 > `process` defaults to color-managed PNG output with no enhancement filter. Static grayscale,
 > palette, RGB and alpha PNGs retain 8/16-bit precision under the documented profile, transparency
-> and metadata policies. Explicit `--output-mode bw` selects B01/B02/B03 on their narrower stored-gray
-> input domain. All output is published into a new directory. See [PNG processing](docs/png-processing.md)
-> [JPEG admission](docs/jpeg-processing.md), [bounded single-page TIFF/BigTIFF](docs/tiff-processing.md),
-> and [typed binarization](docs/binarization.md). Explicit clockwise `--rotate 0|90|180|270`
-> is specified in [geometry](docs/geometry.md). Batch processing, presets and
+> and metadata policies. Explicit `--output-mode bw` selects B01/B02/B03 after the same interpretation,
+> geometry and photometric stages, producing physical grayscale PNG1 from final Q16 luminance. All output is published into a new directory. See [PNG processing](docs/formats/png.md)
+> [JPEG admission](docs/formats/jpeg.md), [bounded single-page TIFF/BigTIFF](docs/formats/tiff.md),
+> and [typed binarization](docs/methods/binarization.md). Explicit clockwise `--rotate 0|90|180|270`
+> is specified in [geometry](docs/pipeline.md). Batch processing, presets and
 > other restoration methods remain unsupported. I01 surface/auto and explicit I02 morph illumination and protected
-> regions are specified in [illumination](docs/illumination.md); the default remains off.
+> regions are specified in [illumination](docs/methods/illumination.md#i01-surface-illumination); the default remains off.
 
 ## Start here
 
@@ -26,9 +26,9 @@ Use the [documentation map](docs/README.md) to find the authority for a change. 
 
 CMake **4.4.3** and Ninja **1.13.2** are the recommended build tools. The project uses CMake preset schema **12**, configure/build/test/package workflows, target-scoped settings, explicit source lists, header file sets, strict first-party diagnostics, optional sanitizers and IPO, and an isolated dependency superbuild. There are no handwritten Makefiles, global include/link-directory settings, implicit system-library fallbacks, or downloads during normal configure/build commands.
 
-The dependency lock pins OpenCV **5.0.0**, Little CMS **2.19.1**, libjpeg-turbo **3.2.0**, libpng **1.6.58**, libtiff **4.7.2**, zlib **1.3.2**, nlohmann/json **3.12.0**, PicoSHA2 **1.0.1**, and test-only Catch2 **3.16.0**. See [dependency provenance](docs/dependencies.md).
+The dependency lock pins Little CMS **2.19.1**, libjpeg-turbo **3.2.0**, libpng **1.6.58**, libtiff **4.7.2**, zlib **1.3.2**, nlohmann/json **3.12.0**, PicoSHA2 **1.0.1**, pocketfft at its reviewed commit, and test-only Catch2 **3.16.0**. See [dependency provenance](docs/dependencies.md).
 
-OpenCV 5 changed its dependency graph: `photo` requires `geometry`, which requires `flann`. The explicit allowed module closure is `core`, `flann`, `geometry`, `imgproc`, `photo`—not the obsolete three-module assumption. Neural/GPU/GUI/video backends and optional external acceleration downloads are disabled.
+D01 uses first-party binary64 NLM kernels; R01 uses charged binary64 pocketfft blocks with serial, cache-free native adaptation. Processing stays local and CPU-only.
 
 ## Build
 
@@ -83,7 +83,7 @@ out/dev/bin/docenhance methods --json
 out/dev/bin/docenhance process --help --json
 ```
 
-`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels, C02 gamma and C03 CLAHE contrast, S01 unsharp masking, R01 known-PSF restoration, B01 global Otsu, B02 Sauvola and B03 fixed-threshold binarization. G01 metadata orientation and G02 `--rotate` quarter-turns are common geometry operations; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. JPEG is continuous-only; binary processing remains grayscale PNG. The complete contract is in the [CLI reference](docs/cli-reference.md), and its
+`methods` reports I01 surface and I02 morphological illumination, D01 NLM-L1 and D02 floating-point TV-L1 denoising, C01 percentile levels, C02 gamma and C03 CLAHE contrast, S01 unsharp masking, R01 known-PSF restoration, B01 global Otsu, B02 Sauvola and B03 fixed-threshold binarization. G01 metadata orientation and G02 `--rotate` quarter-turns are common geometry operations; `version --json` reports PNG/JPEG/TIFF with an explicit operation/format matrix. All three admitted source formats support preserve, gray and binary output. The complete contract is in the [CLI reference](docs/cli-reference.md), and its
 strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 
 ## Project layout
@@ -91,10 +91,9 @@ strict capability boundary is documented in [current CLI behavior](docs/cli.md).
 ```text
 src/<layer>/          One directory per layer, with its public headers under
 include/docenhance/   Layers and their allowed edges: spec/architecture.json, docs/architecture.md
-spec/                 Reviewed CLI/method/layer, wire and quality-evidence contracts
+spec/                 Reviewed CLI/method/layer and quality-evidence contracts
 schemas/              Generated response and run-record schemas
 cmake/                Modern native build, isolation, policies, packaging
-cmake/opencv-hooks/   Reject nested OpenCV downloads
 cmake/presets/        Shared schema-12 preset definitions
 deps/                 Immutable source lock and explicit feature policy
 tests/                Unit, numeric, CLI and acquisition/security tests
@@ -123,7 +122,35 @@ different prose or source assets. Source publication is not publication of prebu
 
 See [CONTRIBUTING](CONTRIBUTING.md), [AGENTS](AGENTS.md), the [security policy](.github/SECURITY.md) and the [code of conduct](.github/CODE_OF_CONDUCT.md). Preserve originals, reject unsupported operations explicitly, and never advertise a method merely because a placeholder compiles.
 
-## License
+## Processing examples and limits
+
+Explicit luminance denoising composes after illumination and before final quantization:
+
+```sh
+docenhance process scan.jpg --out-dir denoised --denoise nlm --nlm-h 3 --denoise-blend 0.5 --json
+```
+
+D01 is bounded 16-bit NLM-L1, off by default. Protected pixels retain their entering linear samples;
+protected neighbors remain context. It is not JPEG restoration or a guarantee of mark preservation.
+See [the complete denoising contract](docs/methods/denoising.md#d01-bounded-nlm). The [current wire-format authority](docs/record.md#source-observations-and-format-compatibility) defines records and responses;
+obsolete records are rejected without migration.
+
+Explicit known-PSF restoration follows denoising before contrast:
+
+```sh
+docenhance process scan.png --out-dir restored --deblur wiener --psf gaussian --psf-sigma 1 --wiener-k 0.01 --deblur-blend 0.5 --json
+```
+
+Gaussian, motion and supplied grayscale PNG kernels model blur in the post-geometry processing frame F (currently the explicitly rotated frame C).
+Entered or completed R01 reports `W_RESTORATION_INFERENCE`; it never estimates or verifies the real PSF.
+See [restoration](docs/methods/restoration.md) for phase, mean, resources and cancellation limits.
+
+Built-in G01 metadata orientation is automatic for every output mode; selectable methods remain
+separate. The macOS deployment floor is 15.0, with required minimum-runtime and newer-OS lanes.
+See the [independent document-quality protocol](docs/document-quality.md) for why synthetic
+correctness and artifact verification do not establish natural-document readability or authenticity.
+
+## Licence
 
 Project-owned code is licensed under [MPL-2.0](LICENSE). Copyright notices identify the
 holders of individual files; dependencies retain their own licenses. See
@@ -137,29 +164,3 @@ See [corpus provenance and reuse](docs/corpus.md) for item credits, direct sourc
 retrieval times, byte identities, license notices and the limits of this small technical corpus.
 The corpus accompanies the source repository and source archives; native validation packages
 include the guide, without the images. Neither institution endorses DocEnhance.
-
-Explicit luminance denoising composes after illumination and before final quantization:
-
-```sh
-docenhance process scan.jpg --out-dir denoised --denoise nlm --nlm-h 3 --denoise-blend 0.5 --json
-```
-
-D01 is bounded 16-bit NLM-L1, off by default. Protected pixels retain their entering linear samples;
-protected neighbors remain context. It is not JPEG restoration or a guarantee of mark preservation.
-See [the complete denoising contract](docs/denoising.md). The [current wire-format authority](docs/bundles.md#source-observations-and-format-compatibility) defines records and responses;
-obsolete records are rejected without migration.
-
-Explicit known-PSF restoration follows denoising before contrast:
-
-```sh
-docenhance process scan.png --out-dir restored --deblur wiener --psf gaussian --psf-sigma 1 --wiener-k 0.01 --deblur-blend 0.5 --json
-```
-
-Gaussian, motion and supplied grayscale PNG kernels model blur in the post-geometry processing frame F (currently the explicitly rotated frame C).
-R01 never estimates or verifies the real PSF and always reports `W_RESTORATION_INFERENCE`.
-See [restoration](docs/restoration.md) for phase, mean, resources and cancellation limits.
-
-Built-in G01 metadata orientation is automatic on continuous output; selectable methods remain
-separate. The macOS deployment floor is 15.0, with required minimum-runtime and newer-OS lanes.
-See the [independent document-quality protocol](docs/document-quality.md) for why synthetic
-correctness and artifact verification do not establish natural-document readability or authenticity.

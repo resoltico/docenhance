@@ -22,6 +22,19 @@ from architecture import ArchitectureError, load_manifest
 class CompilerPathTests(unittest.TestCase):
     """Aliases and Make-special characters cannot erase first-party or package ownership."""
 
+    def test_consumed_gnu_pch_trace_is_opaque_and_refused(self) -> None:
+        """A real GNU trace marker cannot erase unobserved transitive package dependencies."""
+        with tempfile.TemporaryDirectory(prefix="compiler-pch-control-") as directory:
+            root = Path(directory)
+            pch = root / "generated $ space/bridge.h.gch"
+            pch.parent.mkdir()
+            pch.write_bytes(b"opaque precompiled input")
+            with self.assertRaises(ArchitectureError) as raised:
+                compile_db.header_trace(f"! {pch}\n", directory, "control.cpp")
+            self.assertIn("consumed precompiled header", str(raised.exception))
+            self.assertIn("control.cpp", str(raised.exception))
+            self.assertIn(str(pch.resolve()), str(raised.exception))
+
     def test_real_include_reach_survives_path_spelling(self) -> None:
         """A real forbidden include is detected through spaces/dollars and traversal aliases."""
         major = json.loads((ROOT / "deps/tools.json").read_text())["clang_tidy"]["version"].split(

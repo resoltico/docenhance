@@ -138,16 +138,12 @@ class Run:
         require(response["output"] == str(image), "reported output spelling differs")
         record = json.loads(manifest.read_bytes())
         self.record_validator.validate(record)
-        for stage, observation in record["execution"].items():
-            if stage in response:
-                require(
-                    response[stage] == observation, f"{stage} response/record observations differ"
-                )
+        require(response["record"] == record, "full response/record observations differ")
         require(
             record["source"]["sha256"] == digest(self.sources[case.source]),
             "source byte identity differs",
         )
-        require(response["record"]["sha256"] == digest(manifest), "record byte identity differs")
+        require(response["record_sha256"] == digest(manifest), "record byte identity differs")
         raw = image.read_bytes()
         output = decode_output(raw)
         stage_check(case, response)

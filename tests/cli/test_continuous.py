@@ -52,8 +52,8 @@ def run(
     expect(source.read_bytes() == fixture.encoded(), "source samples and metadata preserved")
     encoded = (output / "result.png").read_bytes()
     expect(
-        result["operation"] == "continuous" and result["conversion"]["verified"],
-        "truthful verified conversion result",
+        result["record"]["output"]["verification"] == "decoded_and_compared",
+        "truthful verified common-pipeline result",
     )
     expect(
         "method" not in result and "method_version" not in result, "no fictional enhancement method"
@@ -62,7 +62,7 @@ def run(
         set(chunks(encoded)) <= {b"IHDR", b"iCCP", b"pHYs", b"IDAT", b"IEND"},
         "minimal metadata inventory",
     )
-    return decode_output(encoded), result["conversion"], encoded
+    return decode_output(encoded), result, encoded
 
 
 def rejected(
@@ -131,7 +131,7 @@ def precision(exe: Path, root: Path) -> None:
     output, report, _ = run(exe, root, fixture, ["--bit-depth", "8"])
     expect(
         output.depth == BYTE_DEPTH
-        and report["depth_reduced"]
+        and report["record"]["execution"]["interpretation"]["depth_reduced"]
         and "W_DEPTH_REDUCED" in report["warnings"],
         "explicit precision reduction",
     )
@@ -147,7 +147,8 @@ def alpha_and_gray(exe: Path, root: Path) -> None:
         "linear white matte and hidden zero alpha",
     )
     expect(
-        report["alpha_flattened_pixels"] == TRANSPARENT_PIXELS,
+        report["record"]["execution"]["interpretation"]["alpha_composited_pixels"]
+        == TRANSPARENT_PIXELS,
         "verification does not double-count alpha",
     )
     output, _, _ = run(exe, root, fixture, ["--alpha", "black"])
@@ -193,7 +194,10 @@ def profiles(exe: Path, root: Path) -> None:
         abs(output.pixels[1][0] - round(transfer_encode((128 / BYTE_MAX) ** 2) * BYTE_MAX)) <= 1,
         "native gray ICC power-curve reference",
     )
-    expect(report["profile_decision"] == "icc", "ICC interpretation reported")
+    expect(
+        report["record"]["execution"]["interpretation"]["profile_decision"] == "icc",
+        "ICC interpretation reported",
+    )
     override, report, _ = run(exe, root, linear, ["--profile-policy", "srgb"])
     expect(
         override.pixels == gray.pixels and "W_PROFILE_OVERRIDDEN" in report["warnings"],
@@ -205,7 +209,8 @@ def profiles(exe: Path, root: Path) -> None:
     cicp = dataclasses.replace(fixture, metadata=((b"cICP", bytes((1, 13, 0, 1))), (b"iCCP", icc)))
     output, report, _ = run(exe, root, cicp)
     expect(
-        output.pixels == gray.pixels and report["profile_decision"] == "cicp_srgb",
+        output.pixels == gray.pixels
+        and report["record"]["execution"]["interpretation"]["profile_decision"] == "cicp_srgb",
         "cICP outranks valid ICC",
     )
     rejected(exe, root, dataclasses.replace(fixture, metadata=((b"cICP", bytes((9, 16, 0, 1))),)))
@@ -274,7 +279,10 @@ def profile_boundaries(exe: Path, root: Path) -> None:
         ),
         "native RGB ICC power-curve reference",
     )
-    expect(report["profile_decision"] == "icc", "RGB ICC selected")
+    expect(
+        report["record"]["execution"]["interpretation"]["profile_decision"] == "icc",
+        "RGB ICC selected",
+    )
     rejected(exe, root, dataclasses.replace(gray, metadata=((b"iCCP", icc),)))
     oversized = b"fixture\0\0" + zlib.compress(b"0" * (4 * 1024 * 1024 + 1))
     rejected(exe, root, dataclasses.replace(gray, metadata=((b"iCCP", oversized),)), code=4)
@@ -323,7 +331,10 @@ def orientation_and_metadata(exe: Path, root: Path) -> None:
             struct.unpack(">IIB", chunks(encoded)[b"pHYs"][0]) == (*resolution, 1),
             "physical axes swapped",
         )
-        expect(report["source_orientation"] == orientation, "source orientation reported")
+        expect(
+            report["record"]["execution"]["interpretation"]["source_orientation"] == orientation,
+            "source orientation reported",
+        )
     fixture = Fixture(1, 1, ((1,),))
     for metadata in (
         ((b"eXIf", exif(0)),),
@@ -334,7 +345,7 @@ def orientation_and_metadata(exe: Path, root: Path) -> None:
 
 
 def admission(exe: Path, root: Path) -> None:
-    """Every new option is validated, including presence and wrong-operation conflicts."""
+    """Refuse malformed syntax and precision conflicts under common mode policies."""
     fixture = Fixture(1, 1, ((128,),))
     options = (
         ["--output-mode", ""],
@@ -345,12 +356,16 @@ def admission(exe: Path, root: Path) -> None:
         ["--profile-policy", ""],
         ["--binarize", "sauvola"],
         ["--fixed-threshold", "0.5"],
-        ["--output-mode", "bw", "--alpha", "white"],
         ["--output-mode", "bw", "--bit-depth", "auto"],
-        ["--output-mode", "bw", "--profile-policy", "embedded"],
     )
     for arguments in options:
         rejected(exe, root, fixture, arguments, 2)
+    for common in (["--alpha", "white"], ["--profile-policy", "embedded"]):
+        output, _, _ = run(exe, root, fixture, ["--output-mode", "bw", *common])
+        expect(
+            output.depth == 1 and output.pixels == ((1,),),
+            "binary admits common interpretation policies",
+        )
 
 
 def main() -> int:

@@ -9,5 +9,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 TOOLS = ROOT / "tools"
-if str(TOOLS) not in sys.path:
-    sys.path.insert(0, str(TOOLS))
+
+
+def prepare_tool_imports() -> None:
+    """Apply this helper's existing idempotent path ownership explicitly for direct tool imports."""
+    if str(TOOLS) not in sys.path:
+        sys.path.insert(0, str(TOOLS))
+
+
+prepare_tool_imports()

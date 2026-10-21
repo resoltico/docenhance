@@ -262,8 +262,10 @@ class WorkflowIntegrityTests(unittest.TestCase):
                 self.assert_mutation_refused(".github/workflows/weekly.yml", old, new, diagnostic)
         self.assert_mutation_refused(
             ".github/workflows/ci.yml",
-            "retention-days: 7",
-            "retention-days: 1",
+            "path: out/${{ matrix.preset }}/fuzz-evidence.tar.gz\n"
+            "          if-no-files-found: error\n          retention-days: 7",
+            "path: out/${{ matrix.preset }}/fuzz-evidence.tar.gz\n"
+            "          if-no-files-found: error\n          retention-days: 1",
             "Required evidence upload",
         )
 

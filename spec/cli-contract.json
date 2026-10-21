@@ -63,7 +63,7 @@
         "bw"
       ],
       "default": "preserve",
-      "summary": "Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output defaults to no enhancement filter and is verified before publication. Explicit stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Gray converts linear luminance; bw explicitly activates stored-sample binarization. JPEG and TIFF/BigTIFF support preserve/gray only; bw requires grayscale PNG."
+      "summary": "Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. All modes share interpretation, geometry and the fixed photometric stages. Gray quantizes final linear luminance; bw classifies terminal sRGB Q16 samples and writes physical 1-bit PNG."
     },
     {
       "name": "--bit-depth",
@@ -102,7 +102,8 @@
       "summary": "Composite alpha over white or black in linear light, or reject any non-opaque pixel.",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ]
     },
     {
@@ -121,7 +122,8 @@
       "summary": "Interpret supported colour declarations, or override them with sRGB.",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ]
     },
     {
@@ -139,7 +141,7 @@
         "270"
       ],
       "default": "0",
-      "summary": "Exact clockwise quarter-turn; continuous input follows metadata orientation, bw rotates stored samples."
+      "summary": "Exact clockwise quarter-turn after metadata orientation, in every output mode."
     },
     {
       "name": "--protect-mask",
@@ -149,11 +151,39 @@
       ],
       "group": "Protection",
       "kind": "path",
-      "summary": "1/8-bit grey PNG in metadata-oriented source dimensions; non-zero samples are never changed by photometric stages.",
+      "summary": "1/8-bit gray PNG in metadata-oriented source dimensions; non-zero samples protect photometric stages. Binarization still classifies every pixel.",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ]
+    },
+    {
+      "name": "--threads",
+      "metavar": "N",
+      "scope": [
+        "process"
+      ],
+      "group": "Execution",
+      "kind": "auto_or_integer",
+      "min": "1",
+      "max": "256",
+      "default": "auto",
+      "auto": "detected concurrency clamped to the admitted worker domain; hardware zero uses its minimum",
+      "summary": "Maximum scheduler workers; auto uses detected concurrency bounded to 1..256. Execution settings are response diagnostics, not persistent method configuration."
+    },
+    {
+      "name": "--memory-limit",
+      "metavar": "MIB",
+      "scope": [
+        "process"
+      ],
+      "group": "Execution",
+      "kind": "integer",
+      "min": "64",
+      "max": "262144",
+      "default": "1024",
+      "summary": "One charged processing budget in MiB for snapshots, interpretation, methods, encoding and publication. Charged bytes are not a process-RSS limit; verification retains its separate fixed budget."
     },
     {
       "name": "--json",
@@ -207,14 +237,16 @@
       "format": "jpeg",
       "modes": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ]
     },
     {
       "format": "tiff",
       "modes": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ]
     }
   ]

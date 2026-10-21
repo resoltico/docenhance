@@ -34,13 +34,9 @@ def inspect_archives(build: Path) -> dict[str, str]:
         "tiff",
         "zlib",
         "lcms",
-        "opencv_core",
-        "opencv_photo",
-        "opencv_imgproc",
     }:
         msg = (
-            "The fuzz build must identify exactly its JPEG, PNG, TIFF, zlib, Little CMS "
-            "and OpenCV execution archives"
+            "The fuzz build must identify exactly its JPEG, PNG, TIFF, zlib and Little CMS archives"
         )
         raise FuzzError(msg)
     nm = shutil.which("nm")

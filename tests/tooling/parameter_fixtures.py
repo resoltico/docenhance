@@ -115,5 +115,15 @@ def compile_and_run(
         "-o",
         str(binary),
     ]
-    subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
-    return subprocess.run([str(binary)], check=True, capture_output=True, text=True, timeout=10)
+    try:
+        subprocess.run(command, check=True, capture_output=True, text=True, timeout=30)
+        result = subprocess.run(
+            [str(binary)], check=True, capture_output=True, text=True, timeout=10
+        )
+    except subprocess.CalledProcessError as error:
+        if error.stdout:
+            error.add_note(f"Controlled parameter fixture stdout:\n{error.stdout}")
+        if error.stderr:
+            error.add_note(f"Controlled parameter fixture stderr:\n{error.stderr}")
+        raise
+    return result

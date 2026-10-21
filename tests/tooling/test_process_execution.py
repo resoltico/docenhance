@@ -73,10 +73,10 @@ else:
 """
 
 SUPERVISOR = """
-import argparse, json, os, pathlib, socket, subprocess, sys
+import argparse, json, os, pathlib, socket, subprocess, sys, time
 from unittest.mock import patch
 sys.path.insert(0, sys.argv[1])
-import check_linux, process_execution, run_native_suite, run_fuzz_campaign
+import docker_execution, process_execution, run_native_suite, run_fuzz_campaign
 root = pathlib.Path(sys.argv[2])
 mode, host, port = sys.argv[3:]
 command = [sys.executable, str(root/'child.py'), 'child', host, port, sys.argv[1]]
@@ -128,8 +128,10 @@ try:
              patch('run_fuzz_campaign.bounded_process', side_effect=boundary):
             args = argparse.Namespace(build=root,ctest='fixture',seconds=1,jobs=1)
             result = run_fuzz_campaign.campaign(args)
-    elif mode == 'invoke':
-        result = 0 if check_linux.invoke(command, root/'engine.log') else 1
+    elif mode == 'docker_cli':
+        with patch('docker_execution.remove_owned', return_value=True):
+            result = 0 if docker_execution.run_container(
+                command, root/'engine.log', 'fixture', 'nonce', time.monotonic()+300) else 1
     elif mode == 'nested-exited':
         with process_execution.owned_process(command, dict(os.environ), None,
                                               graceful=True) as process:
@@ -323,9 +325,9 @@ class ProcessExecutionTests(unittest.TestCase):
         """An already-exited leader still leaves nested runners entitled to group cleanup."""
         self.exercise("nested-exited")
 
-    def test_image_preparation_cli_uses_owned_interrupt_cleanup(self) -> None:
-        """The real Linux image-build invocation joins its CLI group on supervisor termination."""
-        self.exercise("invoke")
+    def test_docker_gate_cli_uses_owned_interrupt_cleanup(self) -> None:
+        """The real bounded Docker CLI joins its group; mocked daemon work is separate."""
+        self.exercise("docker_cli")
 
     def test_scoped_handler_restores_prior_signal_handler(self) -> None:
         """Normal scope exit and exceptional unwind restore the process's prior policy."""
@@ -346,18 +348,42 @@ class ProcessExecutionTests(unittest.TestCase):
         for admitted_at in (9, 1741):
             with self.subTest(admitted_at=admitted_at), tempfile.TemporaryDirectory() as directory:
                 args = argparse.Namespace(build=Path(directory), ctest="fixture", jobs=1)
+                first_tick = True
+
+                def clock(admission: int = admitted_at) -> int:
+                    nonlocal first_tick
+                    if first_tick:
+                        first_tick = False
+                        return 0
+                    return admission
+
+                # Archive mechanics have independent real-file controls; this case owns time.
+                retained = {
+                    "journal": {"status": "diagnostic_only_complete", "completed_raw_case_count": 1}
+                }
                 with (
-                    patch("run_native_suite.time.monotonic", side_effect=[0, admitted_at]),
+                    patch("run_native_suite.time.monotonic", side_effect=clock),
                     patch("run_native_suite.discovery", return_value=[{"name": "fixture"}]),
                     patch("run_native_suite.compilation"),
                     patch("run_native_suite.registrations", return_value=set()),
-                    patch("run_native_suite.complete_junit"),
+                    patch("run_native_suite.complete_junit") as reconciliation,
+                    patch(
+                        "run_native_suite.archive_ctest_output", return_value=retained
+                    ) as archive,
                     patch("run_native_suite.bounded_process", return_value=7) as execution,
                 ):
                     if admitted_at > NATIVE_BUDGET:
                         with self.assertRaisesRegex(EvidenceError, "exhausted"):
                             run_native_suite.run(args)
                         execution.assert_not_called()
+                        archive.assert_not_called()
+                        reconciliation.assert_not_called()
                     else:
                         self.assertEqual(run_native_suite.run(args), 7)
-                        self.assertEqual(execution.call_args.args[3], 1731)
+                        remaining = (
+                            NATIVE_BUDGET - admitted_at - run_native_suite.NATIVE_ARCHIVE_SECONDS
+                        )
+                        self.assertEqual(execution.call_args.args[3], remaining)
+                        archive.assert_called_once()
+                        self.assertEqual(archive.call_args.args[3], NATIVE_BUDGET)
+                        self.assertEqual(archive.call_args.args[4], 1)

@@ -212,7 +212,7 @@ inline constexpr auto parameter_descriptions = std::to_array<MethodParameter>({
         .option = "--fixed-threshold",
         .kind = "decimal",
         .domain = "0.5; finite [0,1]",
-        .description = "Black iff the normalized stored grayscale sample is at most T.",
+        .description = "Black iff the normalized terminal Q16 code is at most T.",
     },
 });
 } // namespace docenhance::methods

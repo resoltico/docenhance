@@ -11,35 +11,46 @@ from pathlib import Path
 
 from parameter_fixtures import compile_and_run, contracts, numeric
 
-from option_cpp import render_options
+from option_cpp import render_execution_limits, render_options
 from parameter_contract import merged_options
 from parameter_cpp import render_domains
 from parameter_structs import render_parameters
 
 PROBE = r"""#include "docenhance/methods/parameters.hpp"
+#include "docenhance/core/utf8.hpp"
 #include <stdexcept>
+#include <cstdio>
 #include <string>
 using namespace docenhance::methods;
 static_assert(ratio_domain.minimum == 0x1.fffffffffffffp-1);
 static_assert(large_domain.minimum == 0x1.3c747785b50b2p+1023);
-struct ThrowingPath {
-    explicit operator FilePsf() const { throw std::runtime_error("injected construction failure"); }
+struct ThrowingPsf {
+    explicit operator Kernel() const { throw std::runtime_error("injected construction failure"); }
 };
 int main() {
     WienerParameters p;
-    try { p.psf.emplace<FilePsf>(ThrowingPath{}); }
-    catch (const std::runtime_error&) {}
-    if (!p.psf.valueless_by_exception()) return 1;
+    const auto before = p.psf;
+    if (!valid_parameters(p)) return 9;
+    bool threw = false;
+    try { p.psf.emplace<Kernel>(ThrowingPsf{}); }
+    catch (const std::runtime_error&) { threw = true; }
+    if (!threw) return 1;
     static_assert(noexcept(valid_parameters(p)));
-    if (valid_parameters(p)) return 2;
-    FilePsf file;
-    if (valid_parameters(file)) return 3;
-    file.path = "kernel.png";
-    if (!valid_parameters(file)) return 4;
-    file.path = std::string("bad\0path", 8);
-    if (valid_parameters(file)) return 5;
-    file.path = "\xff.png";
-    if (valid_parameters(file)) return 6;
+    if (p.psf.valueless_by_exception()) {
+        if (valid_parameters(p)) return 2;
+        if (std::puts("PSF transition: valueless-refused") < 0) return 7;
+    } else {
+        if (p.psf != before || !valid_parameters(p)) return 8;
+        if (std::puts("PSF transition: original-preserved") < 0) return 7;
+    }
+    std::string path;
+    if (docenhance::core::valid_path(path)) return 3;
+    path = "kernel.png";
+    if (!docenhance::core::valid_path(path)) return 4;
+    path = std::string("bad\0path", 8);
+    if (docenhance::core::valid_path(path)) return 5;
+    path = "\xff.png";
+    if (docenhance::core::valid_path(path)) return 6;
     return 0;
 }
 """
@@ -48,8 +59,8 @@ int main() {
 class ParameterGenerationTests(unittest.TestCase):
     """Exercise emitted C++, including failures Python-only metadata tests cannot detect."""
 
-    def test_compiled_rationals_valueless_psf_and_conditional_path(self) -> None:
-        """Exact final rounding, valueless refusal and required path survive actual generation."""
+    def test_compiled_rationals_failed_psf_transition_and_conditional_path(self) -> None:
+        """Exact rounding, throwing PSF transitions and separate resource path admission survive."""
         cli, methods = contracts()
         parameters = methods["families"][0]["methods"][0]["parameters"]
         parameters[-1]["when"]["--deblur"] = "wiener"
@@ -74,7 +85,13 @@ class ParameterGenerationTests(unittest.TestCase):
             headers.mkdir(parents=True)
             (headers / "parameter_domains.hpp").write_text(render_domains(options))
             (headers / "parameters.hpp").write_text(render_parameters(methods["families"], options))
-            self.assertEqual(compile_and_run(root, PROBE).returncode, 0)
+            result = compile_and_run(root, PROBE)
+            self.assertEqual(result.returncode, 0)
+            self.assertIn(
+                result.stdout,
+                ("PSF transition: valueless-refused\n", "PSF transition: original-preserved\n"),
+            )
+            print(result.stdout, end="")
 
     def test_unreachable_selector_condition_refused(self) -> None:
         """An active R01 resource cannot depend on its family being disabled."""
@@ -174,7 +191,7 @@ class ParameterGenerationTests(unittest.TestCase):
             (headers / "methods").mkdir(parents=True)
             (headers / "app").mkdir()
             (headers / "methods/parameter_domains.hpp").write_text(render_domains(options))
-            (headers / "app/options.hpp").write_text(render_options(cli, options, 15, 64))
+            (headers / "app/options.hpp").write_text(render_options(cli, options))
             source = """#include "docenhance/app/options.hpp"
 using namespace docenhance::app;
 static_assert(command_operands(Command::process).minimum == 1);
@@ -190,7 +207,103 @@ int main() { return 0; }
         for name in ("--class", "--count-sentinel"):
             cli["options"][-1]["name"] = name
             with self.assertRaisesRegex(ValueError, "reserved generated option identity"):
-                render_options(cli, merged_options(cli, methods), 15, 64)
+                render_options(cli, merged_options(cli, methods))
+
+    def test_execution_domains_and_defaults_share_the_actual_cli_authority(self) -> None:
+        """Mutated reviewed controls drive both compiled runtime constants and option metadata."""
+        for maximum, memory_default, thread_default in ((256, 1024, "auto"), (17, 128, "3")):
+            cli, methods = contracts()
+            cli["options"].extend(
+                [
+                    {
+                        "name": "--threads",
+                        "metavar": "N",
+                        "scope": ["process"],
+                        "group": "Execution",
+                        "kind": "auto_or_integer",
+                        "min": "1",
+                        "max": str(maximum),
+                        "default": thread_default,
+                        "summary": "Workers",
+                    },
+                    {
+                        "name": "--memory-limit",
+                        "metavar": "MIB",
+                        "scope": ["process"],
+                        "group": "Execution",
+                        "kind": "integer",
+                        "min": "64",
+                        "max": "262144",
+                        "default": str(memory_default),
+                        "summary": "Memory",
+                    },
+                ]
+            )
+            options = merged_options(cli, methods)
+            with tempfile.TemporaryDirectory(prefix="execution-generation-") as directory:
+                root = Path(directory)
+                headers = root / "include/docenhance"
+                for name in ("methods", "app", "core"):
+                    (headers / name).mkdir(parents=True, exist_ok=True)
+                (headers / "methods/parameter_domains.hpp").write_text(render_domains(options))
+                (headers / "app/options.hpp").write_text(render_options(cli, options))
+                (headers / "core/execution_limits.hpp").write_text(render_execution_limits(options))
+                default = "std::nullopt" if thread_default == "auto" else thread_default + "U"
+                source = f"""#include "docenhance/app/options.hpp"
+#include "docenhance/core/execution_limits.hpp"
+#include "docenhance/app/execution_control.hpp"
+using namespace docenhance;
+constexpr auto threads = app::option_catalog[static_cast<std::size_t>(app::OptionId::threads)];
+constexpr auto memory = app::option_catalog[static_cast<std::size_t>(app::OptionId::memory_limit)];
+static_assert(threads.minimum == core::min_execution_threads);
+static_assert(threads.maximum == core::max_execution_threads);
+static_assert(core::max_execution_threads == {maximum});
+static_assert(core::default_execution_threads == {default});
+static_assert(threads.default_value.value() == "{thread_default}");
+static_assert(memory.minimum == core::min_memory_limit_mib);
+static_assert(memory.maximum == core::max_memory_limit_mib);
+static_assert(core::default_memory_limit == std::size_t{{{memory_default}}} * 1024 * 1024);
+static_assert(memory.default_value.value() == "{memory_default}");
+int main() {{
+    app::ExecutionControl control;
+    return control.workers() != core::default_execution_threads ||
+           control.memory_limit() != core::default_memory_limit;
+}}
+"""
+                self.assertEqual(compile_and_run(root, source).returncode, 0)
+
+    def test_execution_codegen_refuses_missing_or_incompatible_control_declarations(self) -> None:
+        """No partial execution feature, method-owned control or unsupported scope is emitted."""
+        with self.assertRaisesRegex(ValueError, "both reviewed"):
+            render_execution_limits([])
+        options = [
+            {
+                "name": "--threads",
+                "kind": "auto_or_integer",
+                "scope": ["process"],
+                "family": "",
+                "default": "auto",
+                "min": "1",
+                "max": "256",
+            },
+            {
+                "name": "--memory-limit",
+                "kind": "integer",
+                "scope": ["process"],
+                "family": "",
+                "default": "1024",
+                "min": "64",
+                "max": "262144",
+            },
+        ]
+        for key, value in (("scope", ["verify"]), ("kind", "integer"), ("family", "denoising")):
+            changed = copy.deepcopy(options)
+            changed[0][key] = value
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError, "process-only"):
+                render_execution_limits(changed)
+        del options[1]["default"]
+        with self.assertRaisesRegex(ValueError, "process-only"):
+            render_execution_limits(options)
 
     def test_invalid_command_cardinality_refused(self) -> None:
         """Malformed declaration bounds cannot be reinterpreted as an admitted command shape."""

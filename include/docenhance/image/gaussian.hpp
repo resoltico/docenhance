@@ -13,8 +13,12 @@ struct GaussianPass {
     std::span<const double> weights;
     double normalization{};
     bool horizontal = true;
+    std::uint32_t first_row{};
+    std::uint32_t last_row{};
 };
-// Positive finite coefficients, unit finite samples, REFLECT_101 and exact constant identities.
+// Input samples are producer-admitted finite Unit data, including protected context.
+// Positive finite coefficients and exact normalization, disjoint full storage and explicit
+// nonempty output rows are admitted per pass. REFLECT_101 and constants retain exact identities.
 [[nodiscard]] core::Result<void> gaussian_pass(PlaneView<const double> input,
                                                PlaneView<double> output, GaussianPass pass,
                                                const core::Cancellation& cancellation = {});

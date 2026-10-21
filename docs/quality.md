@@ -103,19 +103,46 @@ clang-tidy on every target, the compiler-backed architecture checks, real execut
 suites and native packaging. It also runs the relocated-package smoke test. Imaging libraries
 come from the verified source lock and explicit feature configuration, never system substitutes.
 
-The first run prepares the development image and acquires missing locked sources explicitly;
-the ensuing CMake workflow remains offline. Existing host source receipts may seed a read-only
-cache, and are verified again before use. Persistent Docker volumes isolate Linux `out`, `.cache`
-and `dist` from host build products. Cache names include the checkout and tool/source/feature pins;
-changing those pins selects fresh native state. Incremental runs reuse validated sources and native
-builds, while always rerunning the checks. The current working tree, including uncommitted edits,
-is what gets tested.
+The gate requires the exact cached development image computed from the locked base and tool
+recipe. Prepare that image as a separate, explicitly supervised setup task; a missing image fails
+rather than pulling a substitute or starting an unowned daemon build. The prepared host dependency
+cache and its original locked archives are prerequisites. No network acquisition runs in the gate.
+Only lock-selected verified source directories and receipts seed an empty shared source cache;
+archives stay on a read-only host mount. Existing complete caches are verified, while incomplete,
+foreign or mismatched state fails without overwrite, repair or deletion.
 
-Complete diagnostics are retained in `.cache/linux-gate/latest.log`. The output identifies that
-file on failure. This checks the Docker engine's native Linux architecture; it does not establish
+The source mount is read-only. Native volumes keyed by the inspected immutable image ID own Linux `out`, `.cache` and `dist`;
+Ruff/Mypy caches stay in writable cache subdirectories. Each run's temporary directory lives
+outside the checkout in the owned container's private `/tmp/docenhance-linux-tmp` directory. The
+current working tree, including uncommitted changes, is what gets tested, so keep host inputs
+stable while checks run. Recipe tags still identify prepared images, while a changed actual image ID selects fresh native
+volumes without adopting or deleting earlier volumes. Locked sources remain shared independently
+of the native image. Full native release/package coverage remains unchanged.
+
+One overall deadline uses the reviewed native CI timeout; time spent in readiness and execution
+reduces the same remaining budget. Daemon cleanup is reserved inside that deadline. The Docker CLI
+has bounded diagnostics; omitted output is a failure, even when the child exits zero. Logs remain
+under `.cache/linux-gate`, and `latest.log` is an atomically replaced convenience hard link. A
+failed CLI still requires exact name/label/ID reconciliation of its daemon container. Unknown
+ownership retains the writer claim and both the primary and cleanup failures; it never authorizes
+a retry, volume deletion or pruning. These are operational bounds, not minimum-space or RSS claims.
+
+This checks the Docker engine's native Linux architecture; it does not establish
 Windows, the other Linux architecture, signing, old-OS execution or sanitizer/fuzz campaigns.
 Those CI jobs remain required. Docker is development infrastructure, never an application runtime
 dependency.
+
+Linux gate diagnostics admit a new run only while the retained tree can reserve its 2 MiB log
+and 64 KiB command metadata within 64 MiB of unique file payload and 4096 entries. Hard-linked
+`latest.log` does not duplicate payload. Admission refuses a full tree without deleting prior
+evidence; preservation and disposal require explicit operator action. These operational ceilings
+are not a minimum build-space claim.
+
+The gate creates its private temporary directory exclusively and removes only that directory
+on ordinary shell exit. Temporary files are not stored in a persistent volume. After an
+untrappable interruption, the existing writer claim and exact owned-container reconciliation
+govern cleanup; uncertain daemon ownership blocks another gate until inspected. Diagnostics
+remain in the bounded host evidence directory independently of container removal.
 
 ## Sanitizers
 
@@ -184,3 +211,107 @@ Campaign completeness, bounded parallelism, corpus ownership and retained eviden
 in [fuzzing](fuzzing.md). Each run owns a fresh directory; automatic corpus merging is not supported.
 The PNG fuzz build instruments libpng/zlib as well as first-party code. Required PR checks retain
 evidence artifacts; no source or regression is automatically rewritten by a successful run.
+
+## CI source caching and replay ownership
+
+## Verified source reuse
+
+Dependency caches contain only `.cache/deps/archives`, `.cache/deps/sources` and `.cache/deps/receipts`. Their exact OS-specific key binds the source lock and acquisition/verification implementation; no prefix-match fallback is admitted. Active writer claims are excluded. [Dependency policy](dependencies.md) owns verification and recovery.
+
+Acquisition runs after every restore. Locked Git release objects, archive digests and complete inventories must agree before build setup. Changed existing sources or missing receipts fail; absent sources use ordinary locked acquisition. An exact miss is saved only after successful acquisition. Cache keys and restore success do not establish source trust.
+
+Native build trees, installed prefixes, objects, product binaries and previous results are not restored. Each configuration owns its native products and private prefix. The Intel LLVM tool cache is separate and requires its own source/recipe, readiness and byte-identity checks. Its outer key fingerprints the actual macOS version and selected developer directory after Xcode selection, matching the installed generation; a stale outer hit cannot repeatedly rebuild an unsaved inner generation. Only `bin/clang-tidy`, `bin/clang-query`, matching builtin resource headers and their digest receipt survive the Intel source build; source and object trees live in the installer temporary directory. Static LLVM/Clang linking and the retained resource headers keep the tools independent of that temporary build. Unexpected cache entries fail readiness verification. Header inspection admits at most 4,096 entries, 64 MiB of logical bytes and 1,024 UTF-8 bytes per relative path; receipts admit 8 MiB. These finite allowances retain the full builtin header package rather than guessing a smaller compiler include closure. Compiler reuse is not binary reproducibility. See [configuration ownership](build.md#configuration-ownership).
+
+## Configuration-private replay work
+
+`de_fuzz_replay_driver` is an OBJECT library containing the shared `fuzz/support/replay_main.cpp` driver. It is compiled and linted once per configuration with the required warnings, hardening and sanitizer flags. Every manifest harness retains its own target options, direct links and corpus-replay registration. No product or result is shared between configurations.
+
+Complete discovery, actual compiler/linter work, seed provenance, requested fuzz exposure, fresh results and relocated package inspection remain required. Work sharing does not justify omitting a harness, assertion, compiler boundary or required platform. Actual elapsed time depends on machine and workload; no speedup or completion-time guarantee is claimed.
+
+## Tooling fixture ownership
+
+Each tooling module runs in a fresh bounded interpreter. Workers clear inherited `GIT_*` repository overrides before discovery so temporary Git fixtures own their repositories; parent state and deliberate fixture overrides remain intact. The strict runner reconciles every discovered case and rejects skipped or expected-failure work. [Quality](#) owns execution limits and outcome admission.
+
+## Native execution diagnostics
+
+The native supervisor retains complete fresh CTest output and exact JUnit bytes in lossless,
+verified archives. JUnit identities, status and nonzero Catch assertion checks still decide test
+admission. CTest's abbreviated `system-out` is not the complete allocation trace. Failed and
+interrupted runs retain their available diagnostic bytes and are never relabeled as passing.
+The supervisor avoids echoing the same large failure output into another capture stream.
+Catch displays invisible string characters explicitly in XML and stops a failed case at its
+first assertion failure. Passing cases retain all assertions; stopped failures cannot satisfy
+complete-suite admission.
+
+`tools/native_journal.py` owns source freshness and bounded journal framing.
+`tools/native_output.py` owns raw-file admission, archive byte limits and round-trip checks. These are finite evidence-admission limits, not instantaneous filesystem
+quotas or process-RSS bounds. Archive reconciliation uses time reserved inside the native
+supervisor's existing deadline; cleanup can exhaust that allowance and cause evidence refusal.
+The native and sanitizer jobs upload only the owned compressed diagnostics, receipts and
+partial/error artifacts with seven-day retention. Uploading an archive is not test execution or
+cross-platform qualification.
+
+Native allocation tracing uses one fixed memory chunk and a separate caller-weighted logical
+admission bound. A preopened owned sidecar retains full chunks without extra observer workers;
+after all workers join, replay emits every original event in order. Trace overflow, storage
+failure or an incomplete replay refuses the test. The allocation ledger, trace storage and
+charged processing/native reservations remain separate quantities.
+
+## Retiring local build generations
+
+Content-addressed Docker images and volumes isolate configurations but remain until explicitly
+removed. Inspect exact volume names with `docker volume inspect NAME` and current references
+with `docker ps -a --filter volume=NAME`. Review contents through a read-only mount, preserve
+needed failure records, package evidence and fuzz findings, then remove only the inspected
+inactive generation with `docker volume rm EXACT_NAME`. Source volumes contain reacquirable
+locked bytes, but active writer claims still require reconciliation before removal. Keep the
+current generation; a prefix-wide or global prune can destroy unrelated work and unique findings.
+Ordinary `out/` build trees have the same explicit ownership requirement. Rebuildable objects
+are distinct from retained results; a successful build does not authorize deleting all evidence.
+
+## Cancellation control scope
+
+C++ tests cancel before admission and at interior numerical, codec and publication checkpoints.
+They assert worker joins/error precedence, source preservation, workspace refunds, owned cleanup,
+precommit cancellation and success/refusal/uncertainty after a late request. The decoder tests enumerate
+every checkpoint for both ordinary and Adam7 input; encoding tests enumerate checkpoints through
+successful publication. Negative schema tests reject contradictory cancellation responses.
+
+A separate test executable links the same production interrupt bridge, CLI and host. Its readiness
+handshake lets a parent deliver genuine SIGINT/SIGTERM on POSIX or targeted CTRL_BREAK on Windows
+before dispatch. POSIX tests also verify inherited ignored dispositions and restoration. In-process
+checkpoint tests cover exact processing phases; the process test is not a claim of hitting each phase
+with a timed OS signal. The manifest-declared cancellation fuzzer generates deterministic stop points
+without filesystem effects or uncontrolled process signals, checking refunds and successful outputs
+against existing independent sample references. Normal method/reference suites continue checking
+unchanged no-stop numerical behavior.
+
+These are coverage definitions, not a statement that every platform has already passed. Actual results
+belong to the tested commit and its CI logs. Cooperative cancellation is not a hard realtime guarantee:
+foreign-library work, allocator calls, blocking reads/writes and filesystem operations can delay a
+checkpoint. A blocked delivery stream can delay exit too. No cleanup guarantee is made for SIGKILL,
+TerminateProcess, console close/logoff/shutdown, crash or power failure. Charged-buffer accounting is
+not a process-RSS bound. Partial internal buffers are discarded, not certified as faithful documents.
+
+
+## Denoising verification scope
+
+The [current denoising guide](methods/denoising.md) owns D01/D02 arithmetic, reflection, protection,
+quantization and workspace semantics. Actual first-party resource, independent-reference, moved-owner,
+codec-profile and cross-worker controls cover those owners. The [native dependency
+policy](dependencies.md) still owns source identity, isolation, attribution and feature closure.
+
+## Evidence and qualification
+
+Required healthy and negative controls cover actual admitted plans, immutable completed facts,
+borrow readiness, finite reservations/refunds, interruption and truthful publication/delivery.
+The fixed eager pipeline retains only actual completed earlier facts and the failed family.
+[Architecture](architecture.md), [pipeline](pipeline.md), [record](record.md) and the method guides
+own those properties; tests exercise their real owners rather than a second observation model.
+
+Exact-commit required platform and minimum-runtime evidence, relocated packages, native feature and
+import closure, both strict engines, retained regressions and sanitizer controls remain required.
+A workflow definition, local pass or identity hash is not execution, trust or natural-document evidence.
+[Document quality](document-quality.md) separately requires cleared provenance, independent physical
+pages, complete per-class denominators, blinded review and separate harms, uncertainty and abstention.
+Source/package eligibility and signed/notarized native distribution retain their separate requirements.

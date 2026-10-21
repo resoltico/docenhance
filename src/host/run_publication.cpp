@@ -4,230 +4,207 @@
 
 #include "bundle_verify.hpp"
 #include "docenhance/app/process.hpp"
+#include "docenhance/codec/png_artifact.hpp"
 #include "docenhance/core/identity.hpp"
-#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/fs/digest.hpp"
-#include "docenhance/fs/png.hpp"
 #include "docenhance/fs/publication.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/plane.hpp"
-#include "docenhance/image/source_facts.hpp"
-#include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/stages.hpp"
+#include "docenhance/pipeline/render.hpp"
+#include "docenhance/record/inventory.hpp"
 #include "docenhance/record/record.hpp"
+#include "docenhance/record/request.hpp"
+#include "docenhance/record/source.hpp"
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <expected>
-#include <functional>
 #include <optional>
 #include <span>
 #include <string>
 #include <type_traits>
 #include <utility>
-#include <variant>
 #include <vector>
-
 namespace docenhance::host {
-static_assert(std::is_nothrow_move_constructible_v<PublishedRun>);
-static_assert(std::is_nothrow_move_constructible_v<core::Error>);
 namespace {
-// What the writers fill in as they run. The record writer is declared last, so by the time it
-// runs every artifact it describes has been written, verified and identified.
-struct Composition {
-    explicit Composition(const RunPublication& publication) noexcept : run(publication) {}
-    std::reference_wrapper<const RunPublication> run;
-    std::optional<image::ConversionReport> conversion;
-    record::OutputFacts output{};
-    std::optional<record::ProtectionFacts> protection;
-    ExpectedBundle expected;
-};
-
-core::Result<void> write_image(void* const state, const fs::BundleSlot& slot) {
-    auto& composed = *static_cast<Composition*>(state);
-    const auto& run = composed.run.get();
-    image::OutputDescriptor descriptor{};
-    auto written = std::visit(
-        [&](const auto& artwork) {
-            using Kind = std::decay_t<decltype(artwork)>;
-            if constexpr (std::is_same_v<Kind, BinaryArtwork>) {
-                const image::PlaneRows rows{artwork.samples};
-                descriptor = rows.descriptor();
-                return fs::write_verified_png(slot, artwork.samples, run.budget.get(),
-                                              run.cancellation.get());
-            } else {
-                descriptor = artwork.rows.get().descriptor();
-                return fs::write_verified_png_rows(slot, artwork.rows.get(), run.budget.get(),
-                                                   run.cancellation.get());
-            }
-        },
-        run.artwork);
-    if (!written) {
-        return written;
+core::Result<std::optional<record::ProtectionAsset>> protection(const RunPublication& run) {
+    if (!run.rendering.get().mask) {
+        return std::nullopt;
     }
-    auto identity = fs::identify_slot(slot, core::bundle_max_file_bytes, run.cancellation.get());
+    const auto& encoded = *run.rendering.get().mask;
+    const auto cancellation = run.scheduler.get().cancellation();
+    auto observed = codec::observe_png_artifact(encoded.bytes(), run.budget.get(), cancellation);
+    if (!observed) {
+        auto error = std::move(observed.error());
+        if (error.code == core::ErrorCode::input) {
+            error.code = core::ErrorCode::output_verify;
+        }
+        return std::unexpected(std::move(error));
+    }
+    auto identity = fs::identify(encoded.bytes(), cancellation);
     if (!identity) {
-        return std::unexpected(identity.error());
+        return std::unexpected(std::move(identity.error()));
     }
-    if (const auto* const artwork = std::get_if<ContinuousArtwork>(&run.artwork)) {
-        composed.conversion = artwork->converter.get().report();
-        composed.conversion->verified = true;
-    }
-    composed.output = {
-        .artifact = {.name = record::image_name, .identity = std::move(*identity)},
-        .shape = descriptor.shape,
-        .profile_embedded = !descriptor.profile.empty(),
-        .resolution = descriptor.resolution,
-        // The writer above compared the encoded file against these samples and this metadata;
-        // that comparison is the only thing that puts this value here.
-        .verification = record::Verification::decoded_and_compared,
+    return record::ProtectionAsset{
+        .sha256 = std::move(identity->sha256),
+        .bytes = identity->bytes,
+        .width = observed->shape.width,
+        .height = observed->shape.height,
+        .protected_samples = observed->protected_samples,
     };
-    return {};
 }
-
-core::Result<void> write_mask(void* const state, const fs::BundleSlot& slot) {
-    auto& composed = *static_cast<Composition*>(state);
-    const auto& run = composed.run.get();
-    const auto* const artwork = std::get_if<ContinuousArtwork>(&run.artwork);
-    if (artwork == nullptr || !artwork->mask) {
-        return core::failure(core::ErrorCode::invariant, "A mask was declared but not supplied");
+core::Result<record::RunRecord> make_record(RunPublication& run, core::ContentIdentity output,
+                                            std::optional<record::ProtectionAsset> mask) {
+    if (!run.rendering.get().output.decoded_and_compared) {
+        return core::failure(core::ErrorCode::invariant,
+                             "Rendering did not compare its produced PNG");
     }
-    const auto canonical = artwork->mask->canonical;
-    auto written =
-        fs::write_verified_png(slot, canonical, run.budget.get(), run.cancellation.get());
-    if (!written) {
-        return written;
+    auto source = record::source_container(run.rendering.get().source);
+    if (!source) {
+        return std::unexpected(std::move(source.error()));
     }
-    auto identity = fs::identify_slot(slot, core::bundle_max_file_bytes, run.cancellation.get());
-    if (!identity) {
-        return std::unexpected(identity.error());
+    auto request = record::requested(run.request.get().plan(), run.mask);
+    if (!request) {
+        return std::unexpected(std::move(request.error()));
     }
-    composed.protection = record::ProtectionFacts{
-        .original = artwork->mask->supplied,
-        .stored = {.name = record::mask_name, .identity = std::move(*identity)},
-        .width = canonical.width(),
-        .height = canonical.height(),
-    };
-    return {};
-}
-
-core::Result<void> write_record(void* const state, const fs::BundleSlot& slot) {
-    auto& composed = *static_cast<Composition*>(state);
-    const auto& run = composed.run.get();
-    const auto operation = std::visit(
-        [](const auto& artwork) -> record::Operation {
-            using Kind = std::decay_t<decltype(artwork)>;
-            if constexpr (std::is_same_v<Kind, BinaryArtwork>) {
-                return artwork.method;
-            } else {
-                return artwork.operation;
-            }
-        },
-        run.artwork);
-    record::RunRecord record{
-        .context = run.context.get(),
-        .build = core::build_facts(),
+    const auto build = core::build_facts();
+    const auto& actual = run.rendering.get().output;
+    record::RunRecord result{
+        .context = std::move(run.context),
+        .build =
+            {
+                .version = std::string{build.version},
+                .platform = std::string{build.platform},
+                .compiler = std::string{build.compiler},
+                .dependency_lock_sha256 = std::string{build.dependency_lock_sha256},
+            },
         .source =
             {
-                .identity = run.source,
-                .name = run.source_name,
-                .decoding = run.source_decoding,
+                .name = std::move(run.source_name),
+                .sha256 = std::move(run.source.sha256),
+                .bytes = run.source.bytes,
+                .container = std::move(*source),
             },
-        .operation = operation,
-        .protection_supplied = composed.protection.has_value(),
-        .output = composed.output,
-        .protection = composed.protection,
-        .conversion = composed.conversion,
-        .stages =
+        .request = std::move(*request),
+        .execution = record::Execution(),
+        .assets = std::vector<record::Asset>(),
+        .output =
             {
-                .denoising = {.progress = methods::StageProgress::completed},
-                .restoration = {.progress = methods::StageProgress::completed},
-                .contrast = {.progress = methods::StageProgress::completed},
-                .sharpening = {.progress = methods::StageProgress::completed},
+                .sha256 = std::move(output.sha256),
+                .bytes = output.bytes,
+                .width = actual.shape.width,
+                .height = actual.shape.height,
+                .channels = actual.shape.model,
+                .depth = actual.shape.depth,
+                .profile_embedded = actual.profile_embedded,
+                .resolution = actual.resolution,
             },
-        .rotation = run.rotation,
     };
-    std::visit(
-        [&record](const auto& artwork) {
-            using Kind = std::decay_t<decltype(artwork)>;
-            if constexpr (std::is_same_v<Kind, BinaryArtwork>) {
-                record.otsu = artwork.otsu;
-            } else {
-                record.stages = artwork.stages.get();
-            }
-        },
-        run.artwork);
-    auto written = record::serialize(record);
-    if (!written) {
-        return std::unexpected(written.error());
+    result.execution.interpretation = run.rendering.get().interpretation;
+    static_cast<methods::StageReports&>(result.execution) = run.rendering.get().stages;
+    if (mask) {
+        result.assets.emplace_back(std::move(*mask));
     }
-    // The record's own digest is taken from these bytes and reported in the response. Embedding it
-    // would mean hashing bytes that contain the hash.
-    const std::span<const char> text{written->data(), written->size()};
-    auto identity = fs::identify(std::as_bytes(text), run.cancellation.get());
-    if (!identity) {
-        return std::unexpected(identity.error());
+    if (run.rendering.get().psf) {
+        const auto& identity = run.rendering.get().psf->identity;
+        result.assets.emplace_back(
+            record::PsfAsset{.sha256 = identity.sha256, .bytes = identity.bytes});
     }
-    auto placed = fs::write_bytes(slot, *written, run.cancellation.get());
-    if (!placed) {
-        return placed;
+    return result;
+}
+std::size_t
+prepare_bundle_files(const RunPublication& run, std::span<const std::byte> record_bytes,
+                     std::array<fs::BundleFile, record::record_max_artifacts + 1>& files) {
+    std::size_t count = 0;
+    files.at(count++) = {
+        .relative = record::image_name,
+        .bytes = run.rendering.get().result.bytes(),
+    };
+    if (run.rendering.get().mask) {
+        files.at(count++) = {
+            .relative = record::mask_name,
+            .bytes = run.rendering.get().mask->bytes(),
+        };
     }
-    composed.expected.record = std::move(*identity);
-    composed.expected.run = record.context.identity;
-    return {};
+    if (run.rendering.get().psf) {
+        files.at(count++) = {
+            .relative = record::psf_name,
+            .bytes = run.rendering.get().psf->encoded.bytes(),
+        };
+    }
+    files.at(count++) = {
+        .relative = record::record_name,
+        .bytes = record_bytes,
+    };
+    return count;
 }
 } // namespace
-
-core::Result<app::PublishedContinuous> published_continuous(PublishedRun published,
-                                                            image::SourceFacts source,
-                                                            methods::StageObservations& reports,
-                                                            image::AlphaPolicy alpha) {
-    // The conversion the record states, so the response and the record cannot disagree.
-    if (!published.conversion) {
-        return std::unexpected(core::Error{
-            .code = core::ErrorCode::output_verify,
-            .message = "Published continuous record has no conversion observations",
-            .publication = core::Publication::completed,
-        });
-    }
-    auto report = *published.conversion;
-    // Derived from the comparison that ran, not asserted because publication returned.
-    report.verified = published.verification == record::Verification::decoded_and_compared;
-    return app::PublishedContinuous{
-        .output = std::move(published.output),
-        .alpha = alpha,
-        .conversion = report,
-        .stages = std::move(reports),
-        .run = std::move(published.run),
-        .record = std::move(published.record),
-        .source_decoding = source,
-
+app::ProcessResult publish_run(RunPublication& run, app::ProcessFailure& failure) {
+    static_assert(std::is_nothrow_move_constructible_v<app::Published>);
+    static_assert(std::is_nothrow_move_constructible_v<app::ProcessFailure>);
+    static_assert(std::is_nothrow_constructible_v<app::ProcessResult, app::Published&&>);
+    const auto refuse = [&](core::Error error) -> app::ProcessResult {
+        failure.error = std::move(error);
+        if (failure.diagnostics) {
+            failure.diagnostics->charged_peak_bytes = run.budget.get().peak();
+        }
+        return std::unexpected(std::move(failure));
     };
-}
-core::Result<PublishedRun> publish_run(const RunPublication& run) {
-    Composition composed{run};
-    std::vector<fs::BundleFile> files;
-    files.push_back({.relative = record::image_name, .state = &composed, .write = write_image});
-    const auto* const artwork = std::get_if<ContinuousArtwork>(&run.artwork);
-    if (artwork != nullptr && artwork->mask) {
-        files.push_back({.relative = record::mask_name, .state = &composed, .write = write_mask});
+    auto mask = protection(run);
+    if (!mask) {
+        return refuse(std::move(mask.error()));
     }
-    files.push_back({.relative = record::record_name, .state = &composed, .write = write_record});
-    PublishedRun result{
-        .output = {},
-        .run = run.context.get().identity,
-        .record = {.sha256 = {}, .bytes = 0},
-        .verification = record::Verification::decoded_and_compared,
-        .conversion = std::nullopt,
+    const auto cancellation = run.scheduler.get().cancellation();
+    auto image_identity = fs::identify(run.rendering.get().result.bytes(), cancellation);
+    if (!image_identity) {
+        return refuse(std::move(image_identity.error()));
+    }
+    auto run_record = make_record(run, std::move(*image_identity), std::move(*mask));
+    if (!run_record) {
+        return refuse(std::move(run_record.error()));
+    }
+    auto serialized = record::serialize(*run_record);
+    if (!serialized) {
+        return refuse(std::move(serialized.error()));
+    }
+    const auto record_bytes = std::as_bytes(std::span{*serialized});
+    auto identity = fs::identify(record_bytes, cancellation);
+    if (!identity) {
+        return refuse(std::move(identity.error()));
+    }
+    // All strings, identities and typed record storage exist before entering native publication.
+    ExpectedBundle expected{
+        .run = run_record->context.identity,
+        .record = *identity,
     };
-    auto published = fs::publish_bundle(run.output_directory.get(), files, run.cancellation.get(),
-                                        bundle_validation(composed.expected));
+    constexpr auto mib = std::uint64_t{1024} * 1024;
+    app::Published success{
+        .output = std::string(),
+        .record_identity = std::move(*identity),
+        .record = std::move(*run_record),
+        .diagnostics =
+            {
+                .threads = run.scheduler.get().workers(),
+                .memory_limit_mib = run.budget.get().limit() / mib,
+                .charged_peak_bytes = run.budget.get().peak(),
+            },
+    };
+    std::array<fs::BundleFile, record::record_max_artifacts + 1> files{};
+    const auto count = prepare_bundle_files(run, record_bytes, files);
+    run.publication_started.get() = true;
+    auto published =
+        fs::publish_bundle(run.request.get().output_directory(), std::span{files}.first(count),
+                           cancellation, bundle_validation(expected));
     if (!published) {
-        return std::unexpected(std::move(published.error()));
+        failure.error = std::move(published.error().error);
+        failure.publication = published.error().publication;
+        if (failure.diagnostics) {
+            failure.diagnostics->charged_peak_bytes = run.budget.get().peak();
+        }
+        return std::unexpected(std::move(failure));
     }
-    result.output = std::move(*published);
-    result.record = std::move(composed.expected.record);
-    result.verification = composed.output.verification;
-    result.conversion = composed.conversion;
-    return result;
+    success.output = std::move(*published);
+    success.diagnostics.charged_peak_bytes = run.budget.get().peak();
+    return success;
 }
 } // namespace docenhance::host

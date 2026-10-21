@@ -82,10 +82,13 @@ def help_cases(exe: Path, root: Path) -> None:
         )
     response = call_json(exe, ["process", "--help", "--json"])
     mode = next(o for o in response["options"] if o["name"] == "--output-mode")
-    expect("TIFF/BigTIFF" in mode["description"], "JSON help advertises implemented TIFF sources")
     expect(
-        "restoration, contrast, sharpening and final quantization" in mode["description"],
-        "JSON help reports current stage order",
+        "All modes share interpretation" in mode["description"],
+        "JSON help explains common interpretation",
+    )
+    expect(
+        "terminal sRGB Q16" in mode["description"] and "physical 1-bit PNG" in mode["description"],
+        "JSON help reports current binary boundary and representation",
     )
 
 
@@ -111,7 +114,7 @@ def value_cases(exe: Path, root: Path, source: Path) -> None:
             (["--psf-sigma", "1"], ("--deblur wiener", "--psf gaussian")),
             (
                 ["--output-mode", "bw", "--psf-sigma", "1"],
-                ("--output-mode preserve or gray", "--deblur wiener", "--psf gaussian"),
+                ("--deblur wiener", "--psf gaussian"),
             ),
             (["--deblur", "wiener", "--psf", "motion", "--psf-sigma", "1"], ("--psf gaussian",)),
         )
@@ -262,8 +265,7 @@ def warning_cases(exe: Path, root: Path, gray: Path) -> None:
             ],
         )
         expect(
-            response["conversion"]["warnings"]
-            == ["W_PROFILE_ASSUMED", "W_ALPHA_FLATTENED", "W_DEPTH_REDUCED"],
+            response["warnings"] == ["W_PROFILE_ASSUMED", "W_ALPHA_FLATTENED", "W_DEPTH_REDUCED"],
             "machine warning vocabulary/observations remain coherent",
         )
     result = invoke(
@@ -293,9 +295,9 @@ def warning_cases(exe: Path, root: Path, gray: Path) -> None:
     )
     for token in (
         "W_TV_ITERATION_LIMIT:",
-        "usable iterate",
-        "tolerance was not met",
-        "not a convergence claim",
+        "reached its iteration cap",
+        "without satisfying its stopping rule",
+        "not a convergence certificate",
     ):
         expect(token in result.stdout, f"TV-L1 explanation omitted {token}")
     for amount in ("0", "0.5"):

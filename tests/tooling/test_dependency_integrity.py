@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools_path import ROOT
+from tools_path import prepare_tool_imports
 
 import audit_build
 import cache_lock
@@ -22,6 +22,8 @@ import dep_acquire
 import dep_verify
 import install_llvm
 import llvm_cache
+
+prepare_tool_imports()
 
 
 class DependencyIntegrityTests(unittest.TestCase):
@@ -182,7 +184,8 @@ class DependencyIntegrityTests(unittest.TestCase):
                 self.assertEqual(install_llvm.resolve_analysis_tool(directory, name, "23"), desired)
                 desired.unlink()
                 self.assertEqual(
-                    install_llvm.resolve_analysis_tool(directory, name, "23"), directory / name
+                    install_llvm.resolve_analysis_tool(directory, name, "23"),
+                    directory / name,
                 )
                 (directory / name).unlink()
                 with self.assertRaises(llvm_cache.InstallError):
@@ -192,16 +195,12 @@ class DependencyIntegrityTests(unittest.TestCase):
         """Expanded path settings and optional-looking missing caches are mandatory evidence."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            settings: dict[str, bool | str] = {
-                "OPENCV_DOWNLOAD_PATH": json.loads((ROOT / "deps/features.json").read_text())[
-                    "dependencies"
-                ]["opencv"]["OPENCV_DOWNLOAD_PATH"]
-            }
+            settings: dict[str, bool | str] = {"FIXTURE_PATH": "<BINARY>/downloads"}
             binary = root / "deps/fixture"
             bad = audit_build.feature_failures(
                 "fixture",
                 settings,
-                {"BUILD_SHARED_LIBS": "OFF", "OPENCV_DOWNLOAD_PATH": str(root / "outside")},
+                {"BUILD_SHARED_LIBS": "OFF", "FIXTURE_PATH": str(root / "outside")},
                 binary,
             )
             self.assertTrue(bad)
@@ -210,7 +209,7 @@ class DependencyIntegrityTests(unittest.TestCase):
                 settings,
                 {
                     "BUILD_SHARED_LIBS": "OFF",
-                    "OPENCV_DOWNLOAD_PATH": binary.as_posix() + "/downloads",
+                    "FIXTURE_PATH": binary.as_posix() + "/downloads",
                 },
                 binary,
             )
@@ -218,6 +217,62 @@ class DependencyIntegrityTests(unittest.TestCase):
             (root / "dependency-plan.json").write_text('["catch2"]')
             (root / "build-identity.json").write_text('{"CMAKE_SYSTEM_NAME":"Linux"}')
             self.assertTrue(audit_build.audit(root))
+
+    def test_catch_language_cache_matches_bound_consumer_standard(self) -> None:
+        """A real dependency cache must retain the bound standard without fallback/extensions."""
+        standard = str(
+            json.loads((audit_build.ROOT / "deps/tools.json").read_text())["cxx"]["standard"]
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "deps/catch2"
+            binary.mkdir(parents=True)
+            (root / "dependency-plan.json").write_text('["catch2"]')
+            (root / "build-identity.json").write_text(
+                json.dumps({"CMAKE_SYSTEM_NAME": "Linux", "DE_CXX_STANDARD": standard})
+            )
+            healthy = {
+                "BUILD_SHARED_LIBS": "OFF",
+                "CATCH_BUILD_TESTING": "OFF",
+                "CATCH_INSTALL_DOCS": "OFF",
+                "CATCH_INSTALL_EXTRAS": "ON",
+                "CMAKE_CXX_STANDARD": standard,
+                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+                "CMAKE_CXX_EXTENSIONS": "OFF",
+            }
+            # This fixture isolates language/cache admission; native hardening has its own controls.
+            with patch("audit_build.hardening_errors", return_value=[]):
+                (binary / "CMakeCache.txt").write_text(
+                    "".join(f"{key}:STRING={value}\n" for key, value in healthy.items())
+                )
+                self.assertEqual(audit_build.audit(root), [])
+                for key, wrong in (
+                    ("CMAKE_CXX_STANDARD", "14"),
+                    ("CMAKE_CXX_STANDARD_REQUIRED", "OFF"),
+                    ("CMAKE_CXX_EXTENSIONS", "ON"),
+                ):
+                    for missing in (False, True):
+                        with self.subTest(key=key, missing=missing):
+                            values = dict(healthy)
+                            if missing:
+                                values.pop(key)
+                            else:
+                                values[key] = wrong
+                            (binary / "CMakeCache.txt").write_text(
+                                "".join(
+                                    f"{name}:STRING={value}\n" for name, value in values.items()
+                                )
+                            )
+                            errors = audit_build.audit(root)
+                            diagnostic = (
+                                f"catch2: missing declared feature {key}"
+                                if missing
+                                else f"catch2: unexpected {key}={wrong}"
+                            )
+                            self.assertTrue(
+                                any(error.startswith(diagnostic) for error in errors),
+                                errors,
+                            )
 
     def test_installed_json_header_must_match_private_build_input(self) -> None:
         """A feature cache flag cannot substitute for the actual installed header bytes."""
@@ -242,6 +297,31 @@ class DependencyIntegrityTests(unittest.TestCase):
                 owned.write_bytes(b"both copies altered")
                 installed.write_bytes(owned.read_bytes())
                 self.assertTrue(audit_build.feature_failures("json", {}, cache, binary))
+
+    def test_installed_pocketfft_header_has_independent_identity(self) -> None:
+        """Two agreeing mutable copies cannot replace the reviewed provider header."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            binary = root / "deps/pocketfft"
+            binary.mkdir(parents=True)
+            source = root / "source"
+            source.mkdir()
+            (binary / "CMakeCache.txt").write_text(f"DE_UPSTREAM_SOURCE:PATH={source}\n")
+            installed = root / "prefix/include/pocketfft/pocketfft_hdronly.h"
+            self.assertTrue(audit_build.pocketfft_header_failures(binary))
+            installed.parent.mkdir(parents=True)
+            header = source / "pocketfft_hdronly.h"
+            header.write_bytes(b"reviewed provider fixture")
+            installed.write_bytes(b"different")
+            self.assertTrue(audit_build.pocketfft_header_failures(binary))
+            installed.write_bytes(header.read_bytes())
+            self.assertTrue(audit_build.pocketfft_header_failures(binary))
+            expected = hashlib.sha256(header.read_bytes()).hexdigest()
+            with patch("audit_build.POCKETFFT_HEADER_SHA256", expected):
+                self.assertFalse(audit_build.pocketfft_header_failures(binary))
+                header.write_bytes(b"both copies changed")
+                installed.write_bytes(header.read_bytes())
+                self.assertTrue(audit_build.pocketfft_header_failures(binary))
 
 
 if __name__ == "__main__":

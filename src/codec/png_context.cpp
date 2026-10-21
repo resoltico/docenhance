@@ -6,6 +6,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "png_rows.hpp"
 
 #include <algorithm>
 #include <csetjmp>
@@ -22,6 +23,27 @@
 
 namespace docenhance::codec {
 namespace {
+void write_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
+    const auto& context = *static_cast<PngContext*>(png_get_io_ptr(png));
+    constexpr std::size_t transfer_bytes = std::size_t{64} * 1024;
+    auto input = std::span{bytes, count};
+    while (!input.empty()) {
+        if (observe_cancellation(png, core::Checkpoint::encode)) {
+            png_error(png, "Cancelled");
+        }
+        const auto chunk = input.first(std::min(transfer_bytes, input.size()));
+        if (!context.output.write(context.output.state, chunk)) {
+            png_error(png, "Cannot write the PNG output");
+        }
+        input = input.subspan(chunk.size());
+    }
+}
+void flush_bytes(png_structp png) noexcept {
+    const auto& context = *static_cast<PngContext*>(png_get_io_ptr(png));
+    if (!context.output.flush(context.output.state)) {
+        png_error(png, "Cannot flush the PNG output");
+    }
+}
 // The jump target contains only trivial automatic state. All owning C++ objects are in its caller.
 void read_bytes(png_structp png, png_bytep bytes, png_size_t count) noexcept {
     auto& input = *static_cast<PngInput*>(png_get_io_ptr(png));
@@ -147,6 +169,9 @@ core::Error PngContext::error(core::ErrorCode fallback) const {
         .message = memory.message.front() == '\0' ? "Cannot open or initialize the PNG stream"
                                                   : memory.message.data(),
     };
+}
+void install_png_writer(PngContext& context) {
+    png_set_write_fn(context.png, &context, write_bytes, flush_bytes);
 }
 void install_png_reader(const PngContext& context, PngInput& input) {
     png_set_read_fn(context.png, &input, read_bytes);

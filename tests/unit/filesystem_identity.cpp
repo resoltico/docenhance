@@ -3,31 +3,32 @@
 #include "bundle_native.hpp"
 #include "bundle_stage.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/fs/bundle_snapshot.hpp"
-#include "docenhance/fs/png.hpp"
 #include "docenhance/fs/publication.hpp"
-#include "docenhance/image/plane.hpp"
+#include "docenhance/fs/snapshot.hpp"
 #include "entry_identity.hpp"
 #include "file_access.hpp"
 #include "file_contents.hpp"
 #include "native_publication.hpp"
-#include "source_snapshot.hpp"
+#include "png_fixture.hpp"
 #include "temporary_directory.hpp"
 
 #include <algorithm>
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
-#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <ios>
 #include <span>
 #include <string>
+#include <string_view>
 #include <system_error>
+#include <utility>
 #ifndef _WIN32
 #include <cstdio>
 #ifdef __APPLE__
@@ -62,25 +63,16 @@ class WorkingDirectory {
   private:
     std::filesystem::path original_;
 };
-struct Writer {
+constexpr std::string_view owned_text = "owned";
+struct WorkingDirectoryChange {
     std::filesystem::path next_directory;
-    bool replace = false;
     unsigned calls = 0;
 };
-core::Result<void> mutate_after_write(void* const state, const fs::BundleSlot& slot) {
-    auto& writer = *static_cast<Writer*>(state);
-    ++writer.calls;
-    const auto result = fs::write_bytes(slot, "owned");
-    if (!result) {
-        return result;
-    }
-    if (writer.replace) {
-        const auto stage = slot.path.parent_path();
-        std::filesystem::rename(stage, stage.parent_path() / "retained");
-        std::filesystem::create_directory(stage);
-        std::ofstream{slot.path} << "owned"; // Same bytes are not the same native object.
-    } else if (!writer.next_directory.empty()) {
-        std::filesystem::current_path(writer.next_directory);
+core::Result<void> change_after_write(void* const state, const std::string& /*name*/,
+                                      const core::Cancellation& /*cancellation*/) {
+    auto& change = *static_cast<WorkingDirectoryChange*>(state);
+    if (++change.calls == 1) {
+        std::filesystem::current_path(change.next_directory);
     }
     return {};
 }
@@ -94,7 +86,13 @@ std::error_code copied_destination(const std::filesystem::path& /*from*/,
     }
     return std::make_error_code(std::errc::io_error);
 }
-enum class MutationKind { replace_source, add_entry, replace_parent, replace_at_commit };
+enum class MutationKind {
+    replace_source,
+    add_entry,
+    replace_parent,
+    replace_at_commit,
+    replace_stage,
+};
 struct FilesystemMutation {
     std::filesystem::path original;
     std::filesystem::path retained;
@@ -105,49 +103,57 @@ FilesystemMutation& filesystem_mutation() {
     static FilesystemMutation state;
     return state;
 }
-core::Checkpoint mutation_checkpoint(MutationKind kind) {
+std::pair<core::Checkpoint, unsigned> mutation_point(MutationKind kind) {
     switch (kind) {
     case MutationKind::replace_parent:
-        return core::Checkpoint::encode;
+        return {core::Checkpoint::encode, 1};
+    case MutationKind::replace_stage:
+        return {core::Checkpoint::encode, 3};
     case MutationKind::replace_at_commit:
-        return core::Checkpoint::commit;
+        return {core::Checkpoint::commit, 1};
     case MutationKind::add_entry:
-        return core::Checkpoint::verification;
+        return {core::Checkpoint::verification, 2};
     case MutationKind::replace_source:
-        return core::Checkpoint::decode;
+        return {core::Checkpoint::decode, 2};
     }
     std::abort();
 }
-bool mutate_read(core::Checkpoint at) noexcept {
-    auto& state = filesystem_mutation();
-    const auto wanted = mutation_checkpoint(state.kind);
-    const unsigned checkpoint =
-        state.kind == MutationKind::replace_parent || state.kind == MutationKind::replace_at_commit
-            ? 1
-            : 2;
-    if (at != wanted || ++state.checkpoints != checkpoint) {
-        return false;
+void replace_filesystem_object(const FilesystemMutation& state) {
+    std::filesystem::rename(state.original, state.retained);
+    if (state.kind == MutationKind::replace_parent ||
+        state.kind == MutationKind::replace_at_commit ||
+        state.kind == MutationKind::replace_stage) {
+        std::filesystem::create_directory(state.original);
+        if (state.kind == MutationKind::replace_stage) {
+            std::ofstream{state.original / "run.json"} << owned_text;
+        }
+    } else {
+        std::ofstream{state.original} << "foreign";
     }
+}
+void apply_filesystem_mutation(const FilesystemMutation& state) noexcept {
     try {
         if (state.kind == MutationKind::add_entry) {
             std::ofstream{state.original / "foreign"} << "preserve";
         } else {
-            std::filesystem::rename(state.original, state.retained);
-            if (state.kind == MutationKind::replace_parent ||
-                state.kind == MutationKind::replace_at_commit) {
-                std::filesystem::create_directory(state.original);
-            } else {
-                std::ofstream{state.original} << "foreign";
-            }
+            replace_filesystem_object(state);
         }
     } catch (...) {
         std::abort();
     }
+}
+bool mutate_read(core::Checkpoint at) noexcept {
+    auto& state = filesystem_mutation();
+    const auto [wanted, checkpoint] = mutation_point(state.kind);
+    if (at != wanted || ++state.checkpoints != checkpoint) {
+        return false;
+    }
+    apply_filesystem_mutation(state);
     return false;
 }
 } // namespace
 
-TEST_CASE("Publication binds relative effects before a writer changes working directory",
+TEST_CASE("Publication binds relative effects before validation changes working directory",
           "[filesystem][publication]") {
     const TemporaryDirectory temporary{"docenhance-working-directory"};
     const auto initial = temporary.path / "initial";
@@ -157,37 +163,47 @@ TEST_CASE("Publication binds relative effects before a writer changes working di
     REQUIRE(std::filesystem::create_directory(other / "result.staging-0"));
     std::ofstream{other / "result.staging-0/run.json"} << "foreign";
     const WorkingDirectory current{initial};
-    Writer writer{.next_directory = other};
+    WorkingDirectoryChange change{.next_directory = other};
     const fs::BundleFile file{
         .relative = "run.json",
-        .state = &writer,
-        .write = mutate_after_write,
+        .bytes = std::as_bytes(std::span{owned_text}),
     };
-    const auto result = fs::publish_bundle("result", std::span{&file, 1});
+    const fs::BundleValidation validation{.state = &change, .validate = change_after_write};
+    const auto result = fs::publish_bundle("result", std::span{&file, 1}, {}, validation);
     REQUIRE(result);
 #ifdef _WIN32
     CHECK(*result == "result\\run.json");
 #else
     CHECK(*result == "result/run.json");
 #endif
+    CHECK(change.calls == 2);
     CHECK(file_contents(initial / "result/run.json") == "owned");
     CHECK(file_contents(other / "result.staging-0/run.json") == "foreign");
     CHECK(!std::filesystem::exists(other / "result"));
 }
-TEST_CASE("A copied-content replacement stage cannot publish or run another writer",
+TEST_CASE("A copied-content replacement stage prevents the next byte-file creation",
           "[filesystem][publication]") {
     const TemporaryDirectory temporary{"docenhance-stage-object"};
-    Writer first{.next_directory = {}, .replace = true};
-    Writer second;
     const std::array files{
-        fs::BundleFile{.relative = "run.json", .state = &first, .write = mutate_after_write},
-        fs::BundleFile{.relative = "next", .state = &second, .write = mutate_after_write},
+        fs::BundleFile{.relative = "run.json", .bytes = std::as_bytes(std::span{owned_text})},
+        fs::BundleFile{.relative = "next", .bytes = std::as_bytes(std::span{owned_text})},
     };
-    const auto result = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files);
+    REQUIRE(fs::publish_bundle(utf8_spelling(temporary.path / "healthy"), files));
+    CHECK(file_contents(temporary.path / "healthy/run.json") == owned_text);
+    CHECK(file_contents(temporary.path / "healthy/next") == owned_text);
+    filesystem_mutation() = {
+        .original = temporary.path / "result.staging-0",
+        .retained = temporary.path / "retained",
+        .kind = MutationKind::replace_stage,
+    };
+    const auto result = fs::publish_bundle(utf8_spelling(temporary.path / "result"), files,
+                                           core::Cancellation{{}, mutate_read});
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
-    CHECK(first.calls == 1);
-    CHECK(second.calls == 0);
+    CHECK(result.error().error.code == core::ErrorCode::publication_unknown);
+    CHECK(filesystem_mutation().checkpoints == 3);
+    CHECK(!std::filesystem::exists(temporary.path / "retained/next"));
+    CHECK(!std::filesystem::exists(temporary.path / "result.staging-0/next"));
     CHECK(!std::filesystem::exists(temporary.path / "result"));
     CHECK(file_contents(temporary.path / "retained/run.json") == "owned");
     CHECK(file_contents(temporary.path / "result.staging-0/run.json") == "owned");
@@ -195,16 +211,15 @@ TEST_CASE("A copied-content replacement stage cannot publish or run another writ
 TEST_CASE("Copied destination bytes do not establish ownership after an ambiguous rename",
           "[filesystem][publication]") {
     const TemporaryDirectory temporary{"docenhance-copied-destination"};
-    Writer writer;
     const fs::BundleFile file{
         .relative = "run.json",
-        .state = &writer,
-        .write = mutate_after_write,
+        .bytes = std::as_bytes(std::span{owned_text}),
     };
     const auto result = fs::publish_bundle(utf8_spelling(temporary.path / "result"),
                                            std::span{&file, 1}, {}, copied_destination);
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
+    CHECK(result.error().error.code == core::ErrorCode::publication_unknown);
     CHECK(file_contents(temporary.path / "result/run.json") == "owned");
     CHECK(file_contents(temporary.path / "result.staging-0/run.json") == "owned");
 }
@@ -218,9 +233,14 @@ TEST_CASE("Source acquisition keeps the originally opened object when its name i
     filesystem_mutation() = {.original = path, .retained = temporary.path / "retained"};
     core::Budget budget{bytes};
     const auto snapshot =
-        fs::read_source_snapshot(utf8_spelling(path), budget, core::Cancellation{{}, mutate_read});
+        fs::read_source_snapshot(utf8_spelling(path), budget, core::Cancellation{{}, mutate_read},
+                                 core::source_encoded_bytes_max);
     REQUIRE(snapshot);
-    CHECK(std::ranges::equal(snapshot->bytes(), std::as_bytes(std::span{expected})));
+    CHECK(std::ranges::equal(snapshot->encoded.bytes(), std::as_bytes(std::span{expected})));
+    CHECK(snapshot->identity.bytes == bytes);
+    CHECK(snapshot->identity.sha256 ==
+          "15601535eca4a38b7e31ad6494861121cb9f84ccf55d4beb6a707d4f7a87813d");
+    CHECK(budget.used() == bytes);
     CHECK(file_contents(path) == "foreign");
     CHECK(file_contents(filesystem_mutation().retained) == expected);
 }
@@ -273,9 +293,9 @@ TEST_CASE("Bundle snapshot acquisition rejects inventory mutation while refundin
     CHECK(budget.used() == 0);
     CHECK(file_contents(root / "foreign") == "preserve");
 }
-TEST_CASE("Codec creation rechecks the owned parent after its execution checkpoint callback",
+TEST_CASE("Byte creation rechecks the owned parent after its execution checkpoint callback",
           "[filesystem][publication]") {
-    const TemporaryDirectory temporary{"docenhance-codec-parent"};
+    const TemporaryDirectory temporary{"docenhance-byte-parent"};
     fs::Stage stage;
     REQUIRE(fs::reserve_stage(stage, temporary.path / "result", {}));
     const auto slot = fs::place(stage, "result.png");
@@ -286,17 +306,24 @@ TEST_CASE("Codec creation rechecks the owned parent after its execution checkpoi
         .kind = MutationKind::replace_parent,
     };
     core::Budget budget{4096};
-    const auto image = image::Plane<std::uint8_t>::allocate(budget, 2, 2);
-    REQUIRE(image);
+    const auto png = make_gray_png(
+        {.width = 2, .height = 2, .depth = 8, .interlaced = false, .samples = {0, 64, 128, 255}});
+    auto encoded = budget.allocate(png.size());
+    REQUIRE(encoded);
+    std::ranges::copy(std::as_bytes(std::span{png}), encoded->bytes().begin());
+    const auto held = budget.used();
     const auto result =
-        fs::write_verified_png(*slot, image->view(), budget, core::Cancellation{{}, mutate_read});
+        fs::write_bytes(*slot, encoded->bytes(), core::Cancellation{{}, mutate_read});
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::output);
+    CHECK(result.error().message.contains("parent changed"));
     CHECK(filesystem_mutation().checkpoints == 1);
+    CHECK(budget.used() == held);
     CHECK(empty_directory(stage.directory));
     CHECK(empty_directory(filesystem_mutation().retained));
     const auto abandoned = fs::abandon(stage, result.error());
     CHECK(abandoned.publication == core::Publication::unknown);
+    CHECK(abandoned.error.code == core::ErrorCode::publication_unknown);
     CHECK(std::filesystem::exists(stage.directory));
 }
 TEST_CASE("Native leases preserve original identities while allowing rename and readback",
@@ -332,16 +359,15 @@ TEST_CASE("A namespace change inside the commit checkpoint prevents the native r
         .retained = temporary.path / "retained",
         .kind = MutationKind::replace_at_commit,
     };
-    Writer writer;
     const fs::BundleFile file{
         .relative = "run.json",
-        .state = &writer,
-        .write = mutate_after_write,
+        .bytes = std::as_bytes(std::span{owned_text}),
     };
     const auto result = fs::publish_bundle(utf8_spelling(target), std::span{&file, 1},
                                            core::Cancellation{{}, mutate_read});
     REQUIRE(!result);
     CHECK(result.error().publication == core::Publication::unknown);
+    CHECK(result.error().error.code == core::ErrorCode::publication_unknown);
     CHECK(filesystem_mutation().checkpoints == 1);
     CHECK(!std::filesystem::exists(target));
     CHECK(empty_directory(filesystem_mutation().original));

@@ -13,7 +13,7 @@ import re
 import shutil
 import subprocess
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from audit_build import read_cache
 from license_inventory import INVENTORY_SCHEMA, generate
@@ -127,37 +127,36 @@ def windows_api_host(name: str, system_directory: Path) -> Path | None:
             raise ValueError(msg)
 
 
+def windows_dynamic_crt(name: str) -> bool:
+    """One existing dynamic-CRT name predicate serves live and frozen import observations."""
+    return (
+        re.match(r"(?:msvcp|msvcr|vcruntime|ucrtbase|api-ms-win-crt)", name, re.IGNORECASE)
+        is not None
+    )
+
+
+def windows_api_contract(name: str) -> bool:
+    """The existing virtual core API contract domain, shared by live and frozen resolution."""
+    return re.fullmatch(r"api-ms-win-core-[a-z0-9-]+\.dll", name, re.IGNORECASE) is not None
+
+
 def windows_system_import(name: str, system_directory: Path) -> bool:
     """Require a physical OS DLL or a System32-backed virtual core contract, excluding CRT DLLs."""
-    if re.match(r"(?:msvcp|msvcr|vcruntime|ucrtbase|api-ms-win-crt)", name, re.IGNORECASE):
+    if windows_dynamic_crt(name):
         return False
     if (system_directory / name).is_file():
         return True
-    if not re.fullmatch(r"api-ms-win-core-[a-z0-9-]+\.dll", name, re.IGNORECASE):
+    if not windows_api_contract(name):
         return False
     host = windows_api_host(name, system_directory)
     return host is not None and host.parent == system_directory
 
 
-def imports(executable: Path) -> list[str]:
-    """Read actual native imports; inspection tools are prerequisites, never optional coverage."""
-    system = platform.system()
-    tool, arguments = {
-        "Darwin": ("otool", ["-L"]),
-        "Linux": ("ldd", []),
-        "Windows": ("dumpbin", ["/DEPENDENTS"]),
-    }[system]
-    resolved = shutil.which(tool)
-    if resolved is None:
-        msg = f"{tool} is required to inspect the delivered executable"
-        raise ValueError(msg)
-    text = subprocess.run(
-        [resolved, *arguments, str(executable)],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=30,
-    ).stdout
+def native_import_values(system: str, text: str) -> list[str]:
+    """Decode the existing native import text; Windows physical OS resolution stays in its owner."""
+    if system not in {"Darwin", "Linux", "Windows"}:
+        message = "Unsupported native import platform"
+        raise ValueError(message)
     if system == "Darwin":
         values = [line.strip().split(" (", 1)[0] for line in text.splitlines()[1:] if line.strip()]
         if not values or any(
@@ -168,8 +167,7 @@ def imports(executable: Path) -> list[str]:
         return values
     if system == "Windows":
         values = re.findall(r"^\s+([\w.-]+\.dll)\s*$", text, re.MULTILINE | re.IGNORECASE)
-        system_directory = Path(os.environ["SYSTEMROOT"]) / "System32"
-        if not values or not all(windows_system_import(name, system_directory) for name in values):
+        if not values or any(windows_dynamic_crt(name) for name in values):
             msg = f"Executable imports a non-OS library or dynamic CRT: {values}"
             raise ValueError(msg)
         return values
@@ -181,13 +179,46 @@ def imports(executable: Path) -> list[str]:
             not name.startswith(("/lib/", "/lib64/", "/usr/lib/", "/usr/lib64/"))
             or not re.fullmatch(
                 r"(?:lib(?:c|m|dl|rt|pthread|stdc\+\+|gcc_s)\.so[\d.]*|ld-linux[\w.-]*\.so[\d.]*)",
-                Path(name).name,
+                PurePosixPath(name).name,
             )
             for name in values
         )
     ):
         msg = f"Executable loads non-OS native libraries: {text.strip()}"
         raise ValueError(msg)
+    return values
+
+
+def native_import_command(system: str) -> tuple[str, list[str]]:
+    """The existing inspection producer's tool and arguments, shared with frozen correspondence."""
+    return {
+        "Darwin": ("otool", ["-L"]),
+        "Linux": ("ldd", []),
+        "Windows": ("dumpbin", ["/DEPENDENTS"]),
+    }[system]
+
+
+def imports(executable: Path) -> list[str]:
+    """Read actual native imports; inspection tools are prerequisites, never optional coverage."""
+    system = platform.system()
+    tool, arguments = native_import_command(system)
+    resolved = shutil.which(tool)
+    if resolved is None:
+        msg = f"{tool} is required to inspect the delivered executable"
+        raise ValueError(msg)
+    text = subprocess.run(
+        [resolved, *arguments, str(executable)],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    ).stdout
+    values = native_import_values(system, text)
+    if system == "Windows":
+        system_directory = Path(os.environ["SYSTEMROOT"]) / "System32"
+        if not all(windows_system_import(name, system_directory) for name in values):
+            msg = f"Executable imports a non-OS library or dynamic CRT: {values}"
+            raise ValueError(msg)
     return values
 
 

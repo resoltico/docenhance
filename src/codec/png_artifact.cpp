@@ -2,16 +2,23 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/codec/png_artifact.hpp"
 
+#include "docenhance/codec/png.hpp"
+#include "docenhance/codec/png_output.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
+#include "encoded_bytes.hpp"
 #include "png_metadata.hpp"
 #include "png_rows.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <png.h>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -51,11 +58,20 @@ bool canonical_header(std::span<const std::uint8_t> bytes) {
     const auto depth = bytes.subspan(depth_offset, 1).front();
     const auto color = bytes.subspan(color_offset, 1).front();
     return bytes.subspan(interlace_offset, 1).front() == 0 &&
-           (depth == image::byte_bits || depth == image::word_bits) &&
+           (depth == image::byte_bits || depth == image::word_bits || (depth == 1 && color == 0)) &&
            (color == 0 || color == rgb_type);
 }
-bool canonical_chunks(std::span<const std::uint8_t> bytes, const core::Cancellation& cancellation,
-                      bool& stopped) {
+bool agrees(const PngArtifact& artifact, const PngImage& intended) noexcept {
+    const auto shape = artifact.shape;
+    const auto row_bytes = std::uint64_t{shape.width} * image::components(shape.model) *
+                           (shape.depth.bits() == 1 ? 1 : shape.depth.bits() / image::byte_bits);
+    return shape == intended.shape && intended.pixels.width() == row_bytes &&
+           intended.pixels.height() == shape.height && artifact.resolution == intended.resolution &&
+           std::ranges::equal(artifact.profile.bytes(), intended.profile);
+}
+} // namespace
+bool canonical_png_chunks(std::span<const std::uint8_t> bytes,
+                          const core::Cancellation& cancellation, bool& stopped) {
     constexpr std::uint32_t iccp = 0x69434350;
     constexpr std::uint32_t phys = 0x70485973;
     constexpr std::size_t header_data = 13;
@@ -88,46 +104,62 @@ bool canonical_chunks(std::span<const std::uint8_t> bytes, const core::Cancellat
     }
     return remaining.empty();
 }
-} // namespace
-core::Result<PngArtifact> observe_png_artifact(std::span<const std::byte> bytes,
-                                               core::Budget& budget,
-                                               const core::Cancellation& cancellation) {
-    // Bytes are a borrowed view of the retained immutable encoded snapshot.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    const auto* const data = reinterpret_cast<const std::uint8_t*>(bytes.data());
-    const std::span encoded{data, bytes.size()};
+core::Result<PngArtifact> describe_canonical_png(std::span<const std::byte> bytes,
+                                                 const PngImage* const intended,
+                                                 core::Budget& budget,
+                                                 const core::Cancellation& cancellation) {
+    const auto encoded = encoded_bytes(bytes);
+    auto scanned = scan_png(
+        encoded, budget,
+        {
+            .limits = {.encoded_bytes = core::bundle_max_file_bytes, .pixels = png_max_pixels},
+            .content = PngContent::result,
+        },
+        cancellation);
+    if (!scanned) {
+        return std::unexpected(std::move(scanned.error()));
+    }
     bool stopped = false;
-    if (!canonical_chunks(encoded, cancellation, stopped)) {
+    if (!canonical_png_chunks(encoded, cancellation, stopped)) {
         if (stopped) {
             return core::cancelled();
         }
-        return core::failure(core::ErrorCode::input,
-                             "Bundle PNG has unsupported encoding or metadata");
+        return core::failure(core::ErrorCode::input, "Noncanonical PNG encoding or metadata");
     }
-    auto raster = decode_result_png_raster(encoded, budget, cancellation);
-    if (!raster) {
-        return std::unexpected(raster.error());
+    constexpr std::size_t depth_offset = 24;
+    const auto depth = image::PngDepth::from_bits(encoded.subspan(depth_offset, 1).front());
+    if (!depth) {
+        return core::failure(core::ErrorCode::input, "Noncanonical PNG encoding or metadata");
     }
-    PngArtifact result{
-        .shape = raster->shape,
-        .profile_embedded = !raster->metadata.icc.empty(),
-        .profile = std::move(raster->metadata.icc),
-        .resolution = raster->metadata.resolution,
+    PngArtifact artifact{
+        .shape =
+            {
+                .width = scanned->shape.width,
+                .height = scanned->shape.height,
+                .model = encoded.subspan(depth_offset + 1, 1).front() == PNG_COLOR_TYPE_GRAY
+                             ? image::SampleModel::gray
+                             : image::SampleModel::rgb,
+                .depth = *depth,
+            },
+        .profile_embedded = !scanned->metadata.icc.empty(),
+        .profile = std::move(scanned->metadata.icc),
+        .resolution = scanned->metadata.resolution,
+        .binary_samples = encoded.subspan(depth_offset, 1).front() == 1,
     };
-    constexpr std::size_t poll = 4096;
-    for (std::uint32_t y = 0; y < raster->shape.height; ++y) {
-        const auto row = raster->pixels.view().row(y);
-        for (std::size_t x = 0; x < row.size(); ++x) {
-            if (x % poll == 0 && cancellation.requested(core::Checkpoint::verification)) {
-                return core::cancelled();
-            }
-            const auto value = row.subspan(x, 1).front();
-            result.binary_samples =
-                result.binary_samples && (value == 0 || value == image::byte_max);
-            result.mask_samples = result.mask_samples && (value == 0 || value == 1);
-            result.protected_samples += static_cast<std::uint64_t>(value != 0);
-        }
+    const auto shape = artifact.shape;
+    const bool mask = artifact.profile.empty() && !artifact.binary_samples;
+    if ((artifact.binary_samples && !artifact.profile.empty()) ||
+        (mask && (shape.model != image::SampleModel::gray ||
+                  shape.depth.bits() != image::byte_bits || artifact.resolution)) ||
+        (intended != nullptr && !agrees(artifact, *intended))) {
+        return core::failure(core::ErrorCode::input,
+                             "PNG description differs from intended output");
     }
-    return result;
+    return artifact;
+}
+core::Result<PngArtifact> observe_png_artifact(std::span<const std::byte> bytes,
+                                               core::Budget& budget,
+                                               const core::Cancellation& cancellation) {
+    return read_canonical_png(bytes, nullptr, budget, cancellation);
 }
 } // namespace docenhance::codec

@@ -9,7 +9,8 @@ import sys
 import tempfile
 from pathlib import Path
 
-from geometry_reference import malformed_records, orientation_composition
+from geometry_admission import malformed_records
+from geometry_reference import orientation_composition
 
 
 def main() -> None:

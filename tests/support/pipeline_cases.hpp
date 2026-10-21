@@ -72,9 +72,15 @@ inline void memory_cases() {
 }
 inline void schedule_cases() {
     constexpr std::size_t mebibyte = std::size_t{1024} * 1024;
-    // `auto` follows the contract: min(4, max(1, hardware)), never the size of the machine.
+    // Automatic selection follows detected concurrency within the reviewed worker domain.
     const auto automatic = exec::Concurrency::resolve(std::nullopt, 32, 0, 0);
-    require(automatic->workers() == exec::automatic_workers, "auto is modest on a large machine");
+    require(automatic->workers() == 32, "auto follows detected concurrency");
+    require(exec::Concurrency::resolve(std::nullopt, 1024, 0, 0)->workers() == exec::max_workers,
+            "auto clamps hardware above the reviewed maximum");
+    require(exec::Concurrency::resolve(65, 1, 0, 0)->workers() == 65,
+            "worker bounds above the former internal ceiling are admitted");
+    require(exec::Concurrency::resolve(256, 1, 0, 0)->workers() == 256,
+            "the largest explicit worker bound is admitted");
     require(exec::Concurrency::resolve(std::nullopt, 2, 0, 0)->workers() == 2,
             "auto never exceeds the machine");
     require(exec::Concurrency::resolve(std::nullopt, 0, 0, 0)->workers() == 1,

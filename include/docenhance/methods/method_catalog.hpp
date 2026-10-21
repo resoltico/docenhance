@@ -56,7 +56,7 @@ inline constexpr auto nlm_parameters = std::to_array<MethodParameter>({
 });
 inline constexpr ImplementedMethod nlm_descriptor{
     .id = "D01",
-    .method_version = 1U,
+    .method_version = 2U,
     .selector = "nlm",
     .name = "NLM-L1 on 16-bit perceptual codes",
     .family = "denoising",
@@ -95,7 +95,7 @@ inline constexpr auto wiener_parameters = std::to_array<MethodParameter>({
 });
 inline constexpr ImplementedMethod wiener_descriptor{
     .id = "R01",
-    .method_version = 1U,
+    .method_version = 2U,
     .selector = "wiener",
     .name = "Known-PSF regularized Fourier restoration",
     .family = "restoration",
@@ -174,7 +174,7 @@ inline constexpr auto otsu_selectors = std::to_array<std::string_view>({
 });
 inline constexpr ImplementedMethod otsu_descriptor{
     .id = "B01",
-    .method_version = 1U,
+    .method_version = 2U,
     .selector = "otsu",
     .name = "Otsu",
     .family = "binarization",
@@ -191,7 +191,7 @@ inline constexpr auto sauvola_parameters = std::to_array<MethodParameter>({
 });
 inline constexpr ImplementedMethod sauvola_descriptor{
     .id = "B02",
-    .method_version = 1U,
+    .method_version = 2U,
     .selector = "sauvola",
     .name = "Sauvola",
     .family = "binarization",
@@ -206,7 +206,7 @@ inline constexpr auto fixed_parameters = std::to_array<MethodParameter>({
 });
 inline constexpr ImplementedMethod fixed_descriptor{
     .id = "B03",
-    .method_version = 1U,
+    .method_version = 2U,
     .selector = "fixed",
     .name = "Fixed threshold",
     .family = "binarization",

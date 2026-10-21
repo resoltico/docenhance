@@ -2,40 +2,57 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "denoising.hpp"
 
-#include "docenhance/methods/denoising.hpp"
+#include "docenhance/core/fields.hpp"
+#include "docenhance/core/result.hpp"
+#include "docenhance/methods/nlm_facts.hpp"
+#include "docenhance/methods/stage_reports.hpp"
+#include "docenhance/record/codec.hpp"
 
-#include <nlohmann/json.hpp>
+#include <expected>
+#include <optional>
 #include <string>
+#include <type_traits>
+#include <utility>
+#include <variant>
 namespace docenhance::report {
-namespace {
-std::string decimal(double value) {
-    // Use the machine renderer's round-trip precision for small stopping residuals too.
-    return nlohmann::ordered_json(value).dump();
-}
-} // namespace
-std::string denoising_text(const methods::DenoisingReport& report) {
-    std::string text = "Denoising: " + std::string(methods::status_name(report.status)) + " (" +
-                       std::string(methods::reason_name(report.reason)) +
-                       "); changed=" + std::to_string(report.changed_samples) + "\n";
-    if (report.tvl1) {
-        const auto& tv = *report.tvl1;
-        text += "TV-L1: iterations=" + std::to_string(tv.iterations) +
-                "; primal update=" + decimal(tv.primal_update) +
-                "; dual update=" + decimal(tv.dual_update) +
-                "; charged peak=" + std::to_string(report.preparation_charge_peak) + " bytes\n";
-        if (tv.objective_start && tv.objective_end) {
-            text += "TV-L1 objective: " + decimal(*tv.objective_start) + " -> " +
-                    decimal(*tv.objective_end) + "\n";
-        }
-        if (tv.stop == methods::Tvl1Stop::iteration_limit) {
-            text += "TV-L1 stopping: iteration_limit\nW_TV_ITERATION_LIMIT: Iteration cap reached; "
-                    "a usable iterate was retained.\nStopping tolerance was not met; this is not a "
-                    "convergence claim.\n";
-        }
-        if (tv.stop == methods::Tvl1Stop::tolerance_met) {
-            text += "TV-L1 stopping: tolerance_met\n";
-        }
+core::Result<std::string> denoising_text(const std::optional<methods::DenoisingFacts>& facts) {
+    if (!facts) {
+        return std::string{};
     }
-    return text;
+    auto encoded = record::Codec::encode(*facts);
+    if (!encoded) {
+        return std::unexpected(std::move(encoded.error()));
+    }
+    return std::visit(
+        [&](const auto& actual) {
+            using Facts = std::decay_t<decltype(actual)>;
+            std::string text = "Denoising " + std::string(core::WireTag<Facts>::value) + ": " +
+                               encoded->at("disposition").get<std::string>() + " (" +
+                               encoded->at("reason").get<std::string>() +
+                               "); counts=" + encoded->at("counts").dump() +
+                               "; corrected=" + std::to_string(actual.corrected_samples) + "\n";
+            if constexpr (std::is_same_v<Facts, methods::NlmFacts>) {
+                text += "NLM weight table entries: " + std::to_string(actual.weight_table_entries) +
+                        "\n";
+            } else {
+                text += "TV-L1 context samples: " + std::to_string(actual.context_samples) + "\n";
+                if (actual.solver) {
+                    const auto& solver = *actual.solver;
+                    text += "TV-L1: iterations=" + std::to_string(solver.iterations) +
+                            "; primal update=" + encoded->at("solver").at("primal_update").dump() +
+                            "; dual update=" + encoded->at("solver").at("dual_update").dump() +
+                            "\n";
+                    text +=
+                        "TV-L1 objective: " + encoded->at("solver").at("objective_start").dump() +
+                        " -> " + encoded->at("solver").at("objective_end").dump() + "\n";
+                    text +=
+                        "TV-L1 stopping: " + encoded->at("solver").at("stop").get<std::string>() +
+                        "; passing checkpoints=" + std::to_string(solver.passing_checkpoints) +
+                        "\n";
+                }
+            }
+            return text;
+        },
+        *facts);
 }
 } // namespace docenhance::report

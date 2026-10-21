@@ -13,10 +13,10 @@
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/binarization_working.hpp"
 #include "docenhance/methods/box_mean.hpp"
-#include "docenhance/methods/fixed_threshold.hpp"
-#include "docenhance/methods/sauvola.hpp"
 #include "processor.hpp"
+#include "require.hpp"
 #include "stub_verifier.hpp"
 
 #include <algorithm>
@@ -26,11 +26,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <ios>
+#include <iostream>
 #include <limits>
 #include <sstream>
 #include <stop_token>
 #include <string>
 #include <thread>
+#include <vector>
 
 namespace docenhance::tests {
 namespace {
@@ -38,10 +40,6 @@ UnusedVerifier verifier;
 } // namespace
 namespace {
 constexpr std::size_t allocation_limit = std::size_t{4} * 1024 * 1024;
-void request_stop(std::stop_source& source) noexcept { // NOLINT(misc-const-correctness)
-    // libc++ requires a mutable source; libstdc++ permits const and misleads const-correctness.
-    static_cast<void>(source.request_stop());
-}
 core::Cancellation stopped_token() {
     std::stop_source source;
     request_stop(source);
@@ -57,7 +55,88 @@ app::Invocation invocation() {
     return value;
 }
 exec::Concurrency workers(unsigned count) {
-    return exec::Concurrency::resolve(count, count, 0, 0).value();
+    const auto result = exec::Concurrency::resolve(count, count, 0, 0);
+    REQUIRE(result);
+    return *result;
+}
+void check_white_sauvola_backing(image::PlaneView<const std::uint8_t> output) {
+    const auto storage = output.storage();
+    for (std::size_t i = 0; i < storage.size(); ++i) {
+        require(storage[i] == (i % output.row_pitch() < output.width() ? 1 : 17),
+                "healthy constant pixels are white and all destination padding stays sentinel");
+    }
+}
+std::size_t check_sauvola_prefix(image::PlaneView<const std::uint8_t> output,
+                                 image::PlaneView<const std::uint8_t> healthy,
+                                 const std::vector<std::uint8_t>& before) {
+    const auto storage = output.storage();
+    std::size_t changed = 0;
+    for (std::size_t i = 0; i < storage.size(); ++i) {
+        changed += static_cast<std::size_t>(storage[i] != before.at(i));
+        if (i < 1024) {
+            require(storage[i] == healthy.storage()[i], "actual prefix matches healthy output");
+            require(storage[i] != before.at(i), "actual prefix changed from entering sentinel");
+        } else {
+            require(storage[i] == before.at(i), "suffix later row and padding remain untouched");
+        }
+    }
+    return changed;
+}
+std::size_t healthy_sauvola_prefix(const methods::Sauvola& method,
+                                   image::PlaneView<const std::uint16_t> source,
+                                   image::PlaneView<std::uint8_t> healthy, core::Budget& budget,
+                                   const std::vector<std::uint16_t>& source_before) {
+    const auto held = budget.used();
+    const CheckpointStop trace{core::Checkpoint::processing,
+                               std::numeric_limits<std::size_t>::max()};
+    const exec::Scheduler scheduler{workers(1), trace.cancellation()};
+    require(methods::binarize(method, {source, healthy, budget, scheduler}).has_value(),
+            "actual one-worker healthy Sauvola counterpart completes");
+    const auto healthy_visits = CheckpointStop::visits();
+    require(healthy_visits == 7,
+            "healthy actual row/interior plus final-count-fold checkpoints calibrate seven visits");
+    require(budget.used() == held, "healthy workspace refunds to resident charge");
+    require(std::ranges::equal(source.storage(), source_before),
+            "healthy full source backing stays exact");
+    check_white_sauvola_backing(healthy.as_const());
+    return healthy_visits;
+}
+void sauvola_interior_prefix() {
+    core::Budget budget{allocation_limit};
+    auto input = image::Plane<std::uint16_t>::allocate(budget, 1031, 2);
+    auto output = image::Plane<std::uint8_t>::allocate(budget, 1031, 2);
+    auto healthy = image::Plane<std::uint8_t>::allocate(budget, 1031, 2);
+    REQUIRE(input);
+    REQUIRE(output);
+    REQUIRE(healthy);
+    std::ranges::fill(input->view().storage(), UINT16_MAX);
+    std::ranges::fill(output->view().storage(), 17);
+    std::ranges::fill(healthy->view().storage(), 17);
+    const auto source = input->view().storage();
+    const std::vector<std::uint16_t> source_before(source.begin(), source.end());
+    const auto entering = output->view().storage();
+    const std::vector<std::uint8_t> before(entering.begin(), entering.end());
+    const auto method = methods::Sauvola::create();
+    REQUIRE(method);
+    const auto held = budget.used();
+    const auto healthy_visits = healthy_sauvola_prefix(*method, input->view().as_const(),
+                                                       healthy->view(), budget, source_before);
+    const CheckpointStop stop{core::Checkpoint::processing, 2};
+    const exec::Scheduler stopped{workers(1), stop.cancellation()};
+    const auto result =
+        methods::binarize(*method, {input->view().as_const(), output->view(), budget, stopped});
+    require(!result && result.error().code == core::ErrorCode::cancelled,
+            "actual interior stop returns typed cancellation");
+    require(CheckpointStop::visits() == 3,
+            "actual interior stop attains its third processing poll");
+    require(budget.used() == held, "cancelled workspace refunds to resident charge");
+    require(std::ranges::equal(source, source_before), "cancelled full source backing stays exact");
+    const auto changed =
+        check_sauvola_prefix(output->view().as_const(), healthy->view().as_const(), before);
+    require(changed == 1024, "exactly the first 1024 logical destinations changed");
+    std::cout << "Sauvola single-worker prefix: healthy_visits=" << healthy_visits
+              << " stop_visits=" << CheckpointStop::visits() << " changed=" << changed
+              << " resident=" << held << " refunded=" << (budget.used() == held) << "\n";
 }
 // A meeting point every task reaches before any of them returns, so simultaneity is arranged
 // rather than hoped for. It is written out of one atomic because libc++ settles a standard
@@ -87,9 +166,9 @@ TEST_CASE("Cancellation owns its stop state and prevents application effects", "
     const auto result = app::dispatch(request, processor, verifier, cancellation);
     CHECK(processor.calls == 0);
     CHECK(result.exit_code() == core::ExitCode::cancelled);
-    const auto& error = std::get<app::Failure>(result.payload).error;
-    CHECK(std::string(error.identifier()) == "E_CANCELLED");
-    CHECK(error.publication == core::Publication::not_started);
+    const auto& failed = std::get<app::Failure>(result.payload);
+    CHECK(std::string(failed.error.identifier()) == "E_CANCELLED");
+    CHECK(failed.publication == core::Publication::not_started);
     request.option(app::OptionId::binarize) = "invalid";
     CHECK(app::dispatch(request, processor, verifier, cancellation).exit_code() ==
           core::ExitCode::invocation);
@@ -175,26 +254,40 @@ TEST_CASE("Real worker failure outranks simultaneous cancellation and all worker
 }
 TEST_CASE("Fixed threshold cancellation reaches wide-row interiors", "[cancellation]") {
     core::Budget budget{allocation_limit};
-    auto input = image::Plane<std::uint8_t>::allocate(budget, 4096, 1).value();
-    auto output = image::Plane<std::uint8_t>::allocate(budget, 4096, 1).value();
-    std::ranges::fill(input.view().storage(), UINT8_MAX);
+    auto input = image::Plane<std::uint16_t>::allocate(budget, 4096, 1);
+    auto output = image::Plane<std::uint8_t>::allocate(budget, 4096, 1);
+    REQUIRE(input);
+    REQUIRE(output);
+    std::ranges::fill(input->view().storage(), UINT16_MAX);
     constexpr std::uint8_t untouched = 17;
-    std::ranges::fill(output.view().storage(), untouched);
+    std::ranges::fill(output->view().storage(), untouched);
+    const auto held = budget.used();
     const CheckpointStop stop{core::Checkpoint::processing, 1};
+    const auto method = methods::FixedThreshold::create(0.5);
+    REQUIRE(method);
+    const exec::Scheduler scheduler{workers(1), stop.cancellation()};
     const auto result =
-        methods::fixed_threshold(input.view().as_const(), output.view(), 0.5, stop.cancellation());
+        methods::binarize(*method, {input->view().as_const(), output->view(), budget, scheduler});
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::cancelled);
-    CHECK(output.view().row(0).front() == UINT8_MAX);
-    CHECK(output.view().row(0).back() == untouched);
-    CHECK(std::ranges::all_of(input.view().storage(), [](auto v) { return v == UINT8_MAX; }));
+    CHECK(output->view().row(0).front() == 1);
+    CHECK(output->view().row(0).back() == untouched);
+    CHECK(budget.used() == held);
+    CHECK(CheckpointStop::visits() == 2);
+    for (std::size_t x = 0; x < 4096; ++x) {
+        CHECK(output->view().row(0).subspan(x, 1).front() == (x < 1024 ? 1 : untouched));
+    }
+    CHECK(std::ranges::all_of(input->view().storage(), [](auto v) { return v == UINT16_MAX; }));
 }
 TEST_CASE("Sauvola cancellation covers scratch admission and strip interiors", "[cancellation]") {
     core::Budget budget{allocation_limit};
-    auto input = image::Plane<std::uint8_t>::allocate(budget, 8192, 32).value();
-    auto output = image::Plane<std::uint8_t>::allocate(budget, 8192, 32).value();
-    std::ranges::fill(input.view().storage(), UINT8_MAX);
-    const auto method = methods::Sauvola::create().value();
+    auto input = image::Plane<std::uint16_t>::allocate(budget, 8192, 32);
+    auto output = image::Plane<std::uint8_t>::allocate(budget, 8192, 32);
+    REQUIRE(input);
+    REQUIRE(output);
+    std::ranges::fill(input->view().storage(), UINT16_MAX);
+    const auto method = methods::Sauvola::create();
+    REQUIRE(method);
     const auto held = budget.used();
     for (const auto phase : {
              core::Checkpoint::allocation,
@@ -202,26 +295,31 @@ TEST_CASE("Sauvola cancellation covers scratch admission and strip interiors", "
              core::Checkpoint::processing,
          }) {
         constexpr std::uint8_t untouched = 17;
-        std::ranges::fill(output.view().storage(), untouched);
+        std::ranges::fill(output->view().storage(), untouched);
         const CheckpointStop stop{phase, phase == core::Checkpoint::allocation ? 0U : 2U};
         const exec::Scheduler scheduler{workers(2), stop.cancellation()};
-        const auto result = methods::sauvola(input.view().as_const(), output.view(), method,
-                                             {.scheduler = scheduler, .budget = budget});
+        const auto result = methods::binarize(
+            *method, {input->view().as_const(), output->view(), budget, scheduler});
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(budget.used() == held);
         if (phase != core::Checkpoint::processing) {
-            CHECK(std::ranges::all_of(output.view().storage(),
+            CHECK(std::ranges::all_of(output->view().storage(),
                                       [](auto v) { return v == untouched; }));
         }
     }
+    const auto assertions_before = assertion_counter().load();
+    sauvola_interior_prefix();
+    REQUIRE(assertion_counter().load() > assertions_before);
 }
 TEST_CASE("Box mean cancellation interrupts reflected initialization and both passes",
           "[cancellation]") {
     core::Budget budget{allocation_limit};
-    auto input = image::Plane<float>::allocate(budget, 4096, 2).value();
-    auto output = image::Plane<float>::allocate(budget, 4096, 2).value();
-    std::ranges::fill(input.view().storage(), 1.0F);
+    auto input = image::Plane<float>::allocate(budget, 4096, 2);
+    auto output = image::Plane<float>::allocate(budget, 4096, 2);
+    REQUIRE(input);
+    REQUIRE(output);
+    std::ranges::fill(input->view().storage(), 1.0F);
     const auto held = budget.used();
     for (const auto phase : {
              core::Checkpoint::allocation,
@@ -231,7 +329,7 @@ TEST_CASE("Box mean cancellation interrupts reflected initialization and both pa
         const CheckpointStop stop{phase, 0};
         const exec::Scheduler scheduler{workers(1), stop.cancellation()};
         const auto result =
-            methods::box_mean(input.view().as_const(), output.view(), 100000, scheduler, budget);
+            methods::box_mean(input->view().as_const(), output->view(), 100000, scheduler, budget);
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
         CHECK(budget.used() == held);
@@ -239,22 +337,24 @@ TEST_CASE("Box mean cancellation interrupts reflected initialization and both pa
 }
 TEST_CASE("Box mean cancellation reaches the second pass", "[cancellation]") {
     core::Budget budget{allocation_limit};
-    auto input = image::Plane<float>::allocate(budget, 32, 3).value();
-    auto output = image::Plane<float>::allocate(budget, 32, 3).value();
-    std::ranges::fill(input.view().storage(), 1.0F);
+    auto input = image::Plane<float>::allocate(budget, 32, 3);
+    auto output = image::Plane<float>::allocate(budget, 32, 3);
+    REQUIRE(input);
+    REQUIRE(output);
+    std::ranges::fill(input->view().storage(), 1.0F);
     constexpr float untouched = 17.0F;
-    std::ranges::fill(output.view().storage(), untouched);
+    std::ranges::fill(output->view().storage(), untouched);
     const auto held = budget.used();
     // Three horizontal rows and one vertical output row complete before the next checkpoint.
     const CheckpointStop stop{core::Checkpoint::processing, 4};
     const exec::Scheduler scheduler{workers(1), stop.cancellation()};
     const auto result =
-        methods::box_mean(input.view().as_const(), output.view(), 3, scheduler, budget);
+        methods::box_mean(input->view().as_const(), output->view(), 3, scheduler, budget);
     REQUIRE(!result);
     CHECK(result.error().code == core::ErrorCode::cancelled);
     CHECK(budget.used() == held);
-    CHECK(output.view().row(0).front() == 1.0F);
-    CHECK(output.view().row(1).front() == untouched);
+    CHECK(output->view().row(0).front() == 1.0F);
+    CHECK(output->view().row(1).front() == untouched);
 }
 namespace {
 std::atomic<unsigned> completed_items{0};

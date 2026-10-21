@@ -1,213 +1,5 @@
 {
   "exceptions": {
-    ".clang-tidy:clang-tidy-option/bugprone-easily-swappable-parameters.MinimumLength@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Named two-operand numerical APIs, including unsharp_candidate(f, blurred, method) and coordinate pairs, deliberately share units. Longer interchangeable sequences remain diagnosed from length three; independent numerical references distinguish argument order and signed residuals.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/bugprone-narrowing-conversions.PedanticMode@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Pedantic narrowing diagnostics remain enabled at floating/integer pixel, extent and resource boundaries, supplemented by finite-domain factories and independent precision references.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Only the ubiquitous structural constants one and two are unnamed integer exceptions. Algorithm thresholds, physical units, resource ceilings and other values require names; power-of-two exemptions are separately disabled.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.BranchThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.LineThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.NestingThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.ParameterThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.StatementThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/google-readability-function-size.VariableThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/misc-const-correctness.WarnPointersAsValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Pointer values remain subject to const-correctness checks so native adapters cannot silently weaken borrowed-pointer intent; any unavoidable mutable external ABI needs a separate source approval.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/misc-include-cleaner.IgnoreHeaders@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The explicit patterns cover the locked JSON/Catch/OpenCV/native-codec providers and the exact generated docenhance/version.hpp facts header. Include-cleaner cannot reliably attribute those provider/generated declarations; first-party layer and direct-package ownership remain independently enforced. No general first-party header/source pattern is ignored.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Plain parameter and completed-observation records expose their fields together as values. Admitted request/storage owners retain private construction and lifetime contracts; mixed public/private owner classes remain checked. Public fields do not replace parameter or returned-observation validation.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.IgnoreMacros@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Complexity counts first-party decisions rather than expanded locked SDK and Catch registration/assertion machinery. Body line, statement, branch, nesting and variable limits remain independently mandatory; token-pasted/continued hidden compiler controls are refused.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.Threshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The mandatory readability-function-cognitive-complexity.Threshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-size.BranchThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The mandatory readability-function-size.BranchThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-size.LineThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The mandatory readability-function-size.LineThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-size.NestingThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The mandatory readability-function-size.NestingThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-size.ParameterThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The original function-size check owns unsuppressible body budgets; its parameter dimension belongs to the separately mandatory Google parameter-only alias, preventing fixed ABI parameter exceptions from hiding body violations.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-size.StatementThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The mandatory readability-function-size.StatementThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-function-size.VariableThreshold@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "The mandatory readability-function-size.VariableThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ClassCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Class declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConceptCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Concept declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConstexprVariableCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "ConstexprVariable declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Enum declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumConstantCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "EnumConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Function declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionIgnoredRegexp@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "LLVMFuzzerTestOneInput is the fixed external libFuzzer/AFL/replay entry symbol. Only that anchored exact ABI name bypasses snake_case naming; ordinary first-party functions retain the naming check.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.GlobalConstantCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "GlobalConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MacroDefinitionCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "MacroDefinition declarations use the reviewed UPPER_CASE naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MemberCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Member declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MethodCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Method declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.NamespaceCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Namespace declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ParameterCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Parameter declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "PrivateMember declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberSuffix@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "PrivateMember storage uses '_' to distinguish class state from local values and parameters while retaining snake_case vocabulary.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "ProtectedMember declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberSuffix@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "ProtectedMember storage uses '_' to distinguish class state from local values and parameters while retaining snake_case vocabulary.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StaticConstantCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "StaticConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StructCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Struct declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TemplateParameterCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "TemplateParameter declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypeAliasCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "TypeAlias declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypedefCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Typedef declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.UnionCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Union declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-identifier-naming.VariableCase@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Variable declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowIntegerConditions@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Integer status, count and flag values require explicit comparisons rather than implicit Boolean tests, exposing numerical and native-return interpretation at their boundaries.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowPointerConditions@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Pointer admission and optional native handles require explicit null comparisons, keeping their presence checks visible instead of implicit Boolean conversion.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnorePowersOf2IntegerValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Power-of-two integers still require names because they can encode significant buffer, precision or resource assumptions rather than inherently obvious values.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnoredIntegerValues@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Only the ubiquitous structural constants one and two are unnamed integer exceptions. Algorithm thresholds, physical units, resource ceilings and other values require names; power-of-two exemptions are separately disabled.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy/modernize-use-trailing-return-type@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Style-only check conflicts with the project's explicit return-type declaration style; the enabled compiler, ownership and API checks remain mandatory.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy/performance-enum-size@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Enums are not stored in bulk and ExitCode mirrors the process int domain; shrinking representations would not serve this interface contract.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy/portability-avoid-pragma-once@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Pragma once is supported by every admitted native compiler; public headers are independently compiled by the architecture check.",
-      "occurrences": 1
-    },
-    ".clang-tidy:clang-tidy/readability-identifier-length@238bab127392fc576c5df48e4a36cb15858825a3a95a66a15c90b3e9c6891b9b": {
-      "explanation": "Numerical code mirrors specification notation x, y, p and c; the enabled readability-identifier-naming check still enforces the reviewed naming convention.",
-      "occurrences": 1
-    },
     "cmake/ProjectOptions.cmake:compiler/-Wno-unknown-warning-option@47c47e646f3dca4db4569a05f7b841f381a3247e9bc74e9fe693ebe1c48a2ef4": {
       "explanation": "Applies to clang-tidy's own parse of GCC compile commands, where the GCC-only warning flags would otherwise be hard errors under -Werror. The compilers themselves still reject unknown options.",
       "occurrences": 1
@@ -236,8 +28,12 @@
       "explanation": "The standard fixes main's parameter as char**; making the pointee const would give main a non-standard signature. argv is only read, through a std::span<char* const>.",
       "occurrences": 1
     },
+    "include/docenhance/fft/fft.hpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@d69e16b2d2803e5811ee5186145d4b15d15715a115b316ac243a5aab4a307dcc": {
+      "explanation": "Spectrum::samples_of is the single private conversion from this FFT value's uniquely owned core::Buffer to Complex storage. Buffer originates from 64-byte-aligned operator new; checked half-spectrum layout covers whole Complex slots, with static size/alignment and trivial copy-construction/destruction requirements. The private allocation path obtains construction addresses and explicitly constructs every element, including padding, before numerical use or a usable Spectrum escapes. Constness is preserved; public borrows require a live lvalue owner and invalidate on owner movement or destruction. No live real plane or foreign payload is reinterpreted. Array lifetime, initialization, checked backing, moves/refunds and native/sanitizer verification remain required.",
+      "occurrences": 1
+    },
     "include/docenhance/image/plane.hpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@d69e16b2d2803e5811ee5186145d4b15d15715a115b316ac243a5aab4a307dcc": {
-      "explanation": "The one boundary where a plane's raw storage becomes samples, in a single private function. core::Buffer is over-aligned for every supported sample type, those types are implicit-lifetime, and the span covers whole rows, so no other cast is needed anywhere else in the project.",
+      "explanation": "The one boundary where a plane's raw storage becomes samples, in a single private function. core::Buffer is over-aligned for every supported sample type, those types are implicit-lifetime, and the span covers whole rows, so no other cast is needed within Plane.",
       "occurrences": 1
     },
     "ruff.toml:ruff/COM812@8ac8ad895e1ae604c3408be796d661633cb9a6e3c2dda6d70be46154b536543c": {
@@ -320,8 +116,152 @@
       "explanation": "These are command-line tools; print is their user interface.",
       "occurrences": 1
     },
-    "src/record/inventory.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@dfeefce29e0b5686bb7f18eddf56e997b2173ba2f3ae1c78a265147b4cb60cc6": {
-      "explanation": "One narrow-character view of the same immutable bytes, so the parser can read a range of characters. No object's lifetime or value changes, and the span supplies the length, so the parser cannot read past the record that was handed to it.",
+    "src/codec/jpeg_context.cpp:clang-tidy/cert-err52-cpp@048ffc1fcd162986170063df5a2bb4a2104ed58eb619b2ad8fa9664a1a1bd8c2": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
+      "occurrences": 1
+    },
+    "src/codec/jpeg_context.cpp:clang-tidy/cert-err52-cpp@3ef6844d0a4ee28165ad17c713cf577f122367e775fe6eb9f1bdda4770d52d76": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
+      "occurrences": 2
+    },
+    "src/codec/jpeg_context.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@b167aa8b67094bcb7e41d6027e8ee8d017b7e81566dda4c04e77ce96d1c5412f": {
+      "explanation": "The native libjpeg API defines a shared initial layout for its codec structures and passes jpeg_common_struct pointers to callbacks. The single conversion stays inside the codec adapter. Encoded snapshot casts elsewhere only expose immutable bytes with their checked span length.",
+      "occurrences": 1
+    },
+    "src/codec/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@048ffc1fcd162986170063df5a2bb4a2104ed58eb619b2ad8fa9664a1a1bd8c2": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
+      "occurrences": 1
+    },
+    "src/codec/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@3ef6844d0a4ee28165ad17c713cf577f122367e775fe6eb9f1bdda4770d52d76": {
+      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
+      "occurrences": 2
+    },
+    "src/codec/jpeg_context.cpp:msvc/4611@0578d735eed322e8c5c66571e1b921eb727204c2ae2af680ddd2265b53df5703": {
+      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper.",
+      "occurrences": 2
+    },
+    "src/codec/jpeg_memory.cpp:clang-tidy/google-readability-function-size@910bccad248136f43ba75e2bb60340a4abb141c35c4e05ef36306c884f547cef": {
+      "explanation": "The public libjpeg memory-manager callback fixes six arguments for virtual-array requests. The short adapter validates the pool and fixed control-slot bound, charges aligned arrays before entropy work, and returns an opaque control. Only this unavoidable ABI parameter count is excepted; code and file size limits remain enforced.",
+      "occurrences": 1
+    },
+    "src/codec/jpeg_memory.cpp:clang-tidy/google-readability-function-size@b07a52023dc0d477d95b4c84b8df84726ce5508cae4c34ce2120dbb0e7108a1a": {
+      "explanation": "The public libjpeg memory-manager callback fixes six arguments for virtual-array requests. The short adapter validates the pool and fixed control-slot bound, charges aligned arrays before entropy work, and returns an opaque control. Only this unavoidable ABI parameter count is excepted; code and file size limits remain enforced.",
+      "occurrences": 1
+    },
+    "src/codec/png_binary.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "The pinned libpng C error ABI requires the materialized writer begin/write_row/finish setjmp return points. These three frames contain only trivial PngImage/reference/span/scalar borrows; PngContext, packed Buffer, native allocation slots and output owners live in write_png/encode_png callers. Allocation/output callbacks complete owning C++ unwind before returning null/false and native error signaling. Bool refusal becomes Result after the helper returns; no C++ exception may escape a native callback. Current native/error/refund qualification remains required.",
+      "occurrences": 3
+    },
+    "src/codec/png_binary.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "The pinned libpng C error ABI requires the materialized writer begin/write_row/finish setjmp return points. These three frames contain only trivial PngImage/reference/span/scalar borrows; PngContext, packed Buffer, native allocation slots and output owners live in write_png/encode_png callers. Allocation/output callbacks complete owning C++ unwind before returning null/false and native error signaling. Bool refusal becomes Result after the helper returns; no C++ exception may escape a native callback. Current native/error/refund qualification remains required.",
+      "occurrences": 3
+    },
+    "src/codec/png_binary.cpp:msvc/4611@6be89a347d507e7ff95c0d750762f998f1e02922a799de8178edbfcf4ef280a8": {
+      "explanation": "MSVC C4611 diagnoses this exact writer begin libpng setjmp. Its scoped warning push/disable/pop restores the prior warning state; the frame has only trivial descriptor/reference/span state and no owning C++ automatic object crossed by the native jump. PngContext/native storage and payload/output owners remain in the caller. This is an exact native-error ABI exception, not a general compiler opt-out; selected Windows/native execution remains required.",
+      "occurrences": 1
+    },
+    "src/codec/png_binary.cpp:msvc/4611@9bf64e11f21b5bb9b3afd035e035cbfff6ccaebe923fbdbbe9b6c7dc3f9a8e95": {
+      "explanation": "MSVC C4611 diagnoses this exact writer finish libpng setjmp. Its scoped warning push/disable/pop restores the prior warning state; the frame has only trivial descriptor/reference/span state and no owning C++ automatic object crossed by the native jump. PngContext/native storage and payload/output owners remain in the caller. This is an exact native-error ABI exception, not a general compiler opt-out; selected Windows/native execution remains required.",
+      "occurrences": 1
+    },
+    "src/codec/png_binary.cpp:msvc/4611@e89846e57e6a9c76c51812a01db58517c9d73c363b3bc2672097d48a718bf752": {
+      "explanation": "MSVC C4611 diagnoses this exact writer write_row libpng setjmp. Its scoped warning push/disable/pop restores the prior warning state; the frame has only trivial descriptor/reference/span state and no owning C++ automatic object crossed by the native jump. PngContext/native storage and payload/output owners remain in the caller. This is an exact native-error ABI exception, not a general compiler opt-out; selected Windows/native execution remains required.",
+      "occurrences": 1
+    },
+    "src/codec/png_compare.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "The pinned libpng C error ABI requires canonical-reader begin/read_row/finish setjmp return points. The three frames borrow only trivial shape/reference/span state; read_canonical_png owns the input state, artifact/profile, PngContext and row Plane outside them. Callbacks finish owning C++ work before native error signaling; Result/error/refund processing occurs after bool return. This does not permit longjmp across a nontrivial C++ owner or any other path; current native/error/tail/refund qualification remains required.",
+      "occurrences": 3
+    },
+    "src/codec/png_compare.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "The pinned libpng C error ABI requires canonical-reader begin/read_row/finish setjmp return points. The three frames borrow only trivial shape/reference/span state; read_canonical_png owns the input state, artifact/profile, PngContext and row Plane outside them. Callbacks finish owning C++ work before native error signaling; Result/error/refund processing occurs after bool return. This does not permit longjmp across a nontrivial C++ owner or any other path; current native/error/tail/refund qualification remains required.",
+      "occurrences": 3
+    },
+    "src/codec/png_compare.cpp:msvc/4611@4ea66fba483cbbdcd09479a86d3a7dbf419916fce14cf7412fe93d64bc769e74": {
+      "explanation": "MSVC C4611 diagnoses this exact reader begin libpng setjmp. Its scoped warning push/disable/pop restores the prior warning state; the frame has only trivial descriptor/reference/span state and no owning C++ automatic object crossed by the native jump. PngContext/native allocation slots, immutable input state, artifact/profile and decoded row owners remain in read_canonical_png outside this helper. This is an exact native-error ABI exception, not a general compiler opt-out; selected Windows/native execution remains required.",
+      "occurrences": 1
+    },
+    "src/codec/png_compare.cpp:msvc/4611@5e3664f460fc43ff81c25f71b3f3c3dc31edf122a2e41dba1f36c81493c5e7df": {
+      "explanation": "MSVC C4611 diagnoses this exact reader finish libpng setjmp. Its scoped warning push/disable/pop restores the prior warning state; the frame has only trivial descriptor/reference/span state and no owning C++ automatic object crossed by the native jump. PngContext/native allocation slots, immutable input state, artifact/profile and decoded row owners remain in read_canonical_png outside this helper. This is an exact native-error ABI exception, not a general compiler opt-out; selected Windows/native execution remains required.",
+      "occurrences": 1
+    },
+    "src/codec/png_compare.cpp:msvc/4611@c475ec2e74ec22ace8528118f05be3aeac946e051478581a45a114d06833b810": {
+      "explanation": "MSVC C4611 diagnoses this exact reader read_row libpng setjmp. Its scoped warning push/disable/pop restores the prior warning state; the frame has only trivial descriptor/reference/span state and no owning C++ automatic object crossed by the native jump. PngContext/native allocation slots, immutable input state, artifact/profile and decoded row owners remain in read_canonical_png outside this helper. This is an exact native-error ABI exception, not a general compiler opt-out; selected Windows/native execution remains required.",
+      "occurrences": 1
+    },
+    "src/codec/png_context.cpp:clang-tidy/cert-err52-cpp@44dbb9317dc1c2f65f1fe30cedc5d2c1ef3feecd2c3db5afefe4ed89a1d9aa4f": {
+      "explanation": "The libpng error callback directly calls the CRT jump routine and returns to a native wrapper containing only trivial automatic state. Buffers, token, diagnostics and other C++ resource owners remain in the enclosing caller; protected-platform refusal and full refund tests exercise this boundary.",
+      "occurrences": 1
+    },
+    "src/codec/png_context.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "The libpng error callback directly calls the CRT jump routine and returns to a native wrapper containing only trivial automatic state. Buffers, token, diagnostics and other C++ resource owners remain in the enclosing caller; protected-platform refusal and full refund tests exercise this boundary.",
+      "occurrences": 1
+    },
+    "src/codec/png_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@44dbb9317dc1c2f65f1fe30cedc5d2c1ef3feecd2c3db5afefe4ed89a1d9aa4f": {
+      "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests.",
+      "occurrences": 1
+    },
+    "src/codec/png_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests.",
+      "occurrences": 1
+    },
+    "src/codec/png_context.cpp:msvc/4611@d6a1ef4b32b77aa2d6e2dedb3c6c678f43d6b69e9b7d154e02d426882423c3f6": {
+      "explanation": "Native bootstrap and codec jumps return only through trivial frames. All buffers and C++ resource owners remain in the enclosing caller; deterministic refusal, cancellation and allocation tests check complete refund. No compiler protection is disabled.",
+      "occurrences": 1
+    },
+    "src/codec/png_context.hpp:msvc/4324@598f4a1cbe7b6071baff1a3b8597e6ba0c691083b9ceb3f33870e4c1a924ce47": {
+      "explanation": "The platform CRT jmp_buf has a required alignment that adds natural padding to the private PngMemory aggregate. Packing or weakening its alignment would violate the native jump-buffer ABI. This declaration-scoped MSVC warning suppression preserves correctly aligned caller-owned jump storage; native error, bootstrap allocation-refusal, cancellation and full-refund cases exercise the storage. It does not waive any size limit or disable a runtime guard.",
+      "occurrences": 1
+    },
+    "src/codec/png_profile.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@e6639776744e8d5689ba23c3767fe7eb63a7019992e61009b5b77f6f2671ee52": {
+      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary.",
+      "occurrences": 1
+    },
+    "src/codec/png_profile.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@85d00936aed488a6e65d263823c2bb102f5794c35a3f7dc98e9376d9610e7f3a": {
+      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary.",
+      "occurrences": 1
+    },
+    "src/codec/png_raster.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
+      "occurrences": 2
+    },
+    "src/codec/png_raster.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
+      "occurrences": 2
+    },
+    "src/codec/png_raster.cpp:msvc/4611@1659c1a1d3e95d4542f5b244754fbd9fa2ea07a0df6b6c39f3f1a71b7eda7be0": {
+      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
+      "occurrences": 2
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@0011cb1fb768193347ccebb2f9dcd47e910da099c26a0b8180c9c18a4d413680": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
+      "occurrences": 1
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@22dc586d01ec4f87f8c35726dce753e04fc3b0cfb27588b41c3d02567e0dcf6d": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
+      "occurrences": 1
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@6752252260bdcab1571e8630c932d6a4a1a154bd093bed3e913b79dfc2059132": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
+      "occurrences": 1
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@8990d3df4e416a6d916c93e86dde7c0ec720167482a3b2da944ed0371763b39d": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
+      "occurrences": 1
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@a3ee1fa92fa836c16606c08e170053b18fef4b1e72a4851452d3fac3b824facf": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
+      "occurrences": 1
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@c7682013dc090e2defd6f522b45bfe9777cb90e9e505fcde627226edc097f952": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
+      "occurrences": 1
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@f03a8fc39a4484aee92ecf5b8528456be5c169ce64ace41fa0381478ff62cf1f": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
+      "occurrences": 1
+    },
+    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@ff8b87fc5543dab85c50636ca0faacd7cf87ce0eb5203b20d17a3f87e44f5552": {
+      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
       "occurrences": 1
     },
     "src/color/context.cpp:clang-tidy/misc-const-correctness@af18aea7de2d89c02dde9f63f08c625a5f29eeeea449f6f3fc96c365509436dd": {
@@ -330,10 +270,6 @@
     },
     "src/color/context.cpp:clang-tidy/misc-const-correctness@be9ef6cfab71372068181f74249b23906927a897fceb398cf95030f17522ce19": {
       "explanation": "Little CMS fixes its free/realloc callback ABI to a mutable void pointer. This callback never modifies the old pointee except via the owned replacement allocation; changing the parameter pointee type makes the callback assignment ill-formed. Native allocation/refund tests cover these adapters.",
-      "occurrences": 1
-    },
-    "src/color/converter.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@58a06231b613a00512094d417115c302152fcef3b213c592d344549ad69fd339": {
-      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary.",
       "occurrences": 1
     },
     "src/entry/main.cpp:clang-tidy/misc-const-correctness@7f5eafaaf2b55061aebeffb9764decba5f3833a76e6d5bcff72932ed45554cf9": {
@@ -504,146 +440,6 @@
       "explanation": "This specific native fdopen/fileno or Windows SDK boundary requires the direct public stdio.h/SDK prerequisite wrapper. Those declarations are outside ISO cstdio or are attributed by include-cleaner to inaccessible SDK internals. The opened descriptor is validated and immediately owned; the native filesystem and full compiler workflows exercise the ABI.",
       "occurrences": 1
     },
-    "src/codec/jpeg_context.cpp:clang-tidy/cert-err52-cpp@048ffc1fcd162986170063df5a2bb4a2104ed58eb619b2ad8fa9664a1a1bd8c2": {
-      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
-      "occurrences": 1
-    },
-    "src/codec/jpeg_context.cpp:clang-tidy/cert-err52-cpp@3ef6844d0a4ee28165ad17c713cf577f122367e775fe6eb9f1bdda4770d52d76": {
-      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
-      "occurrences": 2
-    },
-    "src/codec/jpeg_context.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@b167aa8b67094bcb7e41d6027e8ee8d017b7e81566dda4c04e77ce96d1c5412f": {
-      "explanation": "The native libjpeg API defines a shared initial layout for its codec structures and passes jpeg_common_struct pointers to callbacks. The single conversion stays inside the codec adapter. Encoded snapshot casts elsewhere only expose immutable bytes with their checked span length.",
-      "occurrences": 1
-    },
-    "src/codec/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@048ffc1fcd162986170063df5a2bb4a2104ed58eb619b2ad8fa9664a1a1bd8c2": {
-      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
-      "occurrences": 1
-    },
-    "src/codec/jpeg_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@3ef6844d0a4ee28165ad17c713cf577f122367e775fe6eb9f1bdda4770d52d76": {
-      "explanation": "Libjpeg uses native nonlocal jumps. The caller owns the aligned jump buffer, context, raster and charged resources; the short jump wrappers contain only borrowed/trivial views and scalars. Allocation helpers destroy temporary C++ owners before a jump. MSVC 4611 is confined to these reviewed wrappers, and no exception/jump bypasses a live C++ owner.",
-      "occurrences": 2
-    },
-    "src/codec/jpeg_context.cpp:msvc/4611@0578d735eed322e8c5c66571e1b921eb727204c2ae2af680ddd2265b53df5703": {
-      "explanation": "Libjpeg reports native errors using a nonlocal jump. These frames contain only borrowed/trivial views and C scalars, while raster, metadata, charged-buffer and context owners remain in the caller. Allocation helpers finish exception handling and destroy temporary C++ owners before invoking a native jump; no exception or jump crosses a live C++ owner. MSVC 4611 is confined to the same reviewed wrapper.",
-      "occurrences": 2
-    },
-    "src/codec/jpeg_memory.cpp:clang-tidy/google-readability-function-size@910bccad248136f43ba75e2bb60340a4abb141c35c4e05ef36306c884f547cef": {
-      "explanation": "The public libjpeg memory-manager callback fixes six arguments for virtual-array requests. The short adapter validates the pool and fixed control-slot bound, charges aligned arrays before entropy work, and returns an opaque control. Only this unavoidable ABI parameter count is excepted; code and file size limits remain enforced.",
-      "occurrences": 1
-    },
-    "src/codec/jpeg_memory.cpp:clang-tidy/google-readability-function-size@b07a52023dc0d477d95b4c84b8df84726ce5508cae4c34ce2120dbb0e7108a1a": {
-      "explanation": "The public libjpeg memory-manager callback fixes six arguments for virtual-array requests. The short adapter validates the pool and fixed control-slot bound, charges aligned arrays before entropy work, and returns an opaque control. Only this unavoidable ABI parameter count is excepted; code and file size limits remain enforced.",
-      "occurrences": 1
-    },
-    "src/codec/png_artifact.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@08ff48d29617adc15c9cabd7ecabd1bbcedf9e4ed1f8b737b1a35cba848a07b5": {
-      "explanation": "The decoder borrows an unsigned-byte view of an immutable budget-owned snapshot. The view preserves object representation, uses the same length, and never outlives the buffer; malformed PNG and cancellation tests cover this boundary.",
-      "occurrences": 1
-    },
-    "src/codec/png_context.cpp:clang-tidy/cert-err52-cpp@44dbb9317dc1c2f65f1fe30cedc5d2c1ef3feecd2c3db5afefe4ed89a1d9aa4f": {
-      "explanation": "The libpng error callback directly calls the CRT jump routine and returns to a native wrapper containing only trivial automatic state. Buffers, token, diagnostics and other C++ resource owners remain in the enclosing caller; protected-platform refusal and full refund tests exercise this boundary.",
-      "occurrences": 1
-    },
-    "src/codec/png_context.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "The libpng error callback directly calls the CRT jump routine and returns to a native wrapper containing only trivial automatic state. Buffers, token, diagnostics and other C++ resource owners remain in the enclosing caller; protected-platform refusal and full refund tests exercise this boundary.",
-      "occurrences": 1
-    },
-    "src/fs/png_output.cpp:clang-tidy/cppcoreguidelines-owning-memory@03bc3c0d9dd3f395748542495f547a1de2f3c76b3b7c71318a8f7f3bdaf40bf5": {
-      "explanation": "The C stream is owned by a unique_ptr with FileCloser. This line is its only release boundary (normal explicit close checks the result; the deleter is best-effort failure cleanup). The gsl-only owning-memory heuristic cannot express this C ABI deleter. Codec budget/failure and publication tests cover both paths.",
-      "occurrences": 1
-    },
-    "src/codec/png_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@44dbb9317dc1c2f65f1fe30cedc5d2c1ef3feecd2c3db5afefe4ed89a1d9aa4f": {
-      "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests.",
-      "occurrences": 1
-    },
-    "src/codec/png_context.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "Libpng requires a C jump boundary. Direct invocation avoids treating the CRT jump entry as an ordinary indirect CFG callback target; no protection is disabled. Every live C++ resource owner is outside the jump frame, with deterministic error/cancellation/refund tests.",
-      "occurrences": 1
-    },
-    "src/codec/png_context.cpp:msvc/4611@d6a1ef4b32b77aa2d6e2dedb3c6c678f43d6b69e9b7d154e02d426882423c3f6": {
-      "explanation": "Native bootstrap and codec jumps return only through trivial frames. All buffers and C++ resource owners remain in the enclosing caller; deterministic refusal, cancellation and allocation tests check complete refund. No compiler protection is disabled.",
-      "occurrences": 1
-    },
-    "src/codec/png_context.hpp:msvc/4324@598f4a1cbe7b6071baff1a3b8597e6ba0c691083b9ceb3f33870e4c1a924ce47": {
-      "explanation": "The platform CRT jmp_buf has a required alignment that adds natural padding to the private PngMemory aggregate. Packing or weakening its alignment would violate the native jump-buffer ABI. This declaration-scoped MSVC warning suppression preserves correctly aligned caller-owned jump storage; native error, bootstrap allocation-refusal, cancellation and full-refund cases exercise the storage. It does not waive any size limit or disable a runtime guard.",
-      "occurrences": 1
-    },
-    "src/codec/png_decode.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths.",
-      "occurrences": 2
-    },
-    "src/codec/png_decode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. No non-trivial automatic owner lives in this jump frame: PngContext, file and Budget-backed allocations are constructed by the caller and destroyed normally after this function returns false. Malformed PNG and allocation-failure regressions exercise the jump paths.",
-      "occurrences": 2
-    },
-    "src/codec/png_decode.cpp:msvc/4611@1659c1a1d3e95d4542f5b244754fbd9fa2ea07a0df6b6c39f3f1a71b7eda7be0": {
-      "explanation": "MSVC warns for each libpng setjmp frame despite both decoder frames containing no automatic C++ object with a destructor. The warning state is restored immediately after each expression; malformed-input and allocation-failure tests exercise both jump paths.",
-      "occurrences": 2
-    },
-    "src/codec/png_encode.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path.",
-      "occurrences": 1
-    },
-    "src/codec/png_encode.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "libpng requires a setjmp return point for C codec errors. The jump frame contains only trivial view state; PngContext and all allocation/file owners live in its caller. Encoding failure returns a Result and cleans the owned staging output; budget-failure tests cover this path.",
-      "occurrences": 1
-    },
-    "src/codec/png_encode.cpp:msvc/4611@1659c1a1d3e95d4542f5b244754fbd9fa2ea07a0df6b6c39f3f1a71b7eda7be0": {
-      "explanation": "MSVC warns for every setjmp in a C++ function even when no automatic object with a destructor can be crossed. This one-statement suppression is paired with the checked libpng jump-frame design and the existing cert-err52-cpp exception registration.",
-      "occurrences": 1
-    },
-    "src/fs/png_file.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@36204bf308f864f8c6ee93acedc5ebb7edbb66fdbee3fab1454c6af90782b902": {
-      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary.",
-      "occurrences": 1
-    },
-    "src/codec/png_profile.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@e6639776744e8d5689ba23c3767fe7eb63a7019992e61009b5b77f6f2671ee52": {
-      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary.",
-      "occurrences": 1
-    },
-    "src/codec/png_profile.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@85d00936aed488a6e65d263823c2bb102f5794c35a3f7dc98e9376d9610e7f3a": {
-      "explanation": "This is a single native byte boundary over checked, budget-owned storage. Unsigned-byte views preserve object representations, and zlib retains a mutable compressed-input pointer without modifying it. The lifetime remains in the owning caller; native decoder/profile and sanitizer tests cover the boundary.",
-      "occurrences": 1
-    },
-    "src/fs/protection_png.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@5c239341f1bb3782abac6cc2b095b4b388b42dd6836a9f2975eeea2a3a2c1d0c": {
-      "explanation": "A single unsigned-byte view borrows the bounded immutable encoded snapshot owned by this call. It permits the same production byte decoder to validate the original mask depth before expansion; there is no lifetime escape or native object reinterpretation. Mask and sanitizer tests cover allocation/refund and malformed inputs.",
-      "occurrences": 1
-    },
-    "src/codec/png_raster.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 2
-    },
-    "src/codec/png_raster.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 2
-    },
-    "src/codec/png_raster.cpp:msvc/4611@1659c1a1d3e95d4542f5b244754fbd9fa2ea07a0df6b6c39f3f1a71b7eda7be0": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 2
-    },
-    "src/codec/png_verify_rows.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 3
-    },
-    "src/codec/png_verify_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 3
-    },
-    "src/codec/png_verify_rows.cpp:msvc/4611@1659c1a1d3e95d4542f5b244754fbd9fa2ea07a0df6b6c39f3f1a71b7eda7be0": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 3
-    },
-    "src/codec/png_write_rows.cpp:clang-tidy/cert-err52-cpp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 3
-    },
-    "src/codec/png_write_rows.cpp:clang-tidy/modernize-avoid-setjmp-longjmp@c94bcbbfbaefc6ec2885620ec86cd21a9147944c5acf9e33961c6aea5992c4ab": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 3
-    },
-    "src/codec/png_write_rows.cpp:msvc/4611@1659c1a1d3e95d4542f5b244754fbd9fa2ea07a0df6b6c39f3f1a71b7eda7be0": {
-      "explanation": "The native libpng error ABI requires this narrow setjmp frame. All owners and row producers are in its caller; only trivial automatic values occur inside the frame. Decoding, encoding, verification and cancellation tests exercise the return path; the Windows warning state is restored immediately.",
-      "occurrences": 3
-    },
     "src/fs/publication.cpp:clang-tidy/misc-include-cleaner@0c29c9cbaab7c8737997374bbaf96c6768ea5e2b5bbed9f036c8f3f5837ea23a": {
       "explanation": "MoveFileExW is the Windows-native atomic no-replace publication operation. Clang's include cleaner cannot map it through the required Windows SDK umbrella header; this one ABI call is exercised by the Windows native package test.",
       "occurrences": 1
@@ -658,42 +454,6 @@
     },
     "src/fs/publication.cpp:clang-tidy/modernize-deprecated-headers@169431877b63ac471b6f502bdb59b16545f57e504bc01dff322e7c58c7182144": {
       "explanation": "The GNU renameat2/RENAME_NOREPLACE and Darwin renamex_np/RENAME_EXCL extensions are declared by the native stdio.h, not by the standard C++ <cstdio> interface. Including the actual native provider is required by include-cleaner and deliberately confines this OS API dependency to the private publication adapter.",
-      "occurrences": 1
-    },
-    "src/fs/source.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@36204bf308f864f8c6ee93acedc5ebb7edbb66fdbee3fab1454c6af90782b902": {
-      "explanation": "The native libjpeg API defines a shared initial layout for its codec structures and passes jpeg_common_struct pointers to callbacks. The single conversion stays inside the codec adapter. Encoded snapshot casts elsewhere only expose immutable bytes with their checked span length.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@0011cb1fb768193347ccebb2f9dcd47e910da099c26a0b8180c9c18a4d413680": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@22dc586d01ec4f87f8c35726dce753e04fc3b0cfb27588b41c3d02567e0dcf6d": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@6752252260bdcab1571e8630c932d6a4a1a154bd093bed3e913b79dfc2059132": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@8990d3df4e416a6d916c93e86dde7c0ec720167482a3b2da944ed0371763b39d": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@a3ee1fa92fa836c16606c08e170053b18fef4b1e72a4851452d3fac3b824facf": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@c7682013dc090e2defd6f522b45bfe9777cb90e9e505fcde627226edc097f952": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@f03a8fc39a4484aee92ecf5b8528456be5c169ce64ace41fa0381478ff62cf1f": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
-      "occurrences": 1
-    },
-    "src/codec/tiff_decode.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@ff8b87fc5543dab85c50636ca0faacd7cf87ce0eb5203b20d17a3f87e44f5552": {
-      "explanation": "libtiff exposes only a variadic tag-access ABI. These closed calls use the documented uint32 image-dimension pointers, uint16 sample/compression pointers or promoted int JPEG color-mode value for their exact named tags. A separate bounded IFD parser admits the declarations first, native-header agreement checks them, and independent endian/layout/precision fixtures verify decoding.",
       "occurrences": 1
     },
     "src/fs/windows_sdk.hpp:clang-tidy/misc-include-cleaner@ee70c5ba4f3639c0512b999c66de825037fd4eb49b0ddc29fd5607c09b0dc03a": {
@@ -729,28 +489,28 @@
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-no-malloc@511e0f6eee396c3b935e489428342fe6b2e49de2bb1584f3dec28861a3c38e35": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer. In sanitizer observation mode the paired C++ allocation ABI injects failure before raw malloc, while sanitizer malloc/free hooks alone register and refund each block; these branches deliberately avoid duplicate measurement.",
-      "occurrences": 3
+      "explanation": "The test-only replacement C++ raw-storage owner pairs its ordinary standard allocator with this exact std::free statement. Ordinary observation removes the fixed ledger entry; sanitizer observation leaves measurement retirement to the selected sanitizer free hook. Unobserved external C++ allocations retain their selected-runtime release path. Production never links this observer; no substitute provider or broader permission is granted.",
+      "occurrences": 2
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-no-malloc@8c955f84e6ff3062fb22c06f2d97aacfd516af74b8f1330955677817f62543e7": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "This exact test-only replacement C++ raw-storage failure path releases the selected ordinary malloc allocation when the fixed observation ledger cannot register it, then reports allocation failure. The matching free preserves the actual allocation family and prevents a leaked failed observation. Production never links this observer; no provider substitution or general raw-memory permission is introduced.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-no-malloc@b9a01148adea2916581bd5a7e2937c169f9ba88772d81f057951d2a24786f572": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer. In sanitizer observation mode the paired C++ allocation ABI injects failure before raw malloc, while sanitizer malloc/free hooks alone register and refund each block; these branches deliberately avoid duplicate measurement.",
-      "occurrences": 2
+      "explanation": "The test-only replacement C++ allocation owner forwards its normalized raw-storage request through this exact ordinary std::malloc statement. The identical allocation branches now share one implementation: ordinary observation records the fixed ledger entry, while sanitizer observation leaves credit and refund to the selected sanitizer hooks. Production never links this observer; the exception covers only the shown replaceable raw-storage ABI call.",
+      "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-owning-memory@511e0f6eee396c3b935e489428342fe6b2e49de2bb1584f3dec28861a3c38e35": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer. In sanitizer observation mode the paired C++ allocation ABI injects failure before raw malloc, while sanitizer malloc/free hooks alone register and refund each block; these branches deliberately avoid duplicate measurement.",
-      "occurrences": 3
+      "explanation": "The test-only replacement C++ raw-storage owner pairs its ordinary standard allocator with this exact std::free statement. Ordinary observation removes the fixed ledger entry; sanitizer observation leaves measurement retirement to the selected sanitizer free hook. Unobserved external C++ allocations retain their selected-runtime release path. Production never links this observer; no substitute provider or broader permission is granted.",
+      "occurrences": 2
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-owning-memory@8c955f84e6ff3062fb22c06f2d97aacfd516af74b8f1330955677817f62543e7": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "This exact test-only replacement C++ raw-storage failure path releases the selected ordinary malloc allocation when the fixed observation ledger cannot register it, then reports allocation failure. The matching free preserves the actual allocation family and prevents a leaked failed observation. Production never links this observer; no provider substitution or general raw-memory permission is introduced.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-owning-memory@b9a01148adea2916581bd5a7e2937c169f9ba88772d81f057951d2a24786f572": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer. In sanitizer observation mode the paired C++ allocation ABI injects failure before raw malloc, while sanitizer malloc/free hooks alone register and refund each block; these branches deliberately avoid duplicate measurement.",
-      "occurrences": 2
+      "explanation": "The test-only replacement C++ allocation owner forwards its normalized raw-storage request through this exact ordinary std::malloc statement. The identical allocation branches now share one implementation: ordinary observation records the fixed ledger entry, while sanitizer observation leaves credit and refund to the selected sanitizer hooks. Production never links this observer; the exception covers only the shown replaceable raw-storage ABI call.",
+      "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@a768424b38c59c87d7bf2935c3a93ee358484445c517e6573526ea606e3cd933": {
       "explanation": "The TSan allocator-observation ABI qualifies storage pointers as volatile const. This cast only records or removes the pointer identity in the fixed observation registry; it never dereferences or alters allocator storage. TSan retains its own allocator, instrumentation and all production concurrency checks.",
@@ -761,19 +521,19 @@
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@592a22eee21a52c6aa4a6283b3e10e8b39894210a2883e9d5503959bf085238e": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "The developer-only native observer implements the replaceable C++ allocation/deallocation ABI. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@3f3d96a39b422a695ab6636e07fbaf61d37c1863e3674d5b890e6491d939e735": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "The developer-only native observer implements the replaceable C++ allocation/deallocation ABI. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@4c1d1a438b1bcb532c83ab978dcc911335ccf4855efe819b53ec9b635ba6b585": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "The developer-only native observer implements the replaceable C++ allocation/deallocation ABI. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@5cd5ed7ca52673303b251181923986210cdaefb6e09fa61dc1c5b27ac0808030": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "The developer-only native observer implements the replaceable C++ allocation/deallocation ABI. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@656265590d62c7d9207a4b296454ca7ec8560f4b6fc59939fd0926150c59b877": {
@@ -785,7 +545,7 @@
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@7d095baff7637e3f25093339a20f883baf6f4b8b8f66ff6d94517ddd895e2c19": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "The developer-only native observer implements the replaceable C++ allocation/deallocation ABI. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@904308a9dcb4fd1c634bdf7baf2b2fd300bed7385f21064352a32f2f942d7015": {
@@ -793,11 +553,11 @@
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@9ed5f6d1c9b20df40f519267201fc24fa7e1d999ba35654ebf4e22c9a5da5cc2": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "The developer-only native observer implements the replaceable C++ allocation/deallocation ABI. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@b9173448231f4c3c38bad854da6c1aba315b20532cb137b217bcfa62eff6a573": {
-      "explanation": "The developer-only native observer implements replaceable allocation/deallocation and Mat allocator ABIs. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
+      "explanation": "The developer-only native observer implements the replaceable C++ allocation/deallocation ABI. A fixed pointer registry distinguishes observer-owned CRT storage from allocations bypassing it; POSIX dlsym delegates bypassed ASan allocations to the next runtime delete while preserving its tag. Raw malloc/free, fixed callback arguments and compiler-dependent standard operator parameter names are unavoidable at this ABI; production never links the observer.",
       "occurrences": 1
     },
     "tests/support/allocation_observer.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@dd6179e398888e24a5b1c23a1b6be24a3ac453438213221136ce15f279193240": {
@@ -810,6 +570,22 @@
     },
     "tests/support/architecture_cases.hpp:clang-tidy/clang-analyzer-cplusplus.Move@95161e80c063a50480bed630edc41c331031d197e9612ccd07e7de36d0b6bd30": {
       "explanation": "Plane has an explicit post-move contract: empty dimensions and empty owned storage. This test deliberately inspects that specified empty state and checks kernel rejection. Generic move checkers treat calls other than empty() as invalid without modeling the custom contract; sanitizer/reference suites verify the actual lifetime and shape behavior.",
+      "occurrences": 1
+    },
+    "tests/support/binary_input_cases.hpp:clang-tidy/cppcoreguidelines-avoid-c-arrays@d22678c0a73fd3f131efd56ef4f54240ba0ad650e204687142d3fca605dea330": {
+      "explanation": "This exact alignas(uint16_t) built-in unsigned-char providing array has four bytes for two actual uint16 objects {32768,0x3141}. Actual std::memcpy-return typed creation and its bounded two-element span use C++23 implicit lifetime/adopted LWG4064; static assertions bind uint8 to unsigned char and uint16 width2. The real original array supplies only one-byte direct/padding-only admission ranges at offsets0/2, never byte-value access after typed creation. All owners remain local/alive and each actual binarizer rejects before access/polls/workspace/stores. A std::array destination wrapper lacks this providing-array premise; this is no cast/lifetime framework or in-place alias permission.",
+      "occurrences": 1
+    },
+    "tests/support/binary_input_cases.hpp:clang-tidy/modernize-avoid-c-arrays@d22678c0a73fd3f131efd56ef4f54240ba0ad650e204687142d3fca605dea330": {
+      "explanation": "This exact alignas(uint16_t) built-in unsigned-char providing array has four bytes for two actual uint16 objects {32768,0x3141}. Actual std::memcpy-return typed creation and its bounded two-element span use C++23 implicit lifetime/adopted LWG4064; static assertions bind uint8 to unsigned char and uint16 width2. The real original array supplies only one-byte direct/padding-only admission ranges at offsets0/2, never byte-value access after typed creation. All owners remain local/alive and each actual binarizer rejects before access/polls/workspace/stores. A std::array destination wrapper lacks this providing-array premise; this is no cast/lifetime framework or in-place alias permission.",
+      "occurrences": 1
+    },
+    "tests/support/cancellation_probe.hpp:clang-tidy/misc-const-correctness@8051a1dd3dba47166f9e24f502834045f78cd318a8c827c8ddce110940372bc0": {
+      "explanation": "The test helper needs a mutable std::stop_source reference because libc++ declares request_stop non-const. libstdc++ permits the call on const and clang-tidy otherwise recommends an incompatible const reference; this single test boundary keeps both standard libraries compiling.",
+      "occurrences": 1
+    },
+    "tests/support/fft_trace_storage.hpp:clang-tidy/cppcoreguidelines-pro-type-vararg@d2e54819af117dfdda8ee19deacd34b504dc1f97dfb57576738dfdbf8b986719": {
+      "explanation": "This exact test-only POSIX open call creates one owned trace sidecar through the native variadic ABI required by O_CREAT. It passes only the bounded ASCII PID/counter basename, explicit O_EXCL/O_CLOEXEC/O_NOFOLLOW plus read-write or real read-only flags, and the fixed 0600 creation mode. Unsigned flag composition is compile-time checked to fit the int ABI. Creation occurs outside allocation observation; the owned file is immediately unlinked and all callback transfers use only the retained descriptor. No typed equivalent supplies this exclusive creation ABI; this permission covers this one call, not other varargs or a broader file API. Actual platform I/O and zero-allocation qualification remain required.",
       "occurrences": 1
     },
     "tests/support/interrupt_process.cpp:clang-tidy/bugprone-suspicious-stringview-data-usage@8356a9f457bb650e46f3d1d8c36534933acca546d56aeceb3ca175baf549f84f": {
@@ -868,6 +644,14 @@
       "explanation": "The standalone reference-test main catches failures and reports its exit status; MSVC's throwing expected accessors otherwise look like an escaping path to clang-tidy.",
       "occurrences": 1
     },
+    "tests/support/working_cases.hpp:clang-tidy/cppcoreguidelines-avoid-c-arrays@e7871b42845faadfa99171085c3cda0bbe8a62912e0dcb21e33b9dd9512a699e": {
+      "explanation": "This exact alignas(double) built-in unsigned-char providing array has sizeof(double)*4 bytes. Actual std::memcpy copies initialized {0,0.25,0.5,1} values and its actual returned pointer creates the bounded four-double span under C++23 implicit lifetime and adopted LWG4064. The original real array supplies only the first sizeof(double) bytes as bounded mask admission metadata; no overlapping byte-element values are accessed after typed creation. All owners stay local/alive and actual methods refuse before access/polls/workspace/stores. A std::array destination wrapper does not establish the same built-in providing-array premise; no cast or generic lifetime permission is added.",
+      "occurrences": 1
+    },
+    "tests/support/working_cases.hpp:clang-tidy/modernize-avoid-c-arrays@e7871b42845faadfa99171085c3cda0bbe8a62912e0dcb21e33b9dd9512a699e": {
+      "explanation": "This exact alignas(double) built-in unsigned-char providing array has sizeof(double)*4 bytes. Actual std::memcpy copies initialized {0,0.25,0.5,1} values and its actual returned pointer creates the bounded four-double span under C++23 implicit lifetime and adopted LWG4064. The original real array supplies only the first sizeof(double) bytes as bounded mask admission metadata; no overlapping byte-element values are accessed after typed creation. All owners stay local/alive and actual methods refuse before access/polls/workspace/stores. A std::array destination wrapper does not establish the same built-in providing-array premise; no cast or generic lifetime permission is added.",
+      "occurrences": 1
+    },
     "tests/tooling/test_architecture.py:ruff/F401@6543aee7499a48407b35e36d47e4abcc3799a8a4c009d3159cc2878c1e3c124e": {
       "explanation": "The tools_path import is executed for its shared sys.path bootstrap before direct tool-module imports; standard unittest discovery must work without the strict runner providing tools/.",
       "occurrences": 1
@@ -884,20 +668,16 @@
       "explanation": "The deterministic close-failure seam consumes a stream transferred from FileHandle::release. It always invokes the real fclose exactly once before reporting the injected result; the writer tests assert no retry and no publication on close failure.",
       "occurrences": 1
     },
-    "tests/unit/cancellation.cpp:clang-tidy/misc-const-correctness@d83a69f24abdd00a3676f7f896d4915967637eae3d1e8f0079f536ac3052a30a": {
-      "explanation": "The test helper needs a mutable std::stop_source reference because libc++ declares request_stop non-const. libstdc++ permits the call on const and clang-tidy otherwise recommends an incompatible const reference; this single test boundary keeps both standard libraries compiling.",
-      "occurrences": 1
-    },
-    "tests/unit/command_delivery.cpp:clang-tidy/bugprone-std-exception-baseclass@3d2c545b5c461916ce5d32a1cbdfeb53f11004607881e0471257708890fc5e02": {
-      "explanation": "This test-only processor deliberately throws a non-standard exception after an observed effect. It verifies catch-all containment and unknown publication reporting; replacing it with std::exception would leave that boundary untested. Production throw restrictions are unchanged.",
-      "occurrences": 1
-    },
-    "tests/unit/continuous.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@c6110a3f962a8ccdd8c8f956a52da518b04debbcbf328de2e783dd8e518355d3": {
-      "explanation": "This negative test deliberately constructs an unnamed value of a scoped enum with fixed underlying int type. C++ permits this representation, while the analyzer intentionally diagnoses unnamed enumerators. The assertion proves Continuous::create rejects it; the exception applies only to this test line, never production validation.",
+    "tests/unit/continuous.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@a6751b649f510e55773c84cb658ef890f897aaae32917b2a23bd38222b32a53b": {
+      "explanation": "This negative test deliberately constructs an unnamed value of a scoped enum with fixed underlying int type. C++ permits this representation, while the analyzer intentionally diagnoses unnamed enumerators. The same OutputDepth(255) control now proves the actual methods::Plan validator rejects it after retirement of the unused Continuous wrapper; the exception applies only to this test cast, never production validation.",
       "occurrences": 1
     },
     "tests/unit/execution_boundaries.cpp:clang-tidy/cppcoreguidelines-owning-memory@aaec78c82d3ae9266123b37d15a5baff47cc8a2565760a71e4794ce7f0df755d": {
       "explanation": "The private BundleStream test callback consumes its FILE exactly once using fclose. The publisher releases ownership to this close callback, including injected flush/close failures; counted regression checks assert there is no second close.",
+      "occurrences": 1
+    },
+    "tests/unit/fft.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@9d91153e9ed7d9894511ec23e427bfceeedac89a976ab4a2f885047b77ee5013": {
+      "explanation": "This test helper borrows the live std::complex<double> array owned by a successful public forward result. Spectrum explicitly constructs every slot including padding, and remains live and unmoved through every borrowed view. C++23 [complex.numbers.general]/4 specifies scalar component access through this cast for each live array element; the span is bounded to exactly two doubles per constructed Complex. It creates neither a separate double owner nor new lifetimes. Genuine direct and padding-only views exercise public inverse's complete-backing admission before a pending allocation stop; no numerical work executes through refused overlap.",
       "occurrences": 1
     },
     "tests/unit/filesystem_identity.cpp:clang-tidy/cppcoreguidelines-pro-type-vararg@5b856b8fecc17d347fc5c9757c28359811dae8ecc6d497af7b33541727088c8d": {
@@ -949,7 +729,7 @@
       "occurrences": 1
     },
     "tests/unit/png_decode.cpp:msvc/4611@3a5c9866d01c9eade088f537d9e8c0ddd69247ea120c67ed501d95679e381053": {
-      "explanation": "This native test jump frame contains only a borrowed PngContext reference; all buffers and other C++ resource owners are in its caller. The test forces a real libpng error and checks the diagnostic and complete ownership refund.",
+      "explanation": "This native test jump frame contains only borrowed PngContext and PngInput references/pointers; all buffers, stop state and other C++ resource owners remain in its caller. The same frame covers real png_error and installed-reader png_read_info failures, including an input failure that makes stop pending, and checks diagnostics and complete ownership refund. Its jump statement, restored warning block and single occurrence remain unchanged.",
       "occurrences": 1
     },
     "tests/unit/record.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@1e0e5b74e465a9e009941871af47759cdbd7fa4ea823f4ba76e588ab6fb4462d": {
@@ -1000,10 +780,6 @@
       "explanation": "The exact reviewed zlib source retains the reported gzip-file bug, but the mandatory private stream-only recipe excludes gzclose.c, gzlib.c, gzread.c and gzwrite.c from the archive. Native build audits inspect actual compilation to reject reintroduction. This match remains printed; changed source, feature policy or advisory evidence (all fields except a validated modified timestamp) invalidates the review. It is not a declaration that the source is fixed or vulnerability-free.",
       "occurrences": 1
     },
-    "tools/advisory_review.py:advisory/OSV-2023-444@ce6a2f23bc78f99918e1ad7c11ccf80978f6d0fc9ff6e9caef10fcf32414dd7f": {
-      "explanation": "The exact reviewed OpenCV source and schema-version-1.9.1 advisory evidence concern JPEG-2000 decoding in imgcodecs/OpenJPEG. The mandatory module closure excludes imgcodecs and disables both OpenJPEG provider/build controls. Native feature audits verify the actual configured closure. The match remains printed; changed source, feature policy or advisory evidence (all fields except a validated modified timestamp) invalidates the review. This is not a blanket OpenCV vulnerability exception.",
-      "occurrences": 1
-    },
     "tools/advisory_review.py:advisory/OSV-2026-1068@7990bf9379c25b021d7d42fb163b28eff6d93b9d367bcf8e0b9b93fe6f9ffeeb": {
       "explanation": "The pinned libjpeg-turbo source matches this OSV report for tj3Compress8 -> jpeg_abort. DocEnhance selects only the classic JPEG static library, without the TurboJPEG API. Private feature policy requires WITH_TURBOJPEG=OFF; actual compiled units and installed libraries are independently checked by the native audit on all supported builds. jpeg_abort itself is shared and its presence is not proof of reachability. Only this exact source, unchanged feature policy and complete observed advisory evidence are reviewed; any other match remains fatal.",
       "occurrences": 1
@@ -1024,24 +800,392 @@
       "explanation": "This parser accepts UTF-8 execution reports generated by the owned CTest/Catch processes. The shared report_xml boundary rejects every DOCTYPE and ENTITY declaration before ElementTree can interpret them. A negative entity-declaration control exercises that refusal; no arbitrary XML document import is exposed.",
       "occurrences": 1
     },
-    "src/fs/psf_png.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@9860d892a93d2c9eb50caf761cb0076164664f132ff87b715808edb649b222c6": {
-      "explanation": "The immutable encoded byte Buffer stays live throughout native PNG decoding; uint8_t reads its object representation without copying or changing identity.",
+    "tests/support/execution_exception.hpp:clang-tidy/bugprone-std-exception-baseclass@13b7175c6effe4d5532805fdacd482612b9a0c51371c9736b570b5a0c5a56143": {
+      "explanation": "One deliberate non-standard integer exception exercises the real processing and read-only verifier catch-all boundaries through a shared private test actor. Both controls require the actual reported effects and one call; replacing catch(...) with only std::exception containment must fail. This single statement replaces the formerly registered command-delivery throw, without adding another suppressed throw or weakening production exception rules.",
       "occurrences": 1
     },
-    "src/opencv/diagnostics.cpp:clang-tidy/google-readability-function-size@69ddd95a2f6b7797810deab945ccba0eac5c65c89a6fcc99550ef7881536d0ab": {
-      "explanation": "OpenCV fixes this six-argument error callback ABI. The stateless noexcept callback suppresses foreign stdout/stderr writes while the native library still throws its exception, which the owning adapter maps to a truthful resource/numerical failure. Native allocation fault injection exercises the error callback.",
+    ".clang-tidy:clang-tidy-option/bugprone-easily-swappable-parameters.MinimumLength@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Named two-operand numerical APIs, including unsharp_candidate(f, blurred, method) and coordinate pairs, deliberately share units. Longer interchangeable sequences remain diagnosed from length three; independent numerical references distinguish argument order and signed residuals.",
       "occurrences": 1
     },
-    "src/opencv/nlm_native.cpp:clang-tidy/cppcoreguidelines-pro-type-const-cast@a86f8fca91b73753259f1c1ea7b1f03f68bee0568007c1e470aa78287f6fd1f5": {
-      "explanation": "The pinned OpenCV borrowed Mat ABI accepts void* even for read-only InputArray. This single cast constructs the header for the audited CV_16U/NORM_L1 input-only call; the caller retains ownership and source identity, and native/full-tile tests check unchanged input.",
+    ".clang-tidy:clang-tidy-option/bugprone-narrowing-conversions.PedanticMode@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Pedantic narrowing diagnostics remain enabled at floating/integer pixel, extent and resource boundaries, supplemented by finite-domain factories and independent precision references.",
       "occurrences": 1
     },
-    "tests/support/observed_mat_allocator.hpp:clang-tidy/google-readability-function-size@fd7a7d6e791499d6b14471129366875f991769aad0fec4c4405f3e90b237fb5f": {
-      "explanation": "OpenCV 5 MatAllocator::allocate fixes seven parameters in its public pure-virtual ABI. This developer-only allocation observer implements that exact override with a fixed pointer registry; production never links it. The parameter-only check is excepted, while body size, nesting, variables, statements and cognitive complexity remain mandatory.",
+    ".clang-tidy:clang-tidy-option/cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Only the ubiquitous structural constants one and two are unnamed integer exceptions. Algorithm thresholds, physical units, resource ceilings and other values require names; power-of-two exemptions are separately disabled.",
       "occurrences": 1
     },
-    "include/docenhance/app/options.hpp:clang-format/off@ecc25027cc5e39a545752fb1b5c39137985e21037bc167f192be6b2e7492d01c": {
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.BranchThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.LineThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.NestingThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.ParameterThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.StatementThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/google-readability-function-size.VariableThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The Google alias owns only the mandatory five-parameter diagnostic. Its body dimensions are nonrestrictive because the original function-size check independently enforces every body budget without waivers; fixed foreign ABI parameter exceptions cannot relax those body checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/misc-const-correctness.WarnPointersAsValues@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Pointer values remain subject to const-correctness checks so native adapters cannot silently weaken borrowed-pointer intent; any unavoidable mutable external ABI needs a separate source approval.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/misc-include-cleaner.IgnoreHeaders@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The explicit patterns cover the locked JSON/Catch/native-codec providers and the exact generated docenhance/version.hpp facts header. Include-cleaner cannot reliably attribute those provider/generated declarations; first-party layer and direct-package ownership remain independently enforced. No general first-party header/source pattern is ignored.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Plain parameter and completed-observation records expose their fields together as values. Admitted request/storage owners retain private construction and lifetime contracts; mixed public/private owner classes remain checked. Public fields do not replace parameter or returned-observation validation.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.IgnoreMacros@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Complexity counts first-party decisions rather than expanded locked SDK and Catch registration/assertion machinery. Body line, statement, branch, nesting and variable limits remain independently mandatory; token-pasted/continued hidden compiler controls are refused.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-cognitive-complexity.Threshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The mandatory readability-function-cognitive-complexity.Threshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-size.BranchThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The mandatory readability-function-size.BranchThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-size.LineThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The mandatory readability-function-size.LineThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-size.NestingThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The mandatory readability-function-size.NestingThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-size.ParameterThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The original function-size check owns unsuppressible body budgets; its parameter dimension belongs to the separately mandatory Google parameter-only alias, preventing fixed ABI parameter exceptions from hiding body violations.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-size.StatementThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The mandatory readability-function-size.StatementThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-function-size.VariableThreshold@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "The mandatory readability-function-size.VariableThreshold bound belongs to the existing size_policy authority and cannot be weakened by configuration or source suppression. It protects maintainable first-party control flow independently of fixed ABI parameter exceptions.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ClassCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Class declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConceptCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Concept declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ConstexprVariableCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "ConstexprVariable declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Enum declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.EnumConstantCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "EnumConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Function declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.FunctionIgnoredRegexp@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "LLVMFuzzerTestOneInput is the fixed external libFuzzer/AFL/replay entry symbol. Only that anchored exact ABI name bypasses snake_case naming; ordinary first-party functions retain the naming check.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.GlobalConstantCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "GlobalConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MacroDefinitionCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "MacroDefinition declarations use the reviewed UPPER_CASE naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MemberCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Member declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.MethodCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Method declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.NamespaceCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Namespace declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ParameterCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Parameter declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "PrivateMember declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.PrivateMemberSuffix@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "PrivateMember storage uses '_' to distinguish class state from local values and parameters while retaining snake_case vocabulary.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "ProtectedMember declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.ProtectedMemberSuffix@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "ProtectedMember storage uses '_' to distinguish class state from local values and parameters while retaining snake_case vocabulary.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StaticConstantCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "StaticConstant declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.StructCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Struct declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TemplateParameterCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "TemplateParameter declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypeAliasCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "TypeAlias declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.TypedefCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Typedef declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.UnionCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Union declarations use the reviewed CamelCase naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-identifier-naming.VariableCase@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Variable declarations use the reviewed lower_case naming convention to keep names consistent by responsibility; body, ownership, type and numerical validators remain separate mandatory checks.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowIntegerConditions@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Integer status, count and flag values require explicit comparisons rather than implicit Boolean tests, exposing numerical and native-return interpretation at their boundaries.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-implicit-bool-conversion.AllowPointerConditions@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Pointer admission and optional native handles require explicit null comparisons, keeping their presence checks visible instead of implicit Boolean conversion.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnorePowersOf2IntegerValues@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Power-of-two integers still require names because they can encode significant buffer, precision or resource assumptions rather than inherently obvious values.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy-option/readability-magic-numbers.IgnoredIntegerValues@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Only the ubiquitous structural constants one and two are unnamed integer exceptions. Algorithm thresholds, physical units, resource ceilings and other values require names; power-of-two exemptions are separately disabled.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy/modernize-use-trailing-return-type@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Style-only check conflicts with the project's explicit return-type declaration style; the enabled compiler, ownership and API checks remain mandatory.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy/performance-enum-size@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Enums are not stored in bulk and ExitCode mirrors the process int domain; shrinking representations would not serve this interface contract.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy/portability-avoid-pragma-once@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Pragma once is supported by every admitted native compiler; public headers are independently compiled by the architecture check.",
+      "occurrences": 1
+    },
+    ".clang-tidy:clang-tidy/readability-identifier-length@782ee6ddd0ab5a3fbb694eb1139c03d23ec51334a3e33f177ddd8e3dd7aa209d": {
+      "explanation": "Numerical code mirrors specification notation x, y, p and c; the enabled readability-identifier-naming check still enforces the reviewed naming convention.",
+      "occurrences": 1
+    },
+    "src/record/inventory.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@c02e31e40c20466b269318304914a82d3ec55c5ce76151627cbe57ae28e31d8d": {
+      "explanation": "One narrow-character view of the same immutable bytes, so the parser can read a range of characters. No object's lifetime or value changes, and the span supplies the length, so the parser cannot read past the record that was handed to it.",
+      "occurrences": 1
+    },
+    "src/codec/png_binary.cpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@2b7c8359c232a9489c65e0bdf14ff44241d90748800270782a0a2be9355b0714": {
+      "explanation": "The span borrows the exact packed PNG1 raw Buffer representation as the native unsigned-byte row type on the supported uint8_t byte targets. Buffer owns the allocation throughout write_png and every synchronous native row call; the span length is exactly that Buffer size, with empty storage never dereferenced. Only character bytes are accessed, no structured object is reinterpreted and no ownership/alignment transfer occurs. The separate row preserves intended source pixels and zero packed tail. Replacing it with another Plane would change charged row sizing; this one exact native byte boundary introduces no payload/copy or generic cast permission. Native platform qualification remains required.",
+      "occurrences": 1
+    },
+    "src/codec/encoded_bytes.hpp:clang-tidy/cppcoreguidelines-pro-type-reinterpret-cast@5fc4fb14d465c33da4fe16e9128ff138e792f18f2bbf31f09606d187e578bc89": {
+      "explanation": "This private codec adapter borrows the character representation of the caller's immutable contiguous encoded bytes for the existing source PNG/JPEG/TIFF, mask PNG, PSF PNG and canonical artifact parsers, and for opaque ICC input to png_set_iCCP. static_assert requires uint8_t to be unsigned char on the compiled target. The returned view preserves the exact address and byte length, cannot write, and neither allocates, copies, normalizes, widens admission, transfers ownership nor extends lifetime. Concrete source/mask/PSF/profile/snapshot owners remain live through each synchronous call; numeric pixel views use their separate unchanged types. Empty spans are never dereferenced by this adapter and existing consumers retain admission and bounds. This permits one exact representation borrow, not arbitrary structured casts or a universal budget-owned claim. Native/platform and malformed/cancellation/refund qualification remains required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cppcoreguidelines-owning-memory@a85e7a058407f1819db232ab5af4e6bb5c942775dd67161567ed7e3ec6182f21": {
+      "explanation": "This exact test-only raw C-ABI provider-forwarding return must pass the original requested size, including intentional zero, to the selected ordinary malloc branch and return its actual pointer without ownership wrappers or size normalization. The zero-size calibration compares the selected provider's null/errno observation with c_allocate(0), never dereferences zero storage, and releases non-null results through the matched release path. C zero remains distinct from the separately normalized C++ zero-new case. This rule disposition covers the exact raw return and intentional malloc(0) control only; it does not establish that any guessed Windows/static-CRT original route is correct or permit ambient provider substitution. Real provider/ABI execution remains unqualified.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cppcoreguidelines-no-malloc@a85e7a058407f1819db232ab5af4e6bb5c942775dd67161567ed7e3ec6182f21": {
+      "explanation": "This exact test-only raw C-ABI provider-forwarding return must pass the original requested size, including intentional zero, to the selected ordinary malloc branch and return its actual pointer without ownership wrappers or size normalization. The zero-size calibration compares the selected provider's null/errno observation with c_allocate(0), never dereferences zero storage, and releases non-null results through the matched release path. C zero remains distinct from the separately normalized C++ zero-new case. This rule disposition covers the exact raw return and intentional malloc(0) control only; it does not establish that any guessed Windows/static-CRT original route is correct or permit ambient provider substitution. Real provider/ABI execution remains unqualified.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/clang-analyzer-optin.portability.UnixAPI@a85e7a058407f1819db232ab5af4e6bb5c942775dd67161567ed7e3ec6182f21": {
+      "explanation": "This exact test-only raw C-ABI provider-forwarding return must pass the original requested size, including intentional zero, to the selected ordinary malloc branch and return its actual pointer without ownership wrappers or size normalization. The zero-size calibration compares the selected provider's null/errno observation with c_allocate(0), never dereferences zero storage, and releases non-null results through the matched release path. C zero remains distinct from the separately normalized C++ zero-new case. This rule disposition covers the exact raw return and intentional malloc(0) control only; it does not establish that any guessed Windows/static-CRT original route is correct or permit ambient provider substitution. Real provider/ABI execution remains unqualified.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cppcoreguidelines-owning-memory@511e0f6eee396c3b935e489428342fe6b2e49de2bb1584f3dec28861a3c38e35": {
+      "explanation": "This exact test-only raw C-ABI provider-forwarding statement pairs the selected ordinary malloc branch with its actual matching free, including the calibrated null-release case. The observer's release reservation preserves pointer identity, quarantines uncertain effects, records confirmation only after the provider returns, and never retries an uncertain free. No smart owner can replace this ABI callback without changing the observed family/lifetime. This exception is local to this statement and does not qualify guessed Windows/static-CRT routes; native execution and release/refund controls remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cppcoreguidelines-no-malloc@511e0f6eee396c3b935e489428342fe6b2e49de2bb1584f3dec28861a3c38e35": {
+      "explanation": "This exact test-only raw C-ABI provider-forwarding statement pairs the selected ordinary malloc branch with its actual matching free, including the calibrated null-release case. The observer's release reservation preserves pointer identity, quarantines uncertain effects, records confirmation only after the provider returns, and never retries an uncertain free. No smart owner can replace this ABI callback without changing the observed family/lifetime. This exception is local to this statement and does not qualify guessed Windows/static-CRT routes; native execution and release/refund controls remain required.",
+      "occurrences": 1
+    },
+    "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@0bf8dcf95a252cb2ce7d08d5bfa40b6f9bc2376514a27f1c9c67d2de50f53dfa": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@24dcc608c5dbafa7defe451213063acc2ee1c9c83a2014dac6b8726057ec7d9a": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@e2b5217e78828b6f271eb48bdbf4cb880319b51bee6e3ee94b385efac353ac94": {
+      "explanation": "This exact negative render call deliberately consumes an Input already marked unready by a previous move. Its custom move transfers only empty/reset resources and keeps the private consumed marker false; render checks that readiness before the pending cancellation checkpoint, codecs and numeric stages. The test requires E_ARGUMENT and zero stop visits, independently checking that an acquired empty-but-identified Input instead reaches E_INPUT. No moved storage is dereferenced or recovered into successful work.",
+      "occurrences": 1
+    },
+    "tests/unit/illumination_rows.cpp:clang-tidy/bugprone-use-after-move@f46dc01146aa65c0f1997d0d7bd0c139c0a9fddacb3dd838d8f9d65c4fbc966d": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "fuzz/render.cpp:clang-tidy/bugprone-use-after-move@a9ff12a09ec3c18c4db49c2bf9032b1c6b484e223e68082c5b2267c88a2c6ed4": {
+      "explanation": "When the parsed moved flag is set, the prior valid optional emplacement owns all encoded snapshots and marks this Input consumed. This exact later render call deliberately moves that already-consumed Input again to require E_ARGUMENT before the pending same-token cancellation checkpoint, while the other owner remains ready and all charges refund. Input custom moves and private consumed marker define this empty/unready state; rendering checks readiness before stop/codec/numeric work. This is one real negative lifetime/refusal call, not arbitrary use of moved storage. The initial valid other.emplace move receives no suppression.",
+      "occurrences": 1
+    },
+    "fuzz/render.cpp:clang-tidy/clang-analyzer-cplusplus.Move@a9ff12a09ec3c18c4db49c2bf9032b1c6b484e223e68082c5b2267c88a2c6ed4": {
+      "explanation": "When the parsed moved flag is set, the prior valid optional emplacement owns all encoded snapshots and marks this Input consumed. This exact later render call deliberately moves that already-consumed Input again to require E_ARGUMENT before the pending same-token cancellation checkpoint, while the other owner remains ready and all charges refund. Input custom moves and private consumed marker define this empty/unready state; rendering checks readiness before stop/codec/numeric work. This is one real negative lifetime/refusal call, not arbitrary use of moved storage. The initial valid other.emplace move receives no suppression.",
+      "occurrences": 1
+    },
+    "tests/unit/restoration_admission.cpp:clang-tidy/bugprone-use-after-move@43c399157bd9499ac65a576d425300326a61915af3c9db67ef4a9970bff2eb8c": {
+      "explanation": "ProcessRequest custom move assignment exchanges owned input/output strings and mask/PSF paths to their empty states. This exact post-move ready() predicate checks those defined empty members and must return false, while the destination retains the exact kernel path. It does not borrow moved path data, reopen a file, execute processing or restore readiness; the scope is only the moved-state contract assertion.",
+      "occurrences": 1
+    },
+    "tests/unit/illumination.cpp:clang-tidy/bugprone-use-after-move@2698d29bb2c1f9be3f2b663e196f9c9f4fee1ef73bf1c137b256154dbb8e2ffd": {
+      "explanation": "Plane custom move assignment transfers its charged Buffer and exchanges source shape to zero. This exact empty() assertion observes the defined moved-from owner after its fitted coefficients return to the fit. Live background borrows use the destination plane, and later scope checks exact budget refund; the moved-from plane is never dereferenced. Preserve the concrete moved-owner/borrow control, not a general moved-use exemption.",
+      "occurrences": 1
+    },
+    "tests/support/render_liveness.cpp:clang-tidy/misc-const-correctness@fa99ffdd0df2a191c6a340909292360e0c9ed6fcb4d6067d05bffbfa0ff5604b": {
+      "explanation": "The native test executable retains the required narrow main argv ABI as char**; top-level const already prevents rebinding argv. Internally it passes span<char* const> to a read-only argument adapter and const char* to the seed reader. Making the pointer pointee const would change the main parameter type. This exact entry signature exception covers only the remaining pointee const suggestion, not exception escape, pointer arithmetic or mutable argument use.",
+      "occurrences": 1
+    },
+    "src/report/response.cpp:clang-tidy/misc-include-cleaner@ca275798fc151a7d94c471152d99f9b94a74ff67a2d5924ac7b45b885cb8ceef": {
+      "explanation": "This exact include supplies the sole core::Fields and core::WireTag specializations for every app::WireResponse alternative, plus its nested response payload fields and wire enum domains. The concrete encode_response function instantiates record::Codec::encode(WireResponse), whose variant visitor recursively selects its Fields object branch through a dependent requires expression. Include Cleaner does not credit this specialization-only dependency in the retained current compile. Removing the include makes those alternatives miss their actual Fields and fall through to ScalarCodec, whose arithmetic static_assert cannot admit a Response object; it also removes command tags and enum domains. Keep this direct metadata owner; no dummy use, compatibility wrapper, metadata copy or global rule opt-out. This permission covers only this include and rule, not other unused includes.",
+      "occurrences": 1
+    },
+    "tests/unit/response_verification_fields.cpp:clang-tidy/misc-include-cleaner@ca275798fc151a7d94c471152d99f9b94a74ff67a2d5924ac7b45b885cb8ceef": {
+      "explanation": "This exact include supplies the sole WireTag and Fields specializations consumed indirectly by direct Codec::decode<app::WireResponse> and Codec encode/decode<app::ResponseConfirmed>. The variant reader requires actual tags and chooses Fields through dependent template metadata lookup; removing the include makes these genuine receiver controls fail to instantiate or lose their actual field domains. Include Cleaner does not credit the specialization-only dependency in the retained actual diagnostic. Keep the direct metadata owner rather than adding fake use or moving it transitively. This exception covers this one required include/rule only; all assertions and independent malformed-value controls remain intact.",
+      "occurrences": 1
+    },
+    "tests/unit/finite_fields.cpp:clang-tidy/misc-include-cleaner@47eee38aae97e14c8d1dfe74f1c032148297f77182ed0d5eba6d17cf15980ce3": {
+      "explanation": "This exact include provides the sole Fields specialization used by encode/decode of methods::WienerParameters and its closed PSF representation in the retained finite_fields controls. The actual Codec chooses its object branch through dependent Fields lookup; parameter value declarations alone do not provide that metadata. Removing the include produced unsupported scalar fallback errors; restoring it removes those errors and leaves only this Include Cleaner specialization-visibility diagnostic. Preserve actual parameter/PSF fields and obsolete-path rejection. This permission covers one include/rule, not other unused headers.",
+      "occurrences": 1
+    },
+    "tests/unit/finite_fields.cpp:clang-tidy/misc-include-cleaner@fe864e26651d50eba3b13426111c1ea2640da090505f2da06d9025b08a3a2dad": {
+      "explanation": "This exact include provides the sole SurfaceRequest Fields/tag metadata consumed by the direct Codec encode/decode controls. The generated method_requests value header declares the type but does not replace its metadata owner. The tests inspect the real selector and parameter fields, retain auto/source scalar choices and reject invalid selector/cell values; removing metadata selects unsupported scalar fallback. Retained healthy-AST diagnostics mark only the required specialization include unused. This permission covers this one include/rule with all assertions/domains intact.",
+      "occurrences": 1
+    },
+    "tests/unit/finite_fields.cpp:clang-tidy/misc-include-cleaner@7a4e7995497630d0b02d296a02f4c127df6478dac73da232304068312eb83121": {
+      "explanation": "This exact include supplies the sole PngContainer Fields metadata used by direct Codec writer/reader and Schema::of instantiations. source.hpp declares the value/validation but not the Fields specialization. These controls require the actual precision/color choices, emitted enum schema and invalid-hole/contextual-color refusals. Removing the include produced unsupported scalar fallback; the restored current compile reaches only the Include Cleaner specialization-visibility diagnostic. Keep the direct actual metadata owner, with no fake use or transitive relocation. This permission covers only this include/rule.",
+      "occurrences": 1
+    },
+    "tests/unit/lifecycle.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@32f3c68ef30e513bb236784ed7ccd4a5ef6b9bd81fcc906ae4428a17e179d5c8": {
+      "explanation": "This exact test-only mutation deliberately injects an unlisted TV-L1 stopping value into a real completed Facts object. The case requires actual method validation and wire projection validation to reject every mutated case while unchanged first-party dispatch transports its observations. The sentinel is never admitted as a production method option or treated as completed valid work. Preserve this real negative domain test; the exception covers only this cast, not valid-stop admission or surrounding checks.",
+      "occurrences": 1
+    },
+    "tests/unit/request_fields.cpp:clang-tidy/clang-analyzer-optin.core.EnumCastOutOfRange@b4cd7652ba473add40b669bed5af72e98632492c9c2a57ef1df029f90f418a96": {
+      "explanation": "This exact test-only unlisted alpha policy sentinel must remain to prove actual requested(plan,nullopt) refuses an invalid in-memory Plan with invariant, before processing/effects. The case first proves healthy admission, then this sentinel refusal, then resets to the named white policy before independent protection identity controls. No sentinel is admitted to a production command/domain or used for image operations. Preserve the real negative control; exception only this cast.",
+      "occurrences": 1
+    },
+    "tests/unit/request_fields.cpp:clang-tidy/misc-include-cleaner@8b684e290bb4ba5c5e8e927cfdb10885ad370a8d9968a02d62787c710f5c84b9": {
+      "explanation": "This TU directly calls std::get on the real std::variant request alternatives SurfaceRequest,NlmRequest,GammaRequest,FixedThresholdRequest and BinaryOutputRequest. The standard variant header owns those variant get overload definitions; Request field providers and aliases supply complete variant types transitively but do not replace the direct standard function dependency. Keep only this exact standard provider include for these real calls, without dummy use or a file-wide include-cleaner exception. Source-only dependency review, not a new successful compile.",
+      "occurrences": 1
+    },
+    "tests/support/fields_schema.cpp:clang-tidy/misc-include-cleaner@7a4e7995497630d0b02d296a02f4c127df6478dac73da232304068312eb83121": {
+      "explanation": "This specialization-provider header is required by png_source_examples' actual Codec::encode<PngContainer> and schema_example<PngContainer> instantiations. It solely defines the PngContainer Fields/WireTag and PngDecoderPolicy EnumNames consumed indirectly by generic Codec/Schema. Removing it previously caused the retained scalar fallback/static-assert errors at this exact consumer. record/source.hpp only defines the value type; no dummy direct use, duplicated metadata or weakened scalar fallback substitutes for these real specializations. Keep only this exact header include; the compiler unused-include heuristic does not see the specialization dependency.",
+      "occurrences": 1
+    },
+    "tests/support/core_aligned_null.cpp:clang-tidy/readability-inconsistent-declaration-parameter-name@e368fefba6b3a21b91982ed81d6e3fc20563bb30c658066321d88c8c3abef8c1": {
+      "explanation": "This exact test-only definition implements the real aligned-nothrow global operator new ABI. The selected standard-library declaration names its size argument with implementation-reserved __sz, while the definition uses portable bytes to record the exact request, inject one real null return and forward other requests to the original throwing aligned allocation family. Standard-library parameter spellings vary by compiler and are not ABI. Adopting a reserved identifier or altering the locked standard declaration would be improper. The same exact parameters, noexcept/type assertion, catch-all new_handler containment and matching family/refund controls remain; only this definition-versus-declaration naming rule is covered, not allocation behavior, other diagnostics or arbitrary definitions. Native effectiveness/ABI execution remains required.",
+      "occurrences": 1
+    },
+    "include/docenhance/app/options.hpp:clang-format/off@b47c8b0bb05f39c4e21a2a35a82dc8d31d627d3318970f15b4758f3317e8989c": {
       "explanation": "Generated immutable option data uses one structured row per option and shared spelling/condition tables. Only this data region keeps its compact authored row layout; vocabulary, typed domains, parameter records, validators and bindings use the pinned canonical formatter. This carries the reviewed option-table formatting exception to its new owner without disabling size, semantic or primitive-validation checks.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/bugprone-reserved-identifier@5b7646d6e0b264521bde2da7408033d09ef6373f6f0f43f78f7a655a3dff96b7": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl37-c@5b7646d6e0b264521bde2da7408033d09ef6373f6f0f43f78f7a655a3dff96b7": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl51-cpp@5b7646d6e0b264521bde2da7408033d09ef6373f6f0f43f78f7a655a3dff96b7": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/readability-identifier-naming@5b7646d6e0b264521bde2da7408033d09ef6373f6f0f43f78f7a655a3dff96b7": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/bugprone-reserved-identifier@2504fb3364d7a77d30997d1555e9ea4756cc6c6023d9ff299e623b248d0935b4": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl37-c@2504fb3364d7a77d30997d1555e9ea4756cc6c6023d9ff299e623b248d0935b4": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl51-cpp@2504fb3364d7a77d30997d1555e9ea4756cc6c6023d9ff299e623b248d0935b4": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/readability-identifier-naming@2504fb3364d7a77d30997d1555e9ea4756cc6c6023d9ff299e623b248d0935b4": {
+      "explanation": "This exact test-only Linux C-linkage declaration __wrap_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/bugprone-reserved-identifier@1931a99da8ff093d257f7bcb9484c442f6ff9e3d5943b1382a65e70bb582a064": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl37-c@1931a99da8ff093d257f7bcb9484c442f6ff9e3d5943b1382a65e70bb582a064": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl51-cpp@1931a99da8ff093d257f7bcb9484c442f6ff9e3d5943b1382a65e70bb582a064": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/readability-identifier-naming@1931a99da8ff093d257f7bcb9484c442f6ff9e3d5943b1382a65e70bb582a064": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_malloc uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/bugprone-reserved-identifier@e5cfa2f7444d51778f8e3252c7f2b952f1091d31a08f49f74c9e9c4ae30c8a62": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl37-c@e5cfa2f7444d51778f8e3252c7f2b952f1091d31a08f49f74c9e9c4ae30c8a62": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/cert-dcl51-cpp@e5cfa2f7444d51778f8e3252c7f2b952f1091d31a08f49f74c9e9c4ae30c8a62": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/support/allocation_interpose.cpp:clang-tidy/readability-identifier-naming@e5cfa2f7444d51778f8e3252c7f2b952f1091d31a08f49f74c9e9c4ae30c8a62": {
+      "explanation": "This exact test-only Linux C-linkage declaration __real_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
       "occurrences": 1
     }
   }

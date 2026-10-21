@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/codec/png.hpp"
+#include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/core/memory.hpp"
-#include "docenhance/image/plane.hpp"
+#include "docenhance/image/output.hpp"
+#include "docenhance/image/raster.hpp"
 #include "png_fixture.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
@@ -37,17 +38,20 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     const auto encoded = docenhance::tests::make_gray_png(expected);
     docenhance::core::Budget budget{std::size_t{8} * 1024 * 1024};
     {
-        const auto result = docenhance::codec::decode_grayscale_png(
-            encoded, budget, {.encoded_bytes = 65536, .pixels = 4096});
+        const auto result = docenhance::codec::decode_png_raster(
+            encoded, budget, docenhance::image::ProfilePolicy::embedded, {},
+            {.encoded_bytes = 65536, .pixels = 4096});
         require(result.has_value(), "independently encoded grayscale PNG is accepted");
-        require(result->width() == expected.width && result->height() == expected.height,
+        require(result->shape.width == expected.width && result->shape.height == expected.height &&
+                    result->shape.model == docenhance::image::SampleModel::gray &&
+                    result->shape.depth == docenhance::image::SampleDepth::byte(),
                 "PNG dimensions agree with the independently constructed fixture");
         const unsigned maximum = (1U << expected.depth) - 1U;
         if (maximum == 0) {
             require(false, "fixture bit depth has a nonzero sample range");
             return 0;
         }
-        const auto decoded_view = result->view();
+        const auto decoded_view = result->pixels.view();
         for (std::uint32_t y = 0; y < expected.height; ++y) {
             std::uint32_t x = 0;
             for (const auto decoded_sample : decoded_view.row(y)) {

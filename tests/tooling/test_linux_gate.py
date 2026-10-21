@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from unittest.mock import patch
@@ -14,6 +16,8 @@ import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone 
 
 import check_all
 import check_linux
+import linux_gate_logs
+from docker_execution import LOG_LIMIT_BYTES
 
 
 class LinuxGateTests(unittest.TestCase):
@@ -52,12 +56,13 @@ class LinuxGateTests(unittest.TestCase):
             (root / "deps").mkdir()
             for name in ("tools.json", "lock.json", "features.json"):
                 (root / "deps" / name).write_text("{}", encoding="utf-8")
-            (root / ".cache/deps").mkdir(parents=True)
+            (root / ".cache/deps/archives").mkdir(parents=True)
             (root / "tools").mkdir()
             for name in ("dep_acquire.py", "dep_verify.py"):
                 (root / "tools" / name).write_text("fixture")
             with patch("check_linux.docker_executable", return_value="/usr/bin/docker"):
                 arguments = check_linux.run_arguments("image", "linux/arm64", "gate", "token", root)
+            self.assertNotIn("--rm", arguments)
             mounts = [
                 arguments[i + 1] for i, argument in enumerate(arguments) if argument == "--mount"
             ]
@@ -65,9 +70,25 @@ class LinuxGateTests(unittest.TestCase):
                 self.assertTrue(
                     any(m.startswith("type=volume,") and m.endswith("/" + name) for m in mounts)
                 )
+            self.assertIn(f"type=bind,source={root},target=/source,readonly", mounts)
             self.assertIn(
                 f"type=bind,source={root / '.cache/deps'},target=/host-deps,readonly", mounts
             )
+            self.assertIn(
+                f"type=bind,source={root / '.cache/deps/archives'},"
+                "target=/source/.cache/deps/archives,readonly",
+                mounts,
+            )
+            self.assertIn("RUFF_CACHE_DIR=/source/.cache/ruff", arguments)
+            self.assertIn("MYPY_CACHE_DIR=/source/.cache/mypy", arguments)
+            self.assertIn("TMPDIR=/tmp/docenhance-linux-tmp/token", arguments)
+            temporary = Path(next(value[7:] for value in arguments if value.startswith("TMPDIR=")))
+            self.assertFalse(temporary.is_relative_to(Path("/source")))
+            self.assertFalse(any("target=/tmp" in mount for mount in mounts))
+            script = Path(check_linux.__file__).with_name("linux_gate.sh").read_text()
+            self.assertIn(f"temporary_root={temporary.parent}", script)
+            self.assertIn("never", arguments)
+            self.assertIn("none", arguments)
             self.assertEqual(arguments[-3:], ["image", "sh", "tools/linux_gate.sh"])
 
     def test_architecture_image_and_recipe_separate_native_state(self) -> None:
@@ -92,6 +113,15 @@ class LinuxGateTests(unittest.TestCase):
             recipe.parent.mkdir()
             recipe.write_text("changed")
             self.assertNotEqual(before, check_linux.cache_identity(arm, "linux/arm64", root))
+            # One recipe tag can be rebuilt into different immutable filesystem images.
+            source_identity = check_linux.source_cache_identity(root)
+            first_image = "sha256:" + "a" * 64
+            rebuilt_image = "sha256:" + "b" * 64
+            self.assertNotEqual(
+                check_linux.cache_identity(first_image, "linux/arm64", root),
+                check_linux.cache_identity(rebuilt_image, "linux/arm64", root),
+            )
+            self.assertEqual(source_identity, check_linux.source_cache_identity(root))
             before_adapter = check_linux.cache_identity(arm, "linux/arm64", root)
             adapter = root / "cmake/dependencies/json/CMakeLists.txt"
             adapter.parent.mkdir(parents=True)
@@ -106,20 +136,22 @@ class LinuxGateTests(unittest.TestCase):
             patch.dict("check_linux.os.environ", {"DOCKER_DEFAULT_PLATFORM": "linux/amd64"}),
             self.assertRaisesRegex(ValueError, "DOCKER_DEFAULT_PLATFORM"),
         ):
-            check_linux.native_platform()
+            check_linux.native_platform(time.monotonic() + 1000)
         with (
             patch("check_linux.docker_executable", return_value="docker"),
             patch("check_linux.subprocess.run") as run,
         ):
             run.return_value.stdout = "linux/aarch64\n"
             with patch.dict("check_linux.os.environ", {"DOCKER_DEFAULT_PLATFORM": ""}):
-                self.assertEqual(check_linux.native_platform(), "linux/arm64")
+                self.assertEqual(
+                    check_linux.native_platform(time.monotonic() + 1000), "linux/arm64"
+                )
             run.return_value.stdout = "windows/amd64"
             with (
                 patch.dict("check_linux.os.environ", {"DOCKER_DEFAULT_PLATFORM": ""}),
                 self.assertRaisesRegex(ValueError, "Unsupported Docker"),
             ):
-                check_linux.native_platform()
+                check_linux.native_platform(time.monotonic() + 1000)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / "deps").mkdir()
@@ -158,9 +190,114 @@ class LinuxGateTests(unittest.TestCase):
         """Unavailable engines and nonzero native results cannot be reported as a pass."""
         with patch("check_linux.shutil.which", return_value=None), self.assertRaises(ValueError):
             check_linux.docker_executable()
+        result = subprocess.CompletedProcess([], 1, stdout="", stderr="missing")
+        with (
+            patch("check_linux.docker_executable", return_value="docker"),
+            patch("check_linux.subprocess.run", return_value=result) as invoked,
+        ):
+            with self.assertRaisesRegex(ValueError, "Required cached Linux image"):
+                check_linux.cached_image("image", "linux/arm64", time.monotonic() + 1000)
+            self.assertEqual(invoked.call_count, 1)
+            self.assertNotIn("build", invoked.call_args.args[0])
+
+    def test_cached_image_launch_identity_and_platform_are_exact(self) -> None:
+        """A mutable tag selects one inspected immutable ID; wrong platform is a failure."""
+        identity = "sha256:" + "b" * 64
+        result = subprocess.CompletedProcess([], 0, stdout=identity + " linux/arm64")
+        with (
+            patch("check_linux.docker_executable", return_value="docker"),
+            patch("check_linux.subprocess.run", return_value=result),
+        ):
+            self.assertEqual(
+                check_linux.cached_image("tag", "linux/arm64", time.monotonic() + 1000), identity
+            )
+            with self.assertRaisesRegex(ValueError, "platform differs"):
+                check_linux.cached_image("tag", "linux/amd64", time.monotonic() + 1000)
+
+    def test_diagnostic_admission_preserves_evidence_and_counts_hardlinks_once(self) -> None:
+        """Finite aggregate retention refuses new work without sweeping earlier diagnostics."""
         with tempfile.TemporaryDirectory() as directory:
-            log = Path(directory) / "log"
-            with patch("check_linux.owned_process") as run:
-                run.return_value.__enter__.return_value.wait.return_value = 9
-                self.assertFalse(check_linux.invoke(["/usr/bin/false"], log))
-            self.assertIn("/usr/bin/false", log.read_text())
+            logs = Path(directory)
+            original = logs / "old.log"
+            original.write_bytes(b"retained")
+            (logs / "latest.log").hardlink_to(original)
+            reserve = LOG_LIMIT_BYTES + linux_gate_logs.COMMAND_LIMIT_BYTES
+            with patch("linux_gate_logs.RETAINED_LIMIT_BYTES", reserve + len(b"retained")):
+                linux_gate_logs.admit_diagnostics(logs)
+            with (
+                patch("linux_gate_logs.RETAINED_LIMIT_BYTES", reserve),
+                self.assertRaisesRegex(ValueError, "diagnostics are full"),
+            ):
+                linux_gate_logs.admit_diagnostics(logs)
+            with (
+                patch("linux_gate_logs.RETAINED_LIMIT_ENTRIES", 5),
+                self.assertRaisesRegex(ValueError, "diagnostics are full"),
+            ):
+                linux_gate_logs.admit_diagnostics(logs)
+            self.assertEqual(original.read_bytes(), b"retained")
+            self.assertEqual(len(list(logs.iterdir())), 2)
+
+    def test_latest_link_error_preserves_primary_failed_status(self) -> None:
+        """A convenience-link error cannot replace a confirmed failed gate outcome."""
+        with tempfile.TemporaryDirectory() as directory:
+            log = Path(directory) / "diagnostics.log"
+            log.write_text("failed", encoding="utf-8")
+            primary = RuntimeError("failed status")
+            with patch("linux_gate_logs.os.link", side_effect=OSError("link refused")):
+                linux_gate_logs.publish_latest(log, log.with_name("latest.log"), primary)
+            self.assertIn("link refused", primary.__notes__[0])
+
+    def test_preflight_refusal_never_writes_through_dangling_latest(self) -> None:
+        """Diagnostic retention cannot create a foreign symlink target after admission refusal."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            outside = root / "foreign.log"
+            logs = root / "logs"
+            logs.mkdir()
+            latest = logs / "latest.log"
+            latest.symlink_to(outside)
+            with self.assertRaisesRegex(ValueError, "redirected entry"):
+                linux_gate_logs.admit_diagnostics(logs)
+            primary = ValueError("refused redirect")
+            linux_gate_logs.retain_preflight_failure(latest, primary)
+            self.assertFalse(outside.exists())
+            self.assertTrue(latest.is_symlink())
+            self.assertIn("retention also failed", primary.__notes__[0])
+
+    def test_gate_timeout_uses_real_workflow_string_scalar_contract(self) -> None:
+        """Parse the actual CI authority and reject noncanonical timeout forms via its loader."""
+        self.assertEqual(check_linux.gate_seconds(), 180 * 60)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            path = root / ".github/workflows/ci.yml"
+            path.parent.mkdir(parents=True)
+            for value in (
+                "1",
+                "180",
+                "0",
+                "-1",
+                "+1",
+                "01",
+                "1.0",
+                " 1",
+                "true",
+                "١٨٠",
+                "${{ 180 }}",
+            ):
+                with self.subTest(value=value):
+                    path.write_text(
+                        "jobs:\n  native:\n    timeout-minutes: " + json.dumps(value) + "\n",
+                        encoding="utf-8",
+                    )
+                    with patch("check_linux.ROOT", root):
+                        if value in {"1", "180"}:
+                            self.assertEqual(check_linux.gate_seconds(), int(value) * 60)
+                        else:
+                            with self.assertRaisesRegex(ValueError, "positive integer"):
+                                check_linux.gate_seconds()
+            path.write_text("jobs:\n  native:\n    timeout-minutes: []\n", encoding="utf-8")
+            with (
+                patch("check_linux.ROOT", root),
+                self.assertRaisesRegex(ValueError, "positive integer"),
+            ):
+                check_linux.gate_seconds()

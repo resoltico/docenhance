@@ -7,6 +7,7 @@
 # the links the build claims.
 file(READ "${PROJECT_SOURCE_DIR}/spec/architecture.json" DE_ARCHITECTURE_JSON)
 set_property(GLOBAL PROPERTY DE_ARCHITECTURE_TARGETS "")
+include(ArchitectureClients)
 
 # The layer a first-party library target belongs to, or an empty string.
 function(de_layer_of_target target out)

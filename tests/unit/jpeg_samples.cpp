@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/codec/jpeg.hpp"
 #include "docenhance/core/memory.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 #include "jpeg_fixture.hpp"

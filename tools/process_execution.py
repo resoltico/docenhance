@@ -8,9 +8,11 @@ import contextlib
 import os
 import signal
 import subprocess
+import sys
 import threading
 import time
 from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -18,6 +20,8 @@ if TYPE_CHECKING:
     from pathlib import Path
     from types import FrameType
     from typing import IO
+
+import capture_reader
 
 REAP_RACE_SECONDS = 0.1
 MIN_CAPTURE_BYTES = 2
@@ -202,7 +206,7 @@ def stop_process(process: subprocess.Popen[bytes], *, graceful: bool) -> None:
 def owned_process(
     command: list[str],
     env: dict[str, str],
-    output: IO[bytes] | IO[str] | tuple[IO[bytes], IO[bytes]] | int | None,
+    output: IO[bytes] | IO[str] | tuple[IO[bytes] | int, IO[bytes] | int] | int | None,
     *,
     cwd: Path | None = None,
     graceful: bool = False,
@@ -254,19 +258,17 @@ def bounded_capture(
     if policy.log_limit_bytes < MIN_CAPTURE_BYTES or policy.interval <= 0:
         message = "Invalid bounded capture policy"
         raise ValueError(message)
-    with log.open("wb") as stream:
-        reader: threading.Thread | None = None
-        source: IO[bytes] | None = None
-        failures: list[OSError | ValueError | RuntimeError] = []
-
-        def check_capture() -> None:
-            if failures:
-                message = "Engine output capture failed"
-                raise OSError(message) from failures[0]
-            policy.monitor()
-
-        try:
-            with owned_process(command, env, subprocess.PIPE) as process:
+    stream = log.open("wb")
+    reader: threading.Thread | None = None
+    source: IO[bytes] | None = None
+    failures: list[OSError | ValueError | RuntimeError] = []
+    check = partial(capture_reader.check_capture_reader, failures, policy.monitor)
+    complete = False
+    original: BaseException | None = None
+    try:
+        with owned_process(command, env, subprocess.PIPE) as process:
+            body_complete = False
+            try:
                 if process.stdout is None:
                     message = "Owned process has no output pipe"
                     raise RuntimeError(message)
@@ -277,17 +279,19 @@ def bounded_capture(
                     daemon=True,
                 )
                 reader.start()
-                result = _wait_monitored(process, command, timeout, check_capture, policy.interval)
-        finally:
-            if reader is not None:
-                reader.join(timeout=10)
-                if reader.is_alive():
-                    message = "Engine output reader did not finish"
-                    raise RuntimeError(message)
-            if source is not None:
-                source.close()
-        if failures:
-            message = "Engine output capture failed"
-            raise OSError(message) from failures[0]
-        policy.monitor()
-        return result
+                result = _wait_monitored(process, command, timeout, check, policy.interval)
+                body_complete = True
+            finally:
+                if not body_complete:
+                    original = sys.exception()
+        complete = True
+    finally:
+        failure = capture_reader.capture_failure(original, complete=complete)
+        capture_reader.finish_capture_reader(reader, source, stream, 10, failure)
+        if original is not None:
+            raise original
+    if failures:
+        message = "Engine output capture failed"
+        raise OSError(message) from failures[0]
+    policy.monitor()
+    return result

@@ -1,11 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "contrast_detail.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/image/geometry.hpp"
+#include "docenhance/image/raster.hpp"
 #include "docenhance/methods/contrast.hpp"
 
 #include <algorithm>
 #include <cstdint>
+#include <span>
 namespace docenhance::methods {
 namespace {
 double center(std::uint32_t index, std::uint32_t size, std::uint32_t divisions) {
@@ -36,7 +38,7 @@ Neighbors neighbors(std::uint32_t coordinate, std::uint32_t size, std::uint32_t 
     return {.first = divisions - 1, .second = divisions - 1, .weight = 0};
 }
 double contextual(double f, std::uint32_t index, const ClaheMaps& maps) {
-    if (maps.identity.at(index)) {
+    if (std::span{maps.identity}.subspan(index, 1).front()) {
         return f;
     }
     const auto knots = maps.knots.view().row(index);
@@ -49,11 +51,11 @@ double interpolate(double first, double second, double weight) {
     return first == second ? first : first + (weight * (second - first));
 }
 } // namespace
-double clahe_candidate(double f, image::RowRange position, image::Extent extent,
-                       const Clahe& method, const ClaheMaps& maps) {
+double clahe_candidate(double f, image::Coordinate position, image::Extent extent,
+                       const Clahe& method, const ClaheMaps& maps) noexcept {
     const auto p = method.parameters();
-    const auto horizontal = neighbors(position.first, extent.width, p.grid_columns);
-    const auto vertical = neighbors(position.row, extent.height, p.grid_rows);
+    const auto horizontal = neighbors(position.x, extent.width, p.grid_columns);
+    const auto vertical = neighbors(position.y, extent.height, p.grid_rows);
     const auto upper =
         interpolate(contextual(f, (vertical.first * p.grid_columns) + horizontal.first, maps),
                     contextual(f, (vertical.first * p.grid_columns) + horizontal.second, maps),

@@ -74,7 +74,7 @@
         "de_image",
         "de_methods"
       ],
-      "max_len": 200
+      "max_len": 343
     },
     "cancellation": {
       "source": "cancellation.cpp",
@@ -110,6 +110,7 @@
       "source": "illumination.cpp",
       "links": [
         "de_core",
+        "de_exec",
         "de_image",
         "de_methods"
       ],
@@ -146,7 +147,7 @@
     "denoising": {
       "source": "denoising.cpp",
       "links": [
-        "de_opencv",
+        "de_exec",
         "de_methods",
         "de_image",
         "de_core"
@@ -166,6 +167,7 @@
       "source": "morphology.cpp",
       "links": [
         "de_core",
+        "de_exec",
         "de_image",
         "de_methods"
       ],
@@ -175,6 +177,7 @@
       "source": "tvl1.cpp",
       "links": [
         "de_core",
+        "de_exec",
         "de_image",
         "de_methods"
       ],
@@ -184,6 +187,7 @@
       "source": "contrast.cpp",
       "links": [
         "de_core",
+        "de_exec",
         "de_image",
         "de_methods"
       ],
@@ -193,6 +197,7 @@
       "source": "sharpening.cpp",
       "links": [
         "de_core",
+        "de_exec",
         "de_image",
         "de_methods"
       ],
@@ -202,21 +207,34 @@
       "source": "otsu.cpp",
       "links": [
         "de_core",
+        "de_exec",
         "de_image",
         "de_methods"
       ],
-      "max_len": 171
+      "max_len": 340
     },
     "restoration": {
       "source": "restoration.cpp",
       "links": [
         "de_core",
+        "de_exec",
+        "de_fft",
         "de_image",
-        "de_methods",
-        "de_opencv",
-        "opencv_core"
+        "de_methods"
       ],
       "max_len": 3
+    },
+    "render": {
+      "source": "render.cpp",
+      "links": [
+        "de_pipeline",
+        "de_core",
+        "de_exec",
+        "de_image",
+        "de_methods",
+        "de_codec"
+      ],
+      "max_len": 6252
     }
   }
 }

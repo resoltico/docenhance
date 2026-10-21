@@ -9,12 +9,14 @@ import sys
 import tempfile
 from pathlib import Path
 
+from composition_reference import Nlm, terminal_fixed
+from composition_reference import denoise as nlm_reference
 from continuous_fixtures import RGB, RGBA, Fixture, exif
+from illumination_io import LINEAR, require_output, run
 from illumination_reference import Plane, quantile, surface
 from morphology_reference import background
 from test_cli import RECORD_VERSION, call_json, expect
 from test_continuous import transfer_decode, transfer_encode
-from test_illumination import LINEAR, require_output, run
 from tvl1_reference import TvSettings, solve
 
 WORD_MAX = 65535
@@ -55,9 +57,9 @@ def numerical(exe: Path, root: Path) -> None:
                 "90",
             ],
         )
-        report = response["contrast"]
-        expect(report["method"] == {"id": "C01", "method_version": 1}, "C01 identity")
-        expect(report["measured_samples"] == len(values), "all eligible samples measured")
+        report = response["record"]["execution"]["contrast"]
+        expect(report["method"] == "C01", "C01 identity")
+        expect(report["counts"]["evaluated"] == len(values), "all eligible samples measured")
         expect(
             abs(report["levels"]["low"] - lo) < RANK_TOLERANCE
             and abs(report["levels"]["high"] - hi) < RANK_TOLERANCE,
@@ -69,7 +71,8 @@ def numerical(exe: Path, root: Path) -> None:
             "strict tail clipping excludes equality",
         )
         expect(
-            report["clipped_low_fraction"] == sum(f < lo for f in values) / len(values),
+            report["clipped_low_samples"] / report["counts"]["eligible"]
+            == sum(f < lo for f in values) / len(values),
             "fraction has the declared eligible denominator",
         )
         expect(
@@ -81,7 +84,7 @@ def numerical(exe: Path, root: Path) -> None:
             "independent levels without eight-bit bottleneck",
         )
         output, response = run(exe, root, fixture, ["--contrast", "gamma", "--gamma", "2"])
-        expect(response["contrast"]["method"] == {"id": "C02", "method_version": 1}, "C02 identity")
+        expect(response["record"]["execution"]["contrast"]["method"] == "C02", "C02 identity")
         expect(
             max(
                 abs(p[0] / maximum - f * f)
@@ -110,8 +113,9 @@ def protection_and_noops(exe: Path, root: Path) -> None:
     expect(output.pixels[:2] == fixture.pixels[:2], "exact protected output")
     expected, lo, hi = map_levels([v / WORD_MAX for v in values[2:]], 0.5, 99.5)
     expect(
-        abs(response["contrast"]["levels"]["low"] - lo) < RANK_TOLERANCE
-        and abs(response["contrast"]["levels"]["high"] - hi) < RANK_TOLERANCE,
+        abs(response["record"]["execution"]["contrast"]["levels"]["low"] - lo) < RANK_TOLERANCE
+        and abs(response["record"]["execution"]["contrast"]["levels"]["high"] - hi)
+        < RANK_TOLERANCE,
         "protected values excluded from fitting",
     )
     expect(
@@ -128,14 +132,18 @@ def protection_and_noops(exe: Path, root: Path) -> None:
     ):
         actual, report = run(exe, root, color, options)
         expect(
-            actual == baseline and report["contrast"]["reason"] == reason,
+            actual == baseline and report["record"]["execution"]["contrast"]["reason"] == reason,
             "validated algebraic/flat identity",
         )
-        expect(report["contrast"]["evaluated_samples"] == 0, "no invented pixel execution")
+        expect(
+            report["record"]["execution"]["contrast"]["counts"]["evaluated"] == 0,
+            "no invented pixel execution",
+        )
     mask.write_bytes(Fixture(8, 4, ((1,),) * 32, depth=1).encoded())
     actual, report = run(exe, root, color, ["--contrast", "gamma", "--protect-mask", str(mask)])
     expect(
-        actual == baseline and report["contrast"]["reason"] == "no_eligible_samples",
+        actual == baseline
+        and report["record"]["execution"]["contrast"]["reason"] == "no_eligible_samples",
         "fully protected identity",
     )
     single = Fixture(8, 4, tuple((i * 2000,) for i in range(32)), depth=16)
@@ -144,8 +152,9 @@ def protection_and_noops(exe: Path, root: Path) -> None:
     actual, report = run(exe, root, single, ["--contrast", "levels", "--protect-mask", str(mask)])
     expect(actual == baseline, "one eligible sample amid protected variation is exact identity")
     expect(
-        report["contrast"]["measured_samples"] == 1
-        and report["contrast"]["reason"] == "insufficient_dynamic_range",
+        report["record"]["execution"]["contrast"]["counts"]["eligible"] == 1
+        and report["record"]["execution"]["contrast"]["counts"]["evaluated"] == 0
+        and report["record"]["execution"]["contrast"]["reason"] == "insufficient_dynamic_range",
         "single eligible quantiles are measured and flat",
     )
     mask.write_bytes(Fixture(4, 8, ((1,),) * 32, depth=1).encoded())
@@ -205,14 +214,14 @@ def composition(exe: Path, root: Path) -> None:
             "independent full-precision stage composition",
         )
         expect(
-            report["denoising"]["changed_samples"] > 0
-            and report["contrast"]["changed_samples"] > 0,
+            report["record"]["execution"]["denoising"]["counts"]["changed"] > 0
+            and report["record"]["execution"]["contrast"]["counts"]["changed"] > 0,
             "composition cannot pass using an inactive denoiser/contrast",
         )
         expect(
-            report["illumination"]["application"]["evaluated_samples"] == len(values)
-            and report["denoising"]["evaluated_samples"] == len(values)
-            and report["contrast"]["evaluated_samples"] == len(values),
+            report["record"]["execution"]["illumination"]["counts"]["evaluated"] == len(values)
+            and report["record"]["execution"]["denoising"]["counts"]["evaluated"] == len(values)
+            and report["record"]["execution"]["contrast"]["counts"]["evaluated"] == len(values),
             "prefix counted once",
         )
 
@@ -221,8 +230,12 @@ def nlm_levels_composition(exe: Path, root: Path) -> None:
     """Check D01 feeds C01 and retains its complete observations exactly once."""
     fixture = Fixture(16, 8, tuple((80 + (i % 16) * 5 + (i % 3) * 3,) for i in range(128)))
     denoise = ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]
-    prefix, prefix_report = run(exe, root, fixture, denoise)
-    values = [p[0] / 255 for p in require_output(prefix).pixels]
+    _, prefix_report = run(exe, root, fixture, denoise)
+    initial = [transfer_decode(p[0] / 255) for p in fixture.pixels]
+    filtered, _, _ = nlm_reference(
+        initial, 16, 8, [False] * 128, Nlm(h=3, patch=3, search=7, blend=0.5)
+    )
+    values = [transfer_encode(y) for y in filtered]
     expected, _, _ = map_levels(values, 0.5, 99.5)
     output, report = run(exe, root, fixture, [*denoise, "--contrast", "levels"])
     expect(
@@ -231,11 +244,16 @@ def nlm_levels_composition(exe: Path, root: Path) -> None:
             for p, f in zip(require_output(output).pixels, expected, strict=True)
         )
         < 4 / 255,
-        "D01 to C01 agrees within the independent prefix quantization bound",
+        "independent binary64 D01 to C01 with no saved-prefix quantization",
     )
-    expect(report["denoising"] == prefix_report["denoising"], "D01 observations counted once")
     expect(
-        report["denoising"]["changed_samples"] > 0 and report["contrast"]["changed_samples"] > 0,
+        report["record"]["execution"]["denoising"]
+        == prefix_report["record"]["execution"]["denoising"],
+        "D01 observations counted once",
+    )
+    expect(
+        report["record"]["execution"]["denoising"]["counts"]["changed"] > 0
+        and report["record"]["execution"]["contrast"]["counts"]["changed"] > 0,
         "both D01 and C01 are active",
     )
 
@@ -271,7 +289,8 @@ def color_alpha_and_records(exe: Path, root: Path) -> None:
         "shared color transport rather than channel-wise gamma",
     )
     expect(
-        report["conversion"]["alpha_flattened_pixels"] == sum(p[3] < WORD_MAX for p in pixels),
+        report["record"]["execution"]["interpretation"]["alpha_composited_pixels"]
+        == sum(p[3] < WORD_MAX for p in pixels),
         "alpha counted once",
     )
     bundle = max(
@@ -283,13 +302,50 @@ def color_alpha_and_records(exe: Path, root: Path) -> None:
     record = json.loads(original)
     expect(
         record["record"]["version"] == RECORD_VERSION
-        and record["execution"]["contrast"] == report["contrast"],
+        and record["execution"]["contrast"] == report["record"]["execution"]["contrast"],
         "current response and record agree",
     )
-    record["execution"]["contrast"]["measured_samples"] = 1
+    record["execution"]["contrast"]["counts"]["evaluated"] = 1
     path.write_text(json.dumps(record), encoding="utf-8")
     call_json(exe, ["verify", str(bundle), "--json"], 3)
     path.write_bytes(original)
+
+
+def binary_composition(exe: Path, root: Path) -> None:
+    """Same method prefix feeds one terminal Q16 quantization and actual packed PNG1."""
+    width = height = 32
+    fixture = Fixture(width, height, tuple((80 + (i * 13) % 150,) for i in range(width * height)))
+    values = [p[0] / 255 for p in fixture.pixels]
+    candidates = [f * f for f in values]
+    expected = terminal_fixed([transfer_decode(min(1, max(0, f))) for f in candidates])
+    output, response = run(
+        exe,
+        root,
+        fixture,
+        [
+            "--contrast",
+            "gamma",
+            "--gamma",
+            "2",
+            "--output-mode",
+            "bw",
+            "--binarize",
+            "fixed",
+            "--fixed-threshold",
+            "0.5",
+        ],
+    )
+    actual = require_output(output)
+    expect(
+        actual.depth == 1 and actual.pixels == expected,
+        "independent logical decisions are stored as physical grayPNG1",
+    )
+    facts = response["record"]["execution"]["binarization"]
+    expect(
+        facts["black_samples"] == sum(pixel == (0,) for pixel in expected)
+        and facts["white_samples"] == sum(pixel == (1,) for pixel in expected),
+        "actual terminal counts agree with independent bits",
+    )
 
 
 def admission(exe: Path, root: Path) -> None:
@@ -307,7 +363,6 @@ def admission(exe: Path, root: Path) -> None:
         ["--contrast", "gamma", "--gamma", "5"],
         ["--contrast", "gamma", "--contrast-blend", ""],
         ["--contrast", "clahe"],
-        ["--output-mode", "bw", "--contrast", "off"],
     ):
         run(exe, root, fixture, options, 2)
 
@@ -322,6 +377,7 @@ def main() -> None:
         composition(exe, root)
         nlm_levels_composition(exe, root)
         color_alpha_and_records(exe, root)
+        binary_composition(exe, root)
         admission(exe, root)
     print("PASS: C01/C02 numerical, precision, protection, composition and record contracts")
 

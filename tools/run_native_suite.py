@@ -18,6 +18,8 @@ from typing import Any
 from architecture import load_manifest
 from audit_build import read_cache
 from fuzz_manifest import targets
+from native_journal import snapshot_ctest_output
+from native_output import archive_ctest_output
 from process_execution import bounded_process
 from sanitizer_evidence import check_compilation
 from test_evidence import EvidenceError, complete_junit, discovery
@@ -27,6 +29,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MAX_TEST_PROCESSES = 2
 # Leave a minute for group cleanup and evidence reconciliation inside CMake's 1800-second limit.
 NATIVE_EXECUTION_SECONDS = 1740
+# Operational archive allowance within the same deadline; cleanup can consume this reserve.
+NATIVE_ARCHIVE_SECONDS = 30
 
 
 def layer_records_errors(layers: dict[str, Any], records: dict[str, Any]) -> list[str]:
@@ -41,7 +45,8 @@ def compilation(build: Path) -> None:
     records = json.loads((build / "architecture-targets.json").read_text())
     errors = layer_records_errors(load_manifest().layers, records)
     if errors:
-        raise EvidenceError("; ".join(errors))
+        msg = "; ".join(errors)
+        raise EvidenceError(msg)
     cache = read_cache(build / "CMakeCache.txt")
     entries = json.loads((build / "compile_commands.json").read_text())
     check_compilation(cache, entries)
@@ -104,11 +109,89 @@ def registrations(build: Path, tests: list[dict[str, Any]]) -> set[str]:
     for test in tests:
         if test["name"] in units and (
             Path(test["command"][0]).resolve() != Path(binary).resolve()
-            or test["command"][-2:] != ["--reporter", "xml"]
+            or test["command"][-4:] != ["--reporter", "xml", "--abort", "--invisibles"]
         ):
-            msg = f"Unit case must execute its actual binary with XML evidence: {test['name']}"
+            msg = (
+                "Unit case must execute its actual binary with fail-fast XML evidence: "
+                f"{test['name']}"
+            )
             raise EvidenceError(msg)
     return units
+
+
+def _combined_error(
+    directory: Path, test_error: str, archive_error: BaseException, primary: BaseException | None
+) -> None:
+    """Retain both outcomes; diagnostic archival never converts a failed child to success."""
+    metadata = {
+        "status": "diagnostic_only_error",
+        "test_error": test_error,
+        "archive_error": repr(archive_error),
+    }
+    control = archive_error if not isinstance(archive_error, Exception) else None
+    written = False
+    try:
+        with (directory / "native-run-error.json").open("x", encoding="utf-8") as stream:
+            json.dump(metadata, stream, indent=2)
+            stream.write("\n")
+        written = True
+    finally:
+        if not written:
+            error = sys.exception()
+            archive_error.add_note(f"Failure metadata could not be written: {error}")
+            if control is None and error is not None and not isinstance(error, Exception):
+                control = error
+        if primary is not None:
+            primary.add_note(f"Diagnostic archive also failed: {archive_error!r}")
+            raise primary from archive_error
+        if control is not None:
+            raise control
+        msg = f"{test_error}; diagnostic archive: {archive_error}"
+        raise EvidenceError(msg) from archive_error
+
+
+def _execute_owned(
+    command: list[str], build: Path, directory: Path, deadline: float, expected_count: int
+) -> int:
+    """Archive both raw outputs after bounded_process has reaped its group, even on failure."""
+    remaining = deadline - time.monotonic() - NATIVE_ARCHIVE_SECONDS
+    if remaining <= 0:
+        msg = "Native preflight exhausted the child and diagnostic archive deadline"
+        raise EvidenceError(msg)
+    junit = directory / "ctest.xml"
+    if junit.exists() or junit.is_symlink():
+        msg = "Native evidence directory already contains stale JUnit"
+        raise EvidenceError(msg)
+    before = snapshot_ctest_output(build)
+    failure: BaseException | None = None
+    exit_code: int | None = None
+    journal_status: str | None = None
+    journal_cases: int | None = None
+    child_finished = False
+    try:
+        exit_code = bounded_process(command, dict(os.environ), None, remaining, graceful=True)
+        child_finished = True
+    finally:
+        failure = None if child_finished else sys.exception()
+        archived = False
+        try:
+            retained = archive_ctest_output(build, directory, before, deadline, expected_count)
+            journal_status = retained["journal"]["status"]
+            journal_cases = retained["journal"]["completed_raw_case_count"]
+            archived = True
+        finally:
+            if not archived:
+                error = sys.exception()
+                if error is not None:
+                    state = repr(failure) if failure is not None else f"CTest exit {exit_code}"
+                    _combined_error(directory, state, error, failure)
+    if exit_code == 0 and journal_status != "diagnostic_only_complete":
+        msg = "A partial CTest journal cannot qualify successful native execution"
+        raise EvidenceError(msg)
+    if exit_code == 0 and journal_cases != expected_count:
+        msg = "Complete CTest journal case count differs from actual discovery"
+        raise EvidenceError(msg)
+    return exit_code
 
 
 def run(args: argparse.Namespace) -> int:
@@ -126,18 +209,13 @@ def run(args: argparse.Namespace) -> int:
         str(build),
         "--parallel",
         str(args.jobs),
-        "--output-on-failure",
         "--test-output-size-passed",
         str(1024 * 1024),
         "--no-tests=error",
         "--output-junit",
         str(directory / "ctest.xml"),
     ]
-    remaining = deadline - time.monotonic()
-    if remaining <= 0:
-        msg = "Native discovery and compilation checks exhausted the execution deadline"
-        raise EvidenceError(msg)
-    exit_code = bounded_process(command, dict(os.environ), None, remaining, graceful=True)
+    exit_code = _execute_owned(command, build, directory, deadline, len(tests))
     complete_junit(directory / "ctest.xml", {test["name"] for test in tests}, units)
     return exit_code
 

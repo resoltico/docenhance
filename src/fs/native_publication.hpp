@@ -34,7 +34,8 @@ struct BundleStream {
     int (*flush)(std::FILE*) = std::fflush;
     int (*close)(std::FILE*) = std::fclose;
 };
-[[nodiscard]] core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
+[[nodiscard]] core::Result<void> write_bytes(const BundleSlot& slot,
+                                             std::span<const std::byte> content,
                                              const core::Cancellation& cancellation,
                                              BundleStream operations);
 // A single native operation. Unsupported filesystems fail closed, never check-then-rename.
@@ -47,9 +48,9 @@ using PublishRename = std::error_code (*)(const std::filesystem::path&,
                                           const std::filesystem::path&) noexcept;
 // The same transaction with the commit operation supplied, so tests can coordinate cancellation
 // around the native call without timing races.
-[[nodiscard]] core::Result<std::string> publish_bundle(const std::string& output_directory,
-                                                       std::span<const BundleFile> files,
-                                                       const core::Cancellation& cancellation,
-                                                       PublishRename commit,
-                                                       BundleValidation validation = {});
+[[nodiscard]] PublishResult<std::string> publish_bundle(const std::string& output_directory,
+                                                        std::span<const BundleFile> files,
+                                                        const core::Cancellation& cancellation,
+                                                        PublishRename commit,
+                                                        BundleValidation validation = {});
 } // namespace docenhance::fs

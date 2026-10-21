@@ -3,16 +3,9 @@
 #include "docenhance/methods/binarization.hpp"
 
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
-#include "docenhance/methods/fixed_threshold.hpp"
-#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/sauvola.hpp"
 
-#include <cstddef>
-#include <cstdint>
-#include <expected>
 #include <variant>
 
 namespace docenhance::methods {
@@ -30,47 +23,5 @@ core::Result<Sauvola> Sauvola::create(SauvolaParameters parameters) {
 }
 ImplementedMethod describe(const Binarization& method) {
     return std::visit([](const auto& parameters) { return parameters.descriptor(); }, method);
-}
-namespace {
-struct Scratch {
-    std::uint32_t width;
-    unsigned workers;
-    core::Result<std::size_t> operator()(const Otsu& /*method*/) const {
-        return otsu_scratch_bytes;
-    }
-    core::Result<std::size_t> operator()(const FixedThreshold& /*method*/) const {
-        return 0;
-    }
-    core::Result<std::size_t> operator()(const Sauvola& method) const {
-        const auto plan = sauvola_workspace(width, method, workers);
-        return plan ? core::Result<std::size_t>{plan->bytes} : std::unexpected(plan.error());
-    }
-};
-struct Apply {
-    image::PlaneView<const std::uint8_t> source;
-    image::PlaneView<std::uint8_t> destination;
-    BinarizationContext context;
-    core::Result<void> operator()(const Otsu& /*method*/) const {
-        const auto result = otsu(source, destination, context);
-        return result ? core::Result<void>{} : std::unexpected(result.error());
-    }
-    core::Result<void> operator()(const FixedThreshold& method) const {
-        return fixed_threshold(source, destination, method.threshold(),
-                               context.scheduler.get().cancellation());
-    }
-    core::Result<void> operator()(const Sauvola& method) const {
-        return sauvola(source, destination, method, context);
-    }
-};
-} // namespace
-core::Result<std::size_t> scratch_bytes(const Binarization& method, std::uint32_t width,
-                                        unsigned workers) {
-    return std::visit(Scratch{.width = width, .workers = workers}, method);
-}
-core::Result<void> binarize(image::PlaneView<const std::uint8_t> source,
-                            image::PlaneView<std::uint8_t> destination, const Binarization& method,
-                            BinarizationContext context) {
-    return std::visit(Apply{.source = source, .destination = destination, .context = context},
-                      method);
 }
 } // namespace docenhance::methods

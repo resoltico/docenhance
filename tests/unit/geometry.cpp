@@ -3,15 +3,14 @@
 #include "docenhance/image/geometry.hpp"
 
 #include "cancellation_probe.hpp"
-#include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
-#include "docenhance/app/process.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/plane.hpp"
-#include "docenhance/methods/progress.hpp"
-#include "stub_verifier.hpp"
+#include "docenhance/record/codec.hpp"
+#include "docenhance/record/record.hpp"
+#include "execution_fixture.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -20,7 +19,6 @@
 #include <span>
 #include <string>
 #include <type_traits>
-#include <utility>
 
 namespace docenhance::tests {
 namespace {
@@ -132,77 +130,31 @@ TEST_CASE("Rotation checkpoints interrupt within a wide row without timing sleep
 }
 
 namespace {
-class GeometryProcessor final : public app::Processor {
-  public:
-    explicit GeometryProcessor(app::ProcessResult value) : value_(std::move(value)) {}
-    app::ProcessResult process(const app::ProcessRequest& /*request*/,
-                               const core::Cancellation& /*cancellation*/) override {
-        return value_;
-    }
-
-  private:
-    app::ProcessResult value_;
-};
-app::PublishedContinuous geometry_observation() {
-    app::PublishedContinuous value;
-    value.output = "output/result.png";
-    value.run = std::string(32, 'a');
-    value.record = {.sha256 = std::string(64, 'b'), .bytes = 512};
-    value.conversion.source = {.width = 2, .height = 2};
-    value.conversion.output = value.conversion.source;
-    value.conversion.assumed_transfer = true;
-    value.conversion.verified = true;
-    value.stages.illumination.progress = methods::StageProgress::completed;
-    value.stages.illumination.eligible_samples = 4;
-    value.stages.contrast.progress = methods::StageProgress::completed;
-    value.stages.contrast.eligible_samples = 4;
-    value.stages.sharpening.progress = methods::StageProgress::completed;
-    value.stages.sharpening.eligible_samples = 4;
-    value.stages.restoration.progress = methods::StageProgress::completed;
-    value.stages.restoration.eligible_samples = 4;
-    value.stages.denoising.progress = methods::StageProgress::completed;
-    value.stages.denoising.eligible_samples = 4;
-    return value;
-}
-void check_rotation_observation(bool binary, unsigned degrees, unsigned observed) {
-    UnusedVerifier verifier;
+void check_rotation_record(bool binary, unsigned degrees) {
     app::Invocation request;
     request.command = app::Command::process;
     request.operands = {"input.png"};
     request.option(app::OptionId::out_dir) = "output";
     request.option(app::OptionId::output_mode) = binary ? "bw" : "preserve";
     request.option(app::OptionId::rotate) = std::to_string(degrees);
-    const auto turn = required_turn(observed);
-    app::ProcessResult published;
     if (binary) {
-        published = app::PublishedBinary{
-            .output = "output/result.png",
-            .run = std::string(32, 'a'),
-            .record = {.sha256 = std::string(64, 'b'), .bytes = 512},
-            .rotation = turn,
-        };
-    } else {
-        auto continuous = geometry_observation();
-        continuous.conversion.rotation = turn;
-        published = continuous;
+        request.option(app::OptionId::binarize) = "fixed";
     }
-    GeometryProcessor processor{published};
-    const auto result = app::dispatch(request, processor, verifier);
-    if (observed == degrees) {
-        CHECK(result.exit_code() == core::ExitCode::success);
-    } else {
-        const auto failure = std::get<app::Failure>(result.payload).error;
-        CHECK(failure.code == core::ErrorCode::publication_unknown);
-        CHECK(failure.publication == core::Publication::unknown);
-    }
+    const auto produced = observed_publication(request);
+    REQUIRE(record::Codec::encode(produced.record));
+    CHECK(produced.record.request.rotation.degrees() == degrees);
+    CHECK(produced.record.execution.interpretation.rotation.degrees() == degrees);
+    CHECK(produced.record.output.width == (degrees == 90 || degrees == 270 ? 2U : 3U));
+    CHECK(produced.record.output.height == (degrees == 90 || degrees == 270 ? 3U : 2U));
+    auto inconsistent = produced.record;
+    inconsistent.request.rotation = required_turn((degrees + 90) % 360);
+    CHECK(!record::Codec::encode(inconsistent));
 }
 } // namespace
-TEST_CASE("Processing rotation observations must agree with admitted requests", "[geometry][app]") {
+TEST_CASE("Actual non-square rotation records retain selected geometry", "[geometry][record]") {
     for (const bool binary : {false, true}) {
-        for (const auto degrees : {0U, 90U}) {
-            for (const auto observed : {0U, 90U}) {
-                check_rotation_observation(binary, degrees, observed);
-            }
+        for (const auto degrees : {0U, 90U, 180U, 270U}) {
+            check_rotation_record(binary, degrees);
         }
     }
 }

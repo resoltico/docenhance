@@ -11,12 +11,22 @@ from pathlib import Path
 from unittest.mock import patch
 
 from jsonschema import Draft202012Validator, ValidationError
-from quality_evidence_fixture import disk_plan, write_reference
+from quality_evidence_fixture import component_inputs, disk_plan, write_reference
 from quality_fixtures import freeze, healthy_plan
 
-from document_quality import adjudicate, frozen_digest, read_json, validate_plan, validator
-from evaluate_document_quality import evaluate, replay_options
-from quality_evidence import admit, evidence_error
+from document_quality import read_run_json, validate_run
+from evaluate_document_quality import evaluate, read_bundle
+from quality_adjudication import adjudicate
+from quality_collection import BundleChecks, collect
+from quality_evidence import admit, evidence_error, replay_options
+from quality_fidelity import fidelity
+from quality_inputs import FrozenEvidence
+from quality_json import frozen_digest, read_json
+from quality_plan import validate_plan
+from quality_replay import replay
+from quality_report import report as factual_report
+from quality_run import QualityRun
+from quality_schema import validator
 
 
 class QualityProtocolTests(unittest.TestCase):
@@ -31,9 +41,20 @@ class QualityProtocolTests(unittest.TestCase):
             self.assertNotEqual(
                 plan["protocol"]["pages"][0]["assets"], plan["protocol"]["pages"][1]["assets"]
             )
-            with patch("evaluate_document_quality.replay") as replay:
-                report = evaluate(plan, root, executable)
-                replay.assert_not_called()
+            run = QualityRun(component_inputs(plan, root, executable), root / "quality-run.json")
+            try:
+                checks = BundleChecks(run, {}, read_bundle, replay, fidelity)
+                with patch("quality_capture.owned_process") as launch:
+                    pages = collect(plan, checks)
+                    launch.assert_not_called()
+                report = factual_report(
+                    plan, plan["protocol"]["executable_sha256"], pages, run.errors, {}
+                )
+                value = run.finish(report)
+            finally:
+                run.close()
+            validate_run(value)
+            self.assertEqual(read_run_json((root / "quality-run.json").read_bytes()), value)
             validator("report").validate(report)
             self.assertEqual(report["decision"], "abstain")
             self.assertEqual(len(report["evidence"]), 2)
@@ -86,11 +107,13 @@ class QualityProtocolTests(unittest.TestCase):
                 (root / paths[field]).write_bytes(b"drift")
                 with (
                     self.subTest(field=field),
-                    patch("evaluate_document_quality.collect") as collect,
-                    self.assertRaises(ValueError),
+                    patch("quality_capture.owned_process") as launch,
+                    self.assertRaises((OSError, ValueError)),
                 ):
-                    evaluate(plan, root, executable)
-                collect.assert_not_called()
+                    evaluate(plan, root, executable, root / "quality-run.json")
+                self.assertFalse((root / "quality-run.json").exists())
+                self.assertFalse(any(root.glob("quality-run-*")))
+                launch.assert_not_called()
 
     def test_independent_receipt_and_assignment_contents_bind_exact_protocol(self) -> None:
         """Matching file hashes do not make a wrong receipt or assignment coherent."""
@@ -111,7 +134,7 @@ class QualityProtocolTests(unittest.TestCase):
                         root, "receipt.json", {"protocol_sha256": plan["protocol_sha256"]}
                     )
                 with self.subTest(field=field), self.assertRaises(ValueError):
-                    admit(plan, root, executable, replay_options)
+                    admit(plan, root, executable, replay_options, FrozenEvidence(plan, root))
 
     def test_strict_json_and_obsolete_protocol_shapes_are_refused(self) -> None:
         """Duplicate decoded keys, nonfinite values and invalid Unicode never acquire identities."""
@@ -166,12 +189,12 @@ class QualityProtocolTests(unittest.TestCase):
                 root, "receipt.json", {"protocol_sha256": plan["protocol_sha256"]}
             )
             validate_plan(plan)
-            admit(plan, root, executable, replay_options)
+            admit(plan, root, executable, replay_options, FrozenEvidence(plan, root))
             plan["protocol"]["tuning"]["receipt"] = write_reference(
                 root, "tuning.json", {"tuning_corpus_sha256": "a" * 64}
             )
             with self.assertRaisesRegex(ValueError, "Tuning receipt"):
-                admit(plan, root, executable, replay_options)
+                admit(plan, root, executable, replay_options, FrozenEvidence(plan, root))
 
     def test_derived_schema_error_is_concise_without_changing_raw_evidence(self) -> None:
         """Derived prose changes; byte-identified declared evidence remains intact."""

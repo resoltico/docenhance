@@ -5,6 +5,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
+#include "encoded_bytes.hpp"
 #include "png_metadata.hpp"
 
 #include <cstddef>
@@ -37,9 +38,9 @@ core::Result<void> psf_header(std::span<const std::uint8_t> bytes) {
     return {};
 }
 } // namespace
-core::Result<image::Raster> decode_psf_png(std::span<const std::uint8_t> bytes,
-                                           core::Budget& budget,
+core::Result<image::Raster> decode_psf_png(std::span<const std::byte> input, core::Budget& budget,
                                            const core::Cancellation& cancellation) {
+    const auto bytes = encoded_bytes(input);
     const auto admitted = psf_header(bytes);
     if (!admitted) {
         return std::unexpected(admitted.error());

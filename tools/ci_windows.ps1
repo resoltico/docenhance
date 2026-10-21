@@ -9,7 +9,15 @@ $devshell = Join-Path $installation 'Common7\Tools\Launch-VsDevShell.ps1'
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw 'MSVC developer environment was not activated' }
 python -m unittest discover -s tests/tooling -p test_build_coverage.py -v
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-cmake --workflow --preset release
+python tools/windows_resource_proof.py snapshot
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-python tools/package_smoke.py --build out/release
-exit $LASTEXITCODE
+cmake --workflow --preset release
+$releaseStatus = $LASTEXITCODE
+if ($releaseStatus -eq 0) {
+    python tools/package_smoke.py --build out/release
+    $releaseStatus = $LASTEXITCODE
+}
+python tools/windows_resource_proof.py complete --release-exit $releaseStatus
+$proofStatus = $LASTEXITCODE
+if ($releaseStatus -ne 0) { exit $releaseStatus }
+exit $proofStatus

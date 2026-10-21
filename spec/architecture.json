@@ -45,7 +45,9 @@
     ]
   },
   "clients": {
-    "fuzz/cli.cpp": "cli"
+    "fuzz/cli.cpp": "cli",
+    "fuzz/render.cpp": "pipeline",
+    "tools/native_schema.cpp": "cli"
   },
   "packages": {
     "nlohmann_json": {
@@ -54,18 +56,6 @@
       ],
       "headers": [
         "nlohmann/"
-      ]
-    },
-    "opencv": {
-      "targets": [
-        "opencv_core",
-        "opencv_flann",
-        "opencv_geometry",
-        "opencv_imgproc",
-        "opencv_photo"
-      ],
-      "headers": [
-        "opencv2/"
       ]
     },
     "lcms": {
@@ -135,6 +125,14 @@
         "zlib.h",
         "zconf.h"
       ]
+    },
+    "pocketfft": {
+      "targets": [
+        "DE::pocketfft"
+      ],
+      "headers": [
+        "pocketfft_hdronly.h"
+      ]
     }
   },
   "layers": {
@@ -181,7 +179,8 @@
       "uses": [
         "core",
         "exec",
-        "image"
+        "image",
+        "fft"
       ],
       "external": []
     },
@@ -191,7 +190,8 @@
       "uses": [
         "core",
         "image",
-        "methods"
+        "methods",
+        "record"
       ],
       "external": [],
       "may_catch": true
@@ -206,9 +206,7 @@
         "image",
         "methods"
       ],
-      "external": [
-        "nlohmann_json"
-      ]
+      "external": []
     },
     "cli": {
       "target": "de_cli",
@@ -228,18 +226,19 @@
       "target": "de_host",
       "summary": "Executes admitted requests using codecs, kernels and publication",
       "uses": [
-        "app",
-        "codec",
-        "color",
         "core",
         "exec",
-        "fs",
         "image",
         "methods",
-        "opencv",
-        "record"
+        "app",
+        "record",
+        "fs",
+        "codec",
+        "pipeline",
+        "color"
       ],
-      "external": []
+      "external": [],
+      "may_catch": true
     },
     "entry": {
       "target": "docenhance",
@@ -268,19 +267,6 @@
       ],
       "may_catch": true,
       "may_allocate": true
-    },
-    "opencv": {
-      "target": "de_opencv",
-      "summary": "Bounded CPU OpenCV NLM and Fourier restoration execution",
-      "uses": [
-        "core",
-        "image",
-        "methods"
-      ],
-      "external": [
-        "opencv"
-      ],
-      "may_catch": true
     },
     "record": {
       "target": "de_record",
@@ -315,11 +301,9 @@
     },
     "fs": {
       "target": "de_fs",
-      "summary": "Snapshots, digest, file-backed codec streams, owned staging, exclusive publication and bundle reading",
+      "summary": "Bounded immutable snapshots, digest, owned byte staging, exclusive publication and bundle reading",
       "uses": [
-        "codec",
-        "core",
-        "image"
+        "core"
       ],
       "external": [
         "picosha2"
@@ -332,6 +316,34 @@
       "allow_calls": [
         "fopen"
       ]
+    },
+    "fft": {
+      "target": "de_fft",
+      "summary": "Charged binary64 block Fourier transforms and foreign exception containment",
+      "uses": [
+        "core",
+        "exec",
+        "image"
+      ],
+      "external": [
+        "pocketfft"
+      ],
+      "may_catch": true,
+      "may_allocate": true
+    },
+    "pipeline": {
+      "target": "de_pipeline",
+      "summary": "Pure owned interpretation, fixed eager methods and verified encoded outputs",
+      "uses": [
+        "core",
+        "exec",
+        "image",
+        "methods",
+        "codec",
+        "color"
+      ],
+      "external": [],
+      "may_catch": true
     }
   }
 }

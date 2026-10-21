@@ -1,6 +1,6 @@
 # Dependency policy
 
-`deps/lock.json` is the sole authoritative catalog of selected upstream sources: names, release
+`deps/lock.json` is the sole authoritative catalog of selected upstream sources: names, immutable source
 identities, transport, cryptographic digests, declared licenses and distribution scope. Do not copy
 or update an individual dependency version in this document.
 
@@ -17,7 +17,8 @@ Acquisition is explicit:
 cmake -P cmake/AcquireDependencies.cmake
 ```
 
-Each source is checked against its declared release object or archive digest, then inventoried into
+Each Git source is checked against its declared release-tag object or exact immutable commit;
+archives are checked against their declared digest. Verified sources are then inventoried into
 a receipt in `.cache/deps/receipts`. Every build re-verifies that receipt before using the cache. Archive source bytes must also
 match the original digest-checked archive; changing both a source tree and its receipt cannot
 override the lock. Selected source archives admit bounded regular files/directories in one root,
@@ -36,7 +37,7 @@ Source bytes are architecture-independent; OS separation preserves filesystem be
 pretending to identify a native compiler configuration. No build tree, installed prefix, object,
 application binary or prior test result is restored. Native and fuzz jobs build fresh configurations
 and retain source, feature, compilation, sanitizer, test and package checks. See the
-[CI cache and replay ownership](ci-performance.md).
+[CI cache and replay ownership](quality.md#ci-source-caching-and-replay-ownership).
 
 The private zlib build retains its in-memory compression/decompression core and excludes the
 unused gzip-file translation units. Its upstream recipe identity is reviewed before adaptation;
@@ -49,7 +50,7 @@ at depth <=16, while record/response builders have fixed typed shapes. The sourc
 attribution are untouched. Feature policy pins the reviewed source-header digest; the build audit
 compares the installed header with the private build input and an independent reviewed output
 digest. Allocation-failure tests establish the
-cleanup behavior separately from that byte-identity check. [Bundle resource bounds](bundles.md#reading-a-bundle-back) and native allocation-failure controls constrain this behavior.
+cleanup behavior separately from that byte-identity check. [Bundle resource bounds](record.md#reading-a-bundle-back) and native allocation-failure controls constrain this behavior.
 Native C++ integrations must consistently use the corrected installed header from the project's
 private prefix; mixing it with stock JSON headers would violate the inline definition contract.
 
@@ -65,9 +66,8 @@ codec fuzz closure. This private TIFF prefix is not a general-purpose TIFF SDK.
 
 The lock distinguishes `runtime-candidate` dependencies from test-only dependencies. A selected
 source is not automatically a runtime feature: a layer may use it only when
-`spec/architecture.json` grants that package to the layer and the code actually includes it. The
-current permitted OpenCV module closure is `core`, `flann`, `geometry`, `imgproc`, and `photo`.
-The selected codecs, OpenCV and Little CMS do not authorize image decoding or processing
+`spec/architecture.json` grants that package to the layer and the code actually includes it.
+The selected codecs, pocketfft and Little CMS do not authorize image decoding or processing
 until their complete contracts and tests exist.
 
 ## Attribution and release review
@@ -106,10 +106,9 @@ evidence require review. A valid OSV `modified` timestamp is observation metadat
 change the review binding by itself; every other field, including unknown fields and withdrawal,
 remains bound. Missing or malformed timestamps are refused. See the
 [OSV field definitions](https://ossf.github.io/osv-schema/#id-modified-fields).
-The reviewed exclusions concern zlib gzip-file writing, OpenCV JPEG-2000 decoding,
-and OSV-2026-1068 in libjpeg-turbo's TurboJPEG compression API. The first is removed
-from the private build; OpenCV's affected imgcodecs/OpenJPEG path is outside the
-module/provider closure. The JPEG advisory reports tj3Compress8 -> jpeg_abort:
+The reviewed exclusions concern zlib gzip-file writing and OSV-2026-1068 in
+libjpeg-turbo's TurboJPEG compression API. Gzip-file writing is removed from the
+private build. The JPEG advisory reports tj3Compress8 -> jpeg_abort:
 the pinned build excludes the TurboJPEG library and compression entry point, while
 retaining the classic libjpeg decoder (which also uses jpeg_abort). The configured
 WITH_TURBOJPEG=OFF alone is insufficient: the native build audit independently

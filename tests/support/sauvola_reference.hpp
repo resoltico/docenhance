@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/image/plane.hpp"
+#include "docenhance/methods/binarization.hpp"
 
 #include <cmath>
 #include <cstdint>
@@ -50,4 +51,22 @@ struct SauvolaReference {
         return source.row(y).subspan(x, 1).front() <= threshold ? 0 : UINT8_MAX;
     }
 };
+inline std::uint8_t singleton_row_reference(image::PlaneView<const std::uint8_t> source,
+                                            std::uint32_t x, const methods::Sauvola& method) {
+    std::uint64_t sum = 0;
+    std::uint64_t squares = 0;
+    const auto radius = static_cast<std::int64_t>(method.window() / 2);
+    for (auto dx = -radius; dx <= radius; ++dx) {
+        const auto column = mirror_coordinate(static_cast<std::int64_t>(x) + dx, source.width());
+        const std::uint64_t p = source.row(0).subspan(column, 1).front();
+        sum += p * method.window();
+        squares += p * p * method.window();
+    }
+    const auto count = static_cast<std::uint64_t>(method.window()) * method.window();
+    const auto n = static_cast<double>(count);
+    const auto mean = static_cast<double>(sum) / n;
+    const auto deviation = std::sqrt(static_cast<double>((count * squares) - (sum * sum))) / n;
+    const auto threshold = mean * (1.0 + (method.k() * ((deviation / (255.0 * method.r())) - 1.0)));
+    return source.row(0).subspan(x, 1).front() <= threshold ? 0 : 1;
+}
 } // namespace docenhance::tests

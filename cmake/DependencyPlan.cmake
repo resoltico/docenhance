@@ -3,8 +3,7 @@
 # The actual serial dependency closure, shared by configuration, verification and importing.
 include_guard(GLOBAL)
 set(DE_SELECTED_DEPENDENCIES zlib jpeg png tiff)
-list(APPEND DE_SELECTED_DEPENDENCIES opencv)
-list(APPEND DE_SELECTED_DEPENDENCIES lcms json picosha2)
+list(APPEND DE_SELECTED_DEPENDENCIES lcms json picosha2 pocketfft)
 if(DE_BUILD_TESTS)
   list(APPEND DE_SELECTED_DEPENDENCIES catch2)
 endif()

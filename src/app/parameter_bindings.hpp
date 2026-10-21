@@ -7,7 +7,6 @@
 #include "docenhance/methods/parameters.hpp"
 
 #include <string_view>
-#include <utility>
 #include <variant>
 namespace docenhance::app {
 template <typename Parameters>
@@ -97,11 +96,8 @@ bind_parameters<methods::WienerParameters>(const SuppliedOptions& options) {
         }
         p.psf = psf;
     } else if (*kind == "kernel") {
-        methods::FilePsf psf;
-        if (!assign_supplied(options, OptionId::psf_file, psf.path)) {
-            return binding_error();
-        }
-        p.psf = std::move(psf);
+        const methods::Kernel psf;
+        p.psf = psf;
     } else {
         return binding_error();
     }

@@ -16,6 +16,6 @@ inline constexpr std::uint32_t psf_dimension_max = core::psf_dimension_max;
 inline constexpr std::size_t psf_encoded_bytes_max = core::psf_encoded_bytes_max;
 // Raw stored 8/16-bit gray PNG coefficients. No alpha, color, orientation or profile transform.
 [[nodiscard]] core::Result<image::Raster>
-decode_psf_png(std::span<const std::uint8_t> bytes, core::Budget& budget,
+decode_psf_png(std::span<const std::byte> input, core::Budget& budget,
                const core::Cancellation& cancellation = {});
 } // namespace docenhance::codec

@@ -13,15 +13,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-if TYPE_CHECKING:
-    from collections.abc import Iterator
-
 from tools_path import ROOT
 
 from check_advisories import scan
+from fuzz_archive_inputs import source_entries
 from fuzz_manifest import targets
-from package_fuzz_evidence import ArchiveWriter, archive_evidence, describe, source_entries
+from package_fuzz_evidence import ArchiveWriter, archive_evidence, describe
 from triage_fuzz_findings import triage
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 class WeeklyEvidenceTests(unittest.TestCase):
@@ -72,8 +73,8 @@ class WeeklyEvidenceTests(unittest.TestCase):
                 self.fail("Inventory continued past its admitted entry budget")
 
             with (
-                patch("package_fuzz_evidence.MAX_FILES", 2),
-                patch("package_fuzz_evidence._walk_entries", growing_tree),
+                patch("fuzz_archive_inputs.MAX_FILES", 2),
+                patch("fuzz_archive_inputs._walk_entries", growing_tree),
                 self.assertRaisesRegex(ValueError, "archive budget"),
             ):
                 source_entries(build)
@@ -88,7 +89,7 @@ class WeeklyEvidenceTests(unittest.TestCase):
             output = build / "evidence.tar.gz"
             output.write_bytes(b"previous archive")
             with (
-                patch("package_fuzz_evidence.MAX_SOURCE_BYTES", 1),
+                patch("fuzz_archive_inputs.MAX_SOURCE_BYTES", 1),
                 self.assertRaisesRegex(ValueError, "archive budget"),
             ):
                 archive_evidence(build, "afl", "a" * 40, output)
@@ -138,7 +139,8 @@ class WeeklyEvidenceTests(unittest.TestCase):
             (work / "ctest.xml").write_text("<testsuites/>")
             (work / "ctest.log").write_text("fake")
             self.assertEqual(
-                describe(build, "afl", "a" * 40)["state"], "campaign_failed_or_incomplete"
+                describe(source_entries(build), "afl", "a" * 40)["state"],
+                "campaign_failed_or_incomplete",
             )
             for target in targets():
                 child = work / f"{target.name}-sample"
@@ -146,10 +148,13 @@ class WeeklyEvidenceTests(unittest.TestCase):
                 (child / "result.json").write_text(
                     json.dumps({"target": target.name, "passed": True})
                 )
-            self.assertEqual(describe(build, "afl", "a" * 40)["state"], "complete_campaign")
+            self.assertEqual(
+                describe(source_entries(build), "afl", "a" * 40)["state"], "complete_campaign"
+            )
             (work / f"{targets()[0].name}-sample/result.json").unlink()
             self.assertEqual(
-                describe(build, "afl", "a" * 40)["state"], "campaign_failed_or_incomplete"
+                describe(source_entries(build), "afl", "a" * 40)["state"],
+                "campaign_failed_or_incomplete",
             )
 
     def test_unsafe_evidence_and_unpinned_source_are_rejected(self) -> None:

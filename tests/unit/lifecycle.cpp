@@ -1,55 +1,55 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "cancellation_probe.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/execution_control.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/core/cancellation.hpp"
+#include "docenhance/app/response.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/linear.hpp"
-#include "docenhance/image/plane.hpp"
-#include "docenhance/methods/contrast.hpp"
+#include "docenhance/exec/concurrency.hpp"
+#include "docenhance/exec/scheduler.hpp"
+#include "docenhance/fs/digest.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/restoration.hpp"
-#include "docenhance/methods/sharpening.hpp"
-#include "docenhance/methods/stages.hpp"
-#include "docenhance/methods/surface.hpp"
-#include "linear_fixture.hpp"
-#include "protection.hpp"
+#include "docenhance/methods/plan.hpp"
+#include "docenhance/methods/report_values.hpp"
+#include "docenhance/methods/surface_facts.hpp"
+#include "docenhance/methods/tvl1_facts.hpp"
+#include "docenhance/pipeline/render.hpp"
+#include "failure_transport_fixture.hpp"
+#include "png_fixture.hpp"
 #include "stub_verifier.hpp"
 
 #include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <limits>
+#include <span>
+#include <stdexcept>
 #include <utility>
+#include <vector>
 namespace docenhance::tests {
 namespace {
 class LifecycleProcessor final : public app::Processor {
   public:
-    explicit LifecycleProcessor(methods::StageObservations observations,
-                                core::ErrorCode code = core::ErrorCode::numerical)
-        : observations_(std::move(observations)), code_(code) {}
+    explicit LifecycleProcessor(app::ProcessFailure failure) : failure_(std::move(failure)) {}
     app::ProcessResult process(const app::ProcessRequest& /*request*/,
-                               const core::Cancellation& /*cancellation*/) override {
+                               const app::ExecutionControl& /*control*/) override {
         ++calls_;
-        return app::process_failure({.code = code_, .message = "Observed source failure"},
-                                    observations_);
+        return std::unexpected(failure_);
     }
     [[nodiscard]] unsigned calls() const noexcept {
         return calls_;
     }
 
   private:
-    methods::StageObservations observations_;
     unsigned calls_ = 0;
-    core::ErrorCode code_;
+    app::ProcessFailure failure_;
 };
 app::Invocation lifecycle_request() {
     app::Invocation request;
@@ -57,150 +57,285 @@ app::Invocation lifecycle_request() {
     request.operands = {"input.png"};
     request.option(app::OptionId::out_dir) = "output";
     request.option(app::OptionId::illumination) = "surface";
+    request.option(app::OptionId::background_cell) = "8";
+    request.option(app::OptionId::background_target) = "1";
     request.option(app::OptionId::denoise) = "nlm";
     return request;
 }
-methods::IlluminationReport fitted_surface() {
-    methods::IlluminationReport report;
-    report.requested = methods::SurfaceParameters{};
-    report.progress = methods::StageProgress::completed;
-    report.status = methods::IlluminationStatus::applied;
-    report.cell = 8;
-    report.cells = 16;
-    report.measured_cells = 16;
-    report.background_reference = 0.5;
-    report.predicates = {true, false, false, false, false, false};
-    report.eligible_samples = 1024;
-    report.evaluated_samples = 1024;
-    report.changed_samples = 1;
-    report.solver = methods::SolverReport{.tolerance = 0.001};
-    report.measurements = methods::SurfaceMeasurements{.stride = 1, .count = 1024, .target = 1};
-    return report;
-}
-} // namespace
-TEST_CASE("Completed surface semantic checks are shared by success and failure admission",
-          "[app][surface]") {
-    const auto request = lifecycle_request();
-    const auto admitted = app::prepare_process(request);
-    REQUIRE(admitted);
-    const auto initial =
-        app::initial_stages(std::get<app::ContinuousPlan>(admitted->plan()).photometric);
-    UnusedVerifier verifier;
-    for (unsigned mutation = 0; mutation < 6; ++mutation) {
-        auto stages = initial;
-        stages.illumination = fitted_surface();
-        stages.denoising.progress = methods::StageProgress::preparing;
-        stages.denoising.status = methods::DenoiseStatus::failed;
-        stages.denoising.reason = methods::DenoiseReason::processing_failure;
-        stages.denoising.eligible_samples = 1024;
-        auto& r = stages.illumination;
-        if (mutation == 1) {
-            r.status = methods::IlluminationStatus::disabled;
+pipeline::RenderResult lifecycle_render(core::Budget& budget, const methods::Plan& plan,
+                                        unsigned side = 0) {
+    std::vector<std::uint8_t> samples(1024);
+    for (std::uint32_t y = 0; y < 32; ++y) {
+        for (std::uint32_t x = 0; x < 32; ++x) {
+            samples.at((y * 32) + x) = static_cast<std::uint8_t>(80 + ((x + (3 * y)) % 20));
         }
-        if (mutation == 2) {
-            r.reason = methods::IlluminationReason::zero_strength;
-        }
-        if (mutation == 3) {
-            r.solver.reset();
-        }
-        if (mutation == 4) {
-            REQUIRE(r.measurements.has_value());
-            if (r.measurements) {
-                r.measurements->target = std::numeric_limits<double>::quiet_NaN();
+    }
+    const auto png = make_gray_png({
+        .width = 32,
+        .height = 32,
+        .depth = 8,
+        .interlaced = false,
+        .samples = std::move(samples),
+    });
+    pipeline::Input input;
+    input.encoded().source = budget.allocate(png.size()).value();
+    std::ranges::copy(std::as_bytes(std::span{png}), input.encoded().source.bytes().begin());
+    input.encoded().source_identity = fs::identify(input.encoded().source.bytes()).value();
+    if (side != 0) {
+        std::vector<std::uint8_t> protected_samples(1024, 1);
+        for (unsigned y = 0; y < side; ++y) {
+            for (unsigned x = 0; x < side; ++x) {
+                protected_samples.at((y * 32) + x) = 0;
             }
         }
-        if (mutation == 5) {
-            --r.evaluated_samples;
+        const auto mask = make_gray_png({
+            .width = 32,
+            .height = 32,
+            .depth = 1,
+            .interlaced = false,
+            .samples = std::move(protected_samples),
+        });
+        input.encoded().mask = budget.allocate(mask.size()).value();
+        std::ranges::copy(std::as_bytes(std::span{mask}), input.encoded().mask.bytes().begin());
+        input.encoded().mask_identity = fs::identify(input.encoded().mask.bytes()).value();
+    }
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    return pipeline::render(std::move(input), plan, budget, scheduler);
+}
+app::ProcessFailure after_surface(const pipeline::Rendering& rendered) {
+    app::ProcessFailure failure{
+        .error = {.code = core::ErrorCode::numerical, .message = "Observed source failure"},
+        .failed_stage = methods::Family::denoising,
+    };
+    failure.completed.illumination = rendered.stages.illumination;
+    failure.warning_context.interpretation = rendered.interpretation;
+    return failure;
+}
+void mutate_surface_facts(methods::SurfaceFacts& facts, unsigned mutation) {
+    if (mutation == 1) {
+        facts.disposition = methods::Disposition::no_change;
+    }
+    if (mutation == 2) {
+        facts.reason = methods::SurfaceReason::zero_strength;
+    }
+    if (mutation == 3) {
+        facts.solver.reset();
+    }
+    if (mutation == 4) {
+        REQUIRE(facts.measurements.has_value());
+        if (!facts.measurements.has_value()) {
+            throw std::logic_error("Required test observation is absent");
         }
-        CHECK(methods::valid_illumination_observations(r) == (mutation == 0));
-        LifecycleProcessor processor{stages};
-        const auto outcome = app::dispatch(request, processor, verifier);
-        const auto& failure = std::get<app::Failure>(outcome.payload);
-        CHECK(failure.error.code ==
-              (mutation == 0 ? core::ErrorCode::numerical : core::ErrorCode::publication_unknown));
-        CHECK(processor.calls() == 1);
+        facts.measurements.value().target = std::numeric_limits<double>::quiet_NaN();
+    }
+    if (mutation == 5) {
+        --facts.counts.evaluated;
+    }
+    if (mutation == 6) {
+        REQUIRE(facts.solver.has_value());
+        if (!facts.solver.has_value()) {
+            throw std::logic_error("Required test observation is absent");
+        }
+        facts.solver.value().residual = facts.solver.value().tolerance + 1;
     }
 }
-TEST_CASE("Delegated source failure preserves the preparing consumer and rejects invented models",
-          "[app]") {
+void mutate_tvl1_facts(methods::Tvl1Facts& facts, unsigned mutation) {
+    REQUIRE(facts.solver.has_value());
+    if (!facts.solver.has_value()) {
+        throw std::logic_error("Required test observation is absent");
+    }
+    if (mutation == 1) {
+        // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
+        facts.solver.value().stop = static_cast<methods::Tvl1Stop>(99);
+    }
+    if (mutation == 2) {
+        facts.solver.value().passing_checkpoints = 3;
+    }
+    if (mutation == 3) {
+        facts.solver.value().primal_update = std::numeric_limits<double>::quiet_NaN();
+    }
+    if (mutation == 4) {
+        facts.solver.value().dual_update = 3;
+    }
+    if (mutation == 5) {
+        facts.solver.value().objective_start = -1;
+    }
+    if (mutation == 6) {
+        facts.solver.value().iterations = 0;
+    }
+    if (mutation == 7) {
+        --facts.counts.evaluated;
+    }
+}
+} // namespace
+TEST_CASE(
+    "Actual Surface validators refuse malformed Facts while dispatch retains reported effects") {
     const auto request = lifecycle_request();
     const auto admitted = app::prepare_process(request);
     REQUIRE(admitted);
-    const auto initial =
-        app::initial_stages(std::get<app::ContinuousPlan>(admitted->plan()).photometric);
-    UnusedVerifier verifier;
-    for (unsigned mutation = 0; mutation < 4; ++mutation) {
-        auto stages = initial;
-        stages.illumination = fitted_surface();
-        auto& i = stages.illumination;
-        i.progress = methods::StageProgress::evaluating;
-        i.status = methods::IlluminationStatus::failed;
-        i.reason = methods::IlluminationReason::processing_failure;
-        i.evaluated_samples = 3;
-        stages.denoising.progress = methods::StageProgress::preparing;
-        stages.denoising.eligible_samples = 1024;
-        if (mutation == 1) {
-            stages.denoising.status = methods::DenoiseStatus::failed;
+    core::Budget budget{std::size_t{16} * 1024 * 1024};
+    {
+        auto plan = admitted->plan();
+        plan.photometric.denoising = methods::DenoisingOff{};
+        const auto rendered = lifecycle_render(budget, plan);
+        REQUIRE(rendered);
+        REQUIRE(rendered->stages.illumination.has_value());
+        const auto healthy = after_surface(*rendered);
+        UnusedVerifier verifier;
+        for (unsigned mutation = 0; mutation < 7; ++mutation) {
+            auto failure = healthy;
+            if (!failure.completed.illumination.has_value()) {
+                throw std::logic_error("Required copied observation is absent");
+            }
+            auto& facts = std::get<methods::SurfaceFacts>(failure.completed.illumination.value());
+            mutate_surface_facts(facts, mutation);
+            CHECK(methods::validate(facts) == (mutation == 0));
+            LifecycleProcessor processor{failure};
+            const auto outcome = app::dispatch(request, processor, verifier);
+            const auto& actual = std::get<app::Failure>(outcome.payload);
+            if (mutation == 4) {
+                check_surface_nan_transport(actual, failure);
+            } else {
+                check_failure_transport(actual, failure);
+            }
+            CHECK(app::validate(failure_projection(failure)) == (mutation == 0));
+            CHECK(processor.calls() == 1);
         }
-        if (mutation == 2) {
-            stages.denoising.progress = methods::StageProgress::prepared;
+    }
+    CHECK(budget.used() == 0);
+}
+TEST_CASE(
+    "Wire suffix ordering owns rejection while dispatch transports the reported sparse prefix") {
+    const auto request = lifecycle_request();
+    const auto admitted = app::prepare_process(request);
+    REQUIRE(admitted);
+    core::Budget budget{std::size_t{16} * 1024 * 1024};
+    {
+        auto plan = admitted->plan();
+        plan.photometric.denoising = methods::DenoisingOff{};
+        const auto rendered = lifecycle_render(budget, plan);
+        REQUIRE(rendered);
+        UnusedVerifier verifier;
+        for (unsigned mutation = 0; mutation < 5; ++mutation) {
+            auto invocation = request;
+            auto failure = after_surface(*rendered);
+            if (mutation == 1) {
+                failure.failed_stage = methods::Family::illumination;
+            }
+            if (mutation == 2) {
+                failure.completed.illumination.reset();
+            }
+            if (mutation == 3) {
+                invocation.option(app::OptionId::illumination) = "off";
+                invocation.option(app::OptionId::background_cell).reset();
+                invocation.option(app::OptionId::background_target).reset();
+            }
+            if (mutation == 4) {
+                failure.publication = core::Publication::completed;
+            }
+            REQUIRE(app::prepare_process(invocation));
+            LifecycleProcessor processor{failure};
+            const auto outcome = app::dispatch(invocation, processor, verifier);
+            const auto& actual = std::get<app::Failure>(outcome.payload);
+            check_failure_transport(actual, failure);
+            CHECK(app::validate(failure_projection(failure)) == (mutation != 1 && mutation != 4));
+            CHECK(processor.calls() == 1);
         }
-        if (mutation == 3) {
-            stages.restoration.progress = methods::StageProgress::completed;
+    }
+    CHECK(budget.used() == 0);
+}
+TEST_CASE(
+    "Real explicit I01 applicability failures and automatic skips preserve actual stage truth") {
+    for (const unsigned side : {1U, 8U}) {
+        core::Budget budget{std::size_t{16} * 1024 * 1024};
+        {
+            methods::Plan plan;
+            plan.protection = true;
+            plan.photometric.illumination = methods::Surface::create({.cell = 8}).value();
+            const auto failed = lifecycle_render(budget, plan, side);
+            REQUIRE(!failed);
+            CHECK(failed.error().error.code == core::ErrorCode::method_inapplicable);
+            CHECK(failed.error().error.message == "Insufficient eligible I01 measurements");
+            CHECK(failed.error().failed_stage == methods::Family::illumination);
+            CHECK(!failed.error().completed.illumination);
+            CHECK(!failed.error().completed.denoising);
+            CHECK(!failed.error().completed.restoration);
+            CHECK(!failed.error().completed.contrast);
+            CHECK(!failed.error().completed.sharpening);
+            CHECK(!failed.error().completed.binarization);
+            CHECK(budget.used() == 0);
+            plan.photometric.illumination =
+                methods::Surface::create({.mode = methods::SurfaceMode::automatic, .cell = 8})
+                    .value();
+            const auto skipped = lifecycle_render(budget, plan, side);
+            REQUIRE(skipped);
+            REQUIRE(skipped->stages.illumination.has_value());
+            if (!skipped->stages.illumination.has_value()) {
+                throw std::logic_error("Required test observation is absent");
+            }
+            const auto& facts =
+                std::get<methods::SurfaceFacts>(skipped->stages.illumination.value());
+            CHECK(facts.disposition == methods::Disposition::skipped);
+            CHECK(facts.reason == (side == 1 ? methods::SurfaceReason::insufficient_samples
+                                             : methods::SurfaceReason::insufficient_cells));
+            CHECK(facts.counts.eligible == std::uint64_t{side} * side);
+            CHECK(facts.counts.evaluated == 0);
+            CHECK(facts.counts.changed == 0);
+            CHECK(skipped->output.decoded_and_compared);
         }
-        LifecycleProcessor processor{stages};
-        const auto outcome = app::dispatch(request, processor, verifier);
-        const auto& failure = std::get<app::Failure>(outcome.payload);
-        CHECK(failure.error.code ==
-              (mutation == 0 ? core::ErrorCode::numerical : core::ErrorCode::publication_unknown));
-        CHECK(processor.calls() == 1);
+        CHECK(budget.used() == 0);
     }
 }
-TEST_CASE("Unconverged solver facts remain legitimate failed preparation", "[surface]") {
-    auto report = fitted_surface();
-    report.progress = methods::StageProgress::preparing;
-    report.status = methods::IlluminationStatus::failed;
-    report.reason = methods::IlluminationReason::processing_failure;
-    report.evaluated_samples = 0;
-    report.changed_samples = 0;
-    report.measurements.reset();
-    REQUIRE(report.solver.has_value());
-    if (report.solver) {
-        report.solver->residual = 1;
-    }
-    CHECK(methods::valid_illumination_observations(report));
-    report.progress = methods::StageProgress::prepared;
-    report.status = methods::IlluminationStatus::unresolved;
-    report.reason = methods::IlluminationReason::none;
-    CHECK(!methods::valid_illumination_observations(report));
-}
-TEST_CASE("Disabled protection counting stops within a wide row without allocating", "[host]") {
-    core::Budget budget{std::size_t{1024} * 1024};
-    auto mask = image::Plane<std::uint8_t>::allocate(budget, 3 * image::linear_block_pixels, 1);
-    REQUIRE(mask);
-    std::ranges::fill(mask->view().row(0), 1);
-    const auto held = budget.used();
-    const CheckpointStop stop{core::Checkpoint::measurement, 1};
-    methods::IlluminationReport report;
-    auto observed = host::disabled_protection_observations(mask->view().as_const(),
-                                                           {.width = mask->width(), .height = 1},
-                                                           stop.cancellation(), report);
-    REQUIRE(!observed);
-    CHECK(observed.error().code == core::ErrorCode::cancelled);
-    CHECK(report.progress == methods::StageProgress::preparing);
-    CHECK(report.protected_samples == image::linear_block_pixels);
-    CHECK(budget.used() == held);
-    REQUIRE(host::disabled_protection_observations(
-        mask->view().as_const(), {.width = mask->width(), .height = 1}, {}, report));
-    CHECK(report.complete());
-    CHECK(report.protected_samples == mask->width());
-    CHECK(report.eligible_samples == 0);
-    CHECK(budget.used() == held);
-}
-
-TEST_CASE("Prepared gamma cannot be followed by a completed sharpening identity", "[app]") {
+TEST_CASE("Actual TVL1 and wire validators reject fictional stopping and partial solver values") {
     auto request = lifecycle_request();
     request.option(app::OptionId::illumination) = "off";
+    request.option(app::OptionId::background_cell).reset();
+    request.option(app::OptionId::background_target).reset();
+    request.option(app::OptionId::denoise) = "tvl1";
+    const auto admitted = app::prepare_process(request);
+    REQUIRE(admitted);
+    core::Budget budget{std::size_t{16} * 1024 * 1024};
+    {
+        const auto rendered = lifecycle_render(budget, admitted->plan());
+        REQUIRE(rendered);
+        REQUIRE(rendered->stages.denoising.has_value());
+        UnusedVerifier verifier;
+        for (unsigned mutation = 0; mutation < 8; ++mutation) {
+            app::ProcessFailure failure{
+                .error =
+                    {
+                        .code = core::ErrorCode::numerical,
+                        .message = "After completed denoising",
+                    },
+            };
+            failure.completed.denoising = rendered->stages.denoising;
+            failure.warning_context.interpretation = rendered->interpretation;
+            if (!failure.completed.denoising.has_value()) {
+                throw std::logic_error("Required copied observation is absent");
+            }
+            auto& facts = std::get<methods::Tvl1Facts>(failure.completed.denoising.value());
+            mutate_tvl1_facts(facts, mutation);
+            CHECK(methods::validate(facts) == (mutation == 0));
+            LifecycleProcessor processor{failure};
+            const auto outcome = app::dispatch(request, processor, verifier);
+            const auto& actual = std::get<app::Failure>(outcome.payload);
+            if (mutation == 3) {
+                check_tvl1_nan_transport(actual, failure);
+            } else {
+                check_failure_transport(actual, failure);
+            }
+            CHECK(app::validate(failure_projection(failure)) == (mutation == 0));
+            CHECK(processor.calls() == 1);
+        }
+    }
+    CHECK(budget.used() == 0);
+}
+TEST_CASE("Wire failed contrast excludes later completed sharpening while dispatch retains "
+          "observations") {
+    auto request = lifecycle_request();
+    request.option(app::OptionId::illumination) = "off";
+    request.option(app::OptionId::background_cell).reset();
+    request.option(app::OptionId::background_target).reset();
     request.option(app::OptionId::denoise) = "off";
     request.option(app::OptionId::contrast) = "gamma";
     request.option(app::OptionId::gamma) = "2";
@@ -208,152 +343,30 @@ TEST_CASE("Prepared gamma cannot be followed by a completed sharpening identity"
     request.option(app::OptionId::sharpen_amount) = "0";
     const auto admitted = app::prepare_process(request);
     REQUIRE(admitted);
-    const auto& plan = std::get<app::ContinuousPlan>(admitted->plan());
-    UnusedVerifier verifier;
-    for (const bool later_started : {false, true}) {
-        auto stages = app::initial_stages(plan.photometric);
-        stages.illumination.progress = methods::StageProgress::completed;
-        stages.illumination.eligible_samples = 16;
-        stages.denoising.eligible_samples = 16;
-        stages.restoration.eligible_samples = 16;
-        stages.denoising.progress = methods::StageProgress::completed;
-        stages.restoration.progress = methods::StageProgress::completed;
-        stages.contrast.progress = methods::StageProgress::prepared;
-        stages.contrast.eligible_samples = 16;
-        if (later_started) {
-            stages.sharpening.progress = methods::StageProgress::completed;
-            stages.sharpening.status = methods::SharpenStatus::no_change;
-            stages.sharpening.reason = methods::SharpenReason::zero_amount;
-            stages.sharpening.eligible_samples = 16;
-        }
-        LifecycleProcessor processor{stages};
-        const auto result = app::dispatch(request, processor, verifier);
-        CHECK(std::get<app::Failure>(result.payload).error.code ==
-              (later_started ? core::ErrorCode::publication_unknown : core::ErrorCode::numerical));
-        CHECK(processor.calls() == 1);
-    }
-}
-TEST_CASE("Disabled predecessor entry and counted masks remain truthful on partial returns",
-          "[app]") {
-    app::Invocation request;
-    request.command = app::Command::process;
-    request.operands = {"input.png"};
-    request.option(app::OptionId::out_dir) = "output";
-    request.option(app::OptionId::denoise) = "nlm";
-    request.option(app::OptionId::denoise_blend) = "0";
-    const auto admitted = app::prepare_process(request);
-    REQUIRE(admitted);
-    UnusedVerifier verifier;
-    for (unsigned mutation = 0; mutation < 4; ++mutation) {
-        auto stages =
-            app::initial_stages(std::get<app::ContinuousPlan>(admitted->plan()).photometric);
-        stages.illumination.progress = methods::StageProgress::completed;
-        stages.illumination.eligible_samples = 16;
-        stages.denoising.progress = methods::StageProgress::completed;
-        stages.denoising.status = methods::DenoiseStatus::no_change;
-        stages.denoising.reason = methods::DenoiseReason::zero_blend;
-        stages.denoising.eligible_samples = 16;
-        if (mutation == 1) {
-            stages.illumination = {};
-        }
-        if (mutation == 2) {
-            stages.illumination.progress = methods::StageProgress::preparing;
-        }
-        if (mutation == 3) {
-            --stages.denoising.eligible_samples;
-        }
-        LifecycleProcessor processor{stages};
-        const auto result = app::dispatch(request, processor, verifier);
-        CHECK(std::get<app::Failure>(result.payload).error.code ==
-              (mutation == 0 ? core::ErrorCode::numerical : core::ErrorCode::publication_unknown));
-        CHECK(processor.calls() == 1);
-    }
-}
-
-TEST_CASE("TV-L1 failure reports reject native claims and fictional stopping", "[app][tvl1]") {
-    UnusedVerifier verifier;
-    auto request = lifecycle_request();
-    request.option(app::OptionId::illumination) = "off";
-    request.option(app::OptionId::denoise) = "tvl1";
-    const methods::Tvl1Parameters parameters;
-    for (unsigned mutation = 0; mutation < 8; ++mutation) {
-        methods::DenoisingReport report{
-            .status = methods::DenoiseStatus::failed,
-            .reason = methods::DenoiseReason::processing_failure,
-
-            .progress = methods::StageProgress::preparing,
-            .requested = parameters,
-        };
-        if (mutation == 1) {
-            report.native_calls = 1;
-        }
-        if (mutation == 2) {
-            report.tvl1 = methods::Tvl1Report{
-                .iterations = 20,
-                .stop = methods::Tvl1Stop::tolerance_met,
-                .passing_checkpoints = 2,
+    core::Budget budget{std::size_t{16} * 1024 * 1024};
+    {
+        const auto rendered = lifecycle_render(budget, admitted->plan());
+        REQUIRE(rendered);
+        REQUIRE(rendered->stages.contrast.has_value());
+        REQUIRE(rendered->stages.sharpening.has_value());
+        UnusedVerifier verifier;
+        for (const bool later_completed : {false, true}) {
+            app::ProcessFailure failure{
+                .error = {.code = core::ErrorCode::numerical, .message = "Contrast failed"},
+                .failed_stage = methods::Family::contrast,
             };
+            failure.warning_context.interpretation = rendered->interpretation;
+            if (later_completed) {
+                failure.completed.sharpening = rendered->stages.sharpening;
+            }
+            LifecycleProcessor processor{failure};
+            const auto outcome = app::dispatch(request, processor, verifier);
+            const auto& actual = std::get<app::Failure>(outcome.payload);
+            check_failure_transport(actual, failure);
+            CHECK(app::validate(failure_projection(failure)) == !later_completed);
+            CHECK(processor.calls() == 1);
         }
-        if (mutation == 3) {
-            report.tvl1 = methods::Tvl1Report{.primal_update = 1};
-        }
-        if (mutation >= 4) {
-            report.eligible_samples = 1;
-            report.preparation_charge_peak = mutation == 7 ? 320 : 100000;
-            report.tvl1 = methods::Tvl1Report{
-                .iterations = 20,
-                .passing_checkpoints = mutation == 5 ? 0U : 1U,
-                .dual_update = mutation == 4 ? 1.0 : 0.0,
-                .objective_start = 0,
-                .field_bytes = 64,
-            };
-        }
-        methods::StageObservations stages{.denoising = report};
-        stages.illumination.progress = methods::StageProgress::completed;
-        stages.illumination.eligible_samples = 1;
-        LifecycleProcessor processor{stages};
-        const auto result =
-            std::get<app::Failure>(app::dispatch(request, processor, verifier).payload).error;
-        CHECK(result.publication == ((mutation == 0 || mutation == 6)
-                                         ? core::Publication::not_started
-                                         : core::Publication::unknown));
     }
-}
-
-TEST_CASE("Real explicit Surface applicability refusals retain their specific failed reasons",
-          "[app][surface]") {
-    constexpr image::Extent extent{.width = 32, .height = 32};
-    core::Budget budget{std::size_t{1024} * 1024};
-    LinearFixture source{budget, extent};
-    source.fill(0.5);
-    auto mask = image::Plane<std::uint8_t>::allocate(budget, extent.width, extent.height).value();
-    auto invocation = lifecycle_request();
-    invocation.option(app::OptionId::denoise) = "off";
-    invocation.option(app::OptionId::background_cell) = "8";
-    invocation.option(app::OptionId::protect_mask) = "mask.png";
-    const auto request = app::prepare_process(invocation);
-    REQUIRE(request);
-    const auto& plan = std::get<app::ContinuousPlan>(request->plan()).photometric;
-    UnusedVerifier verifier;
-    for (const unsigned side : {1U, 8U}) {
-        std::ranges::fill(mask.view().storage(), 1);
-        for (unsigned y = 0; y < side; ++y) {
-            std::ranges::fill(mask.view().row(y).first(side), 0);
-        }
-        auto stages = app::initial_stages(plan);
-        auto model = methods::SurfaceModel::prepare({source, mask.view().as_const()},
-                                                    std::get<methods::Surface>(plan.illumination),
-                                                    budget, {}, stages.illumination);
-        REQUIRE(!model);
-        CHECK(model.error().code == core::ErrorCode::method_inapplicable);
-        CHECK(stages.illumination.reason ==
-              (side == 1 ? methods::IlluminationReason::insufficient_samples
-                         : methods::IlluminationReason::insufficient_cells));
-        LifecycleProcessor processor{stages, model.error().code};
-        const auto result = app::dispatch(invocation, processor, verifier);
-        CHECK(std::get<app::Failure>(result.payload).error.code ==
-              core::ErrorCode::method_inapplicable);
-        CHECK(processor.calls() == 1);
-    }
+    CHECK(budget.used() == 0);
 }
 } // namespace docenhance::tests

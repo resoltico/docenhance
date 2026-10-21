@@ -130,12 +130,11 @@ def rejection_cases() -> list[Case]:
             )
         cases.append(
             Case(
-                "binary-reject-" + method,
-                "rejection",
-                "gray8",
+                "binary-common-" + method,
+                "common-pipeline",
+                "shaded",
                 ("--output-mode", "bw", *stage_options(method)),
-                exit_code=2,
-                error="E_ARGUMENT",
+                methods=(method, "B02"),
             )
         )
     for name, options in (

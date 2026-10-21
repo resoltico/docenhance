@@ -10,6 +10,11 @@
 #include <optional>
 
 namespace docenhance::image {
+struct Extent {
+    std::uint32_t width{};
+    std::uint32_t height{};
+    bool operator==(const Extent&) const = default;
+};
 // A clockwise exact permutation, independently admitted from metadata orientation.
 class QuarterTurn {
   public:

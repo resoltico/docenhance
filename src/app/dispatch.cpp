@@ -3,6 +3,7 @@
 #include "docenhance/app/dispatch.hpp"
 
 #include "admission.hpp"
+#include "docenhance/app/execution_control.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
@@ -10,9 +11,7 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/catalog.hpp"
-#include "observations.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -20,7 +19,6 @@
 #include <string>
 #include <type_traits>
 #include <utility>
-#include <variant>
 namespace docenhance::app {
 namespace {
 // Reported, never assumed: these are the lists the layers below actually implement.
@@ -48,56 +46,40 @@ Outcome process(const app::Invocation& invocation, Processor& processor,
     if (!request) {
         return failure(invocation, std::move(request.error()));
     }
+    auto control = prepare_execution(invocation, cancellation);
+    if (!control) {
+        return failure(invocation, std::move(control.error()));
+    }
     if (cancellation.requested(core::Checkpoint::admission)) {
         return failure(invocation, core::cancelled().error());
     }
     // Prepare a complete response before effects: even bad_alloc after commit must not make the
     // CLI report not_started. Returning this fallback during unwinding does not allocate.
     static_assert(std::is_nothrow_move_constructible_v<Outcome>);
-    auto unknown_outcome =
-        failure(invocation, {
-                                .code = core::ErrorCode::publication_unknown,
-                                .message = "Processing did not report its outcome; "
-                                           "inspect the output before retrying",
-                                .publication = core::Publication::unknown,
-                            });
+    auto unknown_outcome = failure(invocation,
+                                   {
+                                       .code = core::ErrorCode::publication_unknown,
+                                       .message = "Processing did not report its outcome; "
+                                                  "inspect the output before retrying",
+                                   },
+                                   core::Publication::unknown);
     try {
-        auto result = processor.process(*request, cancellation);
+        auto result = processor.process(*request, *control);
         if (!result) {
-            return valid_failure(result.error(), *request)
-                       ? succeeded(invocation, std::move(result.error()))
-                       : std::move(unknown_outcome);
+            return succeeded(invocation, std::move(result.error()));
         }
-        if (const auto* const method = std::get_if<BinaryPlan>(&request->plan())) {
-            auto* const image = std::get_if<PublishedBinary>(&*result);
-            if (image == nullptr || !valid_published(*image, *request)) {
-                return unknown_outcome;
-            }
-            return succeeded(invocation, Processed{
-                                             .output = std::move(image->output),
-                                             .method = methods::describe(method->operation),
-                                             .run = std::move(image->run),
-                                             .record = std::move(image->record),
-                                             .source_decoding = image->source_decoding,
-                                             .otsu = image->otsu,
-                                             .rotation = image->rotation,
-                                         });
-        }
-        auto* const image = std::get_if<PublishedContinuous>(&*result);
-        if (image == nullptr || !valid_published(*image, *request)) {
-            return unknown_outcome;
-        }
-        return succeeded(invocation, std::move(*image));
+        return succeeded(invocation, std::move(*result));
     } catch (...) {
         return unknown_outcome;
     }
 }
 } // namespace
-Outcome failure(const app::Invocation& invocation, core::Error error) {
+Outcome failure(const app::Invocation& invocation, core::Error error,
+                core::Publication publication) {
     return {
         .command = invocation.command,
         .build = core::build_facts(),
-        .payload = Failure{.error = std::move(error)},
+        .payload = Failure{.error = std::move(error), .publication = publication},
     };
 }
 namespace {
@@ -111,12 +93,11 @@ Outcome verify(const app::Invocation& invocation, Verifier& verifier,
         return failure(invocation, core::cancelled().error());
     }
     // Read-only execution cannot publish. Prepare fallbacks before opening anything so catches
-    // and malformed returns need no diagnostic allocation after the port starts.
-    auto invalid =
-        failure(invocation, {
-                                .code = core::ErrorCode::invariant,
-                                .message = "Verification returned inconsistent observations",
-                            });
+    // need no diagnostic allocation while containing an execution exception.
+    auto unexpected = failure(invocation, {
+                                              .code = core::ErrorCode::invariant,
+                                              .message = "Unexpected verification exception",
+                                          });
     auto exhausted = failure(invocation, {
                                              .code = core::ErrorCode::resource,
                                              .message = "Verification exhausted a system resource",
@@ -124,21 +105,13 @@ Outcome verify(const app::Invocation& invocation, Verifier& verifier,
     try {
         auto verified = verifier.verify(*request, cancellation);
         if (!verified) {
-            const auto& error = verified.error();
-            if (!error.valid_publication() || error.publication != core::Publication::not_started ||
-                error.code == core::ErrorCode::output_verify ||
-                error.code == core::ErrorCode::method_inapplicable ||
-                error.code == core::ErrorCode::numerical) {
-                return invalid;
-            }
             return failure(invocation, std::move(verified.error()));
         }
-        return valid_verified(*verified, *request) ? succeeded(invocation, std::move(*verified))
-                                                   : std::move(invalid);
+        return succeeded(invocation, std::move(*verified));
     } catch (const std::bad_alloc&) {
         return exhausted;
     } catch (...) {
-        return invalid;
+        return unexpected;
     }
 }
 } // namespace

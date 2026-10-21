@@ -88,6 +88,56 @@ class BinaryHardeningTests(unittest.TestCase):
         self.assertTrue(markers("Windows", headers + "0 Guard Flags\n", ""))
         self.assertTrue(markers("Windows", "Guard\nCF Instrumented\nFID table present", ""))
 
+    def test_lcms_thread_flags_follow_the_requested_native_scope(self) -> None:
+        """Real CMake selection is scoped; this control configures no native compiler or library."""
+        cmake = shutil.which("cmake")
+        self.assertIsNotNone(cmake)
+        with tempfile.TemporaryDirectory(prefix="lcms-thread-recipe-") as temporary:
+            source = Path(temporary)
+            (source / "CMakeLists.txt").write_text(f"""cmake_minimum_required(VERSION 4.4)
+project(NativeFlagSelection NONE)
+set(CMAKE_SYSTEM_NAME Linux)
+include("{ROOT.as_posix()}/cmake/NativeHardening.cmake")
+de_dependency_flags("${{RECIPIENT}}" flags)
+file(WRITE "${{PROJECT_BINARY_DIR}}/arguments.txt" "${{flags}}")
+""")
+            for index, (recipient, enabled) in enumerate(
+                (("lcms", True), ("lcms", False), ("zlib", True))
+            ):
+                build = source / f"build-{index}"
+                result = subprocess.run(
+                    [
+                        str(cmake),
+                        "-S",
+                        str(source),
+                        "-B",
+                        str(build),
+                        "-G",
+                        "Ninja",
+                        "-DCMAKE_BUILD_TYPE=Debug",
+                        f"-DRECIPIENT={recipient}",
+                        f"-DDE_ENABLE_TSAN={'ON' if enabled else 'OFF'}",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=15,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                arguments = (build / "arguments.txt").read_text().split(";")
+                c_flags = next(
+                    value.partition("=")[2].split()
+                    for value in arguments
+                    if value.startswith("-DCMAKE_C_FLAGS:STRING=")
+                )
+                self.assertIn("-fstack-protector-strong", c_flags)
+                wanted = enabled and recipient == "lcms"
+                self.assertEqual("-fsanitize=thread" in c_flags, wanted)
+                if wanted:
+                    self.assertIn("-fno-sanitize-recover=all", c_flags)
+                    self.assertIn("-fno-omit-frame-pointer", c_flags)
+                self.assertFalse(any(value.startswith("-DCMAKE_CXX_FLAGS:") for value in arguments))
+
     def test_real_native_flags_and_binary(self) -> None:
         """Shared objects retain compiler protections in an actual protected executable."""
         cmake = shutil.which("cmake")

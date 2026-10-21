@@ -1,23 +1,29 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "delivery_fixture.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/execution_control.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/cli/run.hpp"
-#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
+#include "docenhance/record/json.hpp"
 #include "docenhance/report/render.hpp"
+#include "execution_exception.hpp"
 #include "stub_verifier.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
+#include <expected>
 #include <ios>
 #include <new>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <variant>
 
 namespace docenhance::tests {
 namespace {
@@ -50,21 +56,23 @@ enum class Behavior {
     allocation_exception,
     unknown_exception,
     refusal,
+    completed_refusal,
 };
 class RecordingProcessor final : public app::Processor {
   public:
     Behavior behavior = Behavior::success;
     unsigned calls = 0;
     bool effect_observed = false;
-    app::ProcessResult process(const app::ProcessRequest& /*request*/,
-                               const core::Cancellation& /*cancellation*/) override {
+    app::ProcessResult process(const app::ProcessRequest& request,
+                               const app::ExecutionControl& /*control*/) override {
         ++calls;
         if (behavior == Behavior::refusal) {
-            return app::process_failure(core::Error{
-                .code = core::ErrorCode::resource,
-                .message = "Reported resource refusal",
-                .publication = core::Publication::not_published,
-            });
+            return app::process_failure(
+                core::Error{
+                    .code = core::ErrorCode::resource,
+                    .message = "Reported resource refusal",
+                },
+                core::Publication::not_published);
         }
         effect_observed = true;
         switch (behavior) {
@@ -73,17 +81,25 @@ class RecordingProcessor final : public app::Processor {
         case Behavior::allocation_exception:
             throw std::bad_alloc{};
         case Behavior::unknown_exception:
-            throw 42; // NOLINT(bugprone-std-exception-baseclass): Exercise catch-all containment.
-        default:
-            return app::PublishedBinary{
-                .output = "result/result.png",
-                .run = std::string(32, 'a'),
-                .record =
+            throw_nonstandard_execution_failure();
+        case Behavior::completed_refusal: {
+            const auto published = delivery_publication(request);
+            app::ProcessFailure failure{
+                .error =
                     {
-                        .sha256 = std::string(64, 'b'),
-                        .bytes = 512,
+                        .code = core::ErrorCode::output_verify,
+                        .message = "Known commit failed later integrity inspection",
                     },
+                .publication = core::Publication::completed,
+                .diagnostics = published.diagnostics,
             };
+            static_cast<methods::StageReports&>(failure.completed) =
+                static_cast<const methods::StageReports&>(published.record.execution);
+            failure.warning_context.interpretation = published.record.execution.interpretation;
+            return std::unexpected(std::move(failure));
+        }
+        default:
+            return delivery_publication(request);
         }
     }
 };
@@ -195,8 +211,7 @@ TEST_CASE("An unreported processing effect has unknown publication") {
         REQUIRE(processor.calls == 1);
         REQUIRE(processor.effect_observed);
         REQUIRE(outcome.exit_code() == core::ExitCode::publication_unknown);
-        REQUIRE(std::get<app::Failure>(outcome.payload).error.publication ==
-                core::Publication::unknown);
+        REQUIRE(std::get<app::Failure>(outcome.payload).publication == core::Publication::unknown);
         std::ostringstream out;
         std::ostringstream err;
         REQUIRE(cli::run(process_args, {.processor = processor, .verifier = verifier}, out, err) ==
@@ -212,9 +227,67 @@ TEST_CASE("Reported processing errors retain their known publication state") {
     processor.behavior = Behavior::refusal;
     const auto outcome = app::dispatch(request(), processor, verifier);
     REQUIRE(outcome.exit_code() == core::ExitCode::processing);
-    const auto& error = std::get<app::Failure>(outcome.payload).error;
-    REQUIRE(error.publication == core::Publication::not_published);
-    REQUIRE(error.message == "Reported resource refusal");
+    const auto& failure = std::get<app::Failure>(outcome.payload);
+    REQUIRE(failure.publication == core::Publication::not_published);
+    REQUIRE(failure.error.message == "Reported resource refusal");
+}
+TEST_CASE("Known commit inspection failure is delivered once without weakening publication") {
+    RecordingProcessor processor;
+    processor.behavior = Behavior::completed_refusal;
+    RecordingBuffer output;
+    RecordingBuffer diagnostic;
+    std::ostream out{&output};
+    std::ostream err{&diagnostic};
+    REQUIRE(cli::run(process_args, {.processor = processor, .verifier = verifier}, out, err) == 5);
+    REQUIRE(processor.calls == 1);
+    REQUIRE(processor.effect_observed);
+    REQUIRE(output.writes == 1);
+    REQUIRE(output.synchronizations == 1);
+    REQUIRE(output.str().contains("E_OUTPUT_VERIFY"));
+    REQUIRE(output.str().contains("\"publication\": \"completed\""));
+    REQUIRE(!output.str().contains("E_PUBLICATION_UNKNOWN"));
+    REQUIRE(!output.str().contains("not_started"));
+    REQUIRE(diagnostic.writes == 0);
+    REQUIRE(diagnostic.synchronizations == 0);
+}
+TEST_CASE("Explicit rendering refusal preserves retained completed and unknown effects") {
+    const std::string malformed(1, static_cast<char>(0xff));
+    for (const auto behavior :
+         std::array{Behavior::completed_refusal, Behavior::standard_exception}) {
+        RecordingProcessor processor;
+        processor.behavior = behavior;
+        auto outcome = app::dispatch(request(), processor, verifier);
+        REQUIRE(processor.calls == 1);
+        REQUIRE(processor.effect_observed);
+        const auto publication = std::get<app::Failure>(outcome.payload).publication;
+        const auto code = std::get<app::Failure>(outcome.payload).error.code;
+        REQUIRE(publication == (behavior == Behavior::completed_refusal
+                                    ? core::Publication::completed
+                                    : core::Publication::unknown));
+        const auto healthy = report::render(outcome, report::Format::json);
+        REQUIRE(healthy);
+        REQUIRE(!healthy->out.empty());
+        REQUIRE(healthy->err.empty());
+        // Corrupt the retained identity after one dispatch to exercise the real renderer
+        // refusal without changing the already observed publication or repeating execution.
+        outcome.build.version = malformed;
+        const auto refused = report::render(outcome, report::Format::json);
+        REQUIRE(!refused);
+        REQUIRE(refused.error().code == core::ErrorCode::invariant);
+        REQUIRE(std::get<app::Failure>(outcome.payload).publication == publication);
+        REQUIRE(std::get<app::Failure>(outcome.payload).error.code == code);
+        REQUIRE(processor.calls == 1);
+        REQUIRE(processor.effect_observed);
+    }
+}
+TEST_CASE("Diagnostic JSON escaping retains the exact owned message") {
+    const std::string message = "quoted \" and backslash \\ and newline\n tab\t caf\xc3\xa9";
+    const auto outcome =
+        app::failure(request(), {.code = core::ErrorCode::input, .message = message});
+    const auto rendered = report::render(outcome, report::Format::json);
+    REQUIRE(rendered);
+    REQUIRE(rendered->err.empty());
+    REQUIRE(record::Json::parse(rendered->out)["error"]["message"] == message);
 }
 TEST_CASE("Malformed UTF-8 cannot cross command or direct application admission") {
     const std::string malformed(1, static_cast<char>(0xff));
@@ -237,7 +310,7 @@ TEST_CASE("Malformed UTF-8 cannot cross command or direct application admission"
             }
             const auto outcome = app::dispatch(invocation, processor, verifier);
             REQUIRE(outcome.exit_code() == core::ExitCode::invocation);
-            REQUIRE(std::get<app::Failure>(outcome.payload).error.publication ==
+            REQUIRE(std::get<app::Failure>(outcome.payload).publication ==
                     core::Publication::not_started);
             REQUIRE(processor.calls == 0);
         }
@@ -249,11 +322,17 @@ TEST_CASE("Diagnostic replacement cannot rewrite a machine-readable identity") {
         app::failure(request(), {.code = core::ErrorCode::input, .message = malformed});
     for (const auto format : std::array{report::Format::json, report::Format::text}) {
         const auto rendered = report::render(failure, format);
-        REQUIRE((rendered.out + rendered.err).contains("The diagnostic was not well-formed UTF-8"));
+        REQUIRE(rendered);
+        REQUIRE(
+            (rendered->out + rendered->err).contains("The diagnostic was not well-formed UTF-8"));
     }
     RecordingProcessor processor;
     auto outcome = app::dispatch(request(), processor, verifier);
-    std::get<app::Processed>(outcome.payload).output = malformed;
-    REQUIRE_THROWS(static_cast<void>(report::render(outcome, report::Format::json)));
+    std::get<app::Published>(outcome.payload).output = malformed;
+    const auto refused = report::render(outcome, report::Format::json);
+    REQUIRE(!refused);
+    REQUIRE(refused.error().code == core::ErrorCode::invariant);
+    REQUIRE(std::holds_alternative<app::Published>(outcome.payload));
+    REQUIRE(outcome.exit_code() == core::ExitCode::success);
 }
 } // namespace docenhance::tests

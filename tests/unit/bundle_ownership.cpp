@@ -10,6 +10,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <filesystem>
 #include <fstream>
+#include <span>
+#include <string_view>
 #include <system_error>
 namespace docenhance::tests {
 TEST_CASE("Bundle cleanup preserves replacement files and directories", "[bundle][publication]") {
@@ -22,7 +24,7 @@ TEST_CASE("Bundle cleanup preserves replacement files and directories", "[bundle
         const auto file = fs::place(stage, "run.json");
         REQUIRE(file);
         const auto& slot = *file;
-        REQUIRE(fs::write_bytes(slot, "owned"));
+        REQUIRE(fs::write_bytes(slot, std::as_bytes(std::span{std::string_view{"owned"}}), {}));
         SECTION("a different object occupies the known file name") {
             std::filesystem::rename(file->path, stage_path / "retained-original");
             std::ofstream{file->path} << "foreign";
@@ -49,7 +51,7 @@ TEST_CASE("Bundle cleanup refuses a link replacement without touching its target
     const auto file = fs::place(stage, "run.json");
     REQUIRE(file);
     const auto& slot = *file;
-    REQUIRE(fs::write_bytes(slot, "owned"));
+    REQUIRE(fs::write_bytes(slot, std::as_bytes(std::span{std::string_view{"owned"}}), {}));
     std::filesystem::rename(file->path, stage.directory / "retained-original");
     std::error_code error;
     std::filesystem::create_symlink(outside, file->path, error);
@@ -67,7 +69,7 @@ TEST_CASE("Bundle cleanup does not traverse a replaced assets directory", "[bund
     const auto file = fs::place(stage, "assets/protect-mask.png");
     REQUIRE(file);
     const auto& slot = *file;
-    REQUIRE(fs::write_bytes(slot, "owned"));
+    REQUIRE(fs::write_bytes(slot, std::as_bytes(std::span{std::string_view{"owned"}}), {}));
     const auto retained = temporary.path / "retained-assets";
     std::filesystem::rename(stage.directory / "assets", retained);
     std::error_code error;
@@ -85,10 +87,10 @@ TEST_CASE("Bundle staging reuses only retained owned directories", "[bundle][pub
     REQUIRE(fs::reserve_stage(stage, temporary.path / "result", {}));
     const auto first = fs::place(stage, "assets/first.png");
     REQUIRE(first);
-    REQUIRE(fs::write_bytes(*first, "first"));
+    REQUIRE(fs::write_bytes(*first, std::as_bytes(std::span{std::string_view{"first"}}), {}));
     const auto second = fs::place(stage, "assets/second.png");
     REQUIRE(second);
-    REQUIRE(fs::write_bytes(*second, "second"));
+    REQUIRE(fs::write_bytes(*second, std::as_bytes(std::span{std::string_view{"second"}}), {}));
     CHECK(stage.created.size() == 3);
     CHECK(stage.owns_entries());
     CHECK(stage.cleanup());

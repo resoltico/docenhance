@@ -61,9 +61,9 @@ class RestrictionPolicyTests(unittest.TestCase):
         """CPU adapters cannot allocate C blocks, escape process control or own new threads."""
         manifest = architecture.load_manifest()
         for call in ("calloc", "realloc", "aligned_alloc", "strdup", "popen", "exit"):
-            self.assertIn(call, manifest.forbidden("opencv", "calls"))
+            self.assertIn(call, manifest.forbidden("fft", "calls"))
         for header in ("latch", "semaphore", "stop_token"):
-            self.assertIn(header, manifest.forbidden("opencv", "headers"))
+            self.assertIn(header, manifest.forbidden("fft", "headers"))
         self.assertNotIn("stop_token", manifest.forbidden("core", "headers"))
         self.assertNotIn("thread", manifest.forbidden("exec", "headers"))
         self.assertNotIn("filesystem", manifest.forbidden("fs", "headers"))
@@ -76,7 +76,7 @@ class RestrictionPolicyTests(unittest.TestCase):
             ("forbidden_calls", []),
             ("may_threads", True),
             ("allow_calls", ["unreviewed"]),
-            ("interface_packages", ["opencv"]),
+            ("interface_packages", ["png"]),
             ("may_thread", "false"),
         ):
             changed = copy.deepcopy(original)
@@ -231,7 +231,9 @@ class ClientReachTests(unittest.TestCase):
 
     def test_real_client_includes_and_links_are_checked(self) -> None:
         """Actual host includes, links and missing registrations fail; a pure client passes."""
-        manifest = architecture.load_manifest()
+        declarations = json.loads(architecture.MANIFEST.read_text(encoding="utf-8"))
+        declarations["clients"] = {"fuzz/cli.cpp": declarations["clients"]["fuzz/cli.cpp"]}
+        manifest = architecture.Manifest(declarations)
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             host = root / "include/docenhance/host/probe.hpp"
@@ -309,6 +311,7 @@ class CMakeRegistrationTests(unittest.TestCase):
             (root / "spec/architecture.json").write_bytes(architecture.MANIFEST.read_bytes())
             text = (
                 "cmake_minimum_required(VERSION 4.4)\nproject(Probe LANGUAGES NONE)\n"
+                f'list(APPEND CMAKE_MODULE_PATH "{(ROOT / "cmake").as_posix()}")\n'
                 f'include("{(ROOT / "cmake/ArchitectureChecks.cmake").as_posix()}")\n'
                 "add_library(options INTERFACE)\nadd_library(DocEnhance::options ALIAS options)\n"
                 "add_library(de_core STATIC IMPORTED)\nadd_library(de_host INTERFACE)\n"

@@ -40,7 +40,6 @@ bool valid_hexadecimal(std::string_view value, std::size_t length) {
            });
 }
 bool valid_instant(std::string_view value) {
-    constexpr std::size_t instant_length = 20;
     if (value.size() != instant_length || value.substr(year_digits, 1) != "-" ||
         value.substr(month_separator, 1) != "-" || value.substr(date_separator, 1) != "T" ||
         value.substr(hour_separator, 1) != ":" || value.substr(minute_separator, 1) != ":" ||

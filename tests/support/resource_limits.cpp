@@ -3,8 +3,9 @@
 #include "allocation_observer.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
-#include "docenhance/methods/surface.hpp"
+#include "docenhance/methods/illumination.hpp"
 #include "docenhance/record/inventory.hpp"
+#include "docenhance/record/record.hpp"
 
 #include <array>
 #include <atomic>

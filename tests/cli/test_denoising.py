@@ -4,46 +4,23 @@
 
 from __future__ import annotations
 
-import json
 import statistics
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
 
-from continuous_fixtures import RGB, Fixture, decode_output, exif
-from test_cli import RECORD_VERSION, call_json, expect
+from codec_samples import oriented_fixture
+from composition_reference import Nlm, denoise, final_codes, linear, terminal_fixed, weight_entries
+from continuous_fixtures import RGB, Fixture, exif
+from denoising_admission import OPTIONS, SIDE, process, record_validation, source_fixture
+from illumination_reference import Plane, surface
+from morphology_reference import background
+from test_cli import call_json, expect
 from test_continuous import transfer_decode, transfer_encode
 
 DATA = Path(__file__).resolve().parents[1] / "fixtures/jpeg"
-SIDE = 64
 ASSESSMENT_THRESHOLD = 100
 COMPOSITION_TOLERANCE = 3
-OPTIONS = ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]
-
-
-def process(
-    exe: Path, root: Path, source: Path, options: list[str]
-) -> tuple[Fixture, dict[str, Any], Path]:
-    """Process to a fresh bundle, validating response and complete standalone verification."""
-    out = root / f"out-{len(list(root.iterdir()))}"
-    response = call_json(exe, ["process", str(source), "--out-dir", str(out), *options, "--json"])
-    call_json(exe, ["verify", str(out), "--json"])
-    record = json.loads((out / "run.json").read_text())
-    expect(record["record"]["version"] == RECORD_VERSION, "new record version")
-    expect(
-        record["execution"]["denoising"] == response["denoising"],
-        "response and record observations agree",
-    )
-    expect(response["denoising"]["progress"] == "completed", "completed D01")
-    return decode_output((out / "result.png").read_bytes()), response, out
-
-
-def source_fixture(root: Path, fixture: Fixture) -> Path:
-    """Create an independent source fixture with a unique name."""
-    path = root / f"source-{len(list(root.iterdir()))}.png"
-    path.write_bytes(fixture.encoded())
-    return path
 
 
 def quality(exe: Path, root: Path) -> None:
@@ -77,8 +54,16 @@ def quality(exe: Path, root: Path) -> None:
                 output.pixels[(y + dy) * SIDE + x + dx][0] >= ASSESSMENT_THRESHOLD,
                 "punctuation remains disconnected",
             )
-    expect(report["denoising"]["status"] == "applied", "working-space modification reported")
-    expect(report["denoising"]["native_calls"] == 1, "verification does not rerun native denoising")
+    expect(
+        report["record"]["execution"]["denoising"]["disposition"] == "applied",
+        "working-space modification reported",
+    )
+    expect(
+        report["record"]["execution"]["denoising"]["counts"]["evaluated"] == SIDE * SIDE
+        and report["record"]["execution"]["denoising"]["weight_table_entries"]
+        == weight_entries(Nlm(h=3)),
+        "actual scalar evaluations and exact-distance table are observed once",
+    )
     print(f"P04 synthetic variance: {before:.6f} -> {after:.6f}; punctuation: 3/3")
 
 
@@ -97,12 +82,16 @@ def protection(exe: Path, root: Path) -> None:
             if value[0]:
                 expect(output.pixels[i] == baseline.pixels[i], "protected output exact")
         expect(
-            response["denoising"]["protected_samples"] == sum(bool(v[0]) for v in mask_values),
+            response["record"]["execution"]["denoising"]["counts"]["protected"]
+            == sum(bool(v[0]) for v in mask_values),
             "mask count",
         )
         zero, report, _ = process(exe, root, source, [*OPTIONS, "--denoise-blend", "0"])
         expect(zero.pixels == baseline.pixels, "zero blend exact")
-        expect(report["denoising"]["reason"] == "zero_blend", "explicit no-op reason")
+        expect(
+            report["record"]["execution"]["denoising"]["reason"] == "zero_blend",
+            "explicit no-op reason",
+        )
     color = Fixture(
         SIDE,
         SIDE,
@@ -116,10 +105,19 @@ def protection(exe: Path, root: Path) -> None:
     constant = source_fixture(root, Fixture(SIDE, SIDE, ((210,),) * (SIDE * SIDE)))
     output, report, _ = process(exe, root, constant, OPTIONS)
     expect(output.pixels == ((210,),) * (SIDE * SIDE), "already-good constant page exact")
-    expect(report["denoising"]["status"] == "no_change", "no correction status")
+    expect(
+        report["record"]["execution"]["denoising"]["disposition"] == "no_change",
+        "no correction status",
+    )
     mask = source_fixture(root, Fixture(SIDE, SIDE, ((255,),) * (SIDE * SIDE)))
     _, report, _ = process(exe, root, constant, [*OPTIONS, "--protect-mask", str(mask)])
-    expect(report["denoising"]["native_calls"] == 0, "fully protected skips native work")
+    facts = report["record"]["execution"]["denoising"]
+    expect(
+        facts["reason"] == "no_eligible_samples"
+        and facts["counts"]["evaluated"] == 0
+        and facts["weight_table_entries"] == 0,
+        "fully protected bypass creates no table or evaluations",
+    )
 
 
 def fidelity(exe: Path, root: Path) -> None:
@@ -182,13 +180,14 @@ def orientations(exe: Path, root: Path) -> None:
 
 
 def composition(exe: Path, root: Path, selection: str = "surface") -> None:
-    """Compare illumination followed by D01 against a serialized illumination intermediate."""
+    """Independent floating I01/I02→D01 reference retains Y until the final quantizer."""
     pixels = tuple(
         (round(65535 * (0.35 + 0.5 * (x / (SIDE - 1))) + (y % 3) * 100),)
         for y in range(SIDE)
         for x in range(SIDE)
     )
-    source = source_fixture(root, Fixture(SIDE, SIDE, pixels, depth=16))
+    fixture = Fixture(SIDE, SIDE, pixels, depth=16)
+    source = source_fixture(root, fixture)
     illumination = [
         "--illumination",
         selection,
@@ -199,51 +198,99 @@ def composition(exe: Path, root: Path, selection: str = "surface") -> None:
         "--bit-depth",
         "16",
     ]
+    original = linear(fixture, 1, None)
+    values = [p[0] for p in original]
+    field = (
+        surface(Plane(values, SIDE, SIDE, [False] * len(values)), 8, 1)
+        if selection == "surface"
+        else background(values, SIDE, SIDE, 8)
+    )
+    illuminated = [
+        min(1, y * min(2, max(1, 0.9 / max(b, 0.02)))) for y, b in zip(values, field, strict=True)
+    ]
+    filtered, _, _ = denoise(
+        illuminated, SIDE, SIDE, [False] * len(values), Nlm(h=3, patch=3, search=7, blend=0.5)
+    )
+    expected = final_codes(original, filtered, 16, gray=True)
     combined, report, _ = process(exe, root, source, [*illumination, *OPTIONS])
-    _, _, intermediate = process(exe, root, source, illumination)
-    sequential, _, _ = process(exe, root, intermediate / "result.png", OPTIONS)
     stale, _, _ = process(exe, root, source, OPTIONS)
     expect(combined.pixels != stale.pixels, "D01 sees illumination rather than stale input")
     expect(
-        max(abs(a[0] - b[0]) for a, b in zip(combined.pixels, sequential.pixels, strict=True))
+        max(abs(a[0] - b[0]) for a, b in zip(combined.pixels, expected, strict=True))
         <= COMPOSITION_TOLERANCE,
-        "composition agrees within intermediate quantization error",
+        "independent full floating composition",
     )
-    expect(report["illumination"]["progress"] == "completed", "illumination completed before D01")
+    facts = report["record"]["execution"]
+    expect(
+        facts["illumination"]["counts"]["evaluated"] == len(values)
+        and facts["denoising"]["counts"]["evaluated"] == len(values),
+        "illumination completes eagerly and each stage is observed once",
+    )
     for mode in ("preserve", "gray"):
         source = root / f"jpeg-{mode}.jpg"
         source.write_bytes((DATA / "gray-document-progressive.jpeg").read_bytes())
         process(exe, root, source, [*OPTIONS, "--output-mode", mode])
 
 
-def record_validation(exe: Path, root: Path) -> None:
-    """Only the current closed record is admitted; old versions and malformed claims are refused."""
-    source = source_fixture(root, Fixture(SIDE, SIDE, ((210,),) * (SIDE * SIDE)))
-    _, _, output = process(exe, root, source, OPTIONS)
-    path = output / "run.json"
-    record = json.loads(path.read_text())
-    for version in (*range(1, RECORD_VERSION), RECORD_VERSION + 1):
-        old = json.loads(json.dumps(record))
-        old["record"]["version"] = version
-        path.write_text(json.dumps(old))
-        call_json(exe, ["verify", str(output), "--json"], 3)
-    for field, value in (
-        ("native_h", 100),
-        ("progress", "prepared"),
-        ("tile_width", 512),
-        ("changed_samples", 1),
-        ("preparation_charge_peak", (1 << 30) + 1),
-    ):
-        bad = json.loads(json.dumps(record))
-        bad["execution"]["denoising"][field] = value
-        path.write_text(json.dumps(bad))
-        call_json(exe, ["verify", str(output), "--json"], 3)
-    path.write_text(json.dumps(record))
+def binary_composition(exe: Path, root: Path) -> None:
+    """NLM modifies Y before terminal Fixed; all eight orientations retain mask coordinates."""
+    width, height = 17, 11
+    for orientation in range(1, 9):
+        fixture = Fixture(
+            width,
+            height,
+            tuple((55 + (i * 37) % 170,) for i in range(width * height)),
+            metadata=((b"eXIf", exif(orientation)),),
+        )
+        source = source_fixture(root, fixture)
+        oriented = oriented_fixture(fixture, orientation)
+        protected = [i % 3 == 0 for i in range(len(oriented.pixels))]
+        mask = source_fixture(
+            root,
+            Fixture(oriented.width, oriented.height, tuple((int(keep),) for keep in protected)),
+        )
+        original = linear(oriented, 1, None)
+        filtered, _, _ = denoise(
+            [p[0] for p in original],
+            oriented.width,
+            oriented.height,
+            protected,
+            Nlm(h=3, patch=3, search=7, blend=0.5),
+        )
+        expected = terminal_fixed(filtered)
+        output, response, _ = process(
+            exe,
+            root,
+            source,
+            [
+                *OPTIONS,
+                "--protect-mask",
+                str(mask),
+                "--output-mode",
+                "bw",
+                "--binarize",
+                "fixed",
+                "--fixed-threshold",
+                "0.5",
+            ],
+        )
+        expect(
+            (output.width, output.height, output.depth) == (oriented.width, oriented.height, 1)
+            and output.pixels == expected,
+            "independent oriented protected NLM terminal logical bits",
+        )
+        facts = response["record"]["execution"]["binarization"]
+        expect(
+            facts["black_samples"] == sum(p == (0,) for p in expected)
+            and facts["white_samples"] == sum(p == (1,) for p in expected),
+            "every pixel including protected destinations is classified",
+        )
 
 
 def rejection(exe: Path, root: Path) -> None:
     """Unsupported combinations, malformed presence, sources and masks cannot disappear."""
     source = source_fixture(root, Fixture(3, 3, ((200,),) * 9))
+    before = set(root.iterdir())
     for options in (
         ["--nlm-h", "3"],
         ["--denoise", "off", "--denoise-blend", "0"],
@@ -251,7 +298,6 @@ def rejection(exe: Path, root: Path) -> None:
         ["--denoise", "nlm", "--nlm-h", "nan"],
         ["--denoise", "nlm", "--nlm-patch", "4"],
         ["--denoise", "nlm", "--nlm-search", "3"],
-        ["--output-mode", "bw", "--denoise", "off"],
     ):
         call_json(
             exe, ["process", str(source), "--out-dir", str(root / "refused"), *options, "--json"], 2
@@ -259,10 +305,19 @@ def rejection(exe: Path, root: Path) -> None:
     result = call_json(
         exe, ["process", str(source), "--out-dir", str(root / "small"), *OPTIONS, "--json"], 4
     )
-    expect(result["denoising"]["status"] == "failed", "shape refusal stage")
+    expect(
+        result["failed_stage"] == "denoising"
+        and result["completed"] == {}
+        and result["publication"] == "not_started",
+        "shape refusal has no invented completed facts",
+    )
+    expect(
+        set(root.iterdir()) == before, "grammar and shape refusals leave no final or staging path"
+    )
     process(exe, root, source, [*OPTIONS, "--denoise-blend", "0"])
     mask = root / "bad-mask.png"
     mask.write_bytes(b"invalid")
+    before = set(root.iterdir())
     call_json(
         exe,
         [
@@ -279,6 +334,7 @@ def rejection(exe: Path, root: Path) -> None:
         ],
         3,
     )
+    expect(set(root.iterdir()) == before, "zero blend still validates mask without publication")
 
 
 def main() -> None:
@@ -291,6 +347,7 @@ def main() -> None:
         fidelity(exe, root)
         orientations(exe, root)
         composition(exe, root)
+        binary_composition(exe, root)
         record_validation(exe, root)
         rejection(exe, root)
 

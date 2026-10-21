@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "verified_on": "2026-09-17",
+  "verified_on": "2026-10-18",
   "pin_policy": "immutable Git object or upstream-archive digest; see docs/decisions.md",
   "dependencies": [
     {
@@ -65,21 +65,6 @@
       "verification_blob_sha": "50e0db0e7f271ae49f562652584d808fc1868100"
     },
     {
-      "name": "opencv",
-      "version": "5.0.0",
-      "transport": "git",
-      "repository": "https://github.com/opencv/opencv.git",
-      "ref": "refs/tags/5.0.0",
-      "object": "9e2ede9628a55ec2742a1b180d3e69b0322281b9",
-      "object_type": "tag",
-      "license": "Apache-2.0",
-      "license_files": [
-        "LICENSE"
-      ],
-      "verification_url": "https://api.github.com/repos/opencv/opencv/git/ref/tags/5.0.0",
-      "scope": "runtime-candidate"
-    },
-    {
       "name": "lcms",
       "version": "lcms2.19.1",
       "transport": "git",
@@ -138,6 +123,22 @@
       ],
       "verification_url": "https://api.github.com/repos/catchorg/Catch2/git/ref/tags/v3.16.0",
       "scope": "test"
+    },
+    {
+      "name": "pocketfft",
+      "version": "c90e55b3d529f8efa40ed01a20de22405f45fc65",
+      "transport": "git",
+      "repository": "https://github.com/mreineck/pocketfft.git",
+      "ref": "c90e55b3d529f8efa40ed01a20de22405f45fc65",
+      "object": "c90e55b3d529f8efa40ed01a20de22405f45fc65",
+      "object_type": "commit",
+      "license": "BSD-3-Clause",
+      "license_files": [
+        "LICENSE.md",
+        "pocketfft_hdronly.h"
+      ],
+      "verification_url": "https://api.github.com/repos/mreineck/pocketfft/git/commits/c90e55b3d529f8efa40ed01a20de22405f45fc65",
+      "scope": "runtime-candidate"
     }
   ]
 }

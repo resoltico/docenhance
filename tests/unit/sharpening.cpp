@@ -6,14 +6,20 @@
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/exec/concurrency.hpp"
+#include "docenhance/exec/scheduler.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
-#include "linear_fixture.hpp"
+#include "docenhance/methods/report_values.hpp"
+#include "docenhance/methods/sharpen_facts.hpp"
+#include "docenhance/methods/unsharp.hpp"
+#include "gamma_fixture.hpp"
+#include "require.hpp"
+#include "sharpen_detail.hpp"
 #include "sharpen_reference.hpp"
+#include "unsharp_working_controls.hpp"
 
 #include <algorithm>
 #include <array>
@@ -23,36 +29,59 @@
 #include <cstdint>
 #include <limits>
 #include <span>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 namespace docenhance::tests {
 namespace {
 constexpr std::size_t limit = std::size_t{2} * 1024 * 1024;
-void populate(LinearFixture& source, const std::vector<double>& values) {
-    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
-        for (std::uint32_t x = 0; x < source.extent().width; ++x) {
-            std::ranges::fill(
-                source.row(y).subspan(std::size_t{x} * image::rgb_channels, image::rgb_channels),
-                image::srgb_decode(values[(std::size_t{y} * source.extent().width) + x]).value());
+void populate(image::PlaneView<double> source, const std::vector<double>& values) {
+    for (std::uint32_t y = 0; y < source.height(); ++y) {
+        for (std::uint32_t x = 0; x < source.width(); ++x) {
+            source.row(y).subspan(x, 1).front() =
+                image::srgb_decode(values.at((std::size_t{y} * source.width()) + x));
         }
     }
 }
-void check_reference_row(std::span<const double> row, std::span<const double> entering,
-                         std::span<const double> expected) {
-    for (std::size_t x = 0; x < expected.size(); ++x) {
+void check_sharpened_row(image::PlaneView<const double> source, image::Extent extent,
+                         const std::vector<double>& values, const std::vector<double>& expected,
+                         std::uint32_t y) {
+    for (std::uint32_t x = 0; x < extent.width; ++x) {
+        const auto at = (std::size_t{y} * extent.width) + x;
         const auto linear = sharpen_reference_linear_output(
-            sharpen_reference_srgb_decode(entering[x]), entering[x], expected[x]);
-        CHECK(sharpen_reference_gray_rgb_matches(
-            row.subspan(x * image::rgb_channels, image::rgb_channels), linear));
+            sharpen_reference_srgb_decode(values.at(at)), values.at(at), expected.at(at));
+        CHECK(std::isfinite(source.row(y).subspan(x, 1).front()));
+        CHECK(std::abs(source.row(y).subspan(x, 1).front() - linear) < 2e-12);
     }
+}
+void check_sharpened_pixels(image::PlaneView<const double> source,
+                            const std::vector<double>& values,
+                            const std::vector<double>& expected) {
+    const image::Extent extent{.width = source.width(), .height = source.height()};
+    for (std::uint32_t y = 0; y < extent.height; ++y) {
+        check_sharpened_row(source, extent, values, expected, y);
+    }
+}
+void check_sharpening_facts(const methods::UnsharpFacts& facts, const std::vector<double>& values,
+                            const std::vector<double>& expected, const core::Budget& budget,
+                            std::size_t held) {
+    CHECK(facts.counts.evaluated == values.size());
+    REQUIRE(facts.pre_clamp.has_value());
+    if (!facts.pre_clamp.has_value()) {
+        throw std::logic_error("Required unsharp candidate range is absent");
+    }
+    CHECK(std::abs(facts.pre_clamp.value().low - *std::ranges::min_element(expected)) < 1e-12);
+    CHECK(std::abs(facts.pre_clamp.value().high - *std::ranges::max_element(expected)) < 1e-12);
+    CHECK(budget.used() == held);
 }
 void check_reference_case(image::Extent extent, double sigma) {
     core::Budget budget{limit};
-    LinearFixture source{budget, extent};
+    auto source = image::Plane<double>::allocate(budget, extent.width, extent.height).value();
+    std::ranges::fill(source.view().storage(), -2);
     std::vector<double> values(std::size_t{extent.width} * extent.height, 0.25);
     values.front() = 0.9;
     values.back() = 0.1;
-    populate(source, values);
+    populate(source.view(), values);
     const auto method =
         methods::Unsharp::create({.sigma = sigma, .amount = 0.5, .threshold = 0}).value();
     const auto expected = sharpen_reference(values, {
@@ -62,42 +91,12 @@ void check_reference_case(image::Extent extent, double sigma) {
                                                         .amount = 0.5,
                                                         .threshold = 0,
                                                     });
-    methods::SharpenReport report;
-    auto model = methods::SharpenModel::prepare(source, {}, method,
-                                                {budget, {}, report, image::RowUse::output});
-    REQUIRE(model);
-    for (std::uint32_t y = 0; y < extent.height; ++y) {
-        const auto row = source.row(y);
-        REQUIRE(model->apply({.row = y, .first = 0}, row, {}, report, {}));
-        check_reference_row(
-            row,
-            std::span<const double>{values}.subspan(std::size_t{y} * extent.width, extent.width),
-            std::span<const double>{expected}.subspan(std::size_t{y} * extent.width, extent.width));
-    }
-    CHECK(report.evaluated_samples == values.size());
-    const auto range = report.pre_clamp.value_or(methods::ExcursionRange{
-        .low = std::numeric_limits<double>::quiet_NaN(),
-        .high = std::numeric_limits<double>::quiet_NaN(),
-    });
-    CHECK(std::abs(range.low - *std::ranges::min_element(expected)) < 1e-12);
-    CHECK(std::abs(range.high - *std::ranges::max_element(expected)) < 1e-12);
-}
-bool check_preparation_cancel(LinearFixture& source, const methods::Unsharp& method,
-                              core::Checkpoint phase, std::size_t allowed) {
-    core::Budget budget{limit};
-    methods::SharpenReport report;
-    const CheckpointStop stop{phase, allowed};
-    bool completed = false;
-    bool cancelled = false;
-    {
-        auto model = methods::SharpenModel::prepare(
-            source, {}, method, {budget, stop.cancellation(), report, image::RowUse::output});
-        completed = model.has_value();
-        cancelled = model || model.error().code == core::ErrorCode::cancelled;
-    }
-    CHECK(cancelled);
-    CHECK(budget.used() == 0);
-    return completed;
+    const auto held = budget.used();
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    const auto facts = methods::apply(method, {source.view(), {}, budget, scheduler});
+    REQUIRE(facts);
+    check_sharpened_pixels(source.view().as_const(), values, expected);
+    check_sharpening_facts(*facts, values, expected, budget, held);
 }
 } // namespace
 TEST_CASE("Independent sharpening oracle preserves sRGB knot and detects every RGB mutation",
@@ -127,20 +126,20 @@ TEST_CASE("Unsharp soft threshold uses signed residual and public byte-equivalen
           "[sharpening]") {
     const auto method =
         methods::Unsharp::create({.sigma = 0.8, .amount = 2, .threshold = 2.55}).value();
-    CHECK(std::abs(methods::unsharp_candidate(0.5, 0.48, method).value() - 0.52) < 1e-14);
-    CHECK(std::abs(methods::unsharp_candidate(0.5, 0.52, method).value() - 0.48) < 1e-14);
-    CHECK(methods::unsharp_candidate(0.5, 0.5, method).value() == 0.5);
+    CHECK(std::abs(methods::unsharp_candidate(0.5, 0.48, method) - 0.52) < 1e-14);
+    CHECK(std::abs(methods::unsharp_candidate(0.5, 0.52, method) - 0.48) < 1e-14);
+    CHECK(methods::unsharp_candidate(0.5, 0.5, method) == 0.5);
     const auto equality = methods::Unsharp::create({.amount = 2, .threshold = 15.9375}).value();
     for (const auto blurred : std::array{0.4375, 0.5625}) {
-        CHECK(methods::unsharp_candidate(0.5, blurred, equality).value() == 0.5);
+        CHECK(methods::unsharp_candidate(0.5, blurred, equality) == 0.5);
         const auto farther = std::nextafter(blurred, blurred < 0.5 ? 0.0 : 1.0);
         const auto closer = std::nextafter(blurred, 0.5);
-        CHECK(methods::unsharp_candidate(0.5, closer, equality).value() == 0.5);
-        CHECK(methods::unsharp_candidate(0.5, farther, equality).value() != 0.5);
+        CHECK(methods::unsharp_candidate(0.5, closer, equality) == 0.5);
+        CHECK(methods::unsharp_candidate(0.5, farther, equality) != 0.5);
     }
     const auto endpoints = methods::Unsharp::create({.amount = 1, .threshold = 0}).value();
-    CHECK(methods::unsharp_candidate(0.25, 0.5, endpoints).value() == 0);
-    CHECK(methods::unsharp_candidate(0.75, 0.5, endpoints).value() == 1);
+    CHECK(methods::unsharp_candidate(0.25, 0.5, endpoints) == 0);
+    CHECK(methods::unsharp_candidate(0.75, 0.5, endpoints) == 1);
     CHECK(!methods::Unsharp::create({.sigma = 0.29}));
     CHECK(!methods::Unsharp::create({.amount = 2.01}));
     CHECK(!methods::Unsharp::create({.threshold = -1}));
@@ -159,187 +158,182 @@ TEST_CASE("Unsharp impulses and borders agree with direct two-dimensional Gaussi
         }
     }
 }
-TEST_CASE(
-    "Unsharp constants and protected destinations remain exact while protection is blur context",
-    "[sharpening]") {
+TEST_CASE("Unsharp constants and protected destinations remain exact while protection is context",
+          "[sharpening]") {
     core::Budget budget{limit};
-    LinearFixture source{budget, {.width = 9, .height = 3}};
-    source.fill(0.3125);
-    methods::SharpenReport flat;
+    auto source = image::Plane<double>::allocate(budget, 9, 3).value();
+    std::ranges::fill(source.view().storage(), 0.3125);
     const auto method = methods::Unsharp::create({.sigma = 3, .amount = 2, .threshold = 0}).value();
-    auto identity = methods::SharpenModel::prepare(source, {}, method,
-                                                   {budget, {}, flat, image::RowUse::output});
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    const auto identity = methods::apply(method, {source.view(), {}, budget, scheduler});
     REQUIRE(identity);
-    REQUIRE(identity->apply({.row = 1, .first = 0}, source.row(1), {}, flat, {}));
-    CHECK(std::ranges::all_of(source.row(1), [](double x) { return x == 0.3125; }));
+    CHECK(std::ranges::all_of(source.view().row(1), [](double x) { return x == 0.3125; }));
     auto mask = image::Plane<std::uint8_t>::allocate(budget, 9, 3).value();
     std::ranges::fill(mask.view().storage(), 0);
-    mask.view().row(1)[4] = 1;
+    mask.view().row(1).subspan(4, 1).front() = 1;
     std::vector<double> values(27, 0.5);
-    values[13] = 1;
-    populate(source, values);
-    methods::SharpenReport protected_report;
-    auto model =
-        methods::SharpenModel::prepare(source, mask.view().as_const(), method,
-                                       {budget, {}, protected_report, image::RowUse::output});
-    REQUIRE(model);
-    const auto before = source.row(1)[12];
-    REQUIRE(model->apply({.row = 1, .first = 0}, source.row(1), mask.view().as_const(),
-                         protected_report, {}));
-    CHECK(source.row(1)[12] == before);
-    CHECK(source.row(1)[9] < image::srgb_decode(0.5).value());
-    CHECK(protected_report.context_samples == 27);
-    CHECK(protected_report.evaluated_samples == 8);
+    values.at(13) = 1;
+    populate(source.view(), values);
+    const auto before = source.view().row(1).subspan(4, 1).front();
+    const auto facts =
+        methods::apply(method, {source.view(), mask.view().as_const(), budget, scheduler});
+    REQUIRE(facts);
+    CHECK(source.view().row(1).subspan(4, 1).front() == before);
+    CHECK(source.view().row(1).subspan(3, 1).front() < image::srgb_decode(0.5));
+    CHECK(facts->context_samples == 27);
+    CHECK(facts->counts.evaluated == 26);
 }
-TEST_CASE("Unsharp exact charged budget, refusal and immutable field refund are observable",
+TEST_CASE("Unsharp exact charged fields refund at the actual eager apply boundary",
           "[sharpening][memory]") {
-    core::Budget source_budget{limit};
-    LinearFixture source{source_budget, {.width = 7, .height = 5}};
-    source.fill(0.4);
+    core::Budget owner{limit};
+    auto source = image::Plane<double>::allocate(owner, 7, 5).value();
+    std::ranges::fill(source.view().storage(), 0.4);
     const auto shape = image::plane_shape(7, 5, sizeof(double)).value();
-    const auto required = (2 * image::plane_bytes(shape).value()) +
-                          (image::linear_block_pixels * image::rgb_channels * sizeof(double));
+    const auto required = 2 * image::plane_bytes(shape).value();
     const auto method = methods::Unsharp::create().value();
+    const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
+    const auto before = gamma_bits(source.view().storage());
     for (const auto bytes : std::array{required - 1, required}) {
-        core::Budget budget{bytes};
-        methods::SharpenReport report;
-        {
-            auto model = methods::SharpenModel::prepare(
-                source, {}, method, {budget, {}, report, image::RowUse::output});
-            CHECK(model.has_value() == (bytes == required));
-            if (model) {
-                CHECK(budget.used() == image::plane_bytes(shape).value());
-            } else {
-                CHECK(model.error().code == core::ErrorCode::resource);
-            }
+        core::Budget scratch{bytes};
+        const auto facts = methods::apply(method, {source.view(), {}, scratch, scheduler});
+        CHECK(facts.has_value() == (bytes == required));
+        if (!facts) {
+            CHECK(facts.error().code == core::ErrorCode::resource);
         }
-        CHECK(budget.used() == 0);
+        CHECK(scratch.used() == 0);
+        CHECK(gamma_bits(source.view().storage()) == before);
     }
     core::Budget empty{0};
-    methods::SharpenReport report;
-    auto noop =
-        methods::SharpenModel::prepare(source, {}, methods::Unsharp::create({.amount = 0}).value(),
-                                       {empty, {}, report, image::RowUse::output});
+    const auto noop = methods::apply(methods::Unsharp::create({.amount = 0}).value(),
+                                     {source.view(), {}, empty, scheduler});
     REQUIRE(noop);
-    CHECK(!noop->active());
-    CHECK(report.preparation_charge_peak == 0);
+    CHECK(noop->reason == methods::UnsharpReason::zero_amount);
+    CHECK(noop->counts.evaluated == 0);
+    CHECK(empty.used() == 0);
 }
-TEST_CASE("Unsharp preparation and reconstruction checkpoints cancel deterministically",
+TEST_CASE("Unsharp every eager phase checkpoint cancels and refunds deterministically",
           "[sharpening][cancel]") {
-    core::Budget source_budget{limit};
-    LinearFixture source{source_budget, {.width = 257, .height = 3}};
-    source.fill(0.4);
+    core::Budget owner{limit};
+    auto source = image::Plane<double>::allocate(owner, 257, 3).value();
+    std::ranges::fill(source.view().storage(), 0.4);
     const auto method = methods::Unsharp::create().value();
-    for (const auto phase : std::array{
+    for (const auto phase : {
              core::Checkpoint::allocation,
              core::Checkpoint::measurement,
              core::Checkpoint::processing,
          }) {
         bool completed = false;
-        for (std::size_t n = 0; n < 64 && !completed; ++n) {
-            completed = check_preparation_cancel(source, method, phase, n);
+        for (std::size_t allowed = 0; allowed < 64 && !completed; ++allowed) {
+            core::Budget scratch{limit};
+            const CheckpointStop stop{phase, allowed};
+            const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value(),
+                                            stop.cancellation()};
+            const auto result = methods::apply(method, {source.view(), {}, scratch, scheduler});
+            if (result) {
+                CHECK(!CheckpointStop::stopped());
+                completed = true;
+            } else {
+                CHECK(result.error().code == core::ErrorCode::cancelled);
+                CHECK(CheckpointStop::stopped());
+            }
+            CHECK(scratch.used() == 0);
         }
         CHECK(completed);
     }
 }
-TEST_CASE("Unsharp reconstruction checkpoints cover each bounded interval",
+TEST_CASE("Unsharp actual bounded map stops preserve attained stores and protected prefixes",
           "[sharpening][cancel]") {
-    core::Budget source_budget{limit};
-    LinearFixture source{source_budget, {.width = 257, .height = 3}};
-    source.fill(0.4);
-    const auto method = methods::Unsharp::create().value();
-    core::Budget budget{limit};
-    methods::SharpenReport report;
-    auto model = methods::SharpenModel::prepare(source, {}, method,
-                                                {budget, {}, report, image::RowUse::output});
-    REQUIRE(model);
-    const auto prepared = report;
-    for (std::size_t n = 0; n <= 3; ++n) {
-        auto observed = prepared;
-        std::vector<double> row(source.row(0).begin(), source.row(0).end());
-        const CheckpointStop stop{core::Checkpoint::processing, n};
-        const auto applied =
-            model->apply({.row = 0, .first = 0}, row, {}, observed, stop.cancellation());
-        CHECK(applied.has_value() == (n == 3));
-        if (!applied) {
-            CHECK(applied.error().code == core::ErrorCode::cancelled);
-            CHECK(observed.evaluated_samples == 128 * n);
-        } else {
-            CHECK(observed.evaluated_samples == 257);
-        }
-    }
+    const auto before = assertion_counter().load();
+    unsharp_map_stop_case(false);
+    unsharp_map_stop_case(true);
+    REQUIRE(assertion_counter().load() > before);
 }
-TEST_CASE("Unsharp reconstruction is immutable across interior split and reordered blocks",
+TEST_CASE("Unsharp real field ownership and fixed worker partitions preserve immutable input",
           "[sharpening]") {
     core::Budget budget{limit};
-    LinearFixture source{budget, {.width = 11, .height = 3}};
+    auto first = image::Plane<double>::allocate(budget, 11, 3).value();
+    auto second = image::Plane<double>::allocate(budget, 11, 3).value();
+    std::ranges::fill(first.view().storage(), -2);
     std::vector<double> values(33);
     for (std::size_t i = 0; i < values.size(); ++i) {
-        values[i] = 0.15 + (static_cast<double>((i * 7) % 23) / 40);
+        values.at(i) = 0.15 + (static_cast<double>((i * 7) % 23) / 40);
     }
-    populate(source, values);
+    populate(first.view(), values);
+    std::ranges::copy(first.view().storage(), second.view().storage().begin());
+    const auto entering = gamma_bits(first.view().storage());
     const auto method = methods::Unsharp::create({.threshold = 0}).value();
-    methods::SharpenReport preparation;
-    auto model = methods::SharpenModel::prepare(source, {}, method,
-                                                {budget, {}, preparation, image::RowUse::output});
-    REQUIRE(model);
-    for (const auto y : std::array<std::uint32_t, 3>{2, 0, 1}) {
-        const std::vector<double> before(source.row(y).begin(), source.row(y).end());
-        auto whole = before;
-        auto split = before;
-        auto full_report = preparation;
-        auto split_report = preparation;
-        REQUIRE(model->apply({.row = y}, whole, {}, full_report, {}));
-        for (const auto& block :
-             std::array{std::pair{4U, 3U}, std::pair{7U, 4U}, std::pair{0U, 4U}}) {
-            REQUIRE(model->apply({.row = y, .first = block.first},
-                                 std::span<double>{split}.subspan(std::size_t{3} * block.first,
-                                                                  std::size_t{3} * block.second),
-                                 {}, split_report, {}));
+    const exec::Scheduler one{exec::Concurrency::resolve(1, 3, 0, 0).value()};
+    const exec::Scheduler three{exec::Concurrency::resolve(3, 3, 0, 0).value()};
+    const auto held = budget.used();
+    {
+        auto field = methods::fit_unsharp(method, {first.view(), {}, budget, one});
+        REQUIRE(field);
+        const auto view = field->view();
+        const auto pitch = view.shape().stride / sizeof(double);
+        for (std::size_t y = 0; y < view.height(); ++y) {
+            std::ranges::fill(
+                view.storage().subspan((y * pitch) + view.width(), pitch - view.width()), -3.0);
         }
-        CHECK(split == whole);
-        CHECK(full_report == split_report);
-        CHECK(std::ranges::equal(source.row(y), before));
-        auto ignored = preparation;
-        CHECK(!model->apply({.row = 3}, whole, {}, ignored, {}));
-        CHECK(!model->apply({.row = y, .first = 11}, whole, {}, ignored, {}));
-        CHECK(!model->apply({.row = y, .first = 1}, whole, {}, ignored, {}));
-        CHECK(!model->apply({.row = y}, {}, {}, ignored, {}));
-        CHECK(!model->apply({.row = y}, std::span<double>{whole}.first(2), {}, ignored, {}));
-        auto wrong_mask = image::Plane<std::uint8_t>::allocate(budget, 10, 3).value();
-        CHECK(!model->apply({.row = y}, whole, wrong_mask.view().as_const(), ignored, {}));
-        CHECK(ignored == preparation);
+        const auto snapshot = gamma_bits(field->view().storage());
+        for (const auto y : {2U, 0U, 1U}) {
+            CHECK(!field->view().row(y).empty());
+        }
+        CHECK(gamma_bits(field->view().storage()) == snapshot);
+        CHECK(gamma_bits(first.view().storage()) == entering);
+        const auto moved = std::move(*field);
+        CHECK(field->empty());
+        CHECK(!moved.empty());
     }
+    CHECK(budget.used() == held);
+    const auto a = methods::apply(method, {first.view(), {}, budget, one});
+    const auto b = methods::apply(method, {second.view(), {}, budget, three});
+    REQUIRE(a);
+    REQUIRE(b);
+    CHECK(*a == *b);
+    CHECK(gamma_bits(first.view().storage()) == gamma_bits(second.view().storage()));
+    auto wrong = image::Plane<std::uint8_t>::allocate(budget, 10, 3).value();
+    const auto before = gamma_bits(first.view().storage());
+    const auto refused =
+        methods::apply(method, {first.view(), wrong.view().as_const(), budget, one});
+    REQUIRE(!refused);
+    CHECK(refused.error().code == core::ErrorCode::argument);
+    CHECK(gamma_bits(first.view().storage()) == before);
+    CHECK(!image::PlaneView<double>::create(
+        first.view().storage(), {.width = 11, .height = 4, .stride = first.view().shape().stride}));
+    CHECK(!image::PlaneView<double>::create(
+        first.view().storage(), {.width = 12, .height = 3, .stride = 11 * sizeof(double)}));
 }
-TEST_CASE("Unsharp observation validation enforces requested excursion and correction bounds",
+TEST_CASE("Unsharp completed Facts enforce requested excursion and correction bounds",
           "[sharpening]") {
-    methods::SharpenReport report;
-    report.requested = methods::UnsharpParameters{.amount = 0.01, .threshold = 0};
-    report.status = methods::SharpenStatus::applied;
-    report.progress = methods::StageProgress::completed;
-    report.eligible_samples = report.context_samples = report.evaluated_samples = 2;
-    report.corrected_samples = report.changed_samples = 2;
-    report.pre_clamp = methods::ExcursionRange{.low = 0, .high = 1};
-    REQUIRE(methods::valid_sharpen_observations(report));
-    CHECK(report.clipped_low_samples == 0);
-    CHECK(report.clipped_high_samples == 0);
-    report.pre_clamp = methods::ExcursionRange{.low = -0.01, .high = 1.01};
-    report.clipped_low_samples = report.clipped_high_samples = 1;
-    REQUIRE(methods::valid_sharpen_observations(report));
-    auto invalid = report;
-    invalid.corrected_samples = invalid.changed_samples = 1;
-    CHECK(!methods::valid_sharpen_observations(invalid));
-    invalid = report;
+    const methods::UnsharpParameters parameters{.amount = 0.01, .threshold = 0};
+    methods::UnsharpFacts facts{
+        .disposition = methods::Disposition::applied,
+        .reason = methods::UnsharpReason::none,
+        .counts = {.eligible = 2, .evaluated = 2, .changed = 2},
+        .context_samples = 2,
+        .corrected_samples = 2,
+        .pre_clamp = methods::ExcursionRange{.low = 0, .high = 1},
+    };
+    REQUIRE(methods::validate(facts, parameters));
+    CHECK(facts.clipped_low_samples == 0);
+    CHECK(facts.clipped_high_samples == 0);
+    facts.pre_clamp = methods::ExcursionRange{.low = -0.01, .high = 1.01};
+    facts.clipped_low_samples = facts.clipped_high_samples = 1;
+    REQUIRE(methods::validate(facts, parameters));
+    auto invalid = facts;
+    invalid.corrected_samples = invalid.counts.changed = 1;
+    CHECK(!methods::validate(invalid, parameters));
+    invalid = facts;
     invalid.pre_clamp = methods::ExcursionRange{.low = std::nextafter(-0.01, -1.0), .high = 1.01};
-    CHECK(!methods::valid_sharpen_observations(invalid));
-    invalid = report;
+    CHECK(!methods::validate(invalid, parameters));
+    invalid = facts;
     invalid.pre_clamp = methods::ExcursionRange{.low = -0.01, .high = std::nextafter(1.01, 2.0)};
-    CHECK(!methods::valid_sharpen_observations(invalid));
-    invalid = report;
+    CHECK(!methods::validate(invalid, parameters));
+    invalid = facts;
     invalid.pre_clamp = methods::ExcursionRange{.low = 0, .high = 1.01};
-    CHECK(!methods::valid_sharpen_observations(invalid));
-    invalid = report;
+    CHECK(!methods::validate(invalid, parameters));
+    invalid = facts;
     invalid.pre_clamp = methods::ExcursionRange{.low = -0.01, .high = 1};
-    CHECK(!methods::valid_sharpen_observations(invalid));
+    CHECK(!methods::validate(invalid, parameters));
 }
 } // namespace docenhance::tests

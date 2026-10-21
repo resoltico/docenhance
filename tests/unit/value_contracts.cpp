@@ -1,8 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/invocation.hpp"
+#include "docenhance/app/options.hpp"
+#include "docenhance/app/verify.hpp"
+#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source_facts.hpp"
+#include "processor.hpp"
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
@@ -11,6 +17,7 @@
 #include <optional>
 #include <string>
 #include <type_traits>
+#include <variant>
 
 namespace docenhance::tests {
 TEST_CASE("JPEG facts enforce shared bounds without entering a decoder", "[values][jpeg]") {
@@ -112,18 +119,35 @@ TEST_CASE("Admitted EXIF orientations preserve exact non-square corner mappings"
         CHECK(b.y == last.at(code - 1).y);
     }
 }
-TEST_CASE("An unimplemented capability can never claim staging or publication", "[values]") {
-    core::Error error{.code = core::ErrorCode::not_implemented, .message = "not implemented"};
-    CHECK(std::string(error.identifier()) == "E_NOT_IMPLEMENTED");
-    CHECK(error.exit_code() == core::ExitCode::processing);
-    CHECK(error.valid_publication());
-    for (const auto state : {
-             core::Publication::not_published,
-             core::Publication::completed,
-             core::Publication::unknown,
-         }) {
-        error.publication = state;
-        CHECK(!error.valid_publication());
-    }
+TEST_CASE("Actual unimplemented discovery has no processing or verification effect", "[app]") {
+    class CountingVerifier final : public app::Verifier {
+      public:
+        unsigned calls{};
+        core::Result<app::Verified> verify(const app::VerifyRequest& /*request*/,
+                                           const core::Cancellation& /*cancellation*/) override {
+            ++calls;
+            return core::failure(core::ErrorCode::input, "Unexpected verification");
+        }
+    } verifier;
+    RejectingProcessor processor;
+    app::Invocation request;
+    request.command = app::Command::methods;
+    request.operands = {"unimplemented-method"};
+    const auto outcome = app::dispatch(request, processor, verifier);
+    const auto* failure = std::get_if<app::Failure>(&outcome.payload);
+    REQUIRE(failure);
+    CHECK(std::string(failure->error.identifier()) == "E_NOT_IMPLEMENTED");
+    CHECK(failure->error.exit_code() == core::ExitCode::processing);
+    CHECK(failure->publication == core::Publication::not_started);
+    CHECK(!failure->failed_stage);
+    CHECK(!failure->diagnostics);
+    CHECK(!failure->completed.illumination);
+    CHECK(!failure->completed.denoising);
+    CHECK(!failure->completed.restoration);
+    CHECK(!failure->completed.contrast);
+    CHECK(!failure->completed.sharpening);
+    CHECK(!failure->completed.binarization);
+    CHECK(processor.calls == 0);
+    CHECK(verifier.calls == 0);
 }
 } // namespace docenhance::tests

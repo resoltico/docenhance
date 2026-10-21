@@ -97,6 +97,60 @@ class ArchitectureExecutionTests(unittest.TestCase):
                     architecture.load_manifest(), entry, root, "app", owner=None
                 )
 
+    def test_namespaces_follow_the_fully_qualified_layer_owner(self) -> None:
+        """Private descendants are owned; leaf-name and similarly prefixed impostors are not."""
+        manifest = architecture.load_manifest()
+        query = architecture_api.find_clang_query()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for namespace, accepted in (
+                ("docenhance::record", True),
+                ("docenhance::record::scalar_read", True),
+                ("docenhance::record::wire_read::detail", True),
+                ("docenhance::recorded", False),
+                ("record", False),
+                ("foreign::record", False),
+                ("docenhance::image::record", False),
+                ("foreign::docenhance::record", False),
+            ):
+                with self.subTest(namespace=namespace):
+                    entry = compiler_probe(
+                        root, root / "src/record/probe.cpp", f"namespace {namespace} {{}}\n"
+                    )
+                    errors = architecture_api.api_violations(
+                        query,
+                        root,
+                        entry,
+                        architecture_api.matchers(manifest, {"record": {entry["file"]}}),
+                    )
+                    self.assertEqual(not errors, accepted, errors)
+                    if not accepted:
+                        self.assertTrue(any("declares a namespace" in error for error in errors))
+
+    def test_exception_containment_stays_at_effect_owning_boundaries(self) -> None:
+        """Host contains foreign exceptions; image and numeric kernels still cannot catch."""
+        manifest = architecture.load_manifest()
+        query = architecture_api.find_clang_query()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for layer in ("host", "image", "methods"):
+                with self.subTest(layer=layer):
+                    entry = compiler_probe(
+                        root,
+                        root / f"src/{layer}/probe.cpp",
+                        f"namespace docenhance::{layer} {{ "
+                        "void probe() { try {} catch(...) {} } }\n",
+                    )
+                    errors = architecture_api.api_violations(
+                        query,
+                        root,
+                        entry,
+                        architecture_api.matchers(manifest, {layer: {entry["file"]}}),
+                    )
+                    catches = [error for error in errors if "catches an exception" in error]
+                    self.assertEqual(bool(catches), layer != "host", errors)
+                    self.assertEqual(bool(errors), layer != "host", errors)
+
     def test_layer_roots_preserve_native_windows_boundaries(self) -> None:
         """Native case, separators, drives and UNC shares retain the old Path classification."""
         manifest = architecture.load_manifest()

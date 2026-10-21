@@ -3,11 +3,14 @@
 #include "docenhance/methods/tvl1.hpp"
 
 #include "docenhance/core/memory.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/exec/concurrency.hpp"
+#include "docenhance/exec/scheduler.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 #include "tvl1_reference.hpp"
+#include "tvl1_state_bounds.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -33,6 +36,8 @@ void compare(std::span<const std::uint8_t> bytes) {
         .height = 1U + (byte(bytes, 1) % dimension_choices),
     };
     docenhance::core::Budget budget{budget_limit};
+    const docenhance::exec::Scheduler scheduler{
+        docenhance::exec::Concurrency::resolve(1, 1, 0, 0).value()};
     auto input = image::Plane<double>::allocate(budget, extent.width, extent.height).value();
     auto primal = image::Plane<double>::allocate(budget, extent.width, extent.height).value();
     auto bar = image::Plane<double>::allocate(budget, extent.width, extent.height).value();
@@ -61,7 +66,12 @@ void compare(std::span<const std::uint8_t> bytes) {
         .dual_y = py.view(),
     };
     for (unsigned iteration = 0; iteration < iterations; ++iteration) {
-        require(methods::tvl1_iteration(field, fidelity).has_value(), "TV-L1 finite iterates");
+        require(docenhance::tests::tvl1_state_bounded(field, values),
+                "independent complete canonical state before iteration");
+        require(methods::tvl1_iteration(field, fidelity, scheduler).has_value(),
+                "TV-L1 finite iterates");
+        require(docenhance::tests::tvl1_state_bounded(field, values),
+                "independent complete canonical state after iteration");
         reference.iterate(fidelity);
     }
     for (std::size_t i = 0; i < values.size(); ++i) {

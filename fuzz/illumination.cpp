@@ -4,14 +4,18 @@
 
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/linear.hpp"
-#include "docenhance/image/numeric.hpp"
+#include "docenhance/exec/concurrency.hpp"
+#include "docenhance/exec/scheduler.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/surface.hpp"
+#include "docenhance/methods/working.hpp"
 #include "illumination_reference.hpp"
-#include "linear_fixture.hpp"
+#include "illumination_working.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
+#include "surface_detail.hpp"
+#include "surface_working_detail.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -27,101 +31,83 @@ std::uint8_t byte_at(std::span<const std::uint8_t> bytes, std::size_t i) {
     return i < bytes.size() ? bytes.subspan(i, 1).front() : 0;
 }
 // Bright paper samples, with whole cells of dark content chosen by bytes after the pixel bytes.
-void fill(docenhance::tests::LinearFixture& source, docenhance::image::PlaneView<std::uint8_t> mask,
-          std::span<const std::uint8_t> bytes) {
-    namespace image = docenhance::image;
+void fill(docenhance::image::PlaneView<double> source,
+          docenhance::image::PlaneView<std::uint8_t> mask, std::span<const std::uint8_t> bytes) {
     constexpr unsigned bright_floor = 128;
     constexpr unsigned bright_choices = 127;
     constexpr unsigned dark_floor = 3;
     constexpr unsigned dark_choices = 28;
     constexpr unsigned dark_period = 8;
-    const auto width = source.extent().width;
+    const auto width = source.width();
     const auto columns = (width + cell - 1) / cell;
-    const auto cell_bytes = 2 + (std::size_t{width} * source.extent().height);
-    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
+    const auto cell_bytes = 2 + (std::size_t{width} * source.height());
+    for (std::uint32_t y = 0; y < source.height(); ++y) {
         for (std::uint32_t x = 0; x < width; ++x) {
             const auto v = byte_at(bytes, 2 + (std::size_t{y} * width) + x);
             const auto cell_index = (std::size_t{y / cell} * columns) + (x / cell);
             const bool dark = byte_at(bytes, cell_bytes + cell_index) % dark_period == 1;
             const double value = dark ? (dark_floor + (v % dark_choices)) / scale
                                       : (bright_floor + (v % bright_choices)) / scale;
-            std::ranges::fill(
-                source.row(y).subspan(std::size_t{x} * image::rgb_channels, image::rgb_channels),
-                value);
+            source.row(y).subspan(x, 1).front() = value;
             mask.row(y).subspan(x, 1).front() =
                 static_cast<std::uint8_t>(v % cell == 0 && x % cell == 0);
         }
     }
 }
-void compare_pixels(docenhance::tests::LinearFixture& source,
-                    docenhance::image::PlaneView<const std::uint8_t> mask,
-                    const docenhance::methods::SurfaceModel& model,
-                    const docenhance::tests::LogReference& reference, double target) {
-    namespace image = docenhance::image;
+void compare_surface_field(const docenhance::methods::SurfaceFit& fit,
+                           const docenhance::tests::LogReference& reference,
+                           docenhance::image::Extent extent) {
     namespace methods = docenhance::methods;
     using docenhance::fuzz::require;
-    constexpr double floor = 0.02;
-    methods::IlluminationReport report;
-    const auto method = methods::Surface::create({.cell = cell}).value();
-    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
-        const auto input = source.row(y);
-        std::vector<double> output(input.begin(), input.end());
-        require(model.apply({.row = y}, output, mask, report, {}).has_value(),
-                "valid I01 application");
-        for (std::uint32_t x = 0; x < source.extent().width; ++x) {
-            const auto at = std::size_t{x} * image::rgb_channels;
-            const double value = input.subspan(at, 1).front();
-            const bool protected_pixel = mask.row(y).subspan(x, 1).front() != 0;
-            const double gain = std::clamp(target / std::max(reference.background(x, y), floor),
-                                           1.0, method.parameters().max_gain);
-            const double expected =
-                protected_pixel
-                    ? value
-                    : std::min(1.0, value * std::pow(gain, method.parameters().strength));
-            require(std::abs(output.at(at) - expected) < tolerance, "direct I01 sample");
-            require(!protected_pixel || output.at(at) == value, "protected I01 identity");
+    for (std::uint32_t y = 0; y < extent.height; ++y) {
+        for (std::uint32_t x = 0; x < extent.width; ++x) {
+            const auto background = methods::surface_background_value(
+                fit.grid, fit.logarithms.view(), {.x = x, .y = y});
+            require(std::isfinite(background) &&
+                        std::abs(background - reference.background(x, y)) < tolerance,
+                    "direct independent I01 dense field");
         }
     }
-    std::uint64_t expected_count = 0;
-    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
-        expected_count += static_cast<std::uint64_t>(std::ranges::count(mask.row(y), 0));
-    }
-    require(report.evaluated_samples == expected_count, "eligible application counted once");
 }
-void compare(docenhance::tests::LinearFixture& source,
+void compare(docenhance::image::PlaneView<double> source,
              docenhance::image::PlaneView<const std::uint8_t> mask,
              docenhance::core::Budget& budget) {
     namespace methods = docenhance::methods;
     using docenhance::fuzz::require;
-    const auto method = methods::Surface::create({.cell = cell}).value();
-    methods::IlluminationReport report;
-    auto model = methods::SurfaceModel::prepare({source, mask}, method, budget, {}, report);
-    const auto reference =
-        docenhance::tests::illumination_reference(source, mask, cell, method.parameters().smooth);
-    require(report.dark_cells == reference.dark_cells, "independent dark-cell count");
-    constexpr double explicit_coverage = 0.25;
-    const auto cells = static_cast<double>(report.cells);
-    if (reference.measured_cells == 0 || reference.measured_cells / cells < explicit_coverage) {
-        require(!model.has_value() &&
-                    model.error().code == docenhance::core::ErrorCode::method_inapplicable,
-                "insufficient measured cells are refused");
-        return;
-    }
-    require(model.has_value() && model->active(), "bounded valid I01 fit");
-    std::vector<double> backgrounds;
-    for (std::uint32_t y = 0; y < source.extent().height; ++y) {
-        for (std::uint32_t x = 0; x < source.extent().width; ++x) {
-            require(std::abs(model->background(x, y).value() - reference.background(x, y)) <
-                        tolerance,
-                    "direct I01 field");
-            if (mask.row(y).subspan(x, 1).front() == 0) {
-                backgrounds.push_back(reference.background(x, y));
-            }
+    const auto method = methods::Surface::create({.cell = cell});
+    require(method.has_value(), "bounded I01 parameters admit");
+    const auto concurrency = docenhance::exec::Concurrency::resolve(1, 1, 0, 0);
+    require(concurrency.has_value(), "bounded I01 concurrency admits");
+    const docenhance::exec::Scheduler scheduler{*concurrency};
+    const methods::Working working{source, mask, budget, scheduler};
+    const auto counts = methods::eligibility(working);
+    require(counts.has_value(), "bounded I01 eligibility admits");
+    const auto grid =
+        methods::surface_grid({.width = source.width(), .height = source.height()}, *method);
+    require(grid.has_value(), "bounded I01 grid admits");
+    const auto reference = docenhance::tests::illumination_reference(source.as_const(), mask, cell,
+                                                                     method->parameters().smooth);
+    const auto resident = budget.used();
+    const std::vector<double> before(source.storage().begin(), source.storage().end());
+    {
+        const auto fit = methods::fit_surface(*method, working, {.counts = *counts}, *grid);
+        constexpr double explicit_coverage = 0.25;
+        const auto cells = static_cast<double>(grid->columns * grid->rows);
+        if (reference.measured_cells == 0 || reference.measured_cells / cells < explicit_coverage) {
+            require(!fit && fit.error().code == docenhance::core::ErrorCode::method_inapplicable,
+                    "insufficient measured cells are refused");
+        } else {
+            require(fit.has_value(), "bounded valid I01 fit");
+            require(fit->facts.dark_cells == reference.dark_cells &&
+                        fit->facts.measured_cells == reference.measured_cells,
+                    "independent I01 measured/dark cell counts");
+            compare_surface_field(*fit, reference,
+                                  {.width = source.width(), .height = source.height()});
+            require(budget.used() > resident, "actual coefficient owner remains charged");
         }
+        require(std::ranges::equal(before, source.storage()), "fitting never stores source Y");
     }
-    constexpr double rank = 0.9;
-    const double target = docenhance::tests::sorted_rank(backgrounds, rank);
-    compare_pixels(source, mask, *model, reference, target);
+    require(budget.used() == resident, "actual fit owner refunds");
 }
 } // namespace
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
@@ -133,11 +119,16 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         .height = cell + (byte_at(bytes, 1) % dimension_choices),
     };
     core::Budget budget{budget_limit};
-    docenhance::tests::LinearFixture source{budget, extent};
-    auto mask = image::Plane<std::uint8_t>::allocate(budget, extent.width, extent.height).value();
-    fill(source, mask.view(), bytes);
+    auto source = image::Plane<double>::allocate(budget, extent.width, extent.height);
+    auto mask = image::Plane<std::uint8_t>::allocate(budget, extent.width, extent.height);
+    docenhance::fuzz::require(source.has_value() && mask.has_value(),
+                              "bounded I01 source owners allocate");
+    std::ranges::fill(source->view().storage(), -1);
+    std::ranges::fill(mask->view().storage(), 255);
+    fill(source->view(), mask->view(), bytes);
     const auto held = budget.used();
-    compare(source, mask.view().as_const(), budget);
+    compare(source->view(), mask->view().as_const(), budget);
+    docenhance::fuzz::illumination_working(source->view().as_const(), mask->view().as_const());
     docenhance::fuzz::require(budget.used() == held, "I01 fit scratch refunded");
     return 0;
 }

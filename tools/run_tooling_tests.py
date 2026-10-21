@@ -91,19 +91,24 @@ def run(directory: Path, jobs: int = MAX_JOBS) -> bool:
         (directory, name) for name in sorted(expected, key=lambda name: (name != LONG_MODULE, name))
     ]
     # Spawn on every platform: test patches, imports and globals must not cross worker boundaries.
+    executed = []
+    passed = True
     with ProcessPoolExecutor(
         max_workers=min(jobs, len(items)),
         mp_context=multiprocessing.get_context("spawn"),
         max_tasks_per_child=1,
     ) as pool:
-        results = list(pool.map(module_run, items))
-    executed = []
-    passed = True
-    for (_, name), (found, successful, output, elapsed) in zip(items, results, strict=True):
-        print(output, end="")
-        print(f"{'ok' if successful else 'FAIL'} tooling module {name} ({elapsed:.2f}s)")
-        executed.extend(found)
-        passed &= successful
+        # Retain ordered completed diagnostics before a later module can exhaust its supervisor.
+        for (_, name), (found, successful, output, elapsed) in zip(
+            items, pool.map(module_run, items), strict=True
+        ):
+            print(output, end="", flush=True)
+            print(
+                f"{'ok' if successful else 'FAIL'} tooling module {name} ({elapsed:.2f}s)",
+                flush=True,
+            )
+            executed.extend(found)
+            passed &= successful
     complete = sorted(executed) == sorted(identifiers)
     print(f"Tooling execution: {len(executed)} cases in {len(items)} modules; workers={jobs}")
     if not complete:

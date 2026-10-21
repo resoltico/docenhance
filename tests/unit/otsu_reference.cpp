@@ -3,7 +3,6 @@
 #include "otsu_reference.hpp"
 
 #include "docenhance/image/plane.hpp"
-#include "docenhance/methods/otsu.hpp"
 
 #include <algorithm>
 #include <array>
@@ -21,7 +20,7 @@ std::uint16_t exhaustive_bin(std::uint8_t sample) {
 }
 // Retain the full-bin oracle: repartition all 256 byte frequencies at every candidate threshold.
 // It does not use the optimized reference's candidate selection or class-statistics helper.
-methods::OtsuObservation exhaustive_otsu(image::PlaneView<const std::uint8_t> source) {
+OtsuByteReference exhaustive_otsu(image::PlaneView<const std::uint8_t> source) {
     std::array<std::uint64_t, 256> counts{};
     for (std::uint32_t y = 0; y < source.height(); ++y) {
         for (const auto sample : source.row(y)) {
@@ -67,9 +66,9 @@ methods::OtsuObservation exhaustive_otsu(image::PlaneView<const std::uint8_t> so
 void compare_otsu_references(std::span<const std::uint8_t> pixels) {
     const auto width = static_cast<std::uint32_t>(pixels.size());
     const auto source = image::PlaneView<const std::uint8_t>::create(
-                            pixels, {.width = width, .height = 1, .stride = width})
-                            .value();
-    CHECK(otsu_reference(source) == exhaustive_otsu(source));
+        pixels, {.width = width, .height = 1, .stride = width});
+    REQUIRE(source);
+    CHECK(otsu_reference(*source) == exhaustive_otsu(*source));
 }
 } // namespace
 TEST_CASE("Occupied Otsu candidates retain every exhaustive histogram plateau",
@@ -112,9 +111,9 @@ TEST_CASE("Occupied Otsu candidates preserve the global relative tie threshold",
         compare_otsu_references(pixels);
         const auto width = static_cast<std::uint32_t>(pixels.size());
         const auto source = image::PlaneView<const std::uint8_t>::create(
-                                pixels, {.width = width, .height = 1, .stride = width})
-                                .value();
-        CHECK(otsu_reference(source).threshold_bin == (count == 10000 ? 0 : 1365));
+            pixels, {.width = width, .height = 1, .stride = width});
+        REQUIRE(source);
+        CHECK(otsu_reference(*source).threshold_bin == (count == 10000 ? 0 : 1365));
     }
 }
 } // namespace docenhance::tests

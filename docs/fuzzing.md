@@ -93,7 +93,8 @@ plus 32,768 generated/report entries, and stays below the archive's 50,000-entry
 Smaller limits can terminate valid exploration
 sooner, while larger limits consume more disk without increasing the requested time budget.
 
-Packaging admits at most 1.5 GiB of logical source bytes and 50,000 entries, visits entries
+Packaging admits at most 1.5 GiB of logical source bytes and 50,000 logical entries including
+its manifest. It admits the source inventory before reading campaign metadata, visits entries
 incrementally and hashes the archive as a stream. It refuses archive destinations inside its
 input trees. Plan for 1.5 GiB of source plus the actual existing archive size and at most
 2 GiB for the replacement temporary archive: 5.5 GiB when the existing archive also fits the
@@ -133,9 +134,9 @@ Evidence is commit/binary-specific, not a promise that a future version has no d
 
 ## Shared PNG decode boundary
 
-`fs::load_grayscale_png` acquires and hashes a bounded immutable snapshot of the regular input
-file, then supplies those same bytes to `codec::decode_grayscale_png`. File and borrowed-span inputs
-therefore share allocator callbacks, strict CRC handling, format admission, stored-sample
+The filesystem layer acquires and hashes a bounded immutable snapshot of the regular input
+file, then supplies those same bytes to `codec::decode_png_raster`. File and borrowed-span inputs
+therefore share allocator callbacks, strict CRC handling, format admission, channel/depth sample
 expansion and Adam7 assembly. A changed file size during acquisition is refused. The snapshot
 keeps hashing and decoding consistent; source paths are not a filesystem sandbox.
 
@@ -146,7 +147,7 @@ The callback returns from its read operation before raising a C codec error; no 
 live nontrivial C++ owner. Every success/refusal path is checked for allocation refunds.
 
 The `png_decode` harness exercises arbitrary encoded input twice, checking deterministic acceptance,
-samples and errors, then tries a smaller allocation budget. The independent `png_samples` harness
+typed channel/depth shape, every logical sample byte and errors, then tries a smaller allocation budget. The independent `png_samples` harness
 constructs valid grayscale PNGs with CRCs, Adler checksums and stored DEFLATE blocks, without using
 libpng's encoder. It exercises all five scanline filters and checks every sample for each supported
 bit depth and Adam7, including
@@ -203,9 +204,9 @@ assembly is not claimed to be instrumented. The target manifest owns input bound
 workload admission, so the added target must fit the configured campaign budget.
 
 
-The denoising harness invokes actual pinned CV_16U/L1 execution, compares global halos against a
-whole native call, checks correction identity and resource refunds. Isolated fuzz builds instrument
-OpenCV core/photo/imgproc alongside the codec archives; imported archive symbols establish actual
+The denoising harness invokes the first-party binary64 NLM kernels and checks independent
+window references, correction identity, protection and resource refunds. Isolated fuzz builds
+instrument the selected codec/color archives; imported archive symbols establish actual
 ASan/UBSan and coverage presence. The required PR workload budget is 2400 seconds for the
 complete target set. Native assembly remains outside the instrumentation claim.
 
@@ -218,7 +219,7 @@ nor a passing campaign proves that every object, assembly instruction or possibl
 The `tiff_decode` harness feeds malformed classic/BigTIFF snapshots through production directory,
 strile and native codec admission with tighter byte/pixel limits and a finite charged budget.
 It checks decoded/source agreement and allocation refunds on acceptance and refusal. Independent
-8/16-bit fixtures test exact samples separately; see [TIFF processing](tiff-processing.md).
+8/16-bit fixtures test exact samples separately; see [TIFF processing](formats/tiff.md).
 
 The TV-L1 harness consumes dimensions and 16-bit sample selectors, compares simultaneous
 reference iterations with the production full-field dual/primal passes, and checks finite bounds.

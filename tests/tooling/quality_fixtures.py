@@ -10,7 +10,7 @@ from typing import Any
 
 from tools_path import ROOT
 
-from document_quality import frozen_digest
+from quality_json import frozen_digest
 
 SCHEMA = ROOT / "spec/document-quality.schema.json"
 
@@ -99,6 +99,7 @@ def healthy_plan(count: int = 10, *, natural: bool = True) -> dict[str, Any]:
     schema = json.loads(SCHEMA.read_bytes())
     reference = {"path": "evidence", "sha256": "a" * 64}
     protocol = {
+        "evidence_contract": "docenhance-quality-v3",
         "source_commit": "a" * 40,
         "executable_sha256": "b" * 64,
         "frozen_corpus_sha256": frozen_digest(corpus),
@@ -114,7 +115,7 @@ def healthy_plan(count: int = 10, *, natural: bool = True) -> dict[str, Any]:
         ]["const"],
     }
     return {
-        "protocol_version": 2,
+        "protocol_version": 3,
         "protocol": protocol,
         "protocol_sha256": frozen_digest(protocol),
         "preregistration": reference,

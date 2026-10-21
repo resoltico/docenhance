@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 import socket
 import subprocess
@@ -30,10 +31,14 @@ class ReferenceCompilationTests(unittest.TestCase):
         self.assertIsNotNone(compiler)
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
+            facts = directory / "facts"
+            facts.mkdir()
+            minimum = json.loads((ROOT / "deps/tools.json").read_text())["cmake"]["minimum"]
+            check_reference_suite.generate_build_facts(facts, str(compiler), minimum)
             sources = []
             for name, body in (
                 ("left", "int answer(); int main() { return answer() != 42; }"),
-                ("right", "int answer() { return REFERENCE_EXPECTED; }"),
+                ("right", "int answer() { return 42; }"),
             ):
                 target = directory / name / "source.cpp"
                 target.parent.mkdir()
@@ -42,16 +47,19 @@ class ReferenceCompilationTests(unittest.TestCase):
             for jobs in (1, 2):
                 build = directory / f"build-{jobs}"
                 build.mkdir()
+                shutil.copyfile(facts / "toolchain-roots.txt", build / "toolchain-roots.txt")
                 binary = check_reference_suite.build_reference(
-                    str(compiler), ["-DREFERENCE_EXPECTED=42"], sources, build, jobs
+                    str(compiler), [], sources, build, jobs
                 )
                 subprocess.run([str(binary)], check=True, timeout=10)
                 self.assertEqual(len(list(build.glob("*.o"))), len(sources))
             sources[1].write_text("#error controlled-reference-failure\n")
             broken = directory / "broken"
             broken.mkdir()
-            with self.assertRaises(subprocess.CalledProcessError):
+            shutil.copyfile(facts / "toolchain-roots.txt", broken / "toolchain-roots.txt")
+            with self.assertRaises(subprocess.CalledProcessError) as raised:
                 check_reference_suite.build_reference(str(compiler), [], sources, broken, 2)
+            self.assertIn("controlled-reference-failure", raised.exception.stderr)
             self.assertFalse(list(broken.glob("reference-tests*")))
 
     def test_compilation_really_overlaps_before_single_complete_link(self) -> None:
@@ -59,11 +67,15 @@ class ReferenceCompilationTests(unittest.TestCase):
         meeting = threading.Barrier(2)
         commands: list[list[str]] = []
 
-        def execute(command: list[str], *, check: bool) -> None:
+        def execute(
+            command: list[str], *, check: bool, capture_output: bool = False, text: bool = False
+        ) -> subprocess.CompletedProcess[str]:
             self.assertTrue(check)
             commands.append(command)
             if "-c" in command:
+                self.assertTrue(capture_output and text)
                 meeting.wait(timeout=10)
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
 
         with (
             tempfile.TemporaryDirectory() as temporary,
@@ -77,10 +89,10 @@ class ReferenceCompilationTests(unittest.TestCase):
                 directory,
                 2,
             )
-        self.assertEqual(len(commands), 3)
+        self.assertEqual(len(commands), 4)
         self.assertNotIn("-c", commands[-1])
         self.assertEqual(sum(argument.endswith(".o") for argument in commands[-1]), 2)
-        self.assertTrue(all("-fno-fast-math" in command for command in commands))
+        self.assertTrue(all("-fno-fast-math" in command for command in commands[1:]))
 
     def test_invalid_jobs_are_refused_before_compilation(self) -> None:
         """Bad worker requests cannot start compiler or CMake subprocesses."""

@@ -5,12 +5,12 @@
 
 #include <string>
 namespace docenhance::report {
-// How an outcome is presented. The wire format is owned here and nowhere else:
-// schemas/command-response.schema.json declares every field the JSON form emits.
+// How the retained outcome is presented. Actual typed response Fields own the wire shape;
+// native schema emission derives its exported artifact from those same values.
 enum class Format : unsigned char { text, json };
 struct Output {
     std::string out;
     std::string err;
 };
-[[nodiscard]] Output render(const app::Outcome& outcome, Format format);
+[[nodiscard]] core::Result<Output> render(const app::Outcome& outcome, Format format);
 } // namespace docenhance::report

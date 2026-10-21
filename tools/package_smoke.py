@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import platform
 import re
 import shutil
@@ -17,7 +18,7 @@ import sys
 import tempfile
 import zlib
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from jsonschema import Draft202012Validator
 
@@ -31,6 +32,9 @@ from package_inspection import binary_identity, contents, differences, expected_
 from package_selection import current_package
 from parameter_contract import merged_options
 from project_version import project_version
+
+if TYPE_CHECKING:
+    from jsonschema.protocols import Validator
 
 
 def run_json(exe: Path, *args: str) -> dict[str, Any]:
@@ -90,6 +94,70 @@ def gray_fixture(width: int, height: int) -> bytes:
 QUARTER_TURN_DEGREES = 90
 
 
+def inspect_run(
+    name: str,
+    output: Path,
+    response: dict[str, Any],
+    psf: Path,
+    record_schema: Validator,
+) -> None:
+    """Reconcile actual wire15 artifacts with response facts after relocated execution."""
+    if response["publication"] != "completed":
+        msg = f"Packaged processing did not complete: {name}"
+        raise ValueError(msg)
+    record_bytes = (output / "run.json").read_bytes()
+    record = json.loads(record_bytes)
+    record_schema.validate(record)
+    if (
+        response["record"] != record
+        or response["record_sha256"] != hashlib.sha256(record_bytes).hexdigest()
+    ):
+        msg = "Relocated executable response disagrees with the exact persisted record"
+        raise ValueError(msg)
+    if name == "denoising":
+        facts = record["execution"]["denoising"]
+        settings = record["request"]["denoising"]["parameters"]
+        expected_table = math.ceil(3 * (settings["h"] / 255) * settings["patch"] ** 2 * 65535)
+        if (
+            facts["method"] != "D01"
+            or facts["counts"]["evaluated"] != 160 * 128
+            or facts["weight_table_entries"] != expected_table
+            or facts["reason"] not in {"none", "no_effect"}
+        ):
+            msg = "Relocated executable did not complete first-party D01 traversal/table work"
+            raise ValueError(msg)
+    if name == "supplied_psf":
+        retained = (output / "assets/psf.png").read_bytes()
+        assets = record["assets"]
+        if retained != psf.read_bytes() or len(assets) != 1 or assets[0]["role"] != "psf_kernel":
+            msg = "Relocated executable did not retain the exact supplied PSF asset"
+            raise ValueError(msg)
+    if name == "quarter_turn":
+        dimensions = struct.unpack(">II", (output / "result.png").read_bytes()[16:24])
+        if (
+            dimensions != (128, 160)
+            or response["record"]["execution"]["interpretation"]["rotation"] != QUARTER_TURN_DEGREES
+            or record["request"]["rotation"] != QUARTER_TURN_DEGREES
+        ):
+            msg = "Relocated executable did not perform and record asymmetric G02 rotation"
+            raise ValueError(msg)
+    if name in {"fixed", "sauvola", "otsu", "jpeg_binary", "tiff_binary"}:
+        inspect_binary(output, record)
+
+
+def inspect_binary(output: Path, record: dict[str, Any]) -> None:
+    """Validate actual physical PNG1 and complete terminal classification coverage."""
+    encoded = (output / "result.png").read_bytes()
+    if encoded[24:26] != bytes((1, 0)):
+        msg = "Relocated executable did not produce physical grayscale PNG1"
+        raise ValueError(msg)
+    counts = record["execution"]["binarization"]
+    width, height = struct.unpack(">II", encoded[16:24])
+    if counts["black_samples"] + counts["white_samples"] != width * height:
+        msg = "Relocated binary classification did not cover every output pixel"
+        raise ValueError(msg)
+
+
 def exercise(exe: Path, root: Path) -> None:
     """Run all advertised methods after relocation and validate responses, records and bundles."""
     source = root / "source.png"
@@ -98,8 +166,13 @@ def exercise(exe: Path, root: Path) -> None:
     jpeg.write_bytes((ROOT / "tests/fixtures/jpeg/ycbcr-2x2-progressive.jpg").read_bytes())
     tiff = root / "source.tiff"
     tiff.write_bytes((ROOT / "tests/fixtures/tiff/d16-c3-t1-p2-b1-l0.tif").read_bytes())
+    psf = root / "kernel.png"
+    psf.write_bytes(gray_fixture(3, 3))
     cases: tuple[tuple[str, Path, list[str]], ...] = (
         ("tiff", tiff, []),
+        ("jpeg", jpeg, []),
+        ("jpeg_binary", jpeg, ["--output-mode", "bw", "--binarize", "fixed"]),
+        ("tiff_binary", tiff, ["--output-mode", "bw", "--binarize", "fixed"]),
         ("quarter_turn", source, ["--rotate", str(QUARTER_TURN_DEGREES)]),
         ("clahe", source, ["--contrast", "clahe"]),
         ("unsharp", source, ["--sharpen", "unsharp"]),
@@ -108,11 +181,12 @@ def exercise(exe: Path, root: Path) -> None:
         ("morph", source, ["--illumination", "morph", "--background-radius", "8"]),
         ("tvl1", source, ["--denoise", "tvl1"]),
         ("restoration", source, ["--deblur", "wiener", "--psf", "gaussian"]),
+        ("supplied_psf", source, ["--deblur", "wiener", "--psf", "kernel", "--psf-file", str(psf)]),
         ("fixed", source, ["--output-mode", "bw", "--binarize", "fixed"]),
         ("sauvola", source, ["--output-mode", "bw", "--binarize", "sauvola"]),
         ("otsu", source, ["--output-mode", "bw", "--binarize", "otsu"]),
         ("illumination", source, ["--illumination", "surface", "--background-cell", "8"]),
-        ("denoising", jpeg, ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]),
+        ("denoising", source, ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]),
     )
     record_schema = Draft202012Validator(
         json.loads((ROOT / "schemas/run-record.schema.json").read_bytes())
@@ -122,24 +196,22 @@ def exercise(exe: Path, root: Path) -> None:
         response = run_json(
             exe, "process", str(image), "--out-dir", str(output), *arguments, "--json"
         )
-        if response["publication"] != "completed":
-            msg = f"Packaged processing did not complete: {name}"
-            raise ValueError(msg)
-        if name == "denoising" and response["denoising"]["native_calls"] != 1:
-            msg = "Relocated executable did not execute and reuse native D01"
-            raise ValueError(msg)
-        record = json.loads((output / "run.json").read_bytes())
-        record_schema.validate(record)
-        if name == "quarter_turn":
-            dimensions = struct.unpack(">II", (output / "result.png").read_bytes()[16:24])
-            if (
-                dimensions != (128, 160)
-                or response["conversion"]["rotation_degrees"] != QUARTER_TURN_DEGREES
-                or record["request"]["rotation_degrees"] != QUARTER_TURN_DEGREES
-            ):
-                msg = "Relocated executable did not perform and record asymmetric G02 rotation"
-                raise ValueError(msg)
-        run_json(exe, "verify", str(output), "--json")
+        inspect_run(name, output, response, psf, record_schema)
+        verified = run_json(exe, "verify", str(output), "--json")
+        inspect_verification(output, verified, response["record"])
+
+
+def inspect_verification(output: Path, observed: dict[str, Any], record: dict[str, Any]) -> None:
+    """A relocated verifier identifies the exact artifacts and acquired record bytes."""
+    names = [record["output"]["path"], *(asset["path"] for asset in record["assets"]), "run.json"]
+    if [item["path"] for item in observed["confirmed"]] != names:
+        message = "Relocated verifier omitted, duplicated or reordered observed file roles"
+        raise ValueError(message)
+    for item in observed["confirmed"]:
+        raw = (output / item["path"]).read_bytes()
+        if item["bytes"] != len(raw) or item["sha256"] != hashlib.sha256(raw).hexdigest():
+            message = "Relocated verifier observed identity differs from actual fixture bytes"
+            raise ValueError(message)
 
 
 def smoke(root: Path, owner: Path) -> list[str]:

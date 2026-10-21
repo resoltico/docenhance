@@ -107,13 +107,27 @@ def included_headers(entry: dict[str, str], *, syntax: bool = True) -> list[tupl
         entry["directory"],
         f"Cannot read the includes of {entry['file']}",
     )
-    # Unlike Make dependency output, the compiler's trace retains spaces and dollar signs.
-    names = re.findall(r"^\.+ (.+)$", output.stderr, flags=re.MULTILINE)
-    paths = [(Path(entry["directory"]) / name).resolve() for name in names]
-    if any(not path.is_file() for path in paths):
-        msg = f"Compiler include trace contains an unidentified file: {entry['file']}"
+    return header_trace(output.stderr, entry["directory"], entry["file"])
+
+
+def header_trace(output: str, directory: str, source: str) -> list[tuple[str, str]]:
+    """Resolve a real compiler -H trace, including literal spaces and dollar signs."""
+    consumed, names = header_trace_values(output)
+    if consumed:
+        path = (Path(directory) / consumed).resolve()
+        msg = f"Cannot audit consumed precompiled header for {source}: {path}"
         raise ArchitectureError(msg)
-    spellings = [
-        name if Path(name).is_absolute() else f"{entry['directory']}/{name}" for name in names
-    ]
+    paths = [(Path(directory) / name).resolve() for name in names]
+    if any(not path.is_file() for path in paths):
+        msg = f"Compiler include trace contains an unidentified file: {source}"
+        raise ArchitectureError(msg)
+    spellings = [name if Path(name).is_absolute() else f"{directory}/{name}" for name in names]
     return list(zip(spellings, (str(path) for path in paths), strict=True))
+
+
+def header_trace_values(output: str) -> tuple[str | None, list[str]]:
+    """Decode the existing -H text without opening or resolving any observed file."""
+    consumed = re.search(r"^! (.+)$", output, flags=re.MULTILINE)
+    return consumed.group(1) if consumed else None, re.findall(
+        r"^\.+ (.+)$", output, flags=re.MULTILINE
+    )

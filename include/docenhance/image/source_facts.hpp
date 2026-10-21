@@ -14,7 +14,6 @@ inline constexpr unsigned jpeg_sampling_max = 4;
 inline constexpr unsigned jpeg_mcu_blocks_max = 10;
 inline constexpr unsigned jpeg_dimension_max = 65500;
 inline constexpr unsigned jpeg_scan_max = 128;
-inline constexpr std::uint64_t source_encoded_bytes_max = std::uint64_t{128} * 1024 * 1024;
 inline constexpr std::uint64_t source_pixels_max = 40'000'000;
 // Container codes are shared fact vocabulary; decoder-internal tags stay in codec.
 enum class PngColor : unsigned { gray = 0, rgb = 2, palette = 3, gray_alpha = 4, rgb_alpha = 6 };
@@ -29,6 +28,7 @@ enum class JpegProcess { baseline, progressive };
 struct Sampling {
     unsigned horizontal = 1;
     unsigned vertical = 1;
+    bool operator==(const Sampling&) const = default;
 };
 struct JpegFacts {
     std::uint32_t width{};

@@ -102,7 +102,6 @@ class AdvisoryTests(unittest.TestCase):
         features = (ROOT / "deps/features.json").read_bytes()
         for name, identifier in (
             ("zlib", "CVE-2026-76844"),
-            ("opencv", "OSV-2023-444"),
             ("jpeg", "OSV-2026-1068"),
         ):
             dependency = next(d for d in dependencies if d["name"] == name)
@@ -110,6 +109,9 @@ class AdvisoryTests(unittest.TestCase):
                 (ROOT / "tests/fixtures/advisories" / (identifier + ".json")).read_bytes()
             )
             self.assertTrue(reviewed(dependency, advisory, features))
+            self.assertFalse(
+                reviewed(dependency, {**advisory, "schema_version": "0.0.0"}, features)
+            )
             self.assertFalse(reviewed({**dependency, "object": "a" * 40}, advisory, features))
             self.assertFalse(reviewed(dependency, {**advisory, "modified": "changed"}, features))
             self.assertFalse(reviewed(dependency, advisory, features + b" "))
@@ -121,7 +123,6 @@ class AdvisoryTests(unittest.TestCase):
         features = (ROOT / "deps/features.json").read_bytes()
         for name, identifier in (
             ("zlib", "CVE-2026-76844"),
-            ("opencv", "OSV-2023-444"),
             ("jpeg", "OSV-2026-1068"),
         ):
             dependency = next(d for d in dependencies if d["name"] == name)

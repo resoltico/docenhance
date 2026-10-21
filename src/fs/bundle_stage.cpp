@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
 namespace docenhance::fs {
 namespace {
 constexpr unsigned staging_attempts = 64;
@@ -39,16 +40,14 @@ bool private_directory(const std::filesystem::path& path, std::error_code& error
 #endif
 }
 } // namespace
-[[nodiscard]] core::Error abandon(Stage& stage, core::Error error) {
-    error.publication =
+[[nodiscard]] PublishFailure abandon(Stage& stage, core::Error error) noexcept {
+    const auto publication =
         stage.owned ? core::Publication::not_published : core::Publication::not_started;
     if (!stage.cleanup()) {
         stage.retained = true;
-        error.code = core::ErrorCode::publication_unknown;
-        error.publication = core::Publication::unknown;
-        error.message = "Publication did not finish; staging cleanup could not be confirmed";
+        return std::move(stage.cleanup_uncertain);
     }
-    return error;
+    return {.error = std::move(error), .publication = publication};
 }
 [[nodiscard]] core::Result<void> reserve_stage(Stage& stage, const std::filesystem::path& target,
                                                const core::Cancellation& cancellation) {
@@ -83,11 +82,9 @@ bool private_directory(const std::filesystem::path& path, std::error_code& error
             stage.owned = true;
             stage.owner = EntryLease::directory(stage.directory);
             if (!stage.owner.matches(stage.directory)) {
-                return std::unexpected(
-                    abandon(stage, {
-                                       .code = core::ErrorCode::output,
-                                       .message = "Cannot retain the created staging directory",
-                                   }));
+                // The transaction owns cleanup and its publication state on every returned failure.
+                return core::failure(core::ErrorCode::output,
+                                     "Cannot retain the created staging directory");
             }
             return {};
         }
@@ -146,6 +143,11 @@ core::Result<std::optional<EntryIdentity>> owned_directory(Stage& stage,
             parent = *owned;
         }
         start = stop + 1;
+    }
+    // A previously owned file/directory is not a new file slot. Inserting an unbound duplicate
+    // would make cleanup report uncertainty even after removing the original owned entry.
+    if (std::ranges::any_of(stage.created, [&](const auto& entry) { return entry.path == path; })) {
+        return core::failure(core::ErrorCode::output, "A bundle file repeats an owned entry");
     }
     stage.created.insert(stage.created.begin(), {.path = path, .owner = {}});
     return BundleSlot{.path = path, .created = &stage.created.front().owner, .parent = parent};

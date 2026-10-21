@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
+#include "docenhance/core/execution_limits.hpp"
 #include "docenhance/core/result.hpp"
 
 #include <cstddef>
@@ -17,17 +18,13 @@ namespace docenhance::exec {
 // mid-page or push the process into swap, so the count is reduced until the memory fits, and a
 // budget too small for even one worker is a refusal rather than a gamble.
 //
-// This is not OpenCV's thread count. OpenCV's own parallel_for_ cannot be pinned on every platform
-// (macOS dispatches through Grand Central Dispatch, which ignores a requested count), so the
-// internal worker selection is honoured here, over the tiles of one page, and never delegated.
-// The public CLI exposes no worker-count option. Tests and fuzzers pin this internal API directly.
+// The first-party scheduler applies this selection to independent work within one page.
+// Foreign Fourier transforms remain internally serial under their adapter contract.
+// The CLI admits the requested bound; each operation also applies its working-set budget.
 
-// Internal selection: automatic, or an integer in [1, 64].
-inline constexpr unsigned min_workers = 1;
-inline constexpr unsigned max_workers = 64;
-// `auto` is deliberately modest: four workers saturate memory bandwidth on a page long before they
-// saturate a large machine, and a smaller count keeps the working set smaller.
-inline constexpr unsigned automatic_workers = 4;
+// Automatic detected concurrency, or an explicit integer in [1, 256].
+inline constexpr unsigned min_workers = core::min_execution_threads;
+inline constexpr unsigned max_workers = core::max_execution_threads;
 
 class Concurrency {
   public:

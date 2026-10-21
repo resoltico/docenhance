@@ -24,6 +24,7 @@ struct BundleSnapshot {
     core::Buffer record;
     core::Buffer image;
     core::Buffer mask;
+    core::Buffer psf;
     BundleContents contents;
 };
 // The host supplies the record grammar's byte bound; I/O supplies the artifact bound.

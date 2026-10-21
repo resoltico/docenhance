@@ -25,7 +25,7 @@ namespace {
 core::Result<Concurrency> Concurrency::resolve(std::optional<unsigned> requested, unsigned hardware,
                                                std::size_t available_bytes,
                                                std::size_t per_worker_bytes) {
-    const unsigned automatic = std::min(automatic_workers, std::max(min_workers, hardware));
+    const unsigned automatic = std::clamp(hardware, min_workers, max_workers);
     const unsigned asked = requested.value_or(automatic);
     if (asked < min_workers || asked > max_workers) {
         return core::failure(core::ErrorCode::argument, "A thread count must be between " +

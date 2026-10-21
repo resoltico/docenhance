@@ -3,11 +3,14 @@
 #include "docenhance/methods/sharpening.hpp"
 
 #include "docenhance/core/result.hpp"
+#include "docenhance/image/gaussian.hpp"
 #include "docenhance/methods/parameters.hpp"
+#include "sharpen_detail.hpp"
 
 #include <algorithm>
 #include <cmath>
-#include <string_view>
+#include <cstdint>
+#include <span>
 namespace docenhance::methods {
 core::Result<Unsharp> Unsharp::create(UnsharpParameters p) {
     if (!valid_parameters(p)) {
@@ -15,12 +18,7 @@ core::Result<Unsharp> Unsharp::create(UnsharpParameters p) {
     }
     return Unsharp{p};
 }
-core::Result<double> unsharp_candidate(double f, double blurred, const Unsharp& method) {
-    if (!std::isfinite(f) || !std::isfinite(blurred) || f < 0 || f > 1 || blurred < 0 ||
-        blurred > 1) {
-        return core::failure(core::ErrorCode::numerical,
-                             "Unsharp input is not unit finite perceptual intensity");
-    }
+double unsharp_candidate(double f, double blurred, const Unsharp& method) noexcept {
     const auto p = method.parameters();
     constexpr double byte_maximum = 255;
     const auto d = f - blurred;
@@ -28,34 +26,17 @@ core::Result<double> unsharp_candidate(double f, double blurred, const Unsharp& 
         std::copysign(std::max(std::abs(d) - (p.threshold / byte_maximum), 0.0), d);
     return f + (p.amount * residual);
 }
-std::string_view status_name(SharpenStatus v) noexcept {
-    switch (v) {
-    case SharpenStatus::unresolved:
-        return "unresolved";
-    case SharpenStatus::disabled:
-        return "disabled";
-    case SharpenStatus::no_change:
-        return "no_change";
-    case SharpenStatus::applied:
-        return "applied";
-    case SharpenStatus::failed:
-        return "failed";
+image::GaussianPass unsharp_gaussian(std::span<double, unsharp_coefficients_max> storage,
+                                     const Unsharp& method) noexcept {
+    const auto sigma = method.parameters().sigma;
+    const auto radius = static_cast<std::uint32_t>(std::ceil(3 * sigma));
+    const auto weights = storage.first((2 * radius) + 1);
+    double normalization = 0;
+    for (std::uint32_t k = 0; k < weights.size(); ++k) {
+        const auto offset = static_cast<double>(k) - radius;
+        weights.subspan(k, 1).front() = std::exp(-(offset * offset) / (2 * sigma * sigma));
+        normalization += weights.subspan(k, 1).front();
     }
-    return "failed";
-}
-std::string_view reason_name(SharpenReason v) noexcept {
-    switch (v) {
-    case SharpenReason::none:
-        return "none";
-    case SharpenReason::zero_amount:
-        return "zero_amount";
-    case SharpenReason::no_eligible_samples:
-        return "no_eligible_samples";
-    case SharpenReason::no_effect:
-        return "no_effect";
-    case SharpenReason::processing_failure:
-        return "processing_failure";
-    }
-    return "processing_failure";
+    return {.weights = weights, .normalization = normalization};
 }
 } // namespace docenhance::methods

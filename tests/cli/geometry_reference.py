@@ -4,29 +4,33 @@
 
 from __future__ import annotations
 
-import copy
 import dataclasses
 import json
+import math
 import struct
 from typing import TYPE_CHECKING, Any
 
 from clahe_reference import clahe
+from codec_samples import oriented_fixture
+from composition_reference import final_codes, linear
 from continuous_fixtures import RGB, Fixture, chunks, decode_output, exif
+from geometry_admission import refused
+from jpeg_io import DATA as JPEG_DATA
+from jpeg_io import marker, prepend
 from restoration_reference import motion
 from test_cli import call_json, expect
-from test_jpeg import DATA as JPEG_DATA
-from test_jpeg import marker, oriented_fixture, prepend
+from test_continuous import transfer_decode, transfer_encode
 from tiff_fixtures import TiffFixture
 
 if TYPE_CHECKING:
     from pathlib import Path
+
 
 BYTE_DEPTH = 8
 TURNS = (0, 90, 180, 270)
 FIRST_TRANSPOSED = 5
 ELIGIBLE_SAMPLES = 4
 CODEC_ORIENTATION = 7
-WORD_MAX = 65535
 CODE_TOLERANCE = 2
 COEFFICIENT_TOLERANCE = 2e-14
 
@@ -60,10 +64,10 @@ def process(
     )
     expect(path.read_bytes() == encoded, "G02 source bytes remain unchanged")
     expected_degrees = int(options[options.index("--rotate") + 1]) if "--rotate" in options else 0
-    observation = response if "method" in response else response["conversion"]
-    expect(observation["rotation_degrees"] == expected_degrees, "actual exact turn reported")
+    observation = response["record"]["execution"]["interpretation"]
+    expect(observation["rotation"] == expected_degrees, "actual exact turn reported")
     record = json.loads((directory / "run.json").read_bytes())
-    expect(record["request"]["rotation_degrees"] == expected_degrees, "immutable turn recorded")
+    expect(record["request"]["rotation"] == expected_degrees, "immutable turn recorded")
     call_json(exe, ["verify", str(directory), "--json"])
     return decode_output((directory / "result.png").read_bytes()), response, directory
 
@@ -98,7 +102,7 @@ def orientation_composition(exe: Path, root: Path, depth: int) -> Path:
                 swaps = (orientation >= FIRST_TRANSPOSED) != (degrees in (90, 270))
                 resolution = (2000, 1000) if swaps else (1000, 2000)
                 expect(
-                    response["conversion"]["resolution"]
+                    response["record"]["execution"]["interpretation"]["resolution"]
                     == {"x_ppm": resolution[0], "y_ppm": resolution[1]},
                     "composed physical axes",
                 )
@@ -159,10 +163,13 @@ def protection_frame(exe: Path, root: Path) -> None:
                 actual == rotated(altered, degrees), "mask and photometric input rotate identically"
             )
             expect(
-                response["contrast"]["eligible_samples"] == ELIGIBLE_SAMPLES
-                and response["contrast"]["protected_samples"] == len(mask.pixels) - ELIGIBLE_SAMPLES
-                and response["contrast"]["measured_samples"] == 0,
-                "gamma counts eligibility/protection without fitted statistics",
+                response["record"]["execution"]["contrast"]["counts"]["eligible"]
+                == ELIGIBLE_SAMPLES
+                and response["record"]["execution"]["contrast"]["counts"]["protected"]
+                == len(mask.pixels) - ELIGIBLE_SAMPLES
+                and response["record"]["execution"]["contrast"]["counts"]["evaluated"]
+                == ELIGIBLE_SAMPLES,
+                "gamma evaluates eligible destinations without changing protected destinations",
             )
             stored = decode_output((directory / "assets/protect-mask.png").read_bytes())
             expect(
@@ -179,12 +186,12 @@ def protection_frame(exe: Path, root: Path) -> None:
 
 
 def binary_samples(exe: Path, root: Path) -> None:
-    """G02 permutes stored grayscale; G01/color metadata never reinterprets binary input."""
+    """Binary uses common G01 interpretation then exact G02 before terminal classification."""
     source = Fixture(5, 3, tuple((i * 17,) for i in range(15)), metadata=((b"eXIf", exif(6)),))
     for method in ("otsu", "sauvola", "fixed"):
         options = ["--output-mode", "bw", "--binarize", method]
         baseline, _, _ = process(exe, root, source, options)
-        expect((baseline.width, baseline.height) == (5, 3), "binary ignores metadata orientation")
+        expect((baseline.width, baseline.height) == (3, 5), "binary applies metadata orientation")
         for degrees in TURNS:
             actual, _, _ = process(exe, root, source, [*options, "--rotate", str(degrees)])
             expect(
@@ -205,12 +212,16 @@ def processing_frame(exe: Path, root: Path) -> None:
     path = root / "clahe-mask.png"
     path.write_bytes(protected.encoded())
     protection = [bool(p[0]) for p in rotated(protected, 90).pixels]
+    original = linear(turned, 1, None)
     expected, identities = clahe(
-        [p[0] / WORD_MAX for p in turned.pixels],
+        [transfer_encode(rgb[0]) for rgb in original],
         (turned.width, turned.height),
         (2, 3),
         2,
         protection,
+    )
+    expected_codes = final_codes(
+        original, [transfer_decode(value) for value in expected], 16, gray=True
     )
     actual, response, _ = process(
         exe,
@@ -228,11 +239,15 @@ def processing_frame(exe: Path, root: Path) -> None:
         ],
     )
     expect(
-        response["contrast"]["identity_tiles"] == identities, "CLAHE resolved tiles use C canvas"
+        response["record"]["execution"]["contrast"]["identity_tiles"] == identities,
+        "CLAHE resolved tiles use C canvas",
     )
-    expect(response["contrast"]["changed_samples"] > 0, "anisotropic CLAHE remains active")
     expect(
-        max(abs(p[0] - round(f * WORD_MAX)) for p, f in zip(actual.pixels, expected, strict=True))
+        response["record"]["execution"]["contrast"]["counts"]["changed"] > 0,
+        "anisotropic CLAHE remains active",
+    )
+    expect(
+        max(abs(p[0] - q[0]) for p, q in zip(actual.pixels, expected_codes, strict=True))
         <= CODE_TOLERANCE,
         "all rotated CLAHE samples match independent C-frame oracle",
     )
@@ -243,6 +258,11 @@ def processing_frame(exe: Path, root: Path) -> None:
         ),
         "CLAHE protects exact C-frame destinations",
     )
+    restoration_frame(exe, root, source)
+
+
+def restoration_frame(exe: Path, root: Path, source: Fixture) -> None:
+    """A zero blend still resolves the actual post-rotation motion PSF facts."""
     small = Fixture(9, 7, source.pixels[:63], depth=16)
     restored, report, _ = process(
         exe,
@@ -264,17 +284,30 @@ def processing_frame(exe: Path, root: Path) -> None:
         ],
     )
     expect(restored == rotated(small, 90), "zero-blend R01 retains exact rotated samples")
-    stage = report["restoration"]
-    expect("W_PSF_AFTER_TRANSFORM" in stage["warnings"], "G02 precedes inference warning")
+    stage = report["record"]["execution"]["restoration"]
+    expect("W_PSF_AFTER_TRANSFORM" in report["warnings"], "G02 precedes inference warning")
     psf_width, psf_height, coefficients = motion(3.5, 37)
     expect(
         (stage["psf"]["width"], stage["psf"]["height"]) == (psf_width, psf_height),
         "PSF resolved in C independently of source axes",
     )
     expect(
-        max(abs(a - b) for a, b in zip(stage["psf"]["coefficients"], coefficients, strict=True))
+        abs(stage["psf"]["normalized_sum"] - math.fsum(coefficients)) < COEFFICIENT_TOLERANCE
+        and abs(
+            stage["psf"]["centroid_x"]
+            - math.fsum(
+                value * (i % psf_width - psf_width // 2) for i, value in enumerate(coefficients)
+            )
+        )
+        < COEFFICIENT_TOLERANCE
+        and abs(
+            stage["psf"]["centroid_y"]
+            - math.fsum(
+                value * (i // psf_width - psf_height // 2) for i, value in enumerate(coefficients)
+            )
+        )
         < COEFFICIENT_TOLERANCE,
-        "zero blend still validates actual C-frame motion PSF",
+        "zero blend still validates independent motion PSF normalization and centroid",
     )
 
 
@@ -312,62 +345,17 @@ def source_codecs(exe: Path, root: Path) -> None:
                 raise AssertionError(message)
             expect(output == rotated(baseline, degrees), "decoded JPEG/TIFF samples rotate exactly")
             expect(
-                response["conversion"]["source_orientation"] == CODEC_ORIENTATION,
+                response["record"]["execution"]["interpretation"]["source_orientation"]
+                == CODEC_ORIENTATION,
                 "codec orientation retained separately",
             )
-            expect(response["conversion"]["rotation_degrees"] == degrees, "codec turn observed")
             expect(
-                response["conversion"]["resolution"] is None,
+                response["record"]["execution"]["interpretation"]["rotation"] == degrees,
+                "codec turn observed",
+            )
+            expect(
+                response["record"]["execution"]["interpretation"]["resolution"] is None,
                 "unknown physical resolution remains unknown",
             )
             call_json(exe, ["verify", str(directory), "--json"])
         expect(path.read_bytes() == encoded, "source codec snapshot unchanged")
-
-
-def refused(exe: Path, root: Path, options: list[str], code: int = 2) -> None:
-    """Rejected syntax/source configuration must not create a result directory."""
-    directory = root / "refused"
-    result = call_json(
-        exe,
-        ["process", str(root / "source.png"), "--out-dir", str(directory), *options, "--json"],
-        code,
-    )
-    expect(
-        result["publication"] == "not_started" and not directory.exists(),
-        "G02 refusal precedes publication",
-    )
-
-
-def strict_options(exe: Path, root: Path) -> None:
-    """Only canonical whole quarter-turns are admitted; duplicates never silently win."""
-    for value in ("", "45", "360", "-90", "+90", "090", "90.0", "9e1", " 90", "90 ", "nan", "0x5a"):
-        refused(exe, root, ["--rotate", value])
-    refused(exe, root, ["--rotate", "0", "--rotate", "90"])
-
-
-def malformed_records(exe: Path, directory: Path) -> None:
-    """Forged rotation, obsolete version and request/report disagreement are rejected."""
-    path = directory / "run.json"
-    original = path.read_bytes()
-    record = json.loads(original)
-    for section, key, value in (
-        ("record", "version", 11),
-        ("request", "rotation_degrees", 45),
-        ("request", "rotation_degrees", "270"),
-        ("request", "rotation_degrees", True),
-        ("request", "rotation_degrees", 0),
-    ):
-        altered = copy.deepcopy(record)
-        altered[section][key] = value
-        path.write_text(json.dumps(altered), encoding="utf-8")
-        call_json(exe, ["verify", str(directory), "--json"], 3)
-    altered = copy.deepcopy(record)
-    del altered["request"]["rotation_degrees"]
-    path.write_text(json.dumps(altered), encoding="utf-8")
-    call_json(exe, ["verify", str(directory), "--json"], 3)
-    altered = copy.deepcopy(record)
-    altered["execution"]["conversion"]["rotation_degrees"] = 0
-    path.write_text(json.dumps(altered), encoding="utf-8")
-    call_json(exe, ["verify", str(directory), "--json"], 3)
-    path.write_bytes(original)
-    call_json(exe, ["verify", str(directory), "--json"])

@@ -1,22 +1,29 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "delivery_fixture.hpp"
 #include "docenhance/app/dispatch.hpp"
+#include "docenhance/app/execution_control.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
-#include "docenhance/color/converter.hpp"
+#include "docenhance/codec/encoded_png.hpp"
+#include "docenhance/codec/png_output.hpp"
+#include "docenhance/color/interpretation.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/execution_limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/scheduler.hpp"
 #include "docenhance/host/processor.hpp"
 #include "docenhance/host/verifier.hpp"
-#include "docenhance/image/continuous.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/methods/progress.hpp"
+#include "docenhance/methods/plan.hpp"
+#include "docenhance/record/record.hpp"
+#include "png_depth_fixture.hpp"
 #include "stub_verifier.hpp"
 
 #include <array>
@@ -30,6 +37,7 @@
 #include <stop_token>
 #include <type_traits>
 #include <utility>
+#include <variant>
 namespace docenhance::tests {
 namespace {
 template <typename T>
@@ -39,9 +47,20 @@ concept BorrowsPlane = requires(T&& owner) { std::forward<T>(owner).view(); };
 template <typename T>
 concept BorrowsRequest = requires(T&& owner) { std::forward<T>(owner).input(); };
 template <typename T>
-concept BorrowsRaster = requires(T&& owner, image::Continuous operation, core::Budget& budget) {
-    color::Converter::create(std::forward<T>(owner), operation, budget);
+concept BorrowsRaster = requires(T&& owner, image::InterpretationPolicy policy,
+                                 image::PngShape output, core::Budget& budget) {
+    color::Interpretation::create(std::forward<T>(owner), policy, output, budget);
 };
+template <typename T>
+concept BorrowsInterpretationReader = requires(T&& owner) { std::forward<T>(owner).reader(); };
+template <typename T>
+concept BorrowsReaderScratch = requires(T&& owner) { std::forward<T>(owner).scratch(); };
+static_assert(BorrowsInterpretationReader<color::Interpretation&>);
+static_assert(!BorrowsInterpretationReader<color::Interpretation>);
+static_assert(BorrowsReaderScratch<color::InterpretationReader&>);
+static_assert(!BorrowsReaderScratch<color::InterpretationReader>);
+static_assert(!std::is_copy_constructible_v<color::InterpretationReader>);
+static_assert(std::is_nothrow_move_constructible_v<color::InterpretationReader>);
 template <typename T>
 concept BorrowsPng = requires(T&& owner) { std::forward<T>(owner).png(); };
 static_assert(BorrowsPng<image::RasterMetadata&> && BorrowsPng<const image::RasterMetadata&>);
@@ -62,8 +81,11 @@ template <typename T>
 concept CarriesPhotometric = requires(T plan) { plan.photometric; };
 template <typename T>
 concept CarriesProtection = requires(T plan) { plan.protection; };
-static_assert(!CarriesPhotometric<app::BinaryPlan> && !CarriesProtection<app::BinaryPlan>);
-static_assert(CarriesPhotometric<app::ContinuousPlan> && CarriesProtection<app::ContinuousPlan>);
+static_assert(CarriesPhotometric<methods::Plan> && CarriesProtection<methods::Plan>);
+static_assert(!CarriesPhotometric<methods::BinaryOutput> &&
+              !CarriesProtection<methods::BinaryOutput>);
+static_assert(!CarriesPhotometric<methods::ContinuousOutput> &&
+              !CarriesProtection<methods::ContinuousOutput>);
 static_assert(BorrowsPlan<const app::ProcessRequest&> && !BorrowsPlan<app::ProcessRequest>);
 static_assert(BorrowsRequest<app::ProcessRequest&> && !BorrowsRequest<app::ProcessRequest>);
 static_assert(BorrowsRaster<const image::Raster&> && !BorrowsRaster<image::Raster>);
@@ -77,7 +99,7 @@ class ReportingProcessor final : public app::Processor {
   public:
     explicit ReportingProcessor(app::Published result) : result_(std::move(result)) {}
     app::ProcessResult process(const app::ProcessRequest& /*request*/,
-                               const core::Cancellation& /*cancellation*/) override {
+                               const app::ExecutionControl& /*control*/) override {
         return result_;
     }
 
@@ -121,30 +143,48 @@ TEST_CASE("Concurrent buffers and reservations share one ledger and refund every
     }
     REQUIRE(budget.used() == 0);
 }
-TEST_CASE("Wrong-family and incomplete processing reports preserve unknown publication") {
+TEST_CASE(
+    "First-party published results transfer unchanged across independent invocation selections") {
     UnusedVerifier verifier;
     app::Invocation request;
     request.command = app::Command::process;
     request.operands = {"input.png"};
     request.option(app::OptionId::out_dir) = "output";
-    ReportingProcessor binary{
-        app::PublishedBinary{.output = "output/result.png", .run = {}, .record = {}}};
-    REQUIRE(app::dispatch(request, binary, verifier).exit_code() ==
-            core::ExitCode::publication_unknown);
-    for (unsigned invalid = 0; invalid < 4; ++invalid) {
-        app::PublishedContinuous reported{};
-        reported.output = "output/result.png";
-        reported.conversion.verified = invalid != 1;
-        reported.stages.illumination.progress =
-            invalid != 2 ? methods::StageProgress::completed : methods::StageProgress::prepared;
-        reported.stages.denoising.progress =
-            invalid != 3 ? methods::StageProgress::completed : methods::StageProgress::prepared;
-        ReportingProcessor continuous{reported};
-        request.option(app::OptionId::output_mode) = invalid == 0 ? "bw" : "preserve";
-        const auto outcome = app::dispatch(request, continuous, verifier);
-        REQUIRE(outcome.exit_code() == core::ExitCode::publication_unknown);
-        REQUIRE(std::get<app::ProcessFailure>(outcome.payload).error.publication ==
-                core::Publication::unknown);
+    request.option(app::OptionId::output_mode) = "bw";
+    request.option(app::OptionId::binarize) = "fixed";
+    const auto admitted = app::prepare_process(request);
+    REQUIRE(admitted);
+    const auto healthy = delivery_publication(*admitted);
+    ReportingProcessor control{healthy};
+    REQUIRE(app::dispatch(request, control, verifier).exit_code() == core::ExitCode::success);
+    for (unsigned invalid = 0; invalid < 5; ++invalid) {
+        auto reported = healthy;
+        auto invocation = request;
+        if (invalid == 0) {
+            reported.record.context.identity.clear();
+        } else if (invalid == 1) {
+            invocation.option(app::OptionId::output_mode) = "preserve";
+            invocation.option(app::OptionId::binarize).reset();
+        } else if (invalid == 2) {
+            reported.record.execution.binarization.reset();
+        } else if (invalid == 3) {
+            invocation.option(app::OptionId::illumination) = "surface";
+        } else {
+            invocation.option(app::OptionId::denoise) = "nlm";
+        }
+        REQUIRE(app::prepare_process(invocation));
+        const bool valid_record = invalid != 0 && invalid != 2;
+        CHECK(record::serialize(reported.record).has_value() == valid_record);
+        const auto expected = reported;
+        ReportingProcessor processor{std::move(reported)};
+        const auto outcome = app::dispatch(invocation, processor, verifier);
+        REQUIRE(outcome.exit_code() == core::ExitCode::success);
+        REQUIRE(std::holds_alternative<app::Published>(outcome.payload));
+        const auto& transferred = std::get<app::Published>(outcome.payload);
+        CHECK(transferred.output == expected.output);
+        CHECK(transferred.record_identity == expected.record_identity);
+        CHECK(transferred.record == expected.record);
+        CHECK(transferred.diagnostics == expected.diagnostics);
     }
 }
 TEST_CASE("Percentile selection borrows scratch and refuses invalid input before reordering") {
@@ -213,10 +253,12 @@ TEST_CASE("Moved requests become unready and native ports refuse them before can
     CHECK(stopped.requested(core::Checkpoint::admission));
     CHECK(!source.stop_possible());
     host::Processor processor;
-    const auto refused = processor.process(original, stopped);
+    const auto control = app::ExecutionControl::create({}, core::default_memory_limit, stopped);
+    REQUIRE(control);
+    const auto refused = processor.process(original, *control);
     REQUIRE(!refused);
     CHECK(refused.error().error.code == core::ErrorCode::argument);
-    CHECK(refused.error().error.publication == core::Publication::not_started);
+    CHECK(refused.error().publication == core::Publication::not_started);
     invocation.command = app::Command::verify;
     invocation.option(app::OptionId::out_dir).reset();
     auto reading = app::prepare_verify(invocation).value();
@@ -232,24 +274,41 @@ TEST_CASE("Moved requests become unready and native ports refuse them before can
     const auto denied = verifier.verify(retained, stopped);
     REQUIRE(!denied);
     CHECK(denied.error().code == core::ErrorCode::argument);
-    CHECK(denied.error().publication == core::Publication::not_started);
 }
-TEST_CASE("Binary row adapters validate bounds before borrowing and preserve rejected output") {
-    const std::array<std::uint8_t, 4> samples{1, 2, 3, 4};
+TEST_CASE(
+    "PNG encoding validates borrowed-plane extents before charged allocation and preserves input") {
+    core::Budget budget{std::size_t{1024} * 1024};
+    const std::array<std::uint8_t, 4> samples{0, 1, 1, 0};
+    const auto original = samples;
     const auto view = image::PlaneView<const std::uint8_t>::create(
-                          samples, {.width = 4, .height = 1, .stride = 4})
+                          samples, {.width = 2, .height = 2, .stride = 2})
                           .value();
-    image::PlaneRows rows{view};
-    std::array<std::uint8_t, 4> output{9, 9, 9, 9};
-    const auto original = output;
-    CHECK(!rows.row(1, output, image::RowUse::output));
-    CHECK(
-        !rows.row(std::numeric_limits<std::uint32_t>::max(), output, image::RowUse::verification));
-    CHECK(!rows.row(0, std::span{output}.first(1), image::RowUse::output));
-    CHECK(output == original);
-    CHECK(rows.row(0, output, image::RowUse::output));
-    CHECK(output == samples);
-    image::PlaneRows empty{{}};
-    CHECK(!empty.row(0, output, image::RowUse::output));
+    const codec::PngImage intended{
+        .shape = {.width = 2, .height = 2, .depth = fixture_png_depth(1)},
+        .pixels = view,
+        .profile = std::span<const std::byte>(),
+        .resolution = std::nullopt,
+    };
+    std::array<codec::PngImage, 3> invalid{intended, intended, intended};
+    invalid.at(0).shape.height = 1;
+    invalid.at(1).shape.width = 1;
+    invalid.at(2).pixels = image::PlaneView<const std::uint8_t>();
+    for (const auto& candidate : invalid) {
+        const auto refused = codec::encode_png(candidate, budget);
+        REQUIRE(!refused);
+        CHECK(refused.error().code == core::ErrorCode::argument);
+        CHECK(samples == original);
+        CHECK(budget.used() == 0);
+        CHECK(budget.peak() == 0);
+    }
+    {
+        const auto encoded = codec::encode_png(intended, budget);
+        REQUIRE(encoded);
+        CHECK(!encoded->bytes().empty());
+        REQUIRE(codec::compare_png(encoded->bytes(), intended, budget));
+        CHECK(samples == original);
+    }
+    CHECK(budget.used() == 0);
+    CHECK(budget.peak() > 0);
 }
 } // namespace docenhance::tests

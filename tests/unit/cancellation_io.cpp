@@ -4,12 +4,15 @@
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
+#include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/codec/png.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/host/processor.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/raster.hpp"
 #include "native_publication.hpp"
 #include "png_fixture.hpp"
 #include "png_transaction.hpp"
@@ -17,6 +20,7 @@
 #include "temporary_directory.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -91,14 +95,52 @@ std::error_code unclean_commit(const std::filesystem::path& from,
         return std::make_error_code(std::errc::io_error);
     }
 }
+// Track the actual eager-to-filesystem boundary while enumerating the shared encode phase.
+class EncodingStop {
+  public:
+    explicit EncodingStop(std::size_t after) {
+        allowed = after;
+        visits.store(0);
+        staged.store(false);
+        stopped.store(false);
+    }
+    static bool observe(core::Checkpoint at) noexcept {
+        if (at == core::Checkpoint::staging) {
+            staged.store(true);
+        }
+        if (at == core::Checkpoint::encode && visits.fetch_add(1) >= allowed) {
+            stopped.store(true);
+        }
+        return stopped.load();
+    }
+    [[nodiscard]] static core::Cancellation cancellation() noexcept {
+        return core::Cancellation{{}, observe};
+    }
+    inline static std::size_t allowed = 0;
+    inline static std::atomic<std::size_t> visits{0};
+    inline static std::atomic<bool> staged{false}, stopped{false};
+};
 } // namespace
 namespace {
-void check_decode(const core::Result<image::Plane<std::uint8_t>>& result) {
+bool decoded_gray_sample(std::uint8_t value) {
+    return value == 127;
+}
+void check_complete_decode(const core::Result<image::Raster>& result) {
+    REQUIRE(result);
+    CHECK(result->shape.width == 8);
+    CHECK(result->shape.height == 8);
+    CHECK(result->shape.model == image::SampleModel::gray);
+    CHECK(result->shape.depth == image::SampleDepth::byte());
+    for (std::uint32_t row = 0; row < 8; ++row) {
+        CHECK(std::ranges::all_of(result->pixels.view().row(row), decoded_gray_sample));
+    }
+}
+void check_decode(const core::Result<image::Raster>& result) {
     if (CheckpointStop::stopped()) {
         REQUIRE(!result);
         CHECK(result.error().code == core::ErrorCode::cancelled);
     } else {
-        REQUIRE(result);
+        check_complete_decode(result);
     }
 }
 bool decode_attempt(std::span<const std::uint8_t> bytes, std::size_t after) {
@@ -106,7 +148,8 @@ bool decode_attempt(std::span<const std::uint8_t> bytes, std::size_t after) {
     core::Budget budget{limit};
     const codec::PngLimits limits;
     {
-        const auto result = codec::decode_grayscale_png(bytes, budget, limits, stop.cancellation());
+        const auto result = codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded,
+                                                     stop.cancellation(), limits);
         check_decode(result);
     }
     REQUIRE(budget.used() == 0);
@@ -133,22 +176,26 @@ TEST_CASE("Every PNG encoding checkpoint cleans unpublished output", "[cancellat
     const TemporaryDirectory directory{"docenhance-stop"};
     core::Budget budget{limit};
     auto plane = image::Plane<std::uint8_t>::allocate(budget, 8, 8).value();
-    std::ranges::fill(plane.view().storage(), UINT8_MAX);
+    std::ranges::fill(plane.view().storage(), 1);
     const auto held = budget.used();
     const auto output = utf8_spelling(directory.path / "result");
     bool completed = false;
     constexpr std::size_t attempts = 128;
     for (std::size_t after = 0; after < attempts; ++after) {
-        const CheckpointStop stop{core::Checkpoint::encode, after};
+        const EncodingStop stop{after};
+        const auto control = EncodingStop::cancellation();
         const auto result =
-            publish_png_fixture(output, plane.view().as_const(), budget, stop.cancellation());
-        if (CheckpointStop::stopped()) {
+            publish_png_fixture(output, binary_png(plane.view().as_const()), budget, control);
+        if (EncodingStop::stopped.load()) {
             REQUIRE(!result);
-            CHECK(result.error().code == core::ErrorCode::cancelled);
-            CHECK(result.error().publication == core::Publication::not_published);
+            CHECK(result.error().error.code == core::ErrorCode::cancelled);
+            CHECK(result.error().publication == (EncodingStop::staged.load()
+                                                     ? core::Publication::not_published
+                                                     : core::Publication::not_started));
             CHECK(empty_directory(directory.path));
         } else {
             REQUIRE(result);
+            CHECK(after > 1);
             completed = true;
         }
         CHECK(budget.used() == held);
@@ -185,9 +232,9 @@ TEST_CASE("Host cancellation preserves input and never publishes incomplete proc
         const CheckpointStop stop{phase, 0};
         const auto result = app::dispatch(request, processor, verifier, stop.cancellation());
         REQUIRE(result.exit_code() == core::ExitCode::cancelled);
-        const auto& error = std::get<app::Failure>(result.payload).error;
-        const auto staged = phase == core::Checkpoint::encode || phase == core::Checkpoint::commit;
-        CHECK(error.publication ==
+        const auto& failure = std::get<app::Failure>(result.payload);
+        const auto staged = phase == core::Checkpoint::commit;
+        CHECK(failure.publication ==
               (staged ? core::Publication::not_published : core::Publication::not_started));
         CHECK(std::distance(std::filesystem::directory_iterator(directory.path),
                             std::filesystem::directory_iterator{}) == 1);
@@ -201,21 +248,21 @@ TEST_CASE("The final commit checkpoint is the cancellation cutoff", "[cancellati
     const TemporaryDirectory directory{"docenhance-stop"};
     core::Budget budget{limit};
     auto plane = image::Plane<std::uint8_t>::allocate(budget, 1, 1).value();
-    plane.view().row(0).front() = UINT8_MAX;
+    plane.view().row(0).front() = 1;
     const auto output = utf8_spelling(directory.path / "output");
     {
         const CheckpointStop stop{core::Checkpoint::commit, 0};
-        const auto result = publish_png_fixture(output, plane.view().as_const(), budget,
+        const auto result = publish_png_fixture(output, binary_png(plane.view().as_const()), budget,
                                                 stop.cancellation(), cancel_after_gate);
         REQUIRE(!result);
-        CHECK(result.error().code == core::ErrorCode::cancelled);
+        CHECK(result.error().error.code == core::ErrorCode::cancelled);
         CHECK(result.error().publication == core::Publication::not_published);
         CHECK(empty_directory(directory.path));
     }
     commit_source() = std::stop_source{};
     const core::Cancellation control{commit_source().get_token()};
-    const auto result =
-        publish_png_fixture(output, plane.view().as_const(), budget, control, cancel_after_gate);
+    const auto result = publish_png_fixture(output, binary_png(plane.view().as_const()), budget,
+                                            control, cancel_after_gate);
     REQUIRE(result);
     CHECK(control.requested(core::Checkpoint::processing));
     CHECK(std::filesystem::is_regular_file(directory.path / "output" / "result.png"));
@@ -226,11 +273,11 @@ TEST_CASE("Late cancellation preserves refusal, proven completion and unresolved
         const TemporaryDirectory directory{"docenhance-stop"};
         core::Budget budget{limit};
         auto plane = image::Plane<std::uint8_t>::allocate(budget, 1, 1).value();
-        plane.view().row(0).front() = UINT8_MAX;
+        plane.view().row(0).front() = 1;
         commit_source() = std::stop_source{};
         const auto output = utf8_spelling(directory.path / "output");
         const auto result =
-            publish_png_fixture(output, plane.view().as_const(), budget,
+            publish_png_fixture(output, binary_png(plane.view().as_const()), budget,
                                 core::Cancellation{commit_source().get_token()}, commit);
         if (commit == ambiguous_commit) {
             REQUIRE(result);
@@ -238,11 +285,11 @@ TEST_CASE("Late cancellation preserves refusal, proven completion and unresolved
         } else {
             REQUIRE(!result);
             if (commit == refused_commit) {
-                CHECK(result.error().code == core::ErrorCode::output);
+                CHECK(result.error().error.code == core::ErrorCode::output);
                 CHECK(result.error().publication == core::Publication::not_published);
                 CHECK(empty_directory(directory.path / "output"));
             } else {
-                CHECK(result.error().code == core::ErrorCode::publication_unknown);
+                CHECK(result.error().error.code == core::ErrorCode::publication_unknown);
                 CHECK(result.error().publication == core::Publication::unknown);
             }
         }

@@ -27,24 +27,27 @@ invent future method implementations, successful copies, plugin registries or ge
 - `spec/cli-contract.json` owns syntax and format admission; `spec/method-contract.json` owns
   implemented method parameters and selector domains. Runtime catalogs come from actual types;
   common geometry belongs to image/request contracts. See `docs/methods.md` for generated metadata.
-- `spec/command-response.schema.json` and `spec/run-record.schema.json` own current wire templates.
-  Regenerate affected outputs with `python tools/generate_spec.py`; reject obsolete forms.
+- Actual `core::Fields` beside record/response values and their scalar domains own wire shapes.
+  The compiled `de_schema` emitter and `update-schemas` target generate both schemas and the record
+  dictionary; reject obsolete forms. `python tools/generate_spec.py` generates CLI/method metadata.
 - `CMakeLists.txt` owns version. `deps/lock.json` owns immutable sources; `deps/features.json` owns
   native features/patches; `deps/tools.json` owns tool versions and deployment floors.
-- The CLI owns syntax and one response delivery; the app admits `BinaryPlan | ContinuousPlan`;
-  the host executes the fixed stages. Typed observations retain actual work and unstarted stages.
+- The CLI owns syntax and one response delivery; the app admits one owned common `methods::Plan`.
+  The host snapshots/publishes and the pure pipeline executes the fixed stages. Typed observations
+  retain the completed prefix and actual failed stage; absent slots never claim successful work.
   Numeric kernels have no I/O, process state, allocation expressions, throwing or catching.
 
-Read method guides before touching their behavior: `docs/binarization.md`, `docs/illumination.md`,
-`docs/morphological-illumination.md`, `docs/denoising.md`, `docs/tvl1-denoising.md`, `docs/restoration.md`,
-`docs/contrast.md`, `docs/sharpening.md`, and `docs/geometry.md`. Codec representation/admission belongs
-in `docs/png-processing.md`, `docs/jpeg-processing.md` and `docs/tiff-processing.md`. Preserve their
-mathematics, borders, precision, masks, immutable fitted models, resource estimates and references.
+Read method guides before touching their behavior: `docs/methods/binarization.md`,
+`docs/methods/illumination.md`, `docs/methods/denoising.md`, `docs/methods/restoration.md`,
+`docs/methods/contrast.md`, `docs/methods/sharpening.md`, and `docs/pipeline.md`.
+Codec representation/admission belongs in `docs/formats/png.md`, `docs/formats/jpeg.md` and
+`docs/formats/tiff.md`. Preserve their
+mathematics, borders, precision, masks, immutable fitted phase fields, resource estimates and references.
 Do not advertise any method or domain before complete typed admission, execution and tests exist.
 
 ## Effects, ownership and safety
 
-Read `docs/cancellation.md` and `docs/bundles.md` before changing interrupts, scheduling, codecs,
+Read `docs/architecture.md` and `docs/record.md` before changing interrupts, scheduling, codecs,
 verification or publication. Cancellation is execution control, never method configuration. Keep
 bounded checkpoints, real-error precedence, joined workers and the final precommit cutoff. Never
 call `request_stop` from an OS handler. Test cancellation deterministically without timing sleeps.

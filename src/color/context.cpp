@@ -6,6 +6,8 @@
 #include "docenhance/core/result.hpp"
 
 #include <algorithm>
+#include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstring>
 #include <lcms2.h>
@@ -18,7 +20,7 @@ namespace {
 ColorMemory& memory(cmsContext context) noexcept {
     return *static_cast<ColorMemory*>(cmsGetContextUserData(context));
 }
-void* allocate_color(cmsContext context, cmsUInt32Number size) noexcept {
+void* allocate_locked(cmsContext context, cmsUInt32Number size) noexcept {
     auto& state = memory(context);
     try {
         for (auto& block : state.blocks) {
@@ -39,12 +41,17 @@ void* allocate_color(cmsContext context, cmsUInt32Number size) noexcept {
     state.exhausted = true;
     return nullptr;
 }
+void* allocate_color(cmsContext context, cmsUInt32Number size) noexcept {
+    const MetadataLock lock{memory(context).guard};
+    return allocate_locked(context, size);
+}
 // Little CMS fixes the callback signature; the pointee is never modified.
 // NOLINTNEXTLINE(misc-const-correctness)
 void free_color(cmsContext context, void* const pointer) noexcept {
     if (pointer == nullptr) {
         return;
     }
+    const MetadataLock lock{memory(context).guard};
     for (auto& block : memory(context).blocks) {
         if (block.bytes().data() == pointer) {
             block = core::Buffer{};
@@ -55,18 +62,24 @@ void free_color(cmsContext context, void* const pointer) noexcept {
 // The native realloc callback requires a mutable pointer argument.
 // NOLINTNEXTLINE(misc-const-correctness)
 void* resize_color(cmsContext context, void* const pointer, cmsUInt32Number size) noexcept {
+    const MetadataLock lock{memory(context).guard};
     if (pointer == nullptr) {
-        return allocate_color(context, size);
+        return allocate_locked(context, size);
     }
     if (size == 0) {
-        free_color(context, pointer);
+        for (auto& block : memory(context).blocks) {
+            if (block.bytes().data() == pointer) {
+                block = core::Buffer{};
+                return nullptr;
+            }
+        }
         return nullptr;
     }
     for (auto& block : memory(context).blocks) {
         if (block.bytes().data() != pointer) {
             continue;
         }
-        auto* const replacement = allocate_color(context, size);
+        auto* const replacement = allocate_locked(context, size);
         if (replacement != nullptr) {
             std::memcpy(replacement, pointer,
                         std::min(block.size(), static_cast<std::size_t>(size)));
@@ -81,7 +94,12 @@ void color_error(cmsContext context, cmsUInt32Number /*code*/, const char* /*tex
     memory(context).failed = true;
 }
 } // namespace
-Context::Context(core::Budget& budget) : memory_{.budget = budget, .blocks = {}} {
+Context::Context(core::Budget& budget)
+    : memory_{
+          .budget = budget,
+          .blocks = std::array<core::Buffer, native_block_count>(),
+          .guard = std::atomic_flag(),
+      } {
     // Base-library memory hook, not the separately licensed fastfloat/threaded extensions.
     cmsPluginMemHandler allocator{
         .base =
@@ -110,7 +128,9 @@ Context::~Context() {
 }
 core::Error Context::error(std::string message) const {
     return {
-        .code = memory_.exhausted ? core::ErrorCode::resource : core::ErrorCode::input,
+        .code = context_ == nullptr || memory_.exhausted.load(std::memory_order_relaxed)
+                    ? core::ErrorCode::resource
+                    : core::ErrorCode::input,
         .message = std::move(message),
     };
 }

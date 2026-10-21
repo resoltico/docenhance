@@ -1,71 +1,117 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/color/converter.hpp"
-
 #include "context.hpp"
 #include "conversion.hpp"
+#include "docenhance/color/interpretation.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/execution_limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
 #include "docenhance/image/geometry.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
 
-#include <cstdint>
+#include <algorithm>
 #include <expected>
 #include <memory>
-#include <span>
 #include <utility>
 
 namespace docenhance::color {
-Converter::Converter(std::unique_ptr<ConversionState> state) : state_(std::move(state)) {}
-Converter::~Converter() = default;
-core::Result<std::unique_ptr<Converter>>
-Converter::create(const image::Raster& source, image::Continuous operation, core::Budget& budget,
-                  const core::Cancellation& cancellation, image::QuarterTurn rotation) {
-    auto bytes = image::raster_row_bytes(source.shape);
+namespace {
+core::Result<std::unique_ptr<InterpretationState>>
+fit_readers(std::unique_ptr<InterpretationState> state, core::Budget& budget, unsigned workers) {
+    const auto source = state->source;
+    const auto policy = state->parameters;
+    const auto cancellation = state->cancellation;
+    const auto output = state->report.output;
+    for (;;) {
+        auto prepared = prepare_readers(*state, budget, workers);
+        if (prepared) {
+            return state;
+        }
+        if (prepared.error().code != core::ErrorCode::resource || !state->native ||
+            state->readers.empty() || workers == 1) {
+            return std::unexpected(std::move(prepared.error()));
+        }
+        workers = std::min(workers / 2, static_cast<unsigned>(state->readers.size()));
+        // Native exhaustion poisons the whole context. Refund every owner before rebuilding it.
+        state.reset();
+        if (cancellation.requested(core::Checkpoint::allocation)) {
+            return core::cancelled();
+        }
+        state = std::make_unique<InterpretationState>(source.get(), policy, budget, cancellation);
+        state->report.output = output;
+        if (!state->context.good()) {
+            return std::unexpected(state->context.error("Cannot create bounded color context"));
+        }
+        if (auto rebuilt = prepare_interpretation(*state); !rebuilt) {
+            return std::unexpected(std::move(rebuilt.error()));
+        }
+    }
+}
+} // namespace
+Interpretation::Interpretation(std::unique_ptr<InterpretationState> state)
+    : state_(std::move(state)) {}
+Interpretation::~Interpretation() = default;
+core::Result<std::unique_ptr<Interpretation>>
+Interpretation::create(const image::Raster& source, image::InterpretationPolicy policy,
+                       image::PngShape output, core::Budget& budget, const ReadControl& control) {
+    const auto& cancellation = control.cancellation;
+    if (control.workers < core::min_execution_threads ||
+        control.workers > core::max_execution_threads) {
+        return core::failure(core::ErrorCode::argument, "Invalid interpretation worker count");
+    }
+    const auto bytes = image::raster_row_bytes(source.shape);
+    const auto oriented = image::rotated_shape(
+        image::oriented_shape(source.shape, source.metadata.orientation), policy.rotation);
     if (!bytes || source.pixels.empty() || source.pixels.width() != *bytes ||
-        source.pixels.height() != source.shape.height) {
+        source.pixels.height() != source.shape.height ||
+        !image::valid_interpretation_policy(policy) || !image::validate(output) ||
+        output.width != oriented.width || output.height != oriented.height ||
+        (!image::is_color(source.shape.model) && output.model != image::SampleModel::gray)) {
         return core::failure(core::ErrorCode::argument,
-                             "Color conversion requires a valid decoded raster");
+                             "Interpretation requires valid matching raster and output shapes");
     }
     if (cancellation.requested(core::Checkpoint::allocation)) {
         return core::cancelled();
     }
-    auto state = std::make_unique<ConversionState>(source, operation, budget, cancellation);
-    state->report.rotation = rotation;
+    auto state = std::make_unique<InterpretationState>(source, policy, budget, cancellation);
+    state->report.output = output;
     if (!state->context.good()) {
         return std::unexpected(state->context.error("Cannot create bounded color context"));
     }
-    auto prepared = prepare_conversion(*state, budget);
-    if (!prepared) {
-        return std::unexpected(prepared.error());
+    if (policy.profile != image::ProfilePolicy::srgb && source.metadata.png() != nullptr) {
+        if (auto valid = validate_declarations(source.metadata); !valid) {
+            return std::unexpected(std::move(valid.error()));
+        }
     }
-    return std::unique_ptr<Converter>{new Converter{std::move(state)}};
+    if (auto prepared = prepare_interpretation(*state); !prepared) {
+        return std::unexpected(std::move(prepared.error()));
+    }
+    auto fitted = fit_readers(std::move(state), budget, control.workers);
+    if (!fitted) {
+        return std::unexpected(std::move(fitted.error()));
+    }
+    return std::unique_ptr<Interpretation>{new Interpretation{std::move(*fitted)}};
 }
-image::OutputDescriptor Converter::descriptor() const noexcept {
-    // uint8_t observes serialized bytes without changing their representation.
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-    const auto* bytes = reinterpret_cast<const std::uint8_t*>(state_->profile.bytes().data());
-    return {
-        .shape = state_->report.output,
-        .profile = {bytes, state_->profile.size()},
-        .resolution = state_->report.resolution,
-    };
-}
-core::Result<void> Converter::row(std::uint32_t index, std::span<std::uint8_t> bytes,
-                                  image::RowUse use) {
-    return convert_row(*state_, index, bytes, use);
-}
-image::ConversionReport Converter::report() const noexcept {
+const image::InterpretationReport& Interpretation::descriptor() const& noexcept {
     return state_->report;
 }
-image::Extent Converter::extent() const noexcept {
-    return {.width = state_->report.output.width, .height = state_->report.output.height};
+image::InterpretationCategory Interpretation::category() const noexcept {
+    return image::interpretation_category(state_->source.get().shape.model);
 }
-core::Result<void> Converter::read(image::RowRange range, std::span<double> rgb,
-                                   image::RowUse use) {
-    return read_linear(*state_, range, rgb, use);
+unsigned Interpretation::workers() const noexcept {
+    return static_cast<unsigned>(state_->readers.size());
+}
+core::Result<InterpretationReader> Interpretation::reader() & {
+    const MetadataLock lock{state_->reader_guard};
+    for (auto& reader : state_->readers) {
+        if (!reader->leased) {
+            reader->leased = true;
+            return InterpretationReader{*reader};
+        }
+    }
+    return core::failure(core::ErrorCode::invariant,
+                         "Every interpretation reader is already leased");
 }
 } // namespace docenhance::color

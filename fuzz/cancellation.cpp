@@ -2,17 +2,21 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/core/cancellation.hpp"
 
+#include "binary_reference.hpp"
 #include "cancellation_probe.hpp"
+#include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/codec/png.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/exec/concurrency.hpp"
 #include "docenhance/exec/scheduler.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
+#include "docenhance/image/raster.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/binarization_working.hpp"
 #include "docenhance/methods/box_mean.hpp"
 #include "png_fixture.hpp"
-#include "sauvola_reference.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
@@ -46,14 +50,67 @@ void outcome(const core::Result<void>& result) {
         require(result.has_value(), "without observed cancellation the operation completes");
     }
 }
+template <typename Method>
+bool binary_outcome(const Method& method, image::PlaneView<const std::uint16_t> source,
+                    image::PlaneView<std::uint8_t> destination, core::Budget& budget,
+                    const exec::Scheduler& scheduler) {
+    const auto result = methods::binarize(method, {source, destination, budget, scheduler});
+    if (tests::CheckpointStop::stopped()) {
+        require(!result && result.error().code == core::ErrorCode::cancelled,
+                "actual observed Q16 checkpoint produces cancellation and no Facts");
+    } else {
+        require(result && result->black_samples + result->white_samples == pixels,
+                "without observed cancellation actual Q16 classifies the complete frame");
+    }
+    return result.has_value();
+}
+void check_binary_samples(image::PlaneView<const std::uint16_t> source,
+                          image::PlaneView<const std::uint8_t> destination,
+                          std::span<const std::uint16_t> original, bool adaptive, bool complete) {
+    const auto method = methods::Sauvola::create({.window = 7}).value();
+    constexpr std::uint16_t fixed_split = 32767;
+    constexpr std::uint16_t padding = 0x3141;
+    for (std::uint32_t row = 0; row < extent; ++row) {
+        for (std::uint32_t column = 0; column < extent; ++column) {
+            const auto sample = source.row(row).subspan(column, 1).front();
+            require(sample == original.subspan((row * extent) + column, 1).front(),
+                    "Q16 source samples remain immutable");
+            if (complete) {
+                const auto fixed = static_cast<std::uint8_t>(sample > fixed_split);
+                const auto expected =
+                    adaptive ? tests::binary_sauvola_reference(source, method, column, row) : fixed;
+                require(destination.row(row).subspan(column, 1).front() == expected,
+                        "actual complete logical0/1 output matches independent Q16 classification");
+            }
+        }
+    }
+    const auto backing = source.storage();
+    for (std::size_t i = 0; i < backing.size(); ++i) {
+        if (i % source.row_pitch() >= extent) {
+            require(backing.subspan(i, 1).front() == padding,
+                    "Q16 source padding remains immutable");
+        }
+    }
+}
 void binarize(FuzzInput& input, core::Checkpoint phase, std::size_t after) {
     core::Budget budget{budget_limit};
-    auto source = image::Plane<std::uint8_t>::allocate(budget, extent, extent).value();
+    auto source = image::Plane<std::uint16_t>::allocate(budget, extent, extent).value();
     auto destination = image::Plane<std::uint8_t>::allocate(budget, extent, extent).value();
-    std::array<std::uint8_t, pixels> original{};
-    for (auto& pixel : original) {
-        pixel = input.byte();
+    std::array<std::uint8_t, pixels> low{};
+    for (auto& value : low) {
+        value = input.byte();
     }
+    // Keep the actual retained adaptive selector position. Extra bytes extend all Q16 codes;
+    // absent extension bytes retain the old Q=257*s input embeddings without an output bridge.
+    const bool adaptive = input.byte() % 2U != 0;
+    std::array<std::uint16_t, pixels> original{};
+    for (std::size_t i = 0; i < original.size(); ++i) {
+        original.at(i) = static_cast<std::uint16_t>(
+            ((std::uint32_t{low.at(i)} ^ std::uint32_t{input.byte()}) << 8U) |
+            std::uint32_t{low.at(i)});
+    }
+    constexpr std::uint16_t padding = 0x3141;
+    std::ranges::fill(source.view().storage(), padding);
     for (std::uint32_t row = 0; row < extent; ++row) {
         std::ranges::copy(
             std::span{original}.subspan(static_cast<std::size_t>(row) * extent, extent),
@@ -61,37 +118,17 @@ void binarize(FuzzInput& input, core::Checkpoint phase, std::size_t after) {
     }
     std::ranges::fill(destination.view().storage(), sentinel);
     const auto held = budget.used();
-    const auto sauvola = methods::Sauvola::create({.window = 7}).value();
-    const bool adaptive = input.byte() % 2U != 0;
-    const methods::Binarization selected =
-        adaptive ? methods::Binarization{sauvola}
-                 : methods::Binarization{methods::FixedThreshold::create().value()};
     const tests::CheckpointStop stop{phase, after};
     const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value(),
                                     stop.cancellation()};
-    const auto result = methods::binarize(source.view().as_const(), destination.view(), selected,
-                                          {.scheduler = scheduler, .budget = budget});
-    outcome(result);
-    require(budget.used() == held, "cancellation and completion refund scratch storage");
-    const tests::SauvolaReference reference{
-        .source = source.view().as_const(),
-        .window = 7,
-        .k = sauvola.k(),
-        .r = sauvola.r(),
-    };
-    for (std::uint32_t row = 0; row < extent; ++row) {
-        for (std::uint32_t column = 0; column < extent; ++column) {
-            const auto sample = source.view().row(row).subspan(column, 1).front();
-            require(sample == original.at((row * extent) + column),
-                    "source bytes remain immutable");
-            if (result) {
-                const auto fixed = static_cast<std::uint8_t>(sample <= 127 ? 0 : 255);
-                const auto expected = adaptive ? reference.at(column, row) : fixed;
-                require(destination.view().row(row).subspan(column, 1).front() == expected,
-                        "completed output matches an independent sample definition");
-            }
-        }
-    }
+    const bool complete =
+        adaptive ? binary_outcome(methods::Sauvola::create({.window = 7}).value(),
+                                  source.view().as_const(), destination.view(), budget, scheduler)
+                 : binary_outcome(methods::FixedThreshold::create().value(),
+                                  source.view().as_const(), destination.view(), budget, scheduler);
+    require(budget.used() == held, "Q16 cancellation and completion refund all scratch");
+    check_binary_samples(source.view().as_const(), destination.view().as_const(), original,
+                         adaptive, complete);
 }
 void box_mean(core::Checkpoint phase, std::size_t after) {
     core::Budget budget{budget_limit};
@@ -114,17 +151,21 @@ void box_mean(core::Checkpoint phase, std::size_t after) {
         }
     }
 }
-void check_decoded(const core::Result<image::Plane<std::uint8_t>>& result, std::uint8_t sample) {
+void check_decoded(const core::Result<image::Raster>& result, std::uint8_t sample) {
     if (tests::CheckpointStop::stopped()) {
         require(!result && result.error().code == core::ErrorCode::cancelled,
                 "codec cancellation is not corrupt-input failure");
         return;
     }
     require(result.has_value(), "uncancelled independent PNG decodes");
+    require(result->shape.width == extent && result->shape.height == extent &&
+                result->shape.model == image::SampleModel::gray &&
+                result->shape.depth == image::SampleDepth::byte(),
+            "independent gray fixture retains its actual typed byte raster shape");
     for (std::uint32_t row = 0; row < extent; ++row) {
-        require(
-            std::ranges::all_of(result->view().row(row), [sample](auto v) { return v == sample; }),
-            "uncancelled codec samples are exact");
+        require(std::ranges::all_of(result->pixels.view().row(row),
+                                    [sample](auto v) { return v == sample; }),
+                "uncancelled codec samples are exact");
     }
 }
 void decode(FuzzInput& input, std::size_t after) {
@@ -141,7 +182,8 @@ void decode(FuzzInput& input, std::size_t after) {
     const tests::CheckpointStop stop{core::Checkpoint::decode, after};
     const codec::PngLimits limits{.encoded_bytes = 65536, .pixels = 4096};
     {
-        const auto result = codec::decode_grayscale_png(bytes, budget, limits, stop.cancellation());
+        const auto result = codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded,
+                                                     stop.cancellation(), limits);
         check_decoded(result, fixture.samples.front());
     }
     require(budget.used() == 0, "codec allocations are refunded after cancellation or success");

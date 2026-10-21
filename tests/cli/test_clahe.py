@@ -10,12 +10,14 @@ import tempfile
 from pathlib import Path
 
 from clahe_reference import clahe
+from composition_reference import Nlm, terminal_fixed
+from composition_reference import denoise as nlm_reference
 from continuous_fixtures import RGB, Fixture
+from illumination_io import LINEAR, require_output, run
 from illumination_reference import Plane, surface
 from morphology_reference import background
 from test_cli import call_json, expect
 from test_continuous import transfer_decode, transfer_encode
-from test_illumination import LINEAR, require_output, run
 from tvl1_reference import TvSettings, solve
 
 WORD_DEPTH = 16
@@ -45,11 +47,12 @@ def numerical(exe: Path, root: Path) -> None:
             expected, identities = clahe(values, (width, height), (2, 2), clip)
             output, response = run(exe, root, fixture, [*GRID, "--clahe-clip", str(clip)])
             actual = require_output(output)
-            report = response["contrast"]
-            expect(report["method"] == {"id": "C03", "method_version": 1}, "C03 reported")
+            report = response["record"]["execution"]["contrast"]
+            expect(report["method"] == "C03", "C03 reported")
             expect(report["identity_tiles"] == identities, "independent identity tiles")
             expect(
-                report["measured_samples"] == width * height, "each eligible sample measured once"
+                report["counts"]["evaluated"] == width * height,
+                "each eligible sample measured once",
             )
             expect(
                 max(
@@ -59,7 +62,7 @@ def numerical(exe: Path, root: Path) -> None:
                 <= CODE_TOLERANCE,
                 "mass redistribution and seam-free spatial/intensity interpolation",
             )
-            expect(report["changed_samples"] > 0, "active method changes samples")
+            expect(report["counts"]["changed"] > 0, "active method changes samples")
             if depth == WORD_DEPTH:
                 expect(
                     len({p[0] for p in actual.pixels}) > BYTE_LEVELS,
@@ -87,11 +90,14 @@ def protection(exe: Path, root: Path) -> None:
     output, response = run(exe, root, fixture, [*GRID, "--protect-mask", str(mask)])
     actual = require_output(output)
     expect(
-        identities == IDENTITY_COUNT and response["contrast"]["identity_tiles"] == IDENTITY_COUNT,
+        identities == IDENTITY_COUNT
+        and response["record"]["execution"]["contrast"]["identity_tiles"] == IDENTITY_COUNT,
         "empty and sparse identity tiles",
     )
     expect(
-        response["contrast"]["measured_samples"] == mask_values.count(False), "protected exclusion"
+        response["record"]["execution"]["contrast"]["counts"]["evaluated"]
+        == mask_values.count(False),
+        "protected exclusion",
     )
     for i, p in enumerate(actual.pixels):
         expect(
@@ -103,10 +109,16 @@ def protection(exe: Path, root: Path) -> None:
     flat = Fixture(width, height, ((23456,),) * (width * height), depth=16)
     output, response = run(exe, root, flat, GRID)
     expect(require_output(output).pixels == flat.pixels, "all identity tiles preserve exact RGB")
-    expect(response["contrast"]["identity_tiles"] == FLAT_COUNT, "flat tile count")
+    expect(
+        response["record"]["execution"]["contrast"]["identity_tiles"] == FLAT_COUNT,
+        "flat tile count",
+    )
     output, response = run(exe, root, Fixture(1, 1, ((123,),)), [*GRID, "--contrast-blend", "0"])
     expect(require_output(output).pixels == ((123,),), "zero blend bypasses pixel applicability")
-    expect(response["contrast"]["measured_samples"] == 0, "zero blend does no histogram work")
+    expect(
+        response["record"]["execution"]["contrast"]["counts"]["evaluated"] == 0,
+        "zero blend does no histogram work",
+    )
 
 
 def color_and_records(exe: Path, root: Path) -> None:
@@ -143,7 +155,6 @@ def color_and_records(exe: Path, root: Path) -> None:
         call_json(exe, ["verify", str(bundle), "--json"], 3)
     record = json.loads(original)
     record["request"]["contrast"]["parameters"]["grid_rows"] = 3
-    record["execution"]["contrast"]["parameters"]["grid_rows"] = 3
     path.write_text(json.dumps(record), encoding="utf-8")
     call_json(exe, ["verify", str(bundle), "--json"], 3)
     path.write_bytes(original)
@@ -172,10 +183,6 @@ def composition(exe: Path, root: Path) -> None:
             min(1, y * min(2, max(1, 0.9 / max(b, 0.02))))
             for y, b in zip(values, field, strict=True)
         ]
-        denoised = solve(
-            [transfer_encode(y) for y in illuminated], width, height, TvSettings(fidelity=0.05)
-        ).values
-        expected, _ = clahe(denoised, (width, height), (2, 2), 2)
         illumination = [
             "--illumination",
             selector,
@@ -190,28 +197,70 @@ def composition(exe: Path, root: Path) -> None:
                 if denoiser == "tvl1"
                 else ["--denoise", "nlm", "--nlm-patch", "3", "--nlm-search", "7"]
             )
-            output, report = run(exe, root, fixture, [*illumination, *denoise, *GRID])
             if denoiser == "tvl1":
-                expect(
-                    max(
-                        abs(p[0] / 65535 - f)
-                        for p, f in zip(require_output(output).pixels, expected, strict=True)
-                    )
-                    < COLOR_TOLERANCE / 65535,
-                    "independent full floating CLAHE composition",
+                denoised = solve(
+                    [transfer_encode(y) for y in illuminated],
+                    width,
+                    height,
+                    TvSettings(fidelity=0.05),
+                ).values
+            else:
+                ys, _, _ = nlm_reference(
+                    illuminated,
+                    width,
+                    height,
+                    [False] * len(values),
+                    Nlm(h=3, patch=3, search=7, blend=0.5),
                 )
+                denoised = [transfer_encode(y) for y in ys]
+            expected, _ = clahe(denoised, (width, height), (2, 2), 2)
+            output, report = run(exe, root, fixture, [*illumination, *denoise, *GRID])
             expect(
-                report["denoising"]["changed_samples"] > 0
-                and report["contrast"]["changed_samples"] > 0,
+                max(
+                    abs(p[0] / 65535 - f)
+                    for p, f in zip(require_output(output).pixels, expected, strict=True)
+                )
+                < COLOR_TOLERANCE / 65535,
+                "independent full floating CLAHE composition",
+            )
+            expect(
+                report["record"]["execution"]["denoising"]["counts"]["changed"] > 0
+                and report["record"]["execution"]["contrast"]["counts"]["changed"] > 0,
                 "active composition",
             )
             expect(
-                report["illumination"]["application"]["evaluated_samples"] == len(values)
-                and report["denoising"]["evaluated_samples"] == len(values)
-                and report["contrast"]["measured_samples"] == len(values)
-                and report["contrast"]["evaluated_samples"] == len(values),
+                report["record"]["execution"]["illumination"]["counts"]["evaluated"] == len(values)
+                and report["record"]["execution"]["denoising"]["counts"]["evaluated"] == len(values)
+                and report["record"]["execution"]["contrast"]["counts"]["evaluated"] == len(values)
+                and report["record"]["execution"]["contrast"]["counts"]["eligible"] == len(values),
                 "prefix observed once",
             )
+
+
+def binary_composition(exe: Path, root: Path) -> None:
+    """Same method prefix feeds one terminal Q16 quantization and actual packed PNG1."""
+    width = height = 32
+    fixture = Fixture(width, height, tuple((80 + (i * 13) % 150,) for i in range(width * height)))
+    values = [p[0] / 255 for p in fixture.pixels]
+    candidates = clahe(values, (width, height), (2, 2), 2)[0]
+    expected = terminal_fixed([transfer_decode(min(1, max(0, f))) for f in candidates])
+    output, response = run(
+        exe,
+        root,
+        fixture,
+        [*GRID, "--output-mode", "bw", "--binarize", "fixed", "--fixed-threshold", "0.5"],
+    )
+    actual = require_output(output)
+    expect(
+        actual.depth == 1 and actual.pixels == expected,
+        "independent logical decisions are stored as physical grayPNG1",
+    )
+    facts = response["record"]["execution"]["binarization"]
+    expect(
+        facts["black_samples"] == sum(pixel == (0,) for pixel in expected)
+        and facts["white_samples"] == sum(pixel == (1,) for pixel in expected),
+        "actual terminal counts agree with independent bits",
+    )
 
 
 def admission(exe: Path, root: Path) -> None:
@@ -225,7 +274,6 @@ def admission(exe: Path, root: Path) -> None:
         [*GRID, "--clahe-clip", "nan"],
         [*GRID, "--clahe-clip", "0.9"],
         [*GRID, "--clahe-clip", "8.1"],
-        ["--output-mode", "bw", *GRID],
     ):
         run(exe, root, fixture, options, 2)
     for grid in ("1x2", "33x2", "2X2", "2x2x2", "2.0x2", "2x", "-2x2", "3x2"):
@@ -241,6 +289,7 @@ def main() -> None:
         protection(exe, root)
         color_and_records(exe, root)
         composition(exe, root)
+        binary_composition(exe, root)
         admission(exe, root)
     print("PASS: C03 independent mappings, precision, protection, color and records")
 

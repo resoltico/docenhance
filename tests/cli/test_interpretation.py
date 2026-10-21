@@ -46,9 +46,7 @@ def reference(pixel: tuple[int, ...], fixture: Fixture, intent: ScalarIntent) ->
         for value in samples
     )
     values = tuple(alpha * value + (1 - alpha) * intent.matte for value in linear)
-    if count == 1:
-        values *= 3
-    if intent.gray or count == 1:
+    if intent.gray and count != 1:
         values = (
             sum(
                 coefficient * value for coefficient, value in zip(COEFFICIENTS, values, strict=True)
@@ -106,7 +104,8 @@ def scalar_precision(exe: Path, root: Path) -> None:
                     sum(pixel[-1] != maximum for pixel in pixels) if color != RGB else 0
                 )
                 expect(
-                    report["alpha_flattened_pixels"] == expected_flattened,
+                    report["record"]["execution"]["interpretation"]["alpha_composited_pixels"]
+                    == expected_flattened,
                     "alpha observations occur exactly once",
                 )
 
@@ -179,7 +178,7 @@ def resolution_validation(exe: Path, root: Path) -> None:
 
 
 def binary_framing(exe: Path, root: Path) -> None:
-    """Static framing applies to binary input while color/orientation never change samples."""
+    """Refuse bad framing before effects; binary uses common gamma and G01 interpretation."""
     fixture = Fixture(2, 1, ((100,), (200,)), GRAY)
     plain = fixture.encoded()
     cases = (
@@ -239,8 +238,8 @@ def binary_framing(exe: Path, root: Path) -> None:
     )
     decoded = decode_output((output / "result.png").read_bytes())
     expect(
-        (decoded.width, decoded.height, decoded.pixels) == (2, 1, ((0,), (255,))),
-        "stored binary samples ignore gamma and orientation",
+        (decoded.width, decoded.height, decoded.depth, decoded.pixels) == (1, 2, 1, ((1,), (1,))),
+        "binary applies linear gamma and metadata orientation before physical PNG1 classification",
     )
 
 

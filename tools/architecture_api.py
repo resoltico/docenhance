@@ -71,8 +71,9 @@ def matchers(manifest: Manifest, files: dict[str, set[str]]) -> list[tuple[str, 
                 f"{name} declares a namespace that is not docenhance::{name}",
                 (
                     f"namespaceDecl(isExpansionInFileMatching({owned}), "
-                    f'unless(isAnonymous()), unless(hasName("docenhance")), '
-                    f'unless(hasName("{name}")))'
+                    f'unless(isAnonymous()), unless(anyOf(hasName("::docenhance"), '
+                    f'hasName("::docenhance::{name}"), '
+                    f'hasAncestor(namespaceDecl(hasName("::docenhance::{name}"))))))'
                 ),
             )
         )

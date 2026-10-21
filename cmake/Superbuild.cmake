@@ -44,34 +44,22 @@ foreach(name IN LISTS de_names)
   de_dependency_features("${name}" "${de_binary}" de_options)
   de_dependency_flags("${name}" de_flags)
   list(APPEND de_options ${de_flags})
-  if(name MATCHES "^(picosha2|json|zlib|tiff)$")
+  if(name MATCHES "^(picosha2|json|zlib|tiff|pocketfft)$")
     set(de_source "${PROJECT_SOURCE_DIR}/cmake/dependencies/${name}")
     list(APPEND de_options "-DDE_UPSTREAM_SOURCE:PATH=${DE_SOURCE_CACHE}/sources/${name}")
   endif()
-  if(name STREQUAL "opencv")
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|AMD64|amd64)$")
-      list(APPEND de_options "-DCPU_BASELINE:STRING=SSE2")
-    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^(arm64|aarch64|ARM64)$")
-      list(APPEND de_options "-DCPU_BASELINE:STRING=NEON")
-    else()
-      message(FATAL_ERROR "Release baseline is defined only for x86-64 and ARM64")
-    endif()
-    # OpenCV must not locate Python package wrappers, codecs or neural backends.
-    list(APPEND de_options "-DOPENCV_FORCE_PYTHON_LIBS:BOOL=OFF" "-DOPENCV_CMAKE_HOOKS_DIR:PATH=${PROJECT_SOURCE_DIR}/cmake/opencv-hooks" "-DZLIB_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
+  if(name STREQUAL "catch2")
+    # Catch's compiled stringifiers and our test consumers need the same language features.
+    list(APPEND de_options "-DCMAKE_CXX_STANDARD:STRING=${DE_CXX_STANDARD}"
+      "-DCMAKE_CXX_STANDARD_REQUIRED:BOOL=ON" "-DCMAKE_CXX_EXTENSIONS:BOOL=OFF")
   endif()
   if(name STREQUAL "png" OR name STREQUAL "tiff")
     list(APPEND de_options "-DZLIB_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
   endif()
-  if(WIN32 AND (name STREQUAL "opencv" OR name STREQUAL "png" OR name STREQUAL "tiff"))
+  if(WIN32 AND (name STREQUAL "png" OR name STREQUAL "tiff"))
     # zlib names its static Windows archive zs.lib; CMake's FindZLIB does not probe that name.
     # This remains a configuration-private path to the zlib ExternalProject, never a host lookup.
     list(APPEND de_options "-DZLIB_LIBRARY:FILEPATH=${DE_DEPENDENCY_PREFIX}/lib/zs.lib")
-  endif()
-  if(WIN32 AND name STREQUAL "opencv")
-    # OpenCV 5's MinGW compatibility path otherwise exports a bare pthread.lib when CMake
-    # configures it with the current MSVC-compatible runner. There is no pinned pthread
-    # runtime in this source-only build, so explicitly use OpenCV's serial Windows path.
-    list(APPEND de_options "-DOPENCV_DISABLE_THREAD_SUPPORT:BOOL=ON")
   endif()
   if(name STREQUAL "tiff")
     list(APPEND de_options "-DJPEG_ROOT:PATH=${DE_DEPENDENCY_PREFIX}")
@@ -83,13 +71,13 @@ foreach(name IN LISTS de_names)
     list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_CXX_COMPILER:")
   elseif(name MATCHES "^(json|catch2)$")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_C_COMPILER:")
-  elseif(name STREQUAL "picosha2")
+  elseif(name MATCHES "^(picosha2|pocketfft)$")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-D(CMAKE_(C_COMPILER|CXX_COMPILER|MSVC_RUNTIME_LIBRARY|OSX_DEPLOYMENT_TARGET|POSITION_INDEPENDENT_CODE|PREFIX_PATH)|BUILD_SHARED_LIBS):")
   endif()
-  if(NOT name MATCHES "^(opencv|tiff)$")
+  if(NOT name STREQUAL "tiff")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_POLICY_DEFAULT_CMP0091:")
   endif()
-  if(name MATCHES "^(zlib|jpeg|lcms|json|picosha2|catch2)$")
+  if(name MATCHES "^(zlib|jpeg|lcms|json|picosha2|pocketfft|catch2)$")
     list(FILTER de_dependency_common EXCLUDE REGEX "^-DCMAKE_FIND_USE_(SYSTEM_)?PACKAGE_REGISTRY:")
   endif()
   ExternalProject_Add(de_dep_${name}
@@ -142,6 +130,11 @@ add_custom_target(de_verify_configuration ALL
   COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/tools/audit_build.py"
     --build "${PROJECT_BINARY_DIR}" DEPENDS ${de_previous} VERBATIM)
 add_dependencies(de_native de_verify_configuration)
+if(WIN32)
+  # The CRT proof configures the real private dependency closure without building other tests.
+  ExternalProject_Add_StepTargets(de_native configure)
+  add_dependencies(de_native-configure de_verify_configuration)
+endif()
 # The audit cannot be skipped merely because ExternalProject's configure stamps exist.
 add_custom_target(de_verify_sources ALL
   COMMAND "${CMAKE_COMMAND}" -P "${PROJECT_SOURCE_DIR}/cmake/BuildEnvironment.cmake"

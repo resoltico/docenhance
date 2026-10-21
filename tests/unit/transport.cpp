@@ -1,13 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
+#include "delivery_fixture.hpp"
+#include "docenhance/app/execution_control.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/cli/run.hpp"
-#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/parameters.hpp"
+#include "docenhance/methods/plan.hpp"
 #include "stub_verifier.hpp"
 
 #include <array>
@@ -18,7 +20,6 @@
 #include <span>
 #include <sstream>
 #include <streambuf>
-#include <string>
 
 namespace docenhance::tests {
 namespace {
@@ -28,30 +29,24 @@ namespace {
 class CountingProcessor final : public app::Processor {
   public:
     unsigned calls = 0;
-    app::ProcessResult process(const app::ProcessRequest& /*request*/,
-                               const core::Cancellation& /*cancellation*/) override {
+    app::ProcessResult process(const app::ProcessRequest& request,
+                               const app::ExecutionControl& /*control*/) override {
         ++calls;
-        return app::PublishedBinary{
-            .output = "result/result.png",
-            .run = std::string(32, 'a'),
-            .record =
-                {
-                    .sha256 = std::string(64, 'b'),
-                    .bytes = 512,
-                },
-        };
+        return delivery_publication(request);
     }
 };
 class CapturingProcessor final : public app::Processor {
   public:
     std::optional<app::ProcessRequest> received;
     app::ProcessResult process(const app::ProcessRequest& request,
-                               const core::Cancellation& /*cancellation*/) override {
+                               const app::ExecutionControl& /*control*/) override {
         received = request;
-        return app::process_failure({
-            .code = core::ErrorCode::not_implemented,
-            .message = "Captured without processing effects",
-        });
+        return app::process_failure(
+            {
+                .code = core::ErrorCode::not_implemented,
+                .message = "Captured without processing effects",
+            },
+            core::Publication::not_started);
     }
 };
 class RefusingBuffer final : public std::streambuf {
@@ -251,15 +246,15 @@ TEST_CASE("CLI typed bindings transfer nondefault values to their admitted owner
     const auto& request = *processor.received;
     CHECK(request.input() == "input.png");
     CHECK(request.output_directory() == "result");
-    CHECK(std::get<app::ContinuousPlan>(request.plan()).protection == "mask.png");
-    const auto tone = std::get<app::ContinuousPlan>(request.plan()).operation.parameters();
+    CHECK(request.mask_path() == "mask.png");
+    const auto& plan = request.plan();
+    CHECK(plan.protection);
+    const auto& tone = std::get<methods::ContinuousOutput>(plan.output);
     CHECK(tone.mode == image::ToneMode::gray);
     CHECK(tone.depth == image::OutputDepth::word);
-    CHECK(tone.alpha == image::AlphaPolicy::black);
-    CHECK(tone.profile == image::ProfilePolicy::srgb);
-    const auto light = std::get<methods::Surface>(
-                           std::get<app::ContinuousPlan>(request.plan()).photometric.illumination)
-                           .parameters();
+    CHECK(plan.alpha == image::AlphaPolicy::black);
+    CHECK(plan.profile == image::ProfilePolicy::srgb);
+    const auto light = std::get<methods::Surface>(plan.photometric.illumination).parameters();
     CHECK(light.mode == methods::SurfaceMode::automatic);
     CHECK(light.strength == 0.25);
     CHECK(light.max_gain == 3);
@@ -267,9 +262,7 @@ TEST_CASE("CLI typed bindings transfer nondefault values to their admitted owner
     CHECK(light.cell == 32);
     CHECK(light.quantile == 0.8);
     CHECK(light.smooth == 4);
-    const auto denoise =
-        std::get<methods::Nlm>(std::get<app::ContinuousPlan>(request.plan()).photometric.denoising)
-            .parameters();
+    const auto denoise = std::get<methods::Nlm>(plan.photometric.denoising).parameters();
     CHECK(denoise.h == 4);
     CHECK(denoise.patch == 5);
     CHECK(denoise.search == 9);

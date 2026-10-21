@@ -15,9 +15,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+from codec_samples import jpeg_dc_fixture
 from continuous_fixtures import Fixture, decode_output, exif
+from jpeg_io import DATA, marker, prepend, process, refused
 from test_cli import call_json, expect
-from test_jpeg import DATA, marker, prepend, process, refused
 
 ORIENTED_WIDTH = 9
 
@@ -50,11 +51,12 @@ def resolution(exe: Path, root: Path) -> None:
     )
     response, data = process(exe, root, "exif-precedence", encoded)
     expect(
-        response["source_decoding"]["resolution_conflict"],
+        response["record"]["source"]["container"]["resolution_conflict"],
         "both conflicting physical declarations are recorded",
     )
     expect(
-        response["conversion"]["resolution"] == {"x_ppm": 5906, "y_ppm": 11811},
+        response["record"]["execution"]["interpretation"]["resolution"]
+        == {"x_ppm": 5906, "y_ppm": 11811},
         "EXIF precedence and axis swap are explicit",
     )
     expect(
@@ -63,7 +65,8 @@ def resolution(exe: Path, root: Path) -> None:
     unitless = prepend(bytes(source), marker(225, b"Exif\0\0" + physical_exif(1, 3, 2)))
     response, _ = process(exe, root, "unitless-exif", unitless)
     expect(
-        response["conversion"]["resolution"] == {"x_ppm": 2835, "y_ppm": 5669},
+        response["record"]["execution"]["interpretation"]["resolution"]
+        == {"x_ppm": 2835, "y_ppm": 5669},
         "unitless EXIF does not invent DPI and permits physical JFIF",
     )
     malformed = bytearray(physical_exif(2, 300, 150))
@@ -148,7 +151,8 @@ def equivalent_pipeline(exe: Path, root: Path) -> None:
     """Equivalent decoded samples enter the same conversion, I01 and mask implementations."""
     source = (DATA / "gray-document-progressive.jpeg").read_bytes()
     _, plain = process(exe, root, "equivalence-samples", source)
-    decoded = decode_output(plain)
+    decoded = jpeg_dc_fixture(128, 96)
+    expect(decode_output(plain).pixels == decoded.pixels, "independent JPEG DC page")
     # Decoder sample correctness has separate coefficient/cosine references in native tests.
     png = dataclasses.replace(decoded, metadata=()).encoded()
     mask = root / "equivalent-mask.png"
@@ -182,9 +186,16 @@ def equivalent_pipeline(exe: Path, root: Path) -> None:
         "identical interpreted samples yield identical I01 and protected output",
     )
     expect(
-        jpeg_response["illumination"] == png_response["illumination"],
+        jpeg_response["record"]["execution"]["illumination"]
+        == png_response["record"]["execution"]["illumination"],
         "the decoder does not add a second processing model",
     )
+    simd_samples(exe, root, decoded)
+    png_resolution_precedence(exe, root, decoded)
+
+
+def simd_samples(exe: Path, root: Path, decoded: Fixture) -> None:
+    """Compare actual scalar/SIMD implementations; known DC samples independently anchor parity."""
     # Native SIMD selection must not change the specified coefficient fixture samples.
     directory = root / "scalar-jpeg"
     environment = dict(os.environ, JSIMD_FORCENONE="1")
@@ -237,6 +248,10 @@ def equivalent_pipeline(exe: Path, root: Path) -> None:
             == decode_output((scalar_dir / "result.png").read_bytes()).pixels,
             "ISLOW and selected upsampling samples agree between scalar and available SIMD",
         )
+
+
+def png_resolution_precedence(exe: Path, root: Path, decoded: Fixture) -> None:
+    """Known independent source samples retain PNG pHYs precedence over EXIF density."""
     # PNG metadata precedence remains unchanged through the neutral metadata type.
     physical_png = dataclasses.replace(
         decoded,
@@ -251,7 +266,8 @@ def equivalent_pipeline(exe: Path, root: Path) -> None:
         exe, ["process", str(path), "--out-dir", str(root / "png-precedence"), "--json"]
     )
     expect(
-        response["conversion"]["resolution"] == {"x_ppm": 1000, "y_ppm": 2000},
+        response["record"]["execution"]["interpretation"]["resolution"]
+        == {"x_ppm": 1000, "y_ppm": 2000},
         "PNG pHYs precedence is preserved",
     )
 
@@ -268,13 +284,13 @@ def source_fact_records(exe: Path, root: Path) -> None:
             {
                 "sampling": [
                     {"horizontal": horizontal, "vertical": vertical},
-                    *record["source"]["decoding"]["sampling"][1:],
+                    *record["source"]["container"]["sampling"][1:],
                 ]
             }
         )
     for change in changes:
         altered = copy.deepcopy(record)
-        altered["source"]["decoding"].update(change)
+        altered["source"]["container"].update(change)
         path.write_text(json.dumps(altered), encoding="utf-8")
         response = call_json(exe, ["verify", str(path.parent), "--json"], 3)
         expect(response["error"]["code"] == "E_INPUT", "invalid JPEG fact domain is refused")

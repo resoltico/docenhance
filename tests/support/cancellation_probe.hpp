@@ -5,8 +5,14 @@
 
 #include <atomic>
 #include <cstddef>
+#include <stop_token>
 
 namespace docenhance::tests {
+inline void request_stop(std::stop_source& source) noexcept { // NOLINT(misc-const-correctness)
+    // libc++ requires a mutable source; libstdc++ permits const and misleads const-correctness.
+    static_cast<void>(source.request_stop());
+}
+
 // One synchronized fixture per test process; reset only before launching any tested workers.
 // No data pointer enters the production capability and no test code runs from an OS handler.
 class CheckpointStop {

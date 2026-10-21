@@ -1,24 +1,16 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/core/cancellation.hpp"
-#include "docenhance/core/memory.hpp"
+#include "docenhance/core/fields.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/linear.hpp"
-#include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/method_catalog.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
 
 #include <array>
 #include <cstdint>
-#include <functional>
-#include <optional>
-#include <span>
-#include <string_view>
-#include <utility>
+#include <tuple>
 #include <variant>
 namespace docenhance::methods {
 inline constexpr double levels_minimum_range = 1e-6;
@@ -67,92 +59,34 @@ class Clahe {
     ClaheParameters parameters_;
 };
 inline constexpr std::uint32_t clahe_bins = 1024;
+inline constexpr std::uint32_t clahe_tiles_max =
+    clahe_grid_columns_domain.maximum * clahe_grid_rows_domain.maximum;
 struct ClaheMaps {
     image::Plane<double> knots;
-    std::array<bool,
-               std::size_t{clahe_grid_columns_domain.maximum} * clahe_grid_columns_domain.maximum>
-        identity{};
+    std::array<bool, clahe_tiles_max> identity{};
 };
 struct ContrastOff {};
 using Contrast = std::variant<ContrastOff, Levels, Gamma, Clahe>;
-using ContrastParameters = std::variant<LevelsParameters, GammaParameters, ClaheParameters>;
-enum class ContrastStatus { unresolved, disabled, no_change, applied, failed };
-enum class ContrastReason {
-    none,
-    zero_blend,
-    no_eligible_samples,
-    identity_gamma,
-    insufficient_dynamic_range,
-    no_effect,
-    processing_failure,
-};
 struct LevelsRange {
     double low = 0;
     double high = 0;
     bool operator==(const LevelsRange&) const = default;
 };
-struct ContrastReport {
-    ContrastStatus status = ContrastStatus::disabled;
-    ContrastReason reason = ContrastReason::none;
-    StageProgress progress = StageProgress::not_started;
-    [[nodiscard]] bool complete() const noexcept {
-        return progress == StageProgress::completed;
-    }
-    std::optional<ContrastParameters> requested = std::nullopt;
-    std::optional<LevelsRange> levels = std::nullopt;
-    std::uint64_t eligible_samples = 0;
-    std::uint64_t protected_samples = 0;
-    std::uint64_t measured_samples = 0;
-    std::uint32_t identity_tiles = 0;
-    std::uint64_t evaluated_samples = 0;
-    std::uint64_t corrected_samples = 0;
-    std::uint64_t changed_samples = 0;
-    std::uint64_t clipped_low_samples = 0;
-    std::uint64_t clipped_high_samples = 0;
-    std::uint64_t preparation_charge_peak = 0;
-    bool operator==(const ContrastReport&) const = default;
-};
-[[nodiscard]] std::string_view status_name(ContrastStatus value) noexcept;
-[[nodiscard]] std::string_view reason_name(ContrastReason value) noexcept;
-[[nodiscard]] core::Result<double> levels_candidate(double f, LevelsRange range);
-[[nodiscard]] core::Result<double> gamma_candidate(double f, const Gamma& method);
-[[nodiscard]] bool valid_contrast_observations(const ContrastReport& report);
-[[nodiscard]] bool valid_contrast(const ContrastReport& report, const Contrast& method);
-struct ContrastExecution {
-    ContrastExecution(core::Budget& b, core::Cancellation c, ContrastReport& r, image::RowUse use)
-        : budget(b), cancellation(std::move(c)), report(r), preparation_use(use) {}
-    std::reference_wrapper<core::Budget> budget;
-    core::Cancellation cancellation;
-    std::reference_wrapper<ContrastReport> report;
-    image::RowUse preparation_use;
-};
-class ContrastModel {
-  public:
-    [[nodiscard]] static core::Result<ContrastModel>
-    prepare(image::LinearSource& source, image::PlaneView<const std::uint8_t> mask,
-            const Contrast& method, const ContrastExecution& execution);
-    [[nodiscard]] bool active() const noexcept {
-        return active_;
-    }
-    [[nodiscard]] bool measured_source() const noexcept {
-        return measured_;
-    }
-    [[nodiscard]] core::Result<void> apply(image::RowRange range, std::span<double> rgb,
-                                           image::PlaneView<const std::uint8_t> mask,
-                                           ContrastReport& report,
-                                           const core::Cancellation& cancellation) const;
-
-  private:
-    ContrastModel(image::Extent extent, Contrast method, std::optional<LevelsRange> levels,
-                  bool active, bool measured)
-        : extent_(extent), method_(method), levels_(levels), active_(active), measured_(measured) {}
-    [[nodiscard]] core::Result<image::Rgb>
-    map_pixel(const image::Rgb& before, image::RowRange position, ContrastReport& report) const;
-    image::Extent extent_;
-    Contrast method_;
-    std::optional<LevelsRange> levels_;
-    bool active_;
-    bool measured_;
-    ClaheMaps maps_;
-};
+[[nodiscard]] constexpr bool validate(LevelsRange range) noexcept {
+    return core::in_range(range.low, 0.0, 1.0) && core::in_range(range.high, 0.0, 1.0) &&
+           range.low <= range.high;
+}
+// Inputs are finite unit f and an admitted active range with gap >= levels_minimum_range.
+[[nodiscard]] double levels_candidate(double f, LevelsRange range) noexcept;
+// Perceptual f is finite unit data admitted by its actual producer/receiving boundary.
+[[nodiscard]] double gamma_candidate(double f, const Gamma& method) noexcept;
 } // namespace docenhance::methods
+
+namespace docenhance {
+template <> struct core::Fields<methods::LevelsRange> {
+    static constexpr auto list = std::tuple{
+        core::field("low", &methods::LevelsRange::low, core::Unit{}),
+        core::field("high", &methods::LevelsRange::high, core::Unit{}),
+    };
+};
+} // namespace docenhance

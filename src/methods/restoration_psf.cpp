@@ -140,10 +140,10 @@ core::Result<void> validate_psf(const ResolvedPsf& psf) {
             cy += v * (static_cast<double>(y) - ((static_cast<double>(psf.height) - 1) / 2));
         }
     }
-    constexpr double tolerance = 1e-12;
-    if (!std::isfinite(sum) || std::abs(sum - 1) > tolerance || !std::isfinite(psf.centroid_x) ||
-        !std::isfinite(psf.centroid_y) || std::abs(cx - psf.centroid_x) > tolerance ||
-        std::abs(cy - psf.centroid_y) > tolerance) {
+    if (!std::isfinite(sum) || std::abs(sum - 1) > psf_normalization_tolerance ||
+        !std::isfinite(psf.centroid_x) || !std::isfinite(psf.centroid_y) ||
+        std::abs(cx - psf.centroid_x) > psf_normalization_tolerance ||
+        std::abs(cy - psf.centroid_y) > psf_normalization_tolerance) {
         return core::failure(core::ErrorCode::argument,
                              "Invalid resolved PSF normalization or centroid");
     }

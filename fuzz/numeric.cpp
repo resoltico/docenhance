@@ -5,11 +5,13 @@
 // the documented sRGB/luminance tolerances.
 #include "docenhance/image/numeric.hpp"
 
+#include "docenhance/image/raster.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cmath>
 #include <cstddef>
@@ -94,24 +96,33 @@ void reflection(FuzzInput& input) {
 bool unit_interval(double value) {
     return std::isfinite(value) && value >= 0.0 && value <= 1.0;
 }
+bool quantization_domain(const image::Rgb& rgb) {
+    const image::RasterShape shape{
+        .width = 1,
+        .height = 1,
+        .model = image::SampleModel::rgb,
+        .depth = image::SampleDepth::byte(),
+    };
+    std::array<std::uint8_t, image::rgb_channels> bytes{};
+    const auto admitted = image::quantize_linear(shape, rgb, bytes);
+    const bool valid = std::ranges::all_of(rgb, unit_interval);
+    require(admitted.has_value() == valid,
+            "the real output boundary admits exactly finite unit RGB before integer conversion");
+    return valid;
+}
 
 void transfer(FuzzInput& input) {
     const auto x = (input.byte() & 1U) == 0 ? input.unit() : input.any_double();
     const auto y = input.unit();
-    const auto decoded = image::srgb_decode(x);
-    require(decoded.has_value() == unit_interval(x), "srgb_decode accepts exactly [0,1]");
-    require(image::srgb_encode(x).has_value() == unit_interval(x),
-            "srgb_encode accepts exactly [0,1]");
-    if (!decoded.has_value()) {
+    if (!quantization_domain({x, x, x})) {
         return;
     }
-    require(unit_interval(decoded.value()), "decoding stays in [0,1]");
-    require(std::abs(image::srgb_encode(decoded.value()).value() - x) < 3e-8, "sRGB round trip");
+    const auto decoded = image::srgb_decode(x);
+    require(unit_interval(decoded), "decoding stays in [0,1]");
+    require(std::abs(image::srgb_encode(decoded) - x) < 3e-8, "sRGB round trip");
     const auto [low, high] = std::minmax(x, y);
-    require(image::srgb_decode(low).value() <= image::srgb_decode(high).value(),
-            "decode is monotone");
-    require(image::srgb_encode(low).value() <= image::srgb_encode(high).value(),
-            "encode is monotone");
+    require(image::srgb_decode(low) <= image::srgb_decode(high), "decode is monotone");
+    require(image::srgb_encode(low) <= image::srgb_encode(high), "encode is monotone");
 }
 
 void luminance(FuzzInput& input) {
@@ -121,14 +132,14 @@ void luminance(FuzzInput& input) {
         channel = arbitrary ? input.any_double() : input.unit();
     }
     const auto target = arbitrary ? input.any_double() : input.unit();
-    const auto result = image::transport_luminance(rgb, target);
-    const bool valid = std::ranges::all_of(rgb, unit_interval) && unit_interval(target);
-    require(result.has_value() == valid, "transport accepts exactly unit RGB and target");
-    if (!valid) {
+    const bool valid_rgb = quantization_domain(rgb);
+    const bool valid_target = quantization_domain({target, target, target});
+    if (!valid_rgb || !valid_target) {
         return;
     }
-    require(std::ranges::all_of(result.value(), unit_interval), "transport stays in gamut");
-    require(std::abs(image::luminance(result.value()).value() - target) <= 1e-12,
+    const auto result = image::transport_luminance(rgb, target);
+    require(std::ranges::all_of(result, unit_interval), "transport stays in gamut");
+    require(std::abs(image::luminance(result) - target) <= 1e-12,
             "transport reaches the target luminance");
 }
 

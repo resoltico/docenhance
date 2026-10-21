@@ -46,5 +46,7 @@ function(de_fuzz_target name)
 endfunction()
 include(FuzzTargets)
 de_register_fuzz_targets(ENGINE)
+target_include_directories(de_fuzz_illumination PRIVATE "${PROJECT_SOURCE_DIR}/src/methods")
+target_include_directories(de_fuzz_morphology PRIVATE "${PROJECT_SOURCE_DIR}/src/methods")
 file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/fuzz-codecs.json"
-  CONTENT "{\"tiff\":\"$<TARGET_FILE:DE::tiff>\",\"jpeg\":\"$<TARGET_FILE:DE::jpeg>\",\"png\":\"$<TARGET_FILE:DE::png>\",\"zlib\":\"$<TARGET_FILE:DE::zlib>\",\"lcms\":\"$<TARGET_FILE:DE::lcms>\",\"opencv_core\":\"$<TARGET_FILE:opencv_core>\",\"opencv_photo\":\"$<TARGET_FILE:opencv_photo>\",\"opencv_imgproc\":\"$<TARGET_FILE:opencv_imgproc>\"}\n")
+  CONTENT "{\"tiff\":\"$<TARGET_FILE:DE::tiff>\",\"jpeg\":\"$<TARGET_FILE:DE::jpeg>\",\"png\":\"$<TARGET_FILE:DE::png>\",\"zlib\":\"$<TARGET_FILE:DE::zlib>\",\"lcms\":\"$<TARGET_FILE:DE::lcms>\"}\n")

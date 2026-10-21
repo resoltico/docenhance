@@ -13,7 +13,8 @@
       "group": "Illumination",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ],
       "shared": [
         {
@@ -128,7 +129,8 @@
       "group": "Denoising",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ],
       "shared": [
         {
@@ -146,7 +148,7 @@
         {
           "id": "D01",
           "name": "NLM-L1 on 16-bit perceptual codes",
-          "version": 1,
+          "version": 2,
           "selectors": {
             "nlm": {}
           },
@@ -239,14 +241,15 @@
       "group": "Restoration",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ],
       "shared": [],
       "methods": [
         {
           "id": "R01",
           "name": "Known-PSF regularized Fourier restoration",
-          "version": 1,
+          "version": 2,
           "selectors": {
             "wiener": {}
           },
@@ -349,7 +352,8 @@
       "group": "Contrast",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ],
       "shared": [
         {
@@ -462,7 +466,8 @@
       "group": "Sharpening",
       "applies_to": [
         "preserve",
-        "gray"
+        "gray",
+        "bw"
       ],
       "shared": [],
       "methods": [
@@ -525,7 +530,7 @@
         {
           "id": "B01",
           "name": "Otsu",
-          "version": 1,
+          "version": 2,
           "selectors": {
             "otsu": {}
           },
@@ -534,7 +539,7 @@
         {
           "id": "B02",
           "name": "Sauvola",
-          "version": 1,
+          "version": 2,
           "selectors": {
             "sauvola": {}
           },
@@ -574,7 +579,7 @@
         {
           "id": "B03",
           "name": "Fixed threshold",
-          "version": 1,
+          "version": 2,
           "selectors": {
             "fixed": {}
           },
@@ -587,7 +592,7 @@
               "min": "0",
               "max": "1",
               "default": "0.5",
-              "summary": "Black iff the normalized stored grayscale sample is at most T."
+              "summary": "Black iff the normalized terminal Q16 code is at most T."
             }
           ]
         }

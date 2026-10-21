@@ -1,20 +1,20 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/exec/scheduler.hpp"
-#include "docenhance/image/plane.hpp"
 #include "docenhance/methods/catalog.hpp"
 #include "docenhance/methods/method_catalog.hpp"
 #include "docenhance/methods/parameters.hpp"
 
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <variant>
 
 namespace docenhance::methods {
+inline constexpr std::uint32_t otsu_histogram_bins = 4096;
+inline constexpr std::uint16_t otsu_fallback_threshold = (otsu_histogram_bins - 1) / 2;
+inline constexpr std::uint16_t otsu_max_threshold = otsu_histogram_bins - 2;
+inline constexpr std::size_t otsu_scratch_bytes = otsu_histogram_bins * sizeof(std::uint64_t);
 class FixedThreshold {
   public:
     [[nodiscard]] static core::Result<FixedThreshold>
@@ -64,14 +64,4 @@ class Otsu {
 };
 using Binarization = std::variant<Sauvola, FixedThreshold, Otsu>;
 [[nodiscard]] ImplementedMethod describe(const Binarization& method);
-// Charged scratch for the actual number of slots, capped by the image's strip count.
-[[nodiscard]] core::Result<std::size_t> scratch_bytes(const Binarization& method,
-                                                      std::uint32_t width, unsigned workers);
-struct BinarizationContext {
-    std::reference_wrapper<const exec::Scheduler> scheduler;
-    std::reference_wrapper<core::Budget> budget;
-};
-[[nodiscard]] core::Result<void> binarize(image::PlaneView<const std::uint8_t> source,
-                                          image::PlaneView<std::uint8_t> destination,
-                                          const Binarization& method, BinarizationContext context);
 } // namespace docenhance::methods

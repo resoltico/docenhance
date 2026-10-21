@@ -20,11 +20,12 @@ namespace docenhance::image {
 // sample size overflows 32-bit and even 64-bit arithmetic for inputs a caller may legitimately
 // ask about, and an overflowed size is a much worse failure than a refused one.
 
-// Pixel samples and uint64 integer statistic planes. Anything else is a design
+// Pixel samples and uint32/uint64 integer statistic planes. Anything else is a design
 // change, not an instantiation.
 template <typename Sample>
 inline constexpr bool is_sample = std::is_same_v<std::remove_const_t<Sample>, std::uint8_t> ||
                                   std::is_same_v<std::remove_const_t<Sample>, std::uint16_t> ||
+                                  std::is_same_v<std::remove_const_t<Sample>, std::uint32_t> ||
                                   std::is_same_v<std::remove_const_t<Sample>, float> ||
                                   std::is_same_v<std::remove_const_t<Sample>, double> ||
                                   std::is_same_v<std::remove_const_t<Sample>, std::uint64_t>;
@@ -49,7 +50,7 @@ template <typename Sample> class Plane;
 // It holds a span of the whole plane, so every row is a subspan and no pointer arithmetic is done.
 template <typename Sample> class PlaneView {
     static_assert(is_sample<Sample>,
-                  "PlaneView supports uint8, uint16, uint64, float and double samples");
+                  "PlaneView supports uint8, uint16, uint32, uint64, float and double samples");
 
   public:
     PlaneView() noexcept = default;
@@ -133,7 +134,7 @@ template <typename Left, typename Right>
 // explicitly.
 template <typename Sample> class Plane {
     static_assert(is_sample<Sample> && !std::is_const_v<Sample>,
-                  "Plane owns mutable uint8, uint16, uint64, float or double samples");
+                  "Plane owns mutable uint8, uint16, uint32, uint64, float or double samples");
 
   public:
     Plane() noexcept = default;

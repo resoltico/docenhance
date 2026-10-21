@@ -10,13 +10,14 @@ import tempfile
 from pathlib import Path
 
 from clahe_reference import clahe
+from composition_reference import terminal_fixed
 from continuous_fixtures import RGB, Fixture
+from illumination_io import require_output, run
 from sharpening_composition import prefix_composition
 from sharpening_reference import unsharp
 from test_cli import call_json, expect
 from test_continuous import transfer_decode, transfer_encode
 from test_contrast import map_levels
-from test_illumination import require_output, run
 
 OPTIONS = ["--sharpen", "unsharp"]
 TOLERANCE = 3
@@ -52,12 +53,12 @@ def numerical(exe: Path, root: Path) -> None:
                     <= TOLERANCE,
                     "independent 2D Gaussian with REFLECT_101",
                 )
-                report = response["sharpening"]
+                report = response["record"]["execution"]["sharpening"]
                 expect(
                     report["context_samples"] == width * height, "all entering samples are context"
                 )
                 expect(
-                    report["evaluated_samples"] == width * height,
+                    report["counts"]["evaluated"] == width * height,
                     "one evaluation per eligible sample",
                 )
                 expect(
@@ -68,7 +69,7 @@ def numerical(exe: Path, root: Path) -> None:
                     abs(report["pre_clamp"]["high"] - max(raw)) < RANGE_TOLERANCE,
                     "pre-clamp maximum",
                 )
-                expect(report["warnings"] == ["W_SHARPENING"], "explicit acutance warning")
+                expect(response["warnings"].count("W_SHARPENING") == 1, "explicit acutance warning")
                 if depth == WORD_DEPTH and width == PRECISION_WIDTH:
                     expect(
                         len({p[0] for p in actual.pixels}) > BYTE_LEVELS,
@@ -80,13 +81,18 @@ def numerical(exe: Path, root: Path) -> None:
     _, response = run(
         exe, root, fixture, [*OPTIONS, "--sharpen-amount", "2", "--sharpen-threshold", "0"]
     )
-    report = response["sharpening"]
+    report = response["record"]["execution"]["sharpening"]
     low, high = sum(f < 0 for f in raw), sum(f > 1 for f in raw)
     expect(
         report["clipped_low_samples"] == low and report["clipped_high_samples"] == high,
         "strict pre-clamp excursions",
     )
-    expect(report["clipped_fraction"] == (low + high) / len(raw), "derived clipping fraction")
+    expect(
+        (report["clipped_low_samples"] + report["clipped_high_samples"])
+        / report["counts"]["eligible"]
+        == (low + high) / len(raw),
+        "derived clipping fraction",
+    )
 
 
 def protection_and_color(exe: Path, root: Path) -> None:
@@ -96,7 +102,7 @@ def protection_and_color(exe: Path, root: Path) -> None:
     expect(require_output(out).pixels == flat.pixels, "exact constant identity")
     out, response = run(exe, root, flat, [*OPTIONS, "--sharpen-amount", "0"])
     expect(require_output(out).pixels == flat.pixels, "zero amount exact")
-    expect(response["sharpening"]["warnings"] == [], "zero amount no sharpening warning")
+    expect(response["warnings"].count("W_SHARPENING") == 0, "zero amount no sharpening warning")
     width, height = 9, 7
     pixels = tuple((10000 + i * 17, 25000 + i * 31, 45000 - i * 13) for i in range(width * height))
     fixture = Fixture(width, height, pixels, depth=16, color=RGB)
@@ -129,9 +135,9 @@ def protection_and_color(exe: Path, root: Path) -> None:
     for i, keep in enumerate(protected):
         if keep:
             expect(actual.pixels[i] == pixels[i], "protected destinations exact")
-    report = response["sharpening"]
+    report = response["record"]["execution"]["sharpening"]
     expect(
-        report["evaluated_samples"] == protected.count(False), "protection excludes observations"
+        report["counts"]["evaluated"] == protected.count(False), "protection excludes observations"
     )
     expect(report["context_samples"] == width * height, "protection retained as blur context")
     eligible = [f for f, keep in zip(raw, protected, strict=True) if not keep]
@@ -148,38 +154,40 @@ def bypasses_and_threshold_identity(exe: Path, root: Path) -> None:
     fixture = Fixture(width, height, pixels, depth=16)
     out, response = run(exe, root, fixture, [*OPTIONS, "--sharpen-threshold", "20"])
     expect(require_output(out).pixels == pixels, "thresholded low contrast identity exact")
-    report = response["sharpening"]
+    report = response["record"]["execution"]["sharpening"]
     expect(
-        report["status"] == "no_change" and report["reason"] == "no_effect", "threshold identity"
+        report["disposition"] == "no_change" and report["reason"] == "no_effect",
+        "threshold identity",
     )
-    expect(report["evaluated_samples"] == len(pixels), "thresholded samples still evaluated once")
-    expect(report["corrected_samples"] == 0 and report["changed_samples"] == 0, "no residual work")
-    expect(report["warnings"] == ["W_SHARPENING"], "positive thresholded identity warns")
+    expect(report["counts"]["evaluated"] == len(pixels), "thresholded samples still evaluated once")
+    expect(
+        report["corrected_samples"] == 0 and report["counts"]["changed"] == 0, "no residual work"
+    )
+    expect(response["warnings"].count("W_SHARPENING") == 1, "positive thresholded identity warns")
     mask = root / "all-protected.png"
     mask.write_bytes(Fixture(width, height, ((1,),) * len(pixels), depth=1).encoded())
     out, response = run(exe, root, fixture, [*OPTIONS, "--protect-mask", str(mask)])
     expect(require_output(out).pixels == pixels, "fully protected identity exact")
-    report = response["sharpening"]
+    report = response["record"]["execution"]["sharpening"]
     expect(report["reason"] == "no_eligible_samples", "fully protected bypass reason")
-    expect(report["warnings"] == ["W_SHARPENING"], "positive fully protected request warns")
-    expect(report["pre_clamp"] is None and report["clipped_fraction"] is None, "no invented range")
     expect(
-        all(
+        response["warnings"].count("W_SHARPENING") == 1, "positive fully protected request warns"
+    )
+    expect(report["pre_clamp"] is None and "clipped_fraction" not in report, "no invented range")
+    expect(
+        all(report["counts"][name] == 0 for name in ("eligible", "evaluated", "changed"))
+        and all(
             report[name] == 0
             for name in (
-                "eligible_samples",
                 "context_samples",
-                "evaluated_samples",
                 "corrected_samples",
-                "changed_samples",
                 "clipped_low_samples",
                 "clipped_high_samples",
-                "preparation_charge_peak",
             )
         ),
-        "fully protected bypass allocates no field and evaluates no pixels",
+        "fully protected bypass reports no preparation context or pixel evaluation",
     )
-    expect(report["protected_samples"] == len(pixels), "full mask counted once")
+    expect(report["counts"]["protected"] == len(pixels), "full mask counted once")
     bundle = max(
         (p for p in root.iterdir() if p.name.startswith("out-")), key=lambda p: int(p.name[4:])
     )
@@ -213,7 +221,12 @@ def composition_and_records(exe: Path, root: Path) -> None:
             "sharpening follows contrast without intermediate quantization",
         )
         expect(
-            response["contrast"]["evaluated_samples"] in (0, width * height),
+            (
+                response["record"]["execution"]["contrast"] is None
+                if not options
+                else response["record"]["execution"]["contrast"]["counts"]["evaluated"]
+                == width * height
+            ),
             "contrast observed once",
         )
     bundle = max(
@@ -234,8 +247,34 @@ def composition_and_records(exe: Path, root: Path) -> None:
     path.write_bytes(original)
 
 
+def binary_composition(exe: Path, root: Path) -> None:
+    """Same method prefix feeds one terminal Q16 quantization and actual packed PNG1."""
+    width = height = 32
+    fixture = Fixture(width, height, tuple((80 + (i * 13) % 150,) for i in range(width * height)))
+    values = [p[0] / 255 for p in fixture.pixels]
+    candidates = unsharp(values, (width, height), 0.8, 0.5, 1)
+    expected = terminal_fixed([transfer_decode(min(1, max(0, f))) for f in candidates])
+    output, response = run(
+        exe,
+        root,
+        fixture,
+        [*OPTIONS, "--output-mode", "bw", "--binarize", "fixed", "--fixed-threshold", "0.5"],
+    )
+    actual = require_output(output)
+    expect(
+        actual.depth == 1 and actual.pixels == expected,
+        "independent logical decisions are stored as physical grayPNG1",
+    )
+    facts = response["record"]["execution"]["binarization"]
+    expect(
+        facts["black_samples"] == sum(pixel == (0,) for pixel in expected)
+        and facts["white_samples"] == sum(pixel == (1,) for pixel in expected),
+        "actual terminal counts agree with independent bits",
+    )
+
+
 def admission(exe: Path, root: Path) -> None:
-    """Presence, bounds, malformed options and binary output are refused without effects."""
+    """Malformed and cold private options are refused; binary support is exercised separately."""
     fixture = Fixture(1, 1, ((128,),))
     for options in (
         ["--sharpen-sigma", "1"],
@@ -244,7 +283,6 @@ def admission(exe: Path, root: Path) -> None:
         [*OPTIONS, "--sharpen-sigma", "0.29"],
         [*OPTIONS, "--sharpen-amount", "2.01"],
         [*OPTIONS, "--sharpen-threshold", "20.1"],
-        [*OPTIONS, "--output-mode", "bw"],
         [*OPTIONS, "--sharpen-amount", "0", "--sharpen-sigma", "0"],
         [*OPTIONS, "--sharpen-amount", "0", "--sharpen-threshold", "-1"],
         [*OPTIONS, "--sharpen-amount", "0", "--sharpen-threshold", "nan"],
@@ -262,6 +300,7 @@ def main() -> None:
         bypasses_and_threshold_identity(exe, root)
         composition_and_records(exe, root)
         prefix_composition(exe, root)
+        binary_composition(exe, root)
         admission(exe, root)
     print("PASS: S01 constants, impulses, borders, protection, precision, composition and records")
 

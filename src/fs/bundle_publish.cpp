@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "bundle_stage.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/fs/artifact_limits.hpp"
 #include "docenhance/fs/publication.hpp"
@@ -18,6 +19,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace docenhance::fs {
@@ -33,16 +35,16 @@ core::Result<void> write_files(Stage& stage, std::span<const BundleFile> files,
         if (!slot) {
             return std::unexpected(slot.error());
         }
-        auto written = file.write(file.state, *slot);
+        auto written = write_bytes(*slot, file.bytes, cancellation);
         if (!written) {
             return std::unexpected(std::move(written.error()));
         }
     }
     return {};
 }
-core::Result<void> commit_bundle(Stage& stage, const std::filesystem::path& target,
-                                 const core::Cancellation& cancellation, PublishRename commit,
-                                 BundleValidation validation) {
+PublishResult<void> commit_bundle(Stage& stage, const std::filesystem::path& target,
+                                  const core::Cancellation& cancellation, PublishRename commit,
+                                  BundleValidation validation) {
     if (!stage.owns_entries()) {
         return std::unexpected(
             abandon(stage, {
@@ -90,32 +92,45 @@ core::Result<void> commit_bundle(Stage& stage, const std::filesystem::path& targ
     }
     return std::unexpected(std::move(stage.integrity));
 }
-core::Error contain_failure(Stage& stage, core::ErrorCode code) {
+PublishFailure contain_failure(Stage& stage, core::ErrorCode code) noexcept {
     if (stage.committed) {
         return std::move(stage.integrity);
     }
     if (stage.retained) {
         return std::move(stage.uncertain);
     }
-    return abandon(stage, {.code = code, .message = "A publication operation failed"});
+    stage.failure.code = code;
+    return abandon(stage, std::move(stage.failure));
 }
 } // namespace
-core::Result<std::string> publish_bundle(const std::string& output_directory,
-                                         std::span<const BundleFile> files,
-                                         const core::Cancellation& cancellation,
-                                         PublishRename commit, BundleValidation validation) {
+PublishResult<std::string> publish_bundle(const std::string& output_directory,
+                                          std::span<const BundleFile> files,
+                                          const core::Cancellation& cancellation,
+                                          PublishRename commit, BundleValidation validation) {
     if (files.empty() || files.size() > bundle_max_entries || commit == nullptr ||
-        std::ranges::any_of(files, [](const auto& file) { return file.write == nullptr; })) {
-        return core::failure(core::ErrorCode::argument,
-                             "A bundle needs a bounded nonempty file table with valid writers");
+        std::ranges::any_of(files, [](const auto& file) {
+            return file.bytes.size() > core::bundle_max_file_bytes;
+        })) {
+        return std::unexpected(PublishFailure{
+            .error =
+                {
+                    .code = core::ErrorCode::argument,
+                    .message = "A bundle needs a bounded nonempty byte table and commit operation",
+                },
+            .publication = core::Publication::not_started,
+        });
     }
+    static_assert(std::is_nothrow_move_constructible_v<PublishFailure>);
     Stage stage;
     try {
         const auto admitted = utf8_path(output_directory);
 #ifdef _WIN32
         if (admitted.has_root_name() && !admitted.has_root_directory()) {
-            return core::failure(core::ErrorCode::argument,
-                                 "Drive-relative publication paths are unsupported");
+            return std::unexpected(PublishFailure{
+                .error = {.code = core::ErrorCode::argument,
+                          .message = "Drive-relative publication paths are unsupported"},
+                .publication = core::Publication::not_started,
+            });
         }
 #endif
         const auto target =
@@ -132,7 +147,7 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
         std::string published = output_directory + separator + std::string(files.front().relative);
         auto reserved = reserve_stage(stage, target, cancellation);
         if (!reserved) {
-            return std::unexpected(std::move(reserved.error()));
+            return std::unexpected(abandon(stage, std::move(reserved.error())));
         }
         auto written = write_files(stage, files, cancellation);
         if (!written) {
@@ -156,7 +171,7 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
         if (!committed) {
             return std::unexpected(std::move(committed.error()));
         }
-        return core::Result<std::string>{std::move(published)};
+        return PublishResult<std::string>{std::move(published)};
     } catch (const std::bad_alloc&) {
         return std::unexpected(contain_failure(stage, core::ErrorCode::resource));
     } catch (...) {
@@ -165,27 +180,27 @@ core::Result<std::string> publish_bundle(const std::string& output_directory,
 }
 
 namespace {
-core::Result<void> write_content(std::FILE* file, std::string_view content,
+core::Result<void> write_content(std::FILE* file, std::span<const std::byte> content,
                                  const core::Cancellation& cancellation, BundleStream operations) {
     constexpr std::size_t transfer = std::size_t{64} * 1024;
     while (!content.empty()) {
         if (cancellation.requested(core::Checkpoint::encode)) {
             return core::cancelled();
         }
-        const auto part = content.substr(0, std::min(transfer, content.size()));
+        const auto part = content.first(std::min(transfer, content.size()));
         if (operations.write(part.data(), 1, part.size(), file) != part.size()) {
             return core::failure(core::ErrorCode::output, "A bundle file could not be written");
         }
-        content.remove_prefix(part.size());
+        content = content.subspan(part.size());
     }
     return {};
 }
 } // namespace
-core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
+core::Result<void> write_bytes(const BundleSlot& slot, std::span<const std::byte> content,
                                const core::Cancellation& cancellation) {
     return write_bytes(slot, content, cancellation, {});
 }
-core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
+core::Result<void> write_bytes(const BundleSlot& slot, std::span<const std::byte> content,
                                const core::Cancellation& cancellation, BundleStream operations) {
     if (cancellation.requested(core::Checkpoint::encode)) {
         return core::cancelled();
@@ -213,10 +228,10 @@ core::Result<void> write_bytes(const BundleSlot& slot, std::string_view content,
     }
     return written;
 }
-core::Result<std::string> publish_bundle(const std::string& output_directory,
-                                         std::span<const BundleFile> files,
-                                         const core::Cancellation& cancellation,
-                                         BundleValidation validation) {
+PublishResult<std::string> publish_bundle(const std::string& output_directory,
+                                          std::span<const BundleFile> files,
+                                          const core::Cancellation& cancellation,
+                                          BundleValidation validation) {
     return publish_bundle(output_directory, files, cancellation, rename_exclusive, validation);
 }
 } // namespace docenhance::fs

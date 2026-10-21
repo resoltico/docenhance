@@ -2,174 +2,134 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/record/record.hpp"
 
-#include "docenhance/core/identity.hpp"
-#include "docenhance/core/limits.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/raster.hpp"
-#include "docenhance/image/source_facts.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/methods/binarization.hpp"
+#include "docenhance/methods/binary_facts.hpp"
+#include "docenhance/methods/contrast.hpp"
+#include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/otsu.hpp"
 #include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
+#include "docenhance/methods/plan.hpp"
 #include "docenhance/methods/restoration.hpp"
+#include "docenhance/methods/restoration_facts.hpp"
+#include "docenhance/methods/sharpening.hpp"
+#include "docenhance/record/codec.hpp"
 #include "docenhance/record/inventory.hpp"
+#include "docenhance/record/json.hpp"
 #include "docenhance/record/record_version.hpp"
+#include "docenhance/record/request.hpp"
+#include "png_depth_fixture.hpp"
+#include "record_fixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 #include <cstddef>
-#include <cstdint>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
-#include <vector>
 
 namespace docenhance::tests {
 namespace {
-constexpr std::string_view sample_digest =
-    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
-constexpr std::string_view other_digest =
-    "3f79bb7b435b05321651daefd374cdc681dc06faa65e374e38337b88ca046dea";
-
+using record_fixture::binarized_record;
+using record_fixture::other_digest;
+using record_fixture::sample_digest;
 std::span<const std::byte> as_bytes(std::string_view text) {
     // char is the narrow-character view of the same immutable bytes.
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     return {reinterpret_cast<const std::byte*>(text.data()), text.size()};
 }
-
-record::RunRecord binarized_record() {
-    const auto method = methods::Sauvola::create();
+record::RunRecord restoration_record() {
+    auto value = binarized_record();
+    const auto method = methods::Wiener::create({.blend = 0});
     REQUIRE(method);
-    const methods::IlluminationReport illumination;
-    return {
-        .context =
+    const methods::Plan plan{
+        .rotation = image::QuarterTurn(),
+        .photometric =
             {
-                .identity = "0123456789abcdef0123456789abcdef",
-                .recorded = "2026-09-28T00:00:00Z",
+                .illumination = methods::IlluminationOff(),
+                .denoising = methods::DenoisingOff(),
+                .restoration = *method,
+                .contrast = methods::ContrastOff(),
+                .sharpening = methods::SharpenOff(),
             },
-        .build =
-            {
-                .version = "0.3.0",
-                .platform = "Darwin-arm64",
-                .compiler = "AppleClang 21",
-                .dependency_lock_sha256 = other_digest,
-            },
-        .source =
-            {
-                .identity = {.sha256 = std::string(sample_digest), .bytes = 1024},
-                .name = "page.png",
-                .decoding =
-                    image::PngFacts{.width = 100, .height = 50, .depth = 8, .color_type = 0},
-            },
-        .operation = methods::Binarization{*method},
-        .protection_supplied = false,
-        .output =
-            {
-                .artifact =
-                    {
-                        .name = record::image_name,
-                        .identity = {.sha256 = std::string(other_digest), .bytes = 2048},
-                    },
-                .shape =
-                    {
-                        .width = 100,
-                        .height = 50,
-                        .model = image::SampleModel::gray,
-                        .depth = image::SampleDepth::byte(),
-                    },
-                .profile_embedded = false,
-                .resolution = std::nullopt,
-                .verification = record::Verification::decoded_and_compared,
-            },
-        // A binarized run with no mask and no continuous conversion says so, rather than
-        // leaving the record's optional sections to whatever a default would be.
-        .protection = std::nullopt,
-        .conversion = std::nullopt,
-        .stages =
-            {
-                .illumination = illumination,
-                .denoising = {.progress = methods::StageProgress::completed},
-                .restoration = {.progress = methods::StageProgress::completed},
-                .contrast = {.progress = methods::StageProgress::completed},
-                .sharpening = {.progress = methods::StageProgress::completed},
-            },
+        .output = methods::ContinuousOutput(),
     };
+    auto request = record::requested(plan, std::nullopt);
+    REQUIRE(request);
+    value.request = std::move(*request);
+    value.output.depth = docenhance::tests::fixture_png_depth(8);
+    value.output.profile_embedded = true;
+    value.execution.interpretation.output = value.output.shape();
+    value.execution.binarization.reset();
+    value.execution.restoration = methods::WienerFacts{
+        .reason = methods::WienerReason::zero_blend,
+        .counts = {.eligible = 5000},
+        .psf = {.width = 7, .height = 7, .normalized_sum = 1},
+    };
+    REQUIRE(record::validate(value));
+    return value;
+}
+void refused_record(const record::Json& value) {
+    const auto bytes = value.dump();
+    const auto refused = record::read_record(as_bytes(bytes));
+    REQUIRE(!refused);
+    CHECK(refused.error().code == core::ErrorCode::input);
 }
 } // namespace
-
 TEST_CASE("A written record declares what the bundle contains", "[bundle]") {
     const auto written = record::serialize(binarized_record());
     REQUIRE(written);
     const auto declared = record::read_record(as_bytes(*written));
     REQUIRE(declared);
-    CHECK(declared->version == record::record_version);
-    CHECK(declared->run == "0123456789abcdef0123456789abcdef");
-    REQUIRE(declared->inventory.size() == 1);
-    CHECK(declared->inventory.front().name == record::image_name);
-    CHECK(declared->inventory.front().identity.sha256 == std::string(other_digest));
-    CHECK(declared->inventory.front().identity.bytes == 2048);
-
-    // The record describes processing. Publication happens after it is written, so it may not
-    // claim that anything was published, and it never carries its own digest.
+    CHECK(declared->context.version == record::record_version);
+    CHECK(declared->context.identity == "0123456789abcdef0123456789abcdef");
+    const auto inventory = record::inventory(*declared);
+    REQUIRE(inventory);
+    REQUIRE(inventory->size() == 1);
+    CHECK(inventory->front().name == record::image_name);
+    CHECK(inventory->front().identity.sha256 == other_digest);
+    CHECK(inventory->front().identity.bytes == 2048);
     CHECK(!written->contains("\"publication\""));
     CHECK(!written->contains("\"record_sha256\""));
-    // What was verified is named, not asserted as a bare truth.
+    CHECK(!written->contains("\"warnings\""));
     CHECK(written->contains("decoded_and_compared"));
-    CHECK(written->contains("integer_samples"));
+    CHECK(declared->output.depth.bits() == 1);
 }
-
 TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundle]") {
-    const auto written = record::serialize(binarized_record());
-    REQUIRE(written);
-
+    const auto encoded = record::Codec::encode(binarized_record());
+    REQUIRE(encoded);
     SECTION("malformed JSON") {
         CHECK(!record::read_record(as_bytes("{\"record\":")));
         CHECK(!record::read_record(as_bytes("")));
     }
     SECTION("a version this build does not support") {
-        auto altered = *written;
-        const auto at = altered.find("\"version\": 14");
-        REQUIRE(at != std::string::npos);
-        altered.replace(at, std::string_view("\"version\": 14").size(), "\"version\": 12");
-        const auto refused = record::read_record(as_bytes(altered));
-        REQUIRE(!refused);
-        CHECK(refused.error().code == core::ErrorCode::input);
+        for (const auto version : {12, 14, 16}) {
+            auto altered = *encoded;
+            altered["record"]["version"] = version;
+            refused_record(altered);
+        }
     }
-    SECTION("decoded output depth must belong to the admitted domain") {
-        for (const auto depth : {0, 1, 12, 32}) {
-            auto altered = *written;
-            const auto output_at = altered.find("\"output\"");
-            REQUIRE(output_at != std::string::npos);
-            const auto at = altered.find("\"bit_depth\": 8", output_at);
-            REQUIRE(at != std::string::npos);
-            altered.replace(at, std::string_view("\"bit_depth\": 8").size(),
-                            "\"bit_depth\": " + std::to_string(depth));
-            const auto refused = record::read_record(as_bytes(altered));
-            REQUIRE(!refused);
-            CHECK(refused.error().code == core::ErrorCode::input);
+    SECTION("encoded output depth must belong to its actual container domain") {
+        for (const auto depth : {0, 2, 4, 12, 32}) {
+            auto altered = *encoded;
+            altered["output"]["depth"] = depth;
+            refused_record(altered);
         }
     }
     SECTION("a path that leaves the bundle") {
         for (const auto* const escape : {"../secret.png", "/etc/passwd", "a/../../b.png"}) {
-            auto altered = *written;
-            const auto at = altered.find(record::image_name);
-            REQUIRE(at != std::string::npos);
-            altered.replace(at, std::string_view(record::image_name).size(), escape);
-            CHECK(!record::read_record(as_bytes(altered)));
+            auto altered = *encoded;
+            altered["output"]["path"] = escape;
+            refused_record(altered);
         }
     }
     SECTION("a digest that is not one") {
-        auto altered = *written;
-        // The output's digest, not the build's: only the artifacts are ones a bundle can check.
-        const auto output_at = altered.find("\"output\"");
-        REQUIRE(output_at != std::string::npos);
-        const auto at = altered.find(other_digest, output_at);
-        REQUIRE(at != std::string::npos);
-        altered.replace(at, other_digest.size(), std::string(other_digest.size(), 'z'));
-        CHECK(!record::read_record(as_bytes(altered)));
+        auto altered = *encoded;
+        altered["output"]["sha256"] = std::string(64, 'z');
+        refused_record(altered);
     }
     SECTION("nesting deep enough to exhaust a parser") {
         const std::string deep = std::string(record::record_max_depth + 4, '[') +
@@ -179,14 +139,13 @@ TEST_CASE("A record that cannot be trusted is refused rather than read", "[bundl
         CHECK(refused.error().message.contains("nested"));
     }
     SECTION("more bytes than a record may have") {
-        const std::string large(record::record_max_bytes + 1, ' ');
-        CHECK(!record::read_record(as_bytes(large)));
+        CHECK(!record::read_record(as_bytes(std::string(record::record_max_bytes + 1, ' '))));
     }
 }
 TEST_CASE("Record serialization never repairs malformed identity bytes", "[bundle][utf8]") {
-    auto record = binarized_record();
-    record.source.name = std::string(1, static_cast<char>(0xff));
-    const auto rejected = record::serialize(record);
+    auto value = binarized_record();
+    value.source.name = std::string(1, static_cast<char>(0xff));
+    const auto rejected = record::serialize(value);
     REQUIRE(!rejected);
     CHECK(rejected.error().code == core::ErrorCode::invariant);
 }
@@ -201,7 +160,7 @@ TEST_CASE("Record parsing stops at its event boundary before later malformed tok
     };
     const auto exact = record::read_record(as_bytes(array(record::record_max_events - 2)));
     REQUIRE(!exact);
-    CHECK(exact.error().message.contains("identifying header"));
+    CHECK(exact.error().message == "Invalid typed wire value");
     const auto excess = record::read_record(as_bytes(array(record::record_max_events - 1)));
     REQUIRE(!excess);
     CHECK(excess.error().message.contains("parser event ceiling"));
@@ -211,16 +170,12 @@ TEST_CASE("Record parsing stops at its event boundary before later malformed tok
     REQUIRE(!stopped);
     CHECK(stopped.error().code == core::ErrorCode::input);
     CHECK(stopped.error().message.contains("parser event ceiling"));
-
-    auto record = binarized_record();
-    record.source.name = "braces{}[]\\\".png";
-    const auto written = record::serialize(record);
+    auto value = binarized_record();
+    value.source.name = "braces{}[]\\\".png";
+    const auto written = record::serialize(value);
     REQUIRE(written);
     CHECK(record::read_record(as_bytes(*written)));
 }
-} // namespace docenhance::tests
-
-namespace docenhance::tests {
 TEST_CASE("Record depth is bounded by library container events", "[bundle][resource]") {
     const auto nested = [](std::size_t depth) {
         std::string text = "0";
@@ -232,7 +187,7 @@ TEST_CASE("Record depth is bounded by library container events", "[bundle][resou
     };
     const auto exact = record::read_record(as_bytes(nested(record::record_max_depth)));
     REQUIRE(!exact);
-    CHECK(exact.error().message.contains("identifying header"));
+    CHECK(exact.error().message == "Invalid typed wire value");
     const auto excessive = record::read_record(as_bytes(nested(record::record_max_depth + 1)));
     REQUIRE(!excessive);
     CHECK(excessive.error().message.contains("depth ceiling"));
@@ -245,143 +200,158 @@ TEST_CASE("Record depth is bounded by library container events", "[bundle][resou
     CHECK(duplicate.error().message.contains("unique keys"));
     const auto quoted = record::read_record(as_bytes(R"({"x":"{}[]\\\""})"));
     REQUIRE(!quoted);
-    CHECK(quoted.error().message.contains("identifying header"));
+    CHECK(quoted.error().message == "Invalid typed wire value");
 }
 TEST_CASE("Otsu records retain the frozen fit and reject contradictory observations",
           "[bundle][otsu]") {
-    auto facts = binarized_record();
-    facts.operation = methods::Binarization{methods::Otsu::create()};
-    facts.otsu = methods::OtsuObservation{.threshold_bin = 2047, .single_bin_fallback = true};
-    const auto written = record::serialize(facts);
+    auto value = binarized_record();
+    const methods::Plan plan{
+        .rotation = image::QuarterTurn(),
+        .photometric = methods::Photometric(),
+        .output = methods::BinaryOutput{.method = methods::Otsu::create()},
+    };
+    auto request = record::requested(plan, std::nullopt);
+    REQUIRE(request);
+    value.request = std::move(*request);
+    methods::OtsuFacts facts;
+    facts.white_samples = 5000;
+    facts.single_bin_fallback = true;
+    value.execution.binarization = facts;
+    const auto written = record::serialize(value);
     REQUIRE(written);
     const auto declared = record::read_record(as_bytes(*written));
     REQUIRE(declared);
-    CHECK(declared->otsu == facts.otsu);
-    for (unsigned change = 0; change < 4; ++change) {
-        auto altered = facts;
+    CHECK(declared->execution.binarization == value.execution.binarization);
+    const auto encoded = record::Codec::encode(value);
+    REQUIRE(encoded);
+    const auto sauvola = record::Codec::encode(binarized_record());
+    REQUIRE(sauvola);
+    for (unsigned change = 0; change < 5; ++change) {
+        auto altered = *encoded;
+        auto& observation = altered["execution"]["binarization"];
         if (change == 0) {
-            altered.otsu.reset();
+            observation = nullptr;
         } else if (change == 1) {
-            altered.otsu->threshold_bin = 4095;
+            observation["threshold_bin"] = 4095;
         } else if (change == 2) {
-            altered.otsu->threshold_bin = 2046;
-        } else {
-            altered.operation = binarized_record().operation;
-        }
-        const auto invalid = record::serialize(altered);
-        REQUIRE(invalid);
-        CHECK(!record::read_record(as_bytes(*invalid)));
-    }
-}
-namespace {
-record::RunRecord restoration_record() {
-    auto record = binarized_record();
-    record.operation = image::Continuous::create({}).value();
-    record.output.profile_embedded = true;
-    record.conversion = image::ConversionReport{
-        .source = record.output.shape,
-        .output = record.output.shape,
-        .interpretation = image::Interpretation::assumed_srgb,
-        .resolution = std::nullopt,
-        .assumed_transfer = true,
-        .verified = true,
-    };
-    record.stages.illumination.progress = methods::StageProgress::completed;
-    record.stages.illumination.eligible_samples = 5000;
-    record.stages.denoising.eligible_samples = 5000;
-    record.stages.contrast.eligible_samples = 5000;
-    record.stages.sharpening.eligible_samples = 5000;
-    const auto method = methods::Wiener::create({.blend = 0}).value();
-    methods::ResolvedPsf psf{.width = 7, .height = 7, .coefficients = {}};
-    psf.coefficients.resize(49);
-    REQUIRE(methods::gaussian_psf({}, psf.coefficients));
-    record.stages.restoration = {
-        .status = methods::RestorationStatus::no_change,
-        .reason = methods::RestorationReason::zero_blend,
-        .progress = methods::StageProgress::completed,
-        .requested = method.parameters(),
-        .psf = std::move(psf),
-        .eligible_samples = 5000,
-        .inference_warning = true,
-    };
-    return record;
-}
-} // namespace
-TEST_CASE("Restoration records retain resolved kernels and enforce request agreement",
-          "[bundle][restoration]") {
-    auto record = restoration_record();
-    const auto written = record::serialize(record);
-    REQUIRE(written);
-    auto declared = record::read_record(as_bytes(*written));
-    REQUIRE(declared);
-    CHECK(declared->restoration == record.stages.restoration);
-    for (unsigned change = 0; change < 8; ++change) {
-        auto altered = record;
-        auto& restoration = altered.stages.restoration;
-        if (!restoration.psf || !restoration.requested) {
-            FAIL("Restoration fixture requires resolved PSF and request parameters");
-            return;
-        }
-        if (change == 0) {
-            restoration.psf.value().coefficients.at(0) += 0.01;
-            restoration.psf.value().coefficients.at(1) -= 0.01;
-        } else if (change == 1) {
-            restoration.psf.value().centroid_x = 0.1;
-        } else if (change == 2) {
-            restoration.inference_warning = false;
+            observation["threshold_bin"] = 2046;
         } else if (change == 3) {
-            restoration.after_transform_warning = true;
-        } else if (change == 4) {
-            restoration.eligible_samples -= 1;
-        } else if (change == 5) {
-            restoration.guard = 32;
-        } else if (change == 6) {
-            restoration.native_calls = 1;
+            altered["request"]["binarization"] = (*sauvola)["request"]["binarization"];
         } else {
-            restoration.requested.value().psf = methods::MotionPsf{};
+            observation["white_samples"] = 4999;
         }
-        const auto invalid = record::serialize(altered);
-        REQUIRE(invalid);
-        CHECK(!record::read_record(as_bytes(*invalid)));
+        refused_record(altered);
     }
-    auto mismatch = *written;
-    const auto execution = mismatch.find("\"execution\"");
-    REQUIRE(execution != std::string::npos);
-    const auto at = mismatch.find("\"k\": 0.01", execution);
-    REQUIRE(at != std::string::npos);
-    mismatch.replace(at, std::string_view("\"k\": 0.01").size(), "\"k\": 0.02");
-    CHECK(!record::read_record(as_bytes(mismatch)));
 }
-TEST_CASE("Supplied PSF record verification does not depend on a present external path",
+TEST_CASE("Restoration records retain summaries and enforce the actual selected request",
           "[bundle][restoration]") {
-    auto record = restoration_record();
-    auto& restoration = record.stages.restoration;
-    if (!restoration.requested) {
-        FAIL("Restoration fixture requires request parameters");
-        return;
+    const auto value = restoration_record();
+    const auto written = record::serialize(value);
+    REQUIRE(written);
+    const auto declared = record::read_record(as_bytes(*written));
+    REQUIRE(declared);
+    CHECK(declared->execution.restoration == value.execution.restoration);
+    CHECK(!written->contains("coefficients"));
+    const auto encoded = record::Codec::encode(value);
+    REQUIRE(encoded);
+    const auto motion = record::Codec::encode(methods::Psf{methods::MotionPsf{}});
+    REQUIRE(motion);
+    for (unsigned change = 0; change < 10; ++change) {
+        auto altered = *encoded;
+        auto& restoration = altered["execution"]["restoration"];
+        if (change == 0) {
+            restoration["psf"]["normalized_sum"] = 0.99;
+        } else if (change == 1) {
+            restoration["psf"]["centroid_x"] = 0.1;
+        } else if (change == 2) {
+            restoration["inference_warning"] = false;
+        } else if (change == 3) {
+            restoration["after_transform_warning"] = true;
+        } else if (change == 4) {
+            restoration["counts"]["eligible"] = 4999;
+        } else if (change == 5) {
+            restoration["transform"] = {
+                {"guard", 32},
+                {"width", 180},
+                {"height", 120},
+                {"padded_mean", 0.5},
+            };
+        } else if (change == 6) {
+            restoration["native_calls"] = 1;
+        } else if (change == 7) {
+            altered["request"]["restoration"]["parameters"]["psf"] = *motion;
+        } else if (change == 8) {
+            restoration["psf"]["coefficients"] = record::Json::array({1});
+        } else {
+            altered["request"]["restoration"]["parameters"]["blend"] = 1;
+        }
+        refused_record(altered);
     }
-    restoration.requested.value().psf = methods::FilePsf{.path = "missing/kernel.png"};
-    for (const auto side : {std::size_t{3}, core::psf_dimension_max}) {
-        restoration.psf = methods::ResolvedPsf{
-            .width = static_cast<std::uint32_t>(side),
-            .height = static_cast<std::uint32_t>(side),
-            .coefficients = std::vector<double>(side * side, 0),
-            .source_identity =
-                methods::PsfIdentity{
-                    .path = "missing/kernel.png",
-                    .identity = {.sha256 = std::string(sample_digest), .bytes = 1024},
-                },
+}
+TEST_CASE("Supplied PSF records bind confined assets without an external path",
+          "[bundle][restoration]") {
+    auto value = restoration_record();
+    REQUIRE(value.request.restoration.has_value());
+    if (!value.request.restoration.has_value()) {
+        throw std::logic_error("Required restoration observation is absent");
+    }
+    REQUIRE(value.execution.restoration.has_value());
+    if (!value.execution.restoration.has_value()) {
+        throw std::logic_error("Required restoration observation is absent");
+    }
+    value.request.restoration.value().parameters.psf = methods::Kernel{};
+    value.assets.emplace_back(
+        record::PsfAsset{.sha256 = std::string{sample_digest}, .bytes = 1024});
+    for (const auto side : {3U, methods::psf_maximum_side}) {
+        value.execution.restoration.value().psf = {
+            .kind = methods::PsfKind::kernel,
+            .width = side,
+            .height = side,
+            .normalized_sum = 1,
         };
-        restoration.psf->coefficients.at((side * side) / 2) = 1;
-        const auto written = record::serialize(record);
+        const auto written = record::serialize(value);
         REQUIRE(written);
+        CHECK(!written->contains("missing/kernel.png"));
         const auto declared = record::read_record(as_bytes(*written));
         REQUIRE(declared);
-        CHECK(declared->restoration.psf == restoration.psf);
-        restoration.psf.value().source_identity.reset();
-        const auto invalid = record::serialize(record);
-        REQUIRE(invalid);
-        CHECK(!record::read_record(as_bytes(*invalid)));
+        if (!declared->execution.restoration.has_value()) {
+            throw std::logic_error("Required decoded restoration observation is absent");
+        }
+        CHECK(declared->execution.restoration.value().psf ==
+              value.execution.restoration.value().psf);
+        const auto encoded = record::Codec::encode(value);
+        REQUIRE(encoded);
+        auto missing = *encoded;
+        missing["assets"] = record::Json::array();
+        refused_record(missing);
+        auto external = *encoded;
+        external["request"]["restoration"]["parameters"]["psf"]["path"] = "missing/kernel.png";
+        refused_record(external);
     }
+}
+TEST_CASE("Restoration request parameters have one authority and are not verification proof",
+          "[bundle][restoration]") {
+    auto value = restoration_record();
+    REQUIRE(value.request.restoration.has_value());
+    if (!value.request.restoration.has_value()) {
+        throw std::logic_error("Required restoration observation is absent");
+    }
+    value.request.restoration.value().parameters.k = 0.02;
+    const auto written = record::serialize(value);
+    REQUIRE(written);
+    const auto declared = record::read_record(as_bytes(*written));
+    REQUIRE(declared);
+    REQUIRE(declared->request.restoration.has_value());
+    if (!declared->request.restoration.has_value()) {
+        throw std::logic_error("Required restoration observation is absent");
+    }
+    CHECK(declared->request.restoration.value().parameters.k == 0.02);
+    // A bypass does not observe the regularizer. The persistent request carries its producer
+    // claim once; the old duplicated execution parameter is now an unknown field.
+    const auto encoded = record::Codec::encode(value);
+    REQUIRE(encoded);
+    auto duplicated = *encoded;
+    duplicated["execution"]["restoration"]["k"] = 0.01;
+    refused_record(duplicated);
 }
 } // namespace docenhance::tests

@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/codec/tiff.hpp"
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source_facts.hpp"
@@ -90,7 +91,7 @@ core::Result<DecodedTiff> decode_tiff(std::span<const std::uint8_t> bytes, core:
         return core::failure(core::ErrorCode::argument,
                              "Unknown TIFF profile interpretation policy");
     }
-    if (limits.encoded_bytes == 0 || limits.encoded_bytes > image::source_encoded_bytes_max ||
+    if (limits.encoded_bytes == 0 || limits.encoded_bytes > core::source_encoded_bytes_max ||
         limits.pixels == 0 || limits.pixels > image::source_pixels_max) {
         return core::failure(core::ErrorCode::argument, "TIFF limits exceed the production domain");
     }

@@ -4,81 +4,77 @@
 
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/exec/concurrency.hpp"
+#include "docenhance/exec/scheduler.hpp"
 #include "docenhance/image/numeric.hpp"
-#include "docenhance/methods/progress.hpp"
+#include "docenhance/image/plane.hpp"
+#include "docenhance/methods/clahe.hpp"
+#include "docenhance/methods/contrast_facts.hpp"
+#include "docenhance/methods/working.hpp"
 #include "support/entry_point.hpp"
 #include "support/fuzz_input.hpp"
 #include "support/oracle.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <span>
 #include <vector>
 namespace {
-class ContextSource final : public docenhance::image::LinearSource {
-  public:
-    static constexpr std::uint32_t side = 32;
-    explicit ContextSource(docenhance::fuzz::FuzzInput& input) {
-        for (auto& value : pixels_) {
-            value = static_cast<double>(input.integer<std::uint16_t>()) / 65535;
-        }
-    }
-    [[nodiscard]] docenhance::image::Extent extent() const noexcept override {
-        return {.width = side, .height = side};
-    }
-    docenhance::core::Result<void> read(docenhance::image::RowRange range, std::span<double> rgb,
-                                        docenhance::image::RowUse /*use*/) override {
-        for (std::size_t i = 0; i < rgb.size() / 3; ++i) {
-            std::ranges::fill(rgb.subspan(i * 3, 3),
-                              pixels_.at((std::size_t{range.row} * side) + range.first + i));
-        }
-        return {};
-    }
-
-  private:
-    std::array<double, std::size_t{side} * side> pixels_{};
-};
 void contextual(docenhance::fuzz::FuzzInput& input) {
     namespace methods = docenhance::methods;
     namespace image = docenhance::image;
+    namespace exec = docenhance::exec;
     using docenhance::fuzz::require;
     constexpr std::size_t budget_limit = std::size_t{1024} * 1024;
+    constexpr std::uint32_t side = 32;
     docenhance::core::Budget budget{budget_limit};
-    const double clip = 1 + (static_cast<double>(input.byte()) / 255 * 7);
-    ContextSource source{input};
-    const methods::Contrast method =
-        methods::Clahe::create({.grid_columns = 2, .grid_rows = 2, .clip = clip}).value();
-    methods::ContrastReport report;
-    auto model = methods::ContrastModel::prepare(source, {}, method,
-                                                 {budget, {}, report, image::RowUse::output});
-    require(model.has_value(), "CLAHE bounded preparation");
-    std::array<double, std::size_t{ContextSource::side} * image::rgb_channels> rgb{};
-    for (std::uint32_t y = 0; y < ContextSource::side; ++y) {
-        require(source.read({.row = y}, rgb, image::RowUse::output).has_value(), "CLAHE source");
-        require(model->apply({.row = y}, rgb, {}, report, {}).has_value(),
-                "CLAHE floating reconstruction");
-        require(
-            std::ranges::all_of(rgb, [](double f) { return std::isfinite(f) && f >= 0 && f <= 1; }),
-            "CLAHE bounded values");
-        auto frozen = report;
-        auto verification = rgb;
-        require(source.read({.row = y}, verification, image::RowUse::verification).has_value(),
-                "CLAHE verification input");
-        require(model->apply({.row = y}, verification, {}, frozen, {}).has_value(),
-                "CLAHE frozen replay");
-        require(rgb == verification, "CLAHE immutable maps");
+    {
+        const double clip = 1 + (static_cast<double>(input.byte()) / 255 * 7);
+        auto source = image::Plane<double>::allocate(budget, side, side);
+        auto repeated = image::Plane<double>::allocate(budget, side, side);
+        const auto selected =
+            methods::Clahe::create({.grid_columns = 2, .grid_rows = 2, .clip = clip});
+        const auto concurrency = exec::Concurrency::resolve(1, 1, 0, 0);
+        require(source && repeated && selected && concurrency, "CLAHE bounded eager inputs");
+        if (!source || !repeated || !selected || !concurrency) {
+            return;
+        }
+        for (std::uint32_t y = 0; y < side; ++y) {
+            const auto first = source->view().row(y);
+            const auto second = repeated->view().row(y);
+            for (std::uint32_t x = 0; x < side; ++x) {
+                const auto value = static_cast<double>(input.integer<std::uint16_t>()) / 65535;
+                first.subspan(x, 1).front() = value;
+                second.subspan(x, 1).front() = value;
+            }
+        }
+        const auto resident = budget.used();
+        const exec::Scheduler scheduler{*concurrency};
+        const auto facts = methods::apply(*selected, {source->view(), {}, budget, scheduler});
+        require(facts && methods::validate(*facts, selected->parameters()),
+                "CLAHE completed Facts");
+        if (!facts) {
+            return;
+        }
+        const auto frozen = *facts;
+        const auto again = methods::apply(*selected, {repeated->view(), {}, budget, scheduler});
+        require(again && *facts == frozen && *again == frozen && budget.used() == resident,
+                "CLAHE repeats deterministically without mutating completed Facts or retaining "
+                "scratch");
+        for (std::uint32_t y = 0; y < side; ++y) {
+            const auto row = source->view().row(y);
+            require(std::ranges::equal(row, repeated->view().row(y)),
+                    "CLAHE repeated samples exact");
+            require(std::ranges::all_of(row,
+                                        [](double value) {
+                                            return std::isfinite(value) && value >= 0 && value <= 1;
+                                        }),
+                    "CLAHE finite unit luminance");
+        }
     }
-    report.progress = methods::StageProgress::completed;
-    report.status = report.changed_samples == 0 ? methods::ContrastStatus::no_change
-                                                : methods::ContrastStatus::applied;
-    report.reason = report.changed_samples == 0 ? methods::ContrastReason::no_effect
-                                                : methods::ContrastReason::none;
-    require(methods::valid_contrast(report, method), "CLAHE complete observations");
+    require(budget.used() == 0, "CLAHE eager owners refund every charge");
 }
 void check(std::span<const std::uint8_t> bytes) {
     docenhance::fuzz::FuzzInput input{bytes};
@@ -108,13 +104,15 @@ void check(std::span<const std::uint8_t> bytes) {
     const auto lo = expected.front();
     const auto hi = expected.back();
     for (const auto f : values) {
-        auto result = methods::gamma_candidate(f, gamma);
-        require(result.has_value() && std::abs(*result - std::pow(f, exponent)) < 1e-12,
-                "gamma power reference");
+        const double result = methods::gamma_candidate(f, gamma);
+        require(std::isfinite(result) && result >= 0 && result <= 1,
+                "gamma produces finite unit output before approximate reference use");
+        require(std::abs(result - std::pow(f, exponent)) < 1e-12, "gamma power reference");
         if (hi - lo >= methods::levels_minimum_range) {
-            auto mapped = methods::levels_candidate(f, {.low = lo, .high = hi});
-            require(mapped.has_value() &&
-                        std::abs(*mapped - std::clamp((f - lo) / (hi - lo), 0.0, 1.0)) < 1e-12,
+            const double mapped = methods::levels_candidate(f, {.low = lo, .high = hi});
+            require(std::isfinite(mapped) && mapped >= 0 && mapped <= 1,
+                    "Levels produces finite unit output before approximate reference use");
+            require(std::abs(mapped - std::clamp((f - lo) / (hi - lo), 0.0, 1.0)) < 1e-12,
                     "levels scalar reference");
         }
     }

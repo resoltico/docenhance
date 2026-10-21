@@ -1,215 +1,135 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Read cleared external corpus/reviews and verify real candidate, comparator and repeat bundles."""
+"""Evaluate frozen external quality evidence through one bounded append-only v3 run."""
 
 from __future__ import annotations
 
 import argparse
-import importlib
-import json
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator, ValidationError
 
-from document_quality import (
-    ROOT,
-    adjudicate,
-    frozen_digest,
-    read_json,
-    validate_plan,
-    validator,
-)
-from parameter_contract import merged_options
-from quality_collection import SEMANTIC_FACTS, BundleChecks, collect
-from quality_evidence import admit, command_options, confined, digest, evidence_error
-from quality_protocol import BUNDLE_ROLES
-from quality_replay import ReplayObservation, execute_replay
-
-# Independent first-party PNG decoder already used by the numerical/product references.
-sys.path.insert(0, str(ROOT / "tests/cli"))
-MIN_PROCESS_ARGV = 6
-decode_output = importlib.import_module("continuous_fixtures").decode_output
+from quality_acquisition import acquire_json_file, acquire_payload
+from quality_attempt import delivered_path
+from quality_collection import BundleChecks, collect
+from quality_evidence import admit_evaluation, evidence_error
+from quality_fidelity import fidelity
+from quality_journal import JournalError
+from quality_json import ROOT, read_json
+from quality_replay import replay
+from quality_report import report
+from quality_run import QualityRun
+from quality_schema import validator
 
 
-def read_bundle(executable: Path, directory: Path, source: str) -> dict[str, Any]:
-    """Run the production read-only verifier; record provenance alone cannot assert verification."""
-    result = subprocess.run(
-        [str(executable), "verify", str(directory), "--json"],
-        capture_output=True,
-        check=True,
-        timeout=120,
+def read_bundle(
+    checks: BundleChecks,
+    invocation_index: int,
+    source_sha256: str,
+    published_response: dict[str, Any],
+) -> dict[str, Any]:
+    """Consume this fixed verifier first; acquire/hash/parse exactly its observed record bytes."""
+    run = checks.run
+    attempt = run.invoke(invocation_index)
+    if attempt["outcome"] != "completed":
+        message = "Read-only verifier lacks coherent complete delivery"
+        raise ValueError(message)
+    response = attempt["response"]
+    confirmed = response.get("confirmed", [])
+    records = [entry for entry in confirmed if entry["path"] == "run.json"]
+    if len(records) != 1 or not 0 < records[0]["bytes"] <= 256 * 1024:
+        message = "Verifier did not confirm the bounded record-role identity"
+        raise ValueError(message)
+    target = run.slots[invocation_index]["planned_target"]
+    identity = records[0]
+    payload = acquire_payload(run.root, {**identity, "path": target + "/run.json"})
+    record = read_json(payload)
+    Draft202012Validator(acquire_json_file(ROOT / "schemas/run-record.schema.json")).validate(
+        record
     )
-    response = read_json(result.stdout)
-    record = read_json((directory / "run.json").read_bytes())
-    for name, value in (("command-response", response), ("run-record", record)):
-        Draft202012Validator(
-            read_json((ROOT / f"schemas/{name}.schema.json").read_bytes())
-        ).validate(value)
+    expected = [record["output"], *record["assets"], identity]
+    if len(confirmed) != len(expected):
+        message = "Verifier confirmations differ from the closed acquired inventory"
+        raise ValueError(message)
+    for entry in expected:
+        observed = [item for item in confirmed if item["path"] == entry["path"]]
+        if len(observed) != 1 or any(
+            observed[0][key] != entry[key] for key in ("path", "sha256", "bytes")
+        ):
+            message = "Verifier file identity differs from acquired record"
+            raise ValueError(message)
     if (
-        result.stderr
-        or response.get("command") != "verify"
+        response.get("command") != "verify"
+        or response.get("directory") != target
         or response.get("run") != record["record"]["run"]
         or response.get("recorded") != record["record"]["recorded"]
         or response.get("establishes") != "artifacts_agree_with_record"
-        or record["source"]["sha256"] != source
+        or record["source"]["sha256"] != source_sha256
     ):
-        message = "Verification or candidate source identity differs"
+        message = "Verification or frozen source identity differs"
+        raise ValueError(message)
+    if (
+        published_response.get("command") != "process"
+        or published_response.get("publication") != "completed"
+        or published_response.get("record_sha256") != identity["sha256"]
+        or published_response.get("record") != record
+        or published_response.get("output") != delivered_path(target, "result.png")
+    ):
+        message = "Process delivery differs from the same-snapshot verified record"
         raise ValueError(message)
     return record
 
 
-def replay_options(options: list[str], root: Path) -> None:
-    """Admit declared processing options without letting evidence redirect evaluation outputs."""
-    contract = json.loads((ROOT / "spec/cli-contract.json").read_bytes())
-    methods = json.loads((ROOT / "spec/method-contract.json").read_bytes())
-    allowed = {
-        option["name"]
-        for option in merged_options(contract, methods)
-        if option["metavar"] and "process" in option["scope"] and option["name"] != "--out-dir"
-    }
-    if len(options) % 2 or any(options[i] not in allowed for i in range(0, len(options), 2)):
-        message = "Replay requires exact processing option/value pairs with no output override"
-        raise ValueError(message)
-    for i in range(0, len(options), 2):
-        if options[i] in {"--protect-mask", "--psf-file"}:
-            confined(root, options[i + 1])
-
-
-def replay(command: list[str], root: Path) -> ReplayObservation:
-    """Copy admitted full argv and substitute only its owned output-destination value."""
-    if len(command) < MIN_PROCESS_ARGV:
-        message = "Replay requires a complete frozen process command"
-        raise ValueError(message)
-    _, options = command_options(command, command[2], Path(command[0]))
-    replay_options(options, root)
-    return execute_replay(command, root, read_bundle)
-
-
-def check_comparator(candidate: dict[str, Any], baseline: dict[str, Any]) -> None:
-    """Prevent changed representation policy from masquerading as enhancement benefit."""
-    operation = candidate["request"]["operation"]
-    comparator = baseline["request"]["operation"]
-    if operation["kind"] == "continuous" and operation != comparator:
-        message = "Representation policies differ; enhancement cannot claim conversion benefit"
-        raise ValueError(message)
-    if operation["kind"] == "binarization" and (
-        comparator["kind"] != "continuous"
-        or comparator["parameters"]
-        != {"output_mode": "preserve", "depth": "8", "alpha": "white", "profile": "srgb"}
-        or baseline["execution"]["conversion"]["source_orientation"] != 1
-    ):
-        message = (
-            "Binary comparator requires normal-oriented stored-gray identity under explicit sRGB"
-        )
-        raise ValueError(message)
-
-
-def check_repetition(candidate: dict[str, Any], replicate: dict[str, Any]) -> None:
-    """Require separate execution identities and identical build-bound repeat facts."""
-    if candidate["record"]["run"] == replicate["record"]["run"]:
-        message = "Repeatability requires independently identified executions"
-        raise ValueError(message)
-    if any(candidate[name] != replicate[name] for name in SEMANTIC_FACTS):
-        message = "Repeated processing differs in source, protection or processing/build facts"
-        raise ValueError(message)
-
-
-def fidelity(root: Path, assessment: dict[str, Any], records: dict[str, Any]) -> None:
-    """Compare repeated output, geometry and protected integers with the independent decoder."""
-    candidate, baseline, replicate = (records[name] for name in BUNDLE_ROLES)
-    check_repetition(candidate, replicate)
-    image = decode_output((confined(root, assessment["candidate"]) / "result.png").read_bytes())
-    reference = decode_output((confined(root, assessment["baseline"]) / "result.png").read_bytes())
-    if (image.width, image.height) != (reference.width, reference.height) or candidate["request"][
-        "rotation_degrees"
-    ] != baseline["request"]["rotation_degrees"]:
-        message = "Candidate and comparator geometry differ"
-        raise ValueError(message)
-    check_comparator(candidate, baseline)
-    for name in ("illumination", "denoising", "restoration", "contrast", "sharpening"):
-        report = baseline["execution"][name]
-        if report.get("requested") is not None or report.get("method") is not None:
-            message = "Comparator must contain no photometric enhancement"
-            raise ValueError(message)
-    protection = candidate["protection"]
-    if protection != baseline["protection"]:
-        message = "Candidate and comparator protection masks differ"
-        raise ValueError(message)
-    if protection is not None:
-        mask = decode_output(
-            (confined(root, assessment["candidate"]) / protection["stored"]["path"]).read_bytes()
-        )
-        turns = candidate["request"]["rotation_degrees"] // 90
-        width, height = mask.width, mask.height
-        for v in range(height):
-            for u in range(width):
-                if mask.pixels[v * width + u][0] == 0:
-                    continue
-                x, y = (
-                    (u, v),
-                    (height - 1 - v, u),
-                    (width - 1 - u, height - 1 - v),
-                    (v, width - 1 - u),
-                )[turns]
-                index = y * image.width + x
-                if image.pixels[index] != reference.pixels[index]:
-                    message = "Protected destination differs from the unenhanced comparator"
-                    raise ValueError(message)
-
-
-def evaluate(plan: dict[str, Any], root: Path, executable: Path) -> dict[str, Any]:
-    """Validate all provenance and real bundle boundaries before scoring external human evidence."""
-    validate_plan(plan)
-    build = admit(plan, root, executable, replay_options)
-    assessed, evidence = collect(
-        plan, root, BundleChecks(executable, build, read_bundle, replay, fidelity)
-    )
-    prior = {
-        page["sample"]: [
-            review for revision in page["prior_reviews"] for review in revision["reviews"]
-        ]
-        for page in evidence
-    }
-    report = adjudicate(assessed, prior)
-    report.update(
-        {
-            "executable_sha256": digest(executable),
-            "frozen_corpus_sha256": plan["protocol"]["frozen_corpus_sha256"],
-            "clearance": "curator assertions; requires independent rights and reviewer review",
-            "build_commit_binding": (
-                "independently referenced build provenance; byte identity verified locally"
-            ),
-            "evidence": evidence,
+def evaluate(plan: dict[str, Any], root: Path, executable: Path, output: Path) -> dict[str, Any]:
+    """Own and flush intended work before any process or invocation-directory preparation."""
+    inputs = admit_evaluation(plan, root, executable)
+    plan = inputs.plan
+    run = QualityRun(inputs, output)
+    try:
+        checks = BundleChecks(run, inputs.build, read_bundle, replay, fidelity)
+        evidence = collect(plan, checks)
+        prior = {
+            page["sample"]: [
+                review for revision in page["prior_reviews"] for review in revision["reviews"]
+            ]
+            for page in evidence
         }
-    )
-    report["report_sha256"] = frozen_digest(report)
-    validator("report").validate(report)
-    return report
+        result = report(plan, plan["protocol"]["executable_sha256"], evidence, run.errors, prior)
+        validator("report").validate(result)
+        return run.finish(result)
+    finally:
+        run.close()
 
 
 def main() -> int:
-    """Missing or invalid evidence refuses an acceptance report; no successful empty evaluation."""
+    """A prefix or unsuccessful final close never earns successful report delivery."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--executable", required=True, type=Path)
     parser.add_argument("--out", required=True, type=Path)
     args = parser.parse_args()
     try:
-        report = evaluate(
-            read_json(args.manifest.read_bytes()),
+        value = evaluate(
+            acquire_json_file(args.manifest),
             args.manifest.parent.resolve(),
             args.executable.resolve(),
+            args.out,
         )
-        with args.out.open("x", encoding="utf-8") as stream:
-            stream.write(json.dumps(report, indent=2, sort_keys=True) + "\n")
-    except (OSError, ValueError, TypeError, ValidationError, subprocess.SubprocessError) as error:
+    except (
+        OSError,
+        ValueError,
+        TypeError,
+        KeyError,
+        MemoryError,
+        ValidationError,
+        JournalError,
+    ) as error:
         print(f"Document-quality evidence refused: {evidence_error(error)}", file=sys.stderr)
         return 1
-    return 0 if report["decision"] == "accepted" else 1
+    return 0 if value["report"]["decision"] == "accepted" else 1
 
 
 if __name__ == "__main__":

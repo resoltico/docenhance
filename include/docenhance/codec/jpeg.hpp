@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/core/cancellation.hpp"
+#include "docenhance/core/limits.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/image/source_facts.hpp"
 
@@ -12,7 +13,7 @@
 #include <cstdint>
 #include <span>
 namespace docenhance::codec {
-inline constexpr std::size_t jpeg_max_encoded_bytes = image::source_encoded_bytes_max;
+inline constexpr std::size_t jpeg_max_encoded_bytes = core::source_encoded_bytes_max;
 inline constexpr std::uint64_t jpeg_max_pixels = image::source_pixels_max;
 inline constexpr unsigned jpeg_max_scans = image::jpeg_scan_max;
 inline constexpr std::size_t jpeg_max_markers = 65536;

@@ -5,15 +5,15 @@
 #include "admission.hpp"
 #include "docenhance/app/invocation.hpp"
 #include "docenhance/app/options.hpp"
-#include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
 #include "docenhance/image/geometry.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/methods/binarization.hpp"
 #include "docenhance/methods/contrast.hpp"
 #include "docenhance/methods/denoising.hpp"
 #include "docenhance/methods/illumination.hpp"
 #include "docenhance/methods/parameters.hpp"
+#include "docenhance/methods/plan.hpp"
 #include "docenhance/methods/restoration.hpp"
 #include "docenhance/methods/sharpening.hpp"
 #include "parameter_bindings.hpp"
@@ -117,10 +117,8 @@ core::Result<image::QuarterTurn> rotation(const Invocation& invocation) {
     return value ? core::Result<image::QuarterTurn>{*value}
                  : core::Result<image::QuarterTurn>{binding_error()};
 }
-core::Result<image::Continuous> continuous(const Invocation& invocation) {
-    using image::AlphaPolicy;
+core::Result<methods::ContinuousOutput> continuous(const Invocation& invocation) {
     using image::OutputDepth;
-    using image::ProfilePolicy;
     using image::ToneMode;
     constexpr auto modes = std::to_array<std::pair<std::string_view, ToneMode>>({
         {"preserve", ToneMode::preserve},
@@ -131,6 +129,19 @@ core::Result<image::Continuous> continuous(const Invocation& invocation) {
         {"8", OutputDepth::byte},
         {"16", OutputDepth::word},
     });
+    const auto mode = output_policy(invocation, OptionId::output_mode, modes);
+    if (!mode) {
+        return std::unexpected(mode.error());
+    }
+    const auto depth = output_policy(invocation, OptionId::bit_depth, depths);
+    if (!depth) {
+        return std::unexpected(depth.error());
+    }
+    return methods::ContinuousOutput{.mode = *mode, .depth = *depth};
+}
+core::Result<image::InterpretationPolicy> interpretation(const Invocation& invocation) {
+    using image::AlphaPolicy;
+    using image::ProfilePolicy;
     constexpr auto alphas = std::to_array<std::pair<std::string_view, AlphaPolicy>>({
         {"white", AlphaPolicy::white},
         {"black", AlphaPolicy::black},
@@ -140,14 +151,6 @@ core::Result<image::Continuous> continuous(const Invocation& invocation) {
         {"embedded", ProfilePolicy::embedded},
         {"srgb", ProfilePolicy::srgb},
     });
-    const auto mode = output_policy(invocation, OptionId::output_mode, modes);
-    if (!mode) {
-        return std::unexpected(mode.error());
-    }
-    const auto depth = output_policy(invocation, OptionId::bit_depth, depths);
-    if (!depth) {
-        return std::unexpected(depth.error());
-    }
     const auto alpha = output_policy(invocation, OptionId::alpha, alphas);
     if (!alpha) {
         return std::unexpected(alpha.error());
@@ -156,11 +159,14 @@ core::Result<image::Continuous> continuous(const Invocation& invocation) {
     if (!profile) {
         return std::unexpected(profile.error());
     }
-    return image::Continuous::create(
-        {.mode = *mode, .depth = *depth, .alpha = *alpha, .profile = *profile});
+    const auto turn = rotation(invocation);
+    if (!turn) {
+        return std::unexpected(turn.error());
+    }
+    return image::InterpretationPolicy{.alpha = *alpha, .profile = *profile, .rotation = *turn};
 }
-core::Result<PhotometricPlan> photometric(const Invocation& invocation,
-                                          const SuppliedOptions& supplied) {
+core::Result<methods::Photometric> photometric(const Invocation& invocation,
+                                               const SuppliedOptions& supplied) {
     auto illumination =
         select_family<methods::Illumination>(invocation, supplied, OptionId::illumination);
     if (!illumination) {
@@ -182,45 +188,47 @@ core::Result<PhotometricPlan> photometric(const Invocation& invocation,
     if (!sharpening) {
         return std::unexpected(std::move(sharpening.error()));
     }
-    return PhotometricPlan{
+    return methods::Photometric{
         .illumination = *illumination,
         .denoising = *denoising,
-        .restoration = std::move(*restoration),
+        .restoration = *restoration,
         .contrast = *contrast,
         .sharpening = *sharpening,
     };
 }
 } // namespace
-core::Result<ProcessPlan> prepare_plan(const Invocation& invocation,
-                                       const SuppliedOptions& supplied) {
-    const auto turn = rotation(invocation);
-    if (!turn) {
-        return std::unexpected(turn.error());
+core::Result<methods::Plan> prepare_plan(const Invocation& invocation,
+                                         const SuppliedOptions& supplied) {
+    const auto policy = interpretation(invocation);
+    if (!policy) {
+        return std::unexpected(policy.error());
     }
+    auto stages = photometric(invocation, supplied);
+    if (!stages) {
+        return std::unexpected(std::move(stages.error()));
+    }
+    methods::Plan plan{
+        .alpha = policy->alpha,
+        .profile = policy->profile,
+        .rotation = policy->rotation,
+        .photometric = *stages,
+        .output = methods::ContinuousOutput(),
+        .protection = invocation.contains(OptionId::protect_mask),
+    };
     if (effective_value(invocation, OptionId::output_mode) == "bw") {
         auto method =
             select_family<methods::Binarization, 0>(invocation, supplied, OptionId::binarize);
         if (!method) {
             return std::unexpected(std::move(method.error()));
         }
-        return BinaryPlan{
-            .operation = *method,
-            .rotation = *turn,
-        };
+        plan.output = methods::BinaryOutput{.method = *method};
+    } else {
+        const auto tone = continuous(invocation);
+        if (!tone) {
+            return std::unexpected(tone.error());
+        }
+        plan.output = *tone;
     }
-    const auto tone = continuous(invocation);
-    if (!tone) {
-        return std::unexpected(tone.error());
-    }
-    auto stages = photometric(invocation, supplied);
-    if (!stages) {
-        return std::unexpected(std::move(stages.error()));
-    }
-    return ContinuousPlan{
-        .operation = *tone,
-        .photometric = std::move(*stages),
-        .protection = invocation.option(OptionId::protect_mask),
-        .rotation = *turn,
-    };
+    return plan;
 }
 } // namespace docenhance::app

@@ -7,43 +7,37 @@
 #include "docenhance/app/verify.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
 #include "docenhance/methods/denoising.hpp"
-#include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/parameters.hpp"
-#include "docenhance/methods/progress.hpp"
-#include "docenhance/methods/sharpening.hpp"
-#include "docenhance/methods/stages.hpp"
+#include "docenhance/methods/morphology_facts.hpp"
+#include "docenhance/methods/nlm_facts.hpp"
+#include "docenhance/methods/surface_facts.hpp"
+#include "docenhance/record/codec.hpp"
+#include "docenhance/record/inventory.hpp"
+#include "docenhance/record/json.hpp"
+#include "docenhance/record/method_requests.hpp"
+#include "docenhance/record/record.hpp"
+#include "docenhance/record/request.hpp"
+#include "docenhance/report/render.hpp"
+#include "execution_exception.hpp"
+#include "execution_fixture.hpp"
+#include "morphology_fixture.hpp"
 #include "processor.hpp"
 #include "stub_verifier.hpp"
+#include "surface_fixture.hpp"
 
 #include <catch2/catch_test_macros.hpp>
-#include <expected>
+#include <cstddef>
 #include <limits>
 #include <new>
-#include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <variant>
 namespace docenhance::tests {
 namespace {
-class ReturningProcessor final : public app::Processor {
-  public:
-    explicit ReturningProcessor(app::ProcessResult value) : value_(std::move(value)) {}
-    [[nodiscard]] unsigned calls() const noexcept {
-        return calls_;
-    }
-    app::ProcessResult process(const app::ProcessRequest& /*request*/,
-                               const core::Cancellation& /*cancellation*/) override {
-        ++calls_;
-        return value_;
-    }
-
-  private:
-    app::ProcessResult value_;
-    unsigned calls_ = 0;
-};
 class ReturningVerifier final : public app::Verifier {
   public:
     explicit ReturningVerifier(core::Result<app::Verified> value) : value_(std::move(value)) {}
@@ -52,18 +46,26 @@ class ReturningVerifier final : public app::Verifier {
     }
     core::Result<app::Verified> verify(const app::VerifyRequest& /*request*/,
                                        const core::Cancellation& /*cancellation*/) override {
+        ++calls_;
         if (exception_ == 1) {
             throw std::bad_alloc{};
         }
         if (exception_ == 2) {
             throw std::runtime_error("Unreported readonly failure");
         }
+        if (exception_ == 3) {
+            throw_nonstandard_execution_failure();
+        }
         return value_;
+    }
+    [[nodiscard]] unsigned calls() const noexcept {
+        return calls_;
     }
 
   private:
+    unsigned calls_ = 0;
     core::Result<app::Verified> value_;
-    unsigned exception_ = 0;
+    unsigned exception_{};
 };
 app::Invocation invocation(bool binary) {
     app::Invocation value;
@@ -71,227 +73,147 @@ app::Invocation invocation(bool binary) {
     value.operands = {"input.png"};
     value.option(app::OptionId::out_dir) = "output";
     value.option(app::OptionId::output_mode) = binary ? "bw" : "preserve";
+    if (binary) {
+        value.option(app::OptionId::binarize) = "fixed";
+    }
     return value;
 }
-app::PublishedContinuous continuous(bool black = false) {
-    app::PublishedContinuous value;
-    value.output = "output/result.png";
-    value.alpha = black ? image::AlphaPolicy::black : image::AlphaPolicy::white;
-    value.run = std::string(32, 'a');
-    value.record = {.sha256 = std::string(64, 'b'), .bytes = 512};
-    value.conversion.source = {.width = 2, .height = 2};
-    value.conversion.output = value.conversion.source;
-    value.conversion.assumed_transfer = true;
-    value.conversion.verified = true;
-    value.stages.illumination.progress = methods::StageProgress::completed;
-    value.stages.illumination.eligible_samples = 4;
-    value.stages.contrast.progress = methods::StageProgress::completed;
-    value.stages.contrast.eligible_samples = 4;
-    value.stages.sharpening.progress = methods::StageProgress::completed;
-    value.stages.sharpening.eligible_samples = 4;
-    value.stages.restoration.progress = methods::StageProgress::completed;
-    value.stages.restoration.eligible_samples = 4;
-    value.stages.denoising.progress = methods::StageProgress::completed;
-    value.stages.denoising.eligible_samples = 4;
-    return value;
-}
-const core::Error& error(const app::Outcome& value) {
-    return std::get<app::Failure>(value.payload).error;
+const app::Failure& failed(const app::Outcome& value) {
+    const auto* failure = std::get_if<app::Failure>(&value.payload);
+    REQUIRE(failure);
+    return *failure;
 }
 } // namespace
-TEST_CASE("Contradictory processing failures retain unknown state without repeating effects") {
-    UnusedVerifier verifier;
-    for (const auto code : {
-             core::ErrorCode::cancelled,
-             core::ErrorCode::resource,
-             core::ErrorCode::publication_unknown,
-             core::ErrorCode::output,
-         }) {
-        for (const auto state : {
-                 core::Publication::not_started,
-                 core::Publication::not_published,
-                 core::Publication::completed,
-                 core::Publication::unknown,
-             }) {
-            const core::Error reported{
-                .code = code,
-                .message = "Reported failure",
-                .publication = state,
-            };
-            ReturningProcessor processor{app::process_failure(reported)};
-            const auto outcome = app::dispatch(invocation(true), processor, verifier);
-            CHECK(processor.calls() == 1);
-            if (reported.valid_publication()) {
-                CHECK(error(outcome).code == code);
-                CHECK(error(outcome).publication == state);
-            } else {
-                CHECK(error(outcome).code == core::ErrorCode::publication_unknown);
-                CHECK(error(outcome).publication == core::Publication::unknown);
-            }
-        }
-    }
-    ReturningProcessor committed{app::process_failure({
-        .code = core::ErrorCode::output_verify,
-        .message = "Integrity failure",
-        .publication = core::Publication::completed,
-    })};
-    CHECK(error(app::dispatch(invocation(true), committed, verifier)).publication ==
-          core::Publication::completed);
+TEST_CASE("Published record identities are admitted at their owning record receiver") {
+    const auto valid = observed_publication(invocation(true));
+    REQUIRE(record::Codec::encode(valid.record));
+    auto invalid = valid.record;
+    invalid.context.identity.clear();
+    CHECK(!record::Codec::encode(invalid));
+    // Actual serialized bytes, not a second application check, own the record-size identity.
+    const auto serialized = record::serialize(valid.record);
+    REQUIRE(serialized);
+    CHECK(valid.record_identity.bytes == serialized->size());
+    CHECK(valid.record_identity.bytes > 0);
+    CHECK(!record::read_record(std::span<const std::byte>{}));
+    CHECK(valid.record_identity.bytes <= record::record_max_bytes);
+    auto oversized = valid.record;
+    oversized.build.compiler.assign(record::record_max_bytes, 'x');
+    REQUIRE(record::validate(oversized));
+    const auto refused = record::serialize(oversized);
+    REQUIRE(!refused);
+    CHECK(refused.error().code == core::ErrorCode::invariant);
 }
-TEST_CASE(
-    "Processing success refuses malformed identities and outcomes outside the admitted target") {
-    UnusedVerifier verifier;
-    const app::PublishedBinary valid{
-        .output = "output/result.png",
-        .run = std::string(32, 'a'),
-        .record = {.sha256 = std::string(64, 'b'), .bytes = 512},
-    };
-    ReturningProcessor control{valid};
-    CHECK(app::dispatch(invocation(true), control, verifier).exit_code() ==
-          core::ExitCode::success);
-    for (unsigned change = 0; change < 4; ++change) {
-        auto value = valid;
+TEST_CASE("Actual continuous records retain selected geometry and completed method facts") {
+    auto request = invocation(false);
+    request.option(app::OptionId::illumination) = "morph";
+    request.option(app::OptionId::background_strength) = "0";
+    const auto valid = observed_publication(request);
+    REQUIRE(record::Codec::encode(valid.record));
+    for (unsigned change = 0; change < 5; ++change) {
+        auto value = valid.record;
+        auto& report = value.execution.interpretation;
+        REQUIRE(value.execution.illumination.has_value());
+        if (!value.execution.illumination.has_value()) {
+            throw std::logic_error("Required test observation is absent");
+        }
+        auto& light = std::get<methods::MorphologyFacts>(value.execution.illumination.value());
         if (change == 0) {
-            value.output = "elsewhere/result.png";
+            report.output.width = 4;
         }
         if (change == 1) {
-            value.run.clear();
+            report.output.model = image::SampleModel::rgb;
         }
         if (change == 2) {
-            value.record.sha256.front() = 'B';
+            light.counts.eligible = 7;
         }
         if (change == 3) {
-            value.record.bytes = 0;
-        }
-        ReturningProcessor processor{value};
-        CHECK(error(app::dispatch(invocation(true), processor, verifier)).publication ==
-              core::Publication::unknown);
-    }
-}
-TEST_CASE("Complete continuous returns must agree on geometry, operation and stage counts") {
-    UnusedVerifier verifier;
-    ReturningProcessor control{continuous()};
-    CHECK(app::dispatch(invocation(false), control, verifier).exit_code() ==
-          core::ExitCode::success);
-    for (unsigned change = 0; change < 6; ++change) {
-        auto value = continuous(change == 5);
-        if (change == 0) {
-            value.conversion.output.width = 3;
-        }
-        if (change == 1) {
-            value.conversion.output.model = image::SampleModel::rgb;
-        }
-        if (change == 2) {
-            value.stages.illumination.eligible_samples = 5;
-        }
-        if (change == 3) {
-            value.stages.illumination.max_gain = std::numeric_limits<double>::quiet_NaN();
+            light.max_gain = std::numeric_limits<double>::quiet_NaN();
         }
         if (change == 4) {
-            value.conversion.depth_reduced = true;
+            report.depth_reduced = true;
         }
-        ReturningProcessor processor{value};
-        CHECK(error(app::dispatch(invocation(false), processor, verifier)).publication ==
-              core::Publication::unknown);
+        CHECK(!record::Codec::encode(value));
     }
-    auto native_request = invocation(false);
-    native_request.option(app::OptionId::denoise) = "nlm";
-    auto impossible_native = continuous();
-    auto& native = impossible_native.stages.denoising;
-    native.requested = methods::NlmParameters{};
-    native.native_h =
-        methods::nlm_native_strength(std::get<methods::NlmParameters>(*native.requested));
-    native.status = methods::DenoiseStatus::applied;
-    native.evaluated_samples = 4;
-    native.corrected_samples = 1;
-    native.changed_samples = 1;
-    native.native_calls = 1;
-    native.native_reserved_peak = 1;
-    native.preparation_charge_peak = 1;
-    ReturningProcessor wrong_extent{impossible_native};
-    CHECK(error(app::dispatch(native_request, wrong_extent, verifier)).publication ==
-          core::Publication::unknown);
-    auto request = invocation(false);
-    request.option(app::OptionId::illumination) = "surface";
-    methods::IlluminationReport wrong;
-    wrong.requested = methods::SurfaceParameters{.strength = 0.5};
-    wrong.status = methods::IlluminationStatus::failed;
-    ReturningProcessor mismatch{
-        app::process_failure({.code = core::ErrorCode::resource, .message = "Partial failure"},
-                             methods::StageObservations{.illumination = wrong})};
-    CHECK(error(app::dispatch(request, mismatch, verifier)).publication ==
-          core::Publication::unknown);
-    wrong.solver = methods::SolverReport{.residual = std::numeric_limits<double>::quiet_NaN()};
-    ReturningProcessor nonfinite{app::process_failure(
-        {
-            .code = core::ErrorCode::numerical,
-            .message = "Malformed partial diagnostic",
-        },
-        methods::StageObservations{.illumination = wrong})};
-    CHECK(error(app::dispatch(request, nonfinite, verifier)).publication ==
-          core::Publication::unknown);
+    auto foreign_family = valid.record;
+    foreign_family.request.illumination = record::SurfaceRequest{};
+    CHECK(!record::Codec::encode(foreign_family));
+    // An independently coherent alpha choice is valid; the real producer records its own Plan.
+    request.option(app::OptionId::alpha) = "black";
+    const auto black = observed_publication(request);
+    REQUIRE(record::Codec::encode(black.record));
+    CHECK(std::get<record::PreserveOutputRequest>(black.record.request.output).alpha ==
+          image::AlphaPolicy::black);
+    CHECK(std::get<record::PreserveOutputRequest>(valid.record.request.output).alpha ==
+          image::AlphaPolicy::white);
 }
-TEST_CASE("Readonly returns and exceptions cannot claim publication or fabricated confirmation") {
+TEST_CASE("Actual NLM records reject inconsistent extent and active table claims") {
+    auto request = invocation(false);
+    request.option(app::OptionId::denoise) = "nlm";
+    const auto valid = observed_publication(request, {.width = 21, .height = 21});
+    REQUIRE(record::Codec::encode(valid.record));
+    REQUIRE(valid.record.execution.denoising.has_value());
+    if (!valid.record.execution.denoising.has_value()) {
+        throw std::logic_error("Required test observation is absent");
+    }
+    const auto& facts = std::get<methods::NlmFacts>(valid.record.execution.denoising.value());
+    const auto method = methods::Nlm::create();
+    REQUIRE(method);
+    REQUIRE(method->parameters().blend > 0);
+    REQUIRE(facts.counts.evaluated == 441);
+    REQUIRE(facts.weight_table_entries > 0);
+    REQUIRE(facts.weight_table_entries == methods::nlm_weight_entries(*method));
+    for (unsigned change = 0; change < 2; ++change) {
+        auto bad = valid.record;
+        if (!bad.execution.denoising.has_value()) {
+            throw std::logic_error("Required copied observation is absent");
+        }
+        auto& altered = std::get<methods::NlmFacts>(bad.execution.denoising.value());
+        if (change == 0) {
+            altered.counts.eligible += 1;
+        } else {
+            altered.weight_table_entries = 0;
+        }
+        CHECK(!record::Codec::encode(bad));
+    }
+}
+TEST_CASE("Readonly execution contains exceptions and transports reported errors without effects") {
     RejectingProcessor processor;
     app::Invocation request;
     request.command = app::Command::verify;
     request.operands = {"bundle"};
-    const app::Verified valid{
-        .directory = "bundle",
-        .run = std::string(32, 'a'),
-        .recorded = "2026-10-02T00:00:00Z",
-        .confirmed =
-            {
-                {.name = "result.png", .identity = {.sha256 = std::string(64, 'b'), .bytes = 512}},
-            },
-    };
-    ReturningVerifier control{valid};
-    CHECK(app::dispatch(request, processor, control).exit_code() == core::ExitCode::success);
-    for (unsigned change = 0; change < 8; ++change) {
-        auto value = valid;
-        if (change == 0) {
-            value.directory = "different";
-        }
-        if (change == 1) {
-            value.recorded = "2026-02-29T00:00:00Z";
-        }
-        if (change == 2) {
-            value.confirmed.clear();
-        }
-        if (change == 3) {
-            value.confirmed.push_back(value.confirmed.front());
-        }
-        if (change == 4) {
-            value.confirmed.front().name = "../outside";
-        }
-        if (change == 5) {
-            value.confirmed.front().name = std::string(129, 'a');
-        }
-        if (change == 6) {
-            value.confirmed.front().name = std::string{"a\0b", 3};
-        }
-        if (change == 7) {
-            value.confirmed.front().name = "\xff";
-        }
-        ReturningVerifier verifier{value};
+    for (const unsigned kind : {1U, 2U, 3U}) {
+        ReturningVerifier verifier{core::failure(core::ErrorCode::input, "Refused")};
+        verifier.exception(kind);
         const auto outcome = app::dispatch(request, processor, verifier);
-        CHECK(error(outcome).code == core::ErrorCode::invariant);
-        CHECK(error(outcome).publication == core::Publication::not_started);
-    }
-    ReturningVerifier invalid{core::failure(core::ErrorCode::input, "Refused")};
-    for (const unsigned kind : {1U, 2U}) {
-        invalid.exception(kind);
-        const auto outcome = app::dispatch(request, processor, invalid);
-        CHECK(error(outcome).code ==
+        CHECK(verifier.calls() == 1);
+        CHECK(failed(outcome).error.code ==
               (kind == 1 ? core::ErrorCode::resource : core::ErrorCode::invariant));
-        CHECK(error(outcome).publication == core::Publication::not_started);
+        CHECK(failed(outcome).publication == core::Publication::not_started);
+        const auto text = report::render(outcome, report::Format::text);
+        REQUIRE(text);
+        CHECK(text->out.empty());
+        CHECK(!text->err.empty());
+        const auto json = report::render(outcome, report::Format::json);
+        REQUIRE(json);
+        CHECK(json->err.empty());
+        const auto fields = record::Json::parse(json->out);
+        CHECK(fields.at("publication") == "not_started");
+        CHECK(fields.at("error").at("code") == (kind == 1 ? "E_RESOURCE" : "E_INVARIANT"));
+        CHECK(processor.calls == 0);
     }
-    ReturningVerifier dishonest{std::unexpected(core::Error{
-        .code = core::ErrorCode::cancelled,
-        .message = "Invalid readonly state",
-        .publication = core::Publication::completed,
-    })};
-    CHECK(error(app::dispatch(request, processor, dishonest)).code == core::ErrorCode::invariant);
+    for (const auto code : {
+             core::ErrorCode::publication_unknown,
+             core::ErrorCode::output_verify,
+             core::ErrorCode::method_inapplicable,
+             core::ErrorCode::numerical,
+         }) {
+        ReturningVerifier verifier{core::failure(code, "Reported readonly error")};
+        const auto outcome = app::dispatch(request, processor, verifier);
+        CHECK(verifier.calls() == 1);
+        CHECK(failed(outcome).error.code == code);
+        CHECK(failed(outcome).publication == core::Publication::not_started);
+    }
     CHECK(processor.calls == 0);
 }
 TEST_CASE("Invalid command values have no scope bits and cannot reach execution") {
@@ -301,55 +223,49 @@ TEST_CASE("Invalid command values have no scope bits and cannot reach execution"
     request.command = static_cast<app::Command>(std::numeric_limits<unsigned>::digits);
     CHECK(!app::CommandSet::all().contains(request.command));
     const auto outcome = app::dispatch(request, processor, verifier);
-    CHECK(error(outcome).code == core::ErrorCode::argument);
+    CHECK(failed(outcome).error.code == core::ErrorCode::argument);
     CHECK(outcome.command == app::Command::root);
     CHECK(processor.calls == 0);
 }
-TEST_CASE("I02 failure observations reject foreign fields and invalid scalar domains",
-          "[app][morphology]") {
-    UnusedVerifier verifier;
-    auto request = invocation(false);
-    request.option(app::OptionId::illumination) = "morph";
-    const methods::MorphologyParameters parameters;
-    const methods::IlluminationReport report{
-        .status = methods::IlluminationStatus::failed,
-        .progress = methods::StageProgress::preparing,
-        .reason = methods::IlluminationReason::processing_failure,
-        .requested = parameters,
-    };
-    const core::Error failure{.code = core::ErrorCode::resource, .message = "Before processing"};
-    ReturningProcessor valid{
-        app::process_failure(failure, methods::StageObservations{.illumination = report})};
-    CHECK(error(app::dispatch(request, valid, verifier)).code == core::ErrorCode::resource);
-    for (unsigned mutation = 0; mutation < 6; ++mutation) {
-        methods::IlluminationReport bad{
-            .status = methods::IlluminationStatus::failed,
-            .progress = methods::StageProgress::preparing,
-            .reason = methods::IlluminationReason::processing_failure,
-            .requested = parameters,
-        };
-        if (mutation == 0) {
-            bad.cells = 1;
-        } else if (mutation == 1) {
-            bad.predicates.front() = false;
-        } else if (mutation == 2) {
-            bad.progress = methods::StageProgress::completed;
-            bad.status = methods::IlluminationStatus::no_change;
-        } else {
-            bad.morphology =
-                methods::MorphologyMeasurements{.radius = 8, .sigma = 4, .gaussian_radius = 12};
-            if (mutation == 3) {
-                bad.morphology->sigma = 129;
-            } else if (mutation == 4) {
-                bad.morphology->background_q10 = -0.1;
-            } else {
-                bad.morphology->count = 1;
-            }
+TEST_CASE("Morphology completed facts retain original parameter and extent admission") {
+    const auto valid = completed_morphology_facts();
+    REQUIRE(methods::validate(valid, morphology_fact_parameters, morphology_fact_extent));
+    for (unsigned change = 0; change < 5; ++change) {
+        auto bad = valid;
+        REQUIRE(bad.analysis.has_value());
+        if (!bad.analysis.has_value()) {
+            throw std::logic_error("Required test observation is absent");
         }
-        ReturningProcessor malformed{
-            app::process_failure(failure, methods::StageObservations{.illumination = bad})};
-        CHECK(error(app::dispatch(request, malformed, verifier)).publication ==
-              core::Publication::unknown);
+        if (change == 0) {
+            bad.counts.eligible = 257;
+        }
+        if (change == 1) {
+            bad.analysis.value().stride = 2;
+        }
+        if (change == 2) {
+            bad.sigma = 129;
+        }
+        if (change == 3) {
+            bad.analysis.value().background_q10 = -0.1;
+        }
+        if (change == 4) {
+            bad.analysis.value().count = 1;
+        }
+        CHECK(!methods::validate(bad, morphology_fact_parameters, morphology_fact_extent));
     }
+}
+TEST_CASE("Surface completed facts retain parameter agreement and finite solver values") {
+    const auto valid = completed_surface_facts();
+    REQUIRE(methods::validate(valid, surface_fact_parameters, surface_fact_extent));
+    auto zero = surface_fact_parameters;
+    zero.strength = 0;
+    CHECK(!methods::validate(valid, zero, surface_fact_extent));
+    auto nonfinite = valid;
+    REQUIRE(nonfinite.solver.has_value());
+    if (!nonfinite.solver.has_value()) {
+        throw std::logic_error("Required test observation is absent");
+    }
+    nonfinite.solver.value().residual = std::numeric_limits<double>::quiet_NaN();
+    CHECK(!methods::validate(nonfinite, surface_fact_parameters, surface_fact_extent));
 }
 } // namespace docenhance::tests

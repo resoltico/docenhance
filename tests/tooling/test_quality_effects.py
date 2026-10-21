@@ -5,24 +5,38 @@
 from __future__ import annotations
 
 import copy
-import json
-import subprocess
-import sys
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
-from jsonschema import ValidationError
-from quality_evidence_fixture import continuous_fixtures, disk_plan, refusal, write_reference
+from tools_path import prepare_tool_imports
+
+from quality_evidence_fixture import (
+    binary_record,
+    component_inputs,
+    continuous_fixtures,
+    disk_plan,
+    refusal,
+    successful_response,
+    write_reference,
+)
 from quality_fixtures import healthy_plan
 
-from document_quality import adjudicate, read_json
-from evaluate_document_quality import evaluate, fidelity, read_bundle, replay
-from quality_collection import BundleChecks, collect, delivered_path
+from evaluate_document_quality import read_bundle
+from quality_adjudication import adjudicate
+from quality_attempt import CaptureAdmission, delivered_path, new_original
+from quality_collection import BundleChecks, _directory, _reject, collect
 from quality_execution import execution_evidence
-from quality_replay import ReplayObservation
+from quality_fidelity import check_comparator, fidelity
+from quality_replay import replay
+from quality_report import report as factual_report
+from quality_run import QualityRun
+
+prepare_tool_imports()
+
+
+EXPECTED_PAGE_COUNT = 2
 
 
 class QualityEffectsTests(unittest.TestCase):
@@ -40,14 +54,27 @@ class QualityEffectsTests(unittest.TestCase):
                 root, page["commands"]["baseline"], "failed", exit_code=5, publication="completed"
             )
             with patch("evaluate_document_quality.replay") as replay_run:
-                report = evaluate(plan, root, executable)
-                replay_run.assert_not_called()
+                run = QualityRun(
+                    component_inputs(plan, root, executable), root / "quality-run.json"
+                )
+                try:
+                    checks = BundleChecks(run, {}, read_bundle, replay_run, fidelity)
+                    evidence = collect(plan, checks)
+                    result = factual_report(
+                        plan, plan["protocol"]["executable_sha256"], evidence, run.errors, {}
+                    )
+                    report = run.finish(result)["report"]
+                    replay_run.assert_not_called()
+                finally:
+                    run.close()
             roles = report["evidence"][0]["roles"]
             self.assertEqual(
                 [roles[name]["outcome"] for name in ("candidate", "baseline", "replicate")],
                 ["refused", "failed", "missing_evidence"],
             )
             self.assertEqual(roles["baseline"]["declared"]["execution"]["publication"], "completed")
+            self.assertEqual(roles["baseline"]["original"]["observed_publication"], "completed")
+            self.assertEqual((len(run.originals), len(run.finished)), (6, 18))
             self.assertEqual(len(report["evidence"]), 2)
             self.assertEqual(report["decision"], "abstain")
 
@@ -59,25 +86,25 @@ class QualityEffectsTests(unittest.TestCase):
                 role = refusal(
                     root, ["binary", "process", "source", "--out-dir", "result", "--json"], "raw"
                 )
-                evidence = role["execution"]
                 role["outcome"] = "failed"
-                evidence.update(
+                role["execution"].update(
                     exit_code=exit_code,
                     timed_out=timed_out,
                     response=None,
                     publication="unknown",
                     stdout=write_reference(root, "raw.stdout", b'{"partial":'),
                 )
-                execution_evidence(role, root, {})
-                evidence["publication"] = "not_started"
-                with (
-                    self.subTest(exit_code=exit_code),
-                    self.assertRaisesRegex(ValueError, "safe retry"),
-                ):
-                    execution_evidence(role, root, {})
+                original, admission = new_original(0, role), CaptureAdmission()
+                self.assertFalse(execution_evidence(original, root, admission))
+                self.assertEqual(original["observed_publication"], "unknown")
+                role["execution"]["publication"] = "not_started"
+                changed = new_original(0, role)
+                self.assertFalse(execution_evidence(changed, root, CaptureAdmission()))
+                self.assertEqual(changed["observed_publication"], "unknown")
+                self.assertIsNotNone(changed["errors"]["delivery"])
 
     def test_complete_committed_response_survives_process_exit5_or7(self) -> None:
-        """A confirmed commit is retained even when final command/delivery is unsuccessful."""
+        """Confirmed stdout retains the commit despite actual exit5/7 or later stderr failure."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
             role = refusal(
@@ -89,14 +116,23 @@ class QualityEffectsTests(unittest.TestCase):
             )
             for code in (5, 7):
                 role["execution"]["exit_code"] = code
-                execution_evidence(role, root, {})
-                role["execution"]["publication"] = "unknown"
-                with self.assertRaisesRegex(ValueError, "confirmed publication"):
-                    execution_evidence(role, root, {})
-                role["execution"]["publication"] = "completed"
+                original = new_original(0, role)
+                self.assertTrue(execution_evidence(original, root, CaptureAdmission()))
+                self.assertEqual(original["observed_publication"], "completed")
+                changed = copy.deepcopy(role)
+                changed["execution"]["publication"] = "unknown"
+                observed = new_original(0, changed)
+                self.assertFalse(execution_evidence(observed, root, CaptureAdmission()))
+                self.assertEqual(observed["observed_publication"], "completed")
+                self.assertIsNotNone(observed["errors"]["delivery"])
+            (root / role["execution"]["stderr"]["path"]).unlink()
+            observed = new_original(0, role)
+            self.assertFalse(execution_evidence(observed, root, CaptureAdmission()))
+            self.assertEqual(observed["observed_publication"], "completed")
+            self.assertIsNotNone(observed["stderr"]["errors"]["stat"])
 
     def test_actual_exit_command_and_raw_response_must_agree(self) -> None:
-        """Self-declared JSON success or matching stdout digest cannot change actual status."""
+        """Self-declared JSON or matching stdout digest cannot change actual command/status."""
         for change in ("exit", "command", "stdout"):
             with tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary).resolve()
@@ -114,8 +150,11 @@ class QualityEffectsTests(unittest.TestCase):
                     role["execution"]["stdout"] = write_reference(
                         root, "raw.stdout", {"different": "response"}
                     )
-                with self.subTest(change=change), self.assertRaises((ValueError, ValidationError)):
-                    execution_evidence(role, root, {})
+                original, admission = new_original(0, role), CaptureAdmission()
+                with self.subTest(change=change):
+                    self.assertFalse(execution_evidence(original, root, admission))
+                    self.assertIsNotNone(original["errors"]["delivery"])
+                    self.assertFalse(admission.is_open)
 
     def test_prior_harm_and_uncertainty_are_retained_and_block_acceptance(self) -> None:
         """A new unanimous panel cannot delete the independently retained earlier judgment."""
@@ -133,7 +172,24 @@ class QualityEffectsTests(unittest.TestCase):
             plan["assessments"][0]["review_revisions"] = [
                 write_reference(root, "revision.json", revision)
             ]
-            report = evaluate(plan, root, executable)
+            run = QualityRun(component_inputs(plan, root, executable), root / "quality-run.json")
+            try:
+                checks = BundleChecks(run, {}, read_bundle, replay, fidelity)
+                evidence = collect(plan, checks)
+                prior = {
+                    page["sample"]: [
+                        review
+                        for revision in page["prior_reviews"]
+                        for review in revision["reviews"]
+                    ]
+                    for page in evidence
+                }
+                result = factual_report(
+                    plan, plan["protocol"]["executable_sha256"], evidence, run.errors, prior
+                )
+                report = run.finish(result)["report"]
+            finally:
+                run.close()
             self.assertEqual(report["evidence"][0]["prior_reviews"], [revision])
             self.assertEqual(
                 report["evidence"][0]["review_revisions"],
@@ -145,37 +201,42 @@ class QualityEffectsTests(unittest.TestCase):
         """Mask identity equality includes actual identities, not just protected population."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
-            for name in ("c", "b"):
-                (root / name).mkdir()
-                (root / name / "result.png").write_bytes(
-                    continuous_fixtures.Fixture(1, 1, ((127,),)).encoded()
-                )
-            candidate: dict[str, Any] = {
-                "record": {"run": "a"},
-                "source": {},
-                "build": {},
-                "output": {},
-                "request": {
-                    "rotation_degrees": 0,
-                    "operation": {"kind": "continuous", "parameters": {}},
-                },
-                "execution": {
-                    name: {"method": None}
-                    for name in (
-                        "illumination",
-                        "denoising",
-                        "restoration",
-                        "contrast",
-                        "sharpening",
-                    )
-                },
-                "protection": {"protected_samples": 1, "sha256": "a" * 64},
+            masks = [
+                continuous_fixtures.Fixture(2, 1, pixels).encoded()
+                for pixels in (((1,), (0,)), ((0,), (1,)))
+            ]
+            identities = [
+                write_reference(root, f"mask-{i}.png", data) for i, data in enumerate(masks)
+            ]
+            candidate = binary_record()
+            candidate["request"]["protection"] = {
+                "supplied": {"sha256": identities[0]["sha256"], "bytes": len(masks[0])}
             }
+            candidate["assets"] = [
+                {
+                    "role": "protection_mask",
+                    "path": "assets/protect-mask.png",
+                    "sha256": identities[0]["sha256"],
+                    "bytes": len(masks[0]),
+                    "width": 2,
+                    "height": 1,
+                    "frame": "metadata_oriented_source",
+                    "protected_samples": 1,
+                }
+            ]
             replicate = copy.deepcopy(candidate)
-            replicate["record"]["run"] = "b"
+            replicate["record"]["run"] = "b" * 32
             baseline = copy.deepcopy(candidate)
-            baseline["protection"]["sha256"] = "b" * 64
-            with self.assertRaisesRegex(ValueError, "protection masks differ"):
+            baseline["record"]["run"] = "c" * 32
+            baseline["request"]["output"].update(mode="gray", depth="16")
+            baseline["request"]["binarization"] = None
+            baseline["execution"]["binarization"] = None
+            baseline["execution"]["interpretation"]["output"]["bit_depth"] = 16
+            baseline["output"].update(depth=16, profile_embedded=True)
+            check_comparator(candidate, baseline)
+            baseline["assets"][0].update(sha256=identities[1]["sha256"], bytes=len(masks[1]))
+            # This cold identity refusal must precede any absent payload acquisition.
+            with self.assertRaisesRegex(ValueError, "interpretation or protection differs"):
                 fidelity(
                     root,
                     {"candidate": "c", "baseline": "b", "replicate": "r"},
@@ -183,7 +244,7 @@ class QualityEffectsTests(unittest.TestCase):
                 )
 
     def test_numerical_failure_cannot_be_relabelled_as_applicability_refusal(self) -> None:
-        """Shared exit4 does not erase the distinction between numerical failure and admission."""
+        """Shared exit4 does not erase numerical failure versus an admission refusal."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
             role = refusal(
@@ -193,40 +254,73 @@ class QualityEffectsTests(unittest.TestCase):
             role["execution"]["stdout"] = write_reference(
                 root, "raw.stdout", role["execution"]["response"]
             )
-            with self.assertRaisesRegex(ValueError, "Refusal requires"):
-                execution_evidence(role, root, {})
+            refused = new_original(0, role)
+            self.assertFalse(execution_evidence(refused, root, CaptureAdmission()))
+            self.assertIsNotNone(refused["errors"]["delivery"])
             role["outcome"] = "failed"
-            execution_evidence(role, root, {})
+            failed = new_original(0, role)
+            self.assertTrue(execution_evidence(failed, root, CaptureAdmission()))
+            self.assertEqual(failed["observed_publication"], "not_started")
 
     def test_bundle_namespace_loss_does_not_abort_later_roles_or_pages(self) -> None:
-        """A stat refusal after completed checks becomes one missing-evidence observation."""
+        """Actual namespace refusal retains every role without inventing qualified verification."""
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
-            plan = healthy_plan(2)
-            checks = BundleChecks(
-                Path("binary"),
-                {},
-                lambda *_args: {},
-                lambda *_args: ReplayObservation({}, {"argv": []}),
-                lambda *_args: None,
-            )
-            with (
-                patch("quality_collection.execution_evidence"),
-                patch(
-                    "quality_collection.completed_record", return_value=({}, {}, root / "vanished")
-                ),
-            ):
-                assessed, evidence = collect(plan, root, checks)
-            self.assertEqual(len(evidence), 2)
-            for page in evidence:
-                for role in page["roles"].values():
-                    self.assertEqual(role["outcome"], "missing_evidence")
-                    self.assertEqual(role["declared"]["outcome"], "completed")
-                    self.assertTrue(role["errors"])
-            self.assertEqual(adjudicate(assessed)["decision"], "abstain")
+            plan, executable = disk_plan(root)
+            destination = "candidate-0"
+            directory = root / destination
+            directory.mkdir()
+            record = binary_record()
+            response = successful_response(directory, record)
+            response["output"] = delivered_path(destination, "result.png")
+            command = plan["protocol"]["pages"][0]["commands"]["candidate"]
+            plan["assessments"][0]["candidate"] = {
+                "outcome": "completed",
+                "bundle": destination,
+                "execution": {
+                    "argv": command,
+                    "exit_code": 0,
+                    "timed_out": False,
+                    "response": response,
+                    "publication": "completed",
+                    "stdout": write_reference(root, "candidate.stdout", response),
+                    "stderr": write_reference(root, "candidate.stderr", b""),
+                },
+            }
+            run = QualityRun(component_inputs(plan, root, executable), root / "quality-run.json")
+            checks = BundleChecks(run, {}, read_bundle, replay, fidelity)
+            try:
+                candidate = run.pages[0]["roles"]["candidate"]
+                _directory(checks, candidate, set())
+                directory.rename(root / "retained-vanished-bundle")
+                with self.assertRaises(OSError) as failure:
+                    _directory(checks, candidate, set())
+                _reject(checks, candidate, "role_identity", failure.exception)
+                with patch("quality_capture.owned_process") as launch:
+                    evidence = collect(plan, checks)
+                    launch.assert_not_called()
+                self.assertEqual(len(evidence), 2)
+                candidate = evidence[0]["roles"]["candidate"]
+                self.assertEqual(candidate["outcome"], "missing_evidence")
+                self.assertIsNotNone(candidate["validation"]["role_identity"])
+                self.assertEqual(candidate["original"]["observed_publication"], "completed")
+                self.assertEqual(len(run.finished), 18)
+                self.assertEqual(len(run.originals), 6)
+                self.assertFalse(run.admission.is_open)
+                self.assertTrue((root / "retained-vanished-bundle" / "run.json").is_file())
+                result = factual_report(
+                    plan, plan["protocol"]["executable_sha256"], evidence, run.errors, {}
+                )
+                value = run.finish(result)
+                self.assertEqual(value["report"]["decision"], "abstain")
+                self.assertTrue(
+                    all(item["count"] == EXPECTED_PAGE_COUNT for item in result["classes"].values())
+                )
+            finally:
+                run.close()
 
     def test_actual_signal_and_windows_abnormal_status_are_preserved(self) -> None:
-        """Signal and Windows status integers retain unknown or confirmed committed effects."""
+        """Actual status integers retain unknown or confirmed completed effects unchanged."""
         for status in (-9, 3221225477, 254):
             for committed in (False, True):
                 with tempfile.TemporaryDirectory() as temporary:
@@ -239,44 +333,18 @@ class QualityEffectsTests(unittest.TestCase):
                         publication="completed" if committed else "not_started",
                     )
                     role["outcome"] = "failed"
-                    role["execution"]["exit_code"] = status
-                    role["execution"]["publication"] = "completed" if committed else "unknown"
-                    execution_evidence(role, root, {})
-                    self.assertEqual(role["execution"]["exit_code"], status)
+                    role["execution"].update(
+                        exit_code=status, publication="completed" if committed else "unknown"
+                    )
+                    original = new_original(0, role)
+                    execution_evidence(original, root, CaptureAdmission())
+                    self.assertEqual(original["declared"]["execution"]["exit_code"], status)
+                    self.assertEqual(
+                        original["observed_publication"], "completed" if committed else "unknown"
+                    )
 
     def test_delivered_path_keeps_dot_and_repeated_separator_identity_bytes(self) -> None:
         """The wire identity follows product string composition rather than Path normalization."""
         self.assertEqual(delivered_path("./result//", "result.png"), "./result///result.png")
-        with patch("quality_collection.os.name", "nt"):
+        with patch("quality_attempt.os.name", "nt"):
             self.assertEqual(delivered_path(".\\result\\", "result.png"), ".\\result\\\\result.png")
-
-    def test_actual_verifier_and_replay_cannot_accept_forged_minimal_success(self) -> None:
-        """Real subprocess output reaches full schemas rather than one success-like field."""
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary).resolve()
-            executable = Path(sys.executable)
-            execute = subprocess.run
-            value = {"publication": "completed", "establishes": "artifacts_agree_with_record"}
-            code = f"print({json.dumps(json.dumps(value))})"
-
-            def fake_response(
-                command: list[str], **_kwargs: object
-            ) -> subprocess.CompletedProcess[bytes]:
-                self.assertIn(command[1], {"verify", "process"})
-                return execute([sys.executable, "-c", code], capture_output=True, check=True)
-
-            (root / "run.json").write_text("{}")
-            source = root / "source.png"
-            source.write_bytes(b"synthetic source")
-            with (
-                patch("evaluate_document_quality.subprocess.run", side_effect=fake_response),
-                self.assertRaises(ValidationError),
-            ):
-                read_bundle(executable, root, "a" * 64)
-            actual = replay(
-                [str(executable), "process", "source.png", "--out-dir", "original", "--json"], root
-            )
-            self.assertIsNone(actual.record)
-            self.assertEqual(actual.attempt["outcome"], "failed")
-            self.assertTrue((root / actual.attempt["artifact_directory"]).is_dir())
-            self.assertEqual(read_json((root / "run.json").read_bytes()), {})

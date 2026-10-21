@@ -1,75 +1,61 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/codec/continuous_png.hpp"
-#include "docenhance/codec/png.hpp"
-#include "docenhance/core/cancellation.hpp"
-#include "docenhance/core/memory.hpp"
-#include "docenhance/core/result.hpp"
-#include "docenhance/fs/png.hpp"
+#include "docenhance/codec/png_output.hpp"
 #include "docenhance/fs/publication.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/plane.hpp"
+#include "docenhance/image/output.hpp"
 #include "native_publication.hpp"
+#include "png_depth_fixture.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <functional>
+#include <expected>
+#include <optional>
+#include <span>
 #include <string>
+#include <utility>
 
 namespace docenhance::tests {
-// Exercise codec ownership through the current transaction without inventing processing records.
-// Complete product bundles and their validators are exercised by host and executable tests.
-struct BinaryPngWriter {
-    BinaryPngWriter(image::PlaneView<const std::uint8_t> view, core::Budget& owner,
-                    const core::Cancellation& control)
-        : image(view), budget(owner), cancellation(control) {}
-    image::PlaneView<const std::uint8_t> image;
-    std::reference_wrapper<core::Budget> budget;
-    std::reference_wrapper<const core::Cancellation> cancellation;
-    static core::Result<void> write(void* state, const fs::BundleSlot& slot) {
-        const auto& writer = *static_cast<BinaryPngWriter*>(state);
-        return fs::write_verified_png(slot, writer.image, writer.budget.get(),
-                                      writer.cancellation.get());
-    }
-};
-struct ContinuousPngWriter {
-    ContinuousPngWriter(image::RowSource& source, core::Budget& owner,
-                        const core::Cancellation& control)
-        : rows(source), budget(owner), cancellation(control) {}
-    std::reference_wrapper<image::RowSource> rows;
-    std::reference_wrapper<core::Budget> budget;
-    std::reference_wrapper<const core::Cancellation> cancellation;
-    static core::Result<void> write(void* state, const fs::BundleSlot& slot) {
-        const auto& writer = *static_cast<ContinuousPngWriter*>(state);
-        return fs::write_verified_png_rows(slot, writer.rows.get(), writer.budget.get(),
-                                           writer.cancellation.get());
-    }
-};
-template <typename Writer>
-core::Result<std::string> publish_codec_transaction(const std::string& directory, Writer& writer,
-                                                    const core::Cancellation& cancellation,
-                                                    fs::PublishRename commit) {
-    const std::array files{
-        fs::BundleFile{
-            .relative = "result.png",
-            .state = &writer,
-            .write = Writer::write,
-        },
+inline codec::PngImage binary_png(image::PlaneView<const std::uint8_t> pixels) {
+    return {
+        .shape =
+            {
+                .width = pixels.width(),
+                .height = pixels.height(),
+                .depth = docenhance::tests::fixture_png_depth(1),
+            },
+        .pixels = pixels,
+        .profile = std::span<const std::byte>(),
+        .resolution = std::nullopt,
     };
+}
+struct PngComparison {
+    std::span<const std::byte> bytes;
+    codec::PngImage intended;
+};
+inline fs::PublishResult<std::string>
+publish_compared_png(const std::string& directory, PngComparison input, core::Budget& budget,
+                     const core::Cancellation& cancellation = {},
+                     fs::PublishRename commit = fs::rename_exclusive) {
+    auto compared = codec::compare_png(input.bytes, input.intended, budget, cancellation);
+    if (!compared) {
+        return std::unexpected(fs::PublishFailure{.error = std::move(compared.error())});
+    }
+    const std::array files{fs::BundleFile{.relative = "result.png", .bytes = input.bytes}};
     return fs::publish_bundle(directory, files, cancellation, commit);
 }
-inline core::Result<std::string>
-publish_png_fixture(const std::string& directory, image::PlaneView<const std::uint8_t> image,
-                    core::Budget& budget, const core::Cancellation& cancellation = {},
+// Codec work and independent comparison finish before FS owns a staging directory.
+// The encoded owner stays alive throughout synchronous comparison and byte publication.
+inline fs::PublishResult<std::string>
+publish_png_fixture(const std::string& directory, codec::PngImage image, core::Budget& budget,
+                    const core::Cancellation& cancellation = {},
                     fs::PublishRename commit = fs::rename_exclusive) {
-    BinaryPngWriter writer{image, budget, cancellation};
-    return publish_codec_transaction(directory, writer, cancellation, commit);
-}
-inline core::Result<std::string> publish_png_fixture(const std::string& directory,
-                                                     image::RowSource& rows, core::Budget& budget,
-                                                     const core::Cancellation& cancellation = {}) {
-    ContinuousPngWriter writer{rows, budget, cancellation};
-    return publish_codec_transaction(directory, writer, cancellation, fs::rename_exclusive);
+    auto encoded = codec::encode_png(image, budget, cancellation);
+    if (!encoded) {
+        return std::unexpected(fs::PublishFailure{.error = std::move(encoded.error())});
+    }
+    return publish_compared_png(directory, {.bytes = encoded->bytes(), .intended = image}, budget,
+                                cancellation, commit);
 }
 } // namespace docenhance::tests

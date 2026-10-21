@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Audit configured dependency feature values and OpenCV's actual module closure."""
+"""Audit configured dependency features, source identity and actual native closure."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ import json
 from pathlib import Path
 
 from hardening_compilation import errors as hardening_errors
+from sanitizer_evidence import check_compilation
+from test_evidence import EvidenceError
 
 ROOT = Path(__file__).resolve().parents[1]
 FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
@@ -18,20 +20,40 @@ FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
 # native allocation-refusal tests separately prove cleanup behavior.
 TIFF_COMPLETE_ZIP_SHA256 = "551b35ed562b1ebbb5e4577afc5fc57d195667b1294b6a31123fac0ec2810275"
 TIFF_CHARGED_JPEG_SHA256 = "c51749f755cf1fe0fcca8bfd02be1dedeaa5c8affceac22c89b43cd6acd741b7"
-# Identity of reviewed DFT ownership and typed dispatch; native probes establish behavior.
-OPENCV_OWNED_DXT_SHA256 = "0d2828dede76738b8b23f882ac0af3a00653ee3e50bec664027ed750af835c50"
 JSON_BOUNDED_HEADER_SHA256 = "f504f6fa07b84e3e264a1f7757f15da1502bb539285c90e908c1cabab47b572e"
+POCKETFFT_HEADER_SHA256 = "3e9a05318d8e3b1446bda1c4617e6a103cdd23599ae0a776a92a6e8800e92fdc"
 
 
-def read_cache(path: Path) -> dict[str, str]:
-    """Parse KEY:TYPE=VALUE entries of a CMakeCache.txt."""
+def cache_values(text: str) -> dict[str, str]:
+    """Parse the same already acquired KEY:TYPE=VALUE CMakeCache text without I/O."""
     values = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         if line.startswith(("#", "//")) or ":" not in line or "=" not in line:
             continue
         left, value = line.split("=", 1)
         values[left.split(":", 1)[0]] = value
     return values
+
+
+def read_cache(path: Path) -> dict[str, str]:
+    """Parse KEY:TYPE=VALUE entries of a CMakeCache.txt."""
+    return cache_values(path.read_text(encoding="utf-8"))
+
+
+def pocketfft_header_failures(binary: Path) -> list[str]:
+    """Installed provider bytes must match the independently reviewed immutable header."""
+    path = binary / "CMakeCache.txt"
+    if not path.is_file():
+        return ["pocketfft: missing configured source identity"]
+    source = Path(read_cache(path).get("DE_UPSTREAM_SOURCE", "")) / "pocketfft_hdronly.h"
+    installed = binary.parents[1] / "prefix/include/pocketfft/pocketfft_hdronly.h"
+    if not source.is_file() or not installed.is_file():
+        return ["pocketfft: missing reviewed or installed header"]
+    if source.read_bytes() != installed.read_bytes():
+        return ["pocketfft: installed header differs from the verified source"]
+    if hashlib.sha256(installed.read_bytes()).hexdigest() != POCKETFFT_HEADER_SHA256:
+        return ["pocketfft: header differs from the independently reviewed output digest"]
+    return []
 
 
 def json_header_failures(binary: Path) -> list[str]:
@@ -131,30 +153,12 @@ def tiff_zip_failures(binary: Path) -> list[str]:
     return failures
 
 
-def opencv_dft_failures(binary: Path, source_directory: Path, original_digest: str) -> list[str]:
-    """Bind the unchanged locked FFT source and the actual corrected compilation input."""
-    original = source_directory / "modules/core/src" / "dxt.cpp"
-    owned = binary / "owned-source/dxt.cpp"
-    if not original.is_file() or not owned.is_file():
-        return ["OpenCV: missing locked or corrected DFT context source"]
-    failures = []
-    if hashlib.sha256(original.read_bytes()).hexdigest() != original_digest:
-        failures.append("OpenCV: original FFT source differs from its reviewed lock binding")
-    if hashlib.sha256(owned.read_bytes()).hexdigest() != OPENCV_OWNED_DXT_SHA256:
-        failures.append("OpenCV: FFT source differs from reviewed ownership and typed dispatch")
-    commands = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
-    compiled = [
-        Path(entry["file"]).resolve() for entry in commands if Path(entry["file"]).name == "dxt.cpp"
-    ]
-    if compiled != [owned.resolve()]:
-        failures.append("OpenCV: FFT compilation does not use exactly the corrected private source")
-    return failures
-
-
 def source_recipe_failures(name: str, binary: Path) -> list[str]:
     """Inspect private upstream adaptations independently of feature cache values."""
     if name == "tiff":
         return [*tiff_recipe_failures(binary), *tiff_zip_failures(binary)]
+    if name == "pocketfft":
+        return pocketfft_header_failures(binary)
     if name == "json":
         return json_header_failures(binary)
     if name == "zlib":
@@ -182,22 +186,36 @@ def feature_failures(
             resolved = expected.replace("<BINARY>", binary.as_posix())
             if actual.replace("\\", "/") != resolved:
                 failures.append(f"{name}: unexpected {key}={actual}; expected {resolved}")
-    if name == "opencv":
-        modules = set(cache.get("OPENCV_MODULES_BUILD", "").split(";"))
-        expected_modules = {"opencv_" + part for part in str(settings["BUILD_LIST"]).split(",")}
-        failures.extend(
-            opencv_dft_failures(
-                binary,
-                Path(cache.get("CMAKE_HOME_DIRECTORY", "")),
-                str(settings["DOCENHANCE_OPENCV_DXT_SHA256"]),
-            )
-        )
-        if modules != expected_modules:
-            failures.append(f"OpenCV module closure differs: {sorted(modules)}")
     failures.extend(source_recipe_failures(name, binary))
     if cache.get("BUILD_SHARED_LIBS", "").upper() not in FALSE:
         failures.append(f"{name}: unexpected shared-library build")
     return failures
+
+
+def dependency_settings(
+    name: str, settings: dict[str, bool | str], binding: dict[str, str]
+) -> dict[str, bool | str]:
+    """Bind Catch's producer language features to the immutable consumer configuration."""
+    if name != "catch2":
+        return settings
+    return {
+        **settings,
+        "CMAKE_CXX_STANDARD": binding["DE_CXX_STANDARD"],
+        "CMAKE_CXX_STANDARD_REQUIRED": True,
+        "CMAKE_CXX_EXTENSIONS": False,
+    }
+
+
+def lcms_thread_failures(name: str, binary: Path, binding: dict[str, str]) -> list[str]:
+    """A requested native color race check needs fatal instrumentation in every LCMS TU."""
+    if name != "lcms" or binding.get("DE_ENABLE_TSAN", "").upper() in FALSE:
+        return []
+    entries = json.loads((binary / "compile_commands.json").read_text(encoding="utf-8"))
+    try:
+        check_compilation({"DE_ENABLE_TSAN": "ON"}, entries)
+    except EvidenceError as error:
+        return [f"lcms: {error}"]
+    return []
 
 
 def audit(build: Path) -> list[str]:
@@ -222,9 +240,11 @@ def audit(build: Path) -> list[str]:
             failures.append(f"Missing configured dependency cache: {name}")
             continue
         cache = read_cache(path)
-        if name not in {"json", "picosha2"}:
+        if name not in {"json", "picosha2", "pocketfft"}:
             failures.extend(hardening_errors(binary, build / "hardening-policy.json"))
-        failures.extend(feature_failures(name, features[name], cache, binary))
+        failures.extend(lcms_thread_failures(name, binary, binding))
+        settings = dependency_settings(name, features[name], binding)
+        failures.extend(feature_failures(name, settings, cache, binary))
         for key in (
             "ZLIB_LIBRARY",
             "ZLIB_LIBRARY_RELEASE",

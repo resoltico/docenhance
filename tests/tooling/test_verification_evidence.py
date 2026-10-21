@@ -240,7 +240,9 @@ class DeliveredBytesTests(unittest.TestCase):
                     "api-ms-win-crt-runtime-l1-1-0.dll", system
                 )
             )
-            self.assertFalse(package_inspection.windows_system_import("opencv_photo.dll", system))
+            self.assertFalse(
+                package_inspection.windows_system_import("unadmitted_fixture.dll", system)
+            )
 
     def test_committed_snapshot_excludes_dirty_and_untracked_contents(self) -> None:
         """Source payloads and hashes describe the committed tree even in a dirty checkout."""

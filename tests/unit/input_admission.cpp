@@ -5,7 +5,7 @@
 #include "docenhance/codec/png.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/output.hpp"
 #include "png_fixture.hpp"
 
 #include <array>
@@ -22,13 +22,10 @@ TEST_CASE("PNG source limits are admitted explicitly instead of silently clamped
     };
     for (const auto policy : policies) {
         core::Budget budget{0};
-        const auto continuous =
+        const auto raster =
             codec::decode_png_raster(bytes, budget, image::ProfilePolicy::embedded, {}, policy);
-        REQUIRE(!continuous);
-        REQUIRE(continuous.error().code == core::ErrorCode::argument);
-        const auto binary = codec::decode_grayscale_png(bytes, budget, policy);
-        REQUIRE(!binary);
-        REQUIRE(binary.error().code == core::ErrorCode::argument);
+        REQUIRE(!raster);
+        REQUIRE(raster.error().code == core::ErrorCode::argument);
         REQUIRE(budget.used() == 0);
     }
 }

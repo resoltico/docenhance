@@ -3,7 +3,7 @@
 #include "docenhance/codec/protection_png.hpp"
 
 #include "docenhance/core/memory.hpp"
-#include "docenhance/image/linear.hpp"
+#include "docenhance/image/geometry.hpp"
 #include "docenhance/image/plane.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
@@ -49,7 +49,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     };
     core::Budget budget{budget_limit};
     {
-        auto decoded = codec::decode_protection_png(bytes, extent, budget);
+        auto decoded =
+            codec::decode_protection_png(std::as_bytes(std::span{bytes}), extent, budget);
         if (decoded) {
             require(decoded->width() == extent.width && decoded->height() == extent.height,
                     "mask extent");

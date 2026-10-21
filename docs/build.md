@@ -30,7 +30,26 @@ inside the checkout. Activate the build environment before the first configure s
 its pinned Python validator; a failed configure may retain a different Python path in its cache.
 
 The explicit installer reads the version pins rather than carrying a second list. Both installation
-modes include pinned Ruff: native tooling tests execute it to prove source-discovery exclusions. It installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned developer distributions, **not** part of the application's source lock or its runtime dependencies. A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's installed developer-shell script without an extra third-party Action.
+modes include pinned Ruff: native tooling tests execute it to prove source-discovery exclusions. It
+installs CMake/Ninja and the pinned JSON Schema test validator/stubs; these are version-pinned
+developer distributions, **not** part of the application's source lock or its runtime dependencies.
+A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell
+with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's
+installed developer-shell script without an extra third-party Action. The same selected shell
+retains the actual Release resource proof, configures the existing `dev` preset in a fresh private
+Debug tree, and builds only the two native FFT/restoration resource executables and their
+dependencies. Their registered complete resource cases run with the same 90-second per-case limits.
+Both configurations retain real static-CRT compile/default-library/map observations, C137/C++211
+calibration and native-contract results; installed-source collector receipts alone do not establish
+that proof.
+
+The separate Windows proof artifact retains only exact map gzip files, bounded diagnostic logs and
+small identity/result records for seven days. Each map admits at most 16 MiB raw and 2 MiB
+compressed; native raw/JUnit admission remains 64 MiB each with independent 2 MiB compressed bounds.
+The Debug producer/control owner has a 2820-second operational deadline including archival, with
+smaller step deadlines. These are conservative operational refusal limits, not measured minimum
+time/space, instantaneous disk quotas or a claim that an authored job executed. EXE/object and
+selected CRT archive bytes remain on the producer; only their identities are retained.
 
 ## Acquisition is a separate phase
 
@@ -46,10 +65,46 @@ Acquisition is single-writer. Do not run two acquisition processes against one c
 
 ## Local Linux gate
 
-On macOS/Windows, start Docker and run `python tools/check_all.py`; it includes the full Linux
+On macOS/Windows, start Docker, prepare the exact locked image and host source/archive cache,
+then run `python tools/check_all.py`; it includes the full Linux
 release workflow with isolated cached native state. Use `python tools/check_linux.py` for that
 gate alone. The image/tool/source pins, retained log and precise coverage are described in
 [local Linux verification](quality.md#local-linux-verification-with-docker).
+
+Prepare the host cache with the explicit acquisition command above. To build the exact gate image,
+run this separately from the gate, from the checkout root with its Python tools environment active:
+
+```sh
+PYTHONPATH=tools python - <<'PYTHON'
+import shutil
+import subprocess
+import tempfile
+import time
+from pathlib import Path
+
+from check_linux import IMAGE_FILES, ROOT, docker_executable, image_identity, native_platform
+
+platform = native_platform(time.monotonic() + 30)
+base, image = image_identity(platform)
+with tempfile.TemporaryDirectory(prefix="docenhance-linux-image-") as directory:
+    context = Path(directory)
+    for name in IMAGE_FILES:
+        destination = context / name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ROOT / name, destination)
+    subprocess.run([
+        docker_executable(), "build", "--platform", platform,
+        "--build-arg", f"BASE_IMAGE={base}", "--tag", image,
+        "--file", str(context / "tools/linux-gate.Dockerfile"), str(context),
+    ], check=True)
+print(f"Prepared {image} for {platform}")
+PYTHON
+```
+
+This setup can access the network and requires separate supervision. Its minimal build context
+contains only the existing image recipe inputs; it excludes the checkout's dependency archives,
+retired sources and build products. A Docker CLI interruption does not establish that the daemon's
+image build stopped. The normal gate neither runs this setup nor substitutes another image.
 
 ## Everyday commands
 
@@ -80,6 +135,23 @@ under nested names remain checked and included in source distributions.
 The workflow expands to configure, build and test. Sources are verified at configure time and before every outer build. Each upstream project has its own binary directory and shares only a **configuration-private** installation prefix. The application is configured afterwards in `out/dev/app/`. IDEs should use the outer preset to prepare dependencies and read `out/dev/app/compile_commands.json` for first-party source navigation.
 
 Projects are built serially, each with two workers by default. This deliberately avoids six upstream projects each spawning an unrestricted set of compiler processes. Set `DE_BUILD_JOBS` in the environment, or override it in a local user preset, if justified; an explicit `-DDE_BUILD_JOBS` or preset value takes precedence over the environment. The value must be 1–64. The same count bounds the architecture check, which runs one compiler process per source file and per public header and reports exactly what it would report serially, in the same order, independently of the native suite’s limit of two concurrent test processes. Cases include nested processing workers and CPU-heavy references; compiler parallelism is not a test-process capacity measurement. Changing it is not an application memory limit.
+
+## Generated contracts
+
+`python tools/generate_spec.py` derives CLI/method descriptors, reference pages and the CLI fuzz
+dictionary from their reviewed JSON authorities. Record and response shapes come from actual C++
+Fields and the compiled discovery catalogs. After changing those owners, build the selected native
+configuration and regenerate its schema artifacts explicitly:
+
+```sh
+cmake --build out/dev/app --target update-schemas
+```
+
+The native emitter must return both complete schemas and the record fuzz dictionary before the
+Python writer replaces any artifact. It writes only changed bytes; `schemas-current` compares all
+three outputs without modifying them in every native/sanitizer test lane. A source edit or successful
+ordinary descriptor generation does not establish current native schemas, template instantiation or
+platform qualification. Generation is development tooling, never a runtime Python dependency.
 
 ## The compiler contract every preset states
 
@@ -117,6 +189,8 @@ On Linux, where apt.llvm.org installs versioned names:
 export CC=clang-23 CXX=clang++-23
 cmake --workflow --preset sanitize
 ```
+
+See [native sanitizer coverage](architecture.md#native-sanitizer-coverage) for the distinction between first-party, separately compiled native and executed race coverage.
 
 The Linux TSan allocation-failure probes link with `-fno-sanitize-link-c++-runtime` because they
 provide their own replaceable `new`/`delete` fault injectors, which otherwise conflict with the
@@ -230,6 +304,15 @@ The last three commands compile the same first-party reference cases used by Cat
 compiler explicitly, as the required jobs do: `--compiler` otherwise defaults to the host `c++`,
 which on macOS is Apple clang. Use `"$(brew --prefix llvm)/bin/clang++"` there for the analysis compiler. They are **not** a second application build framework or evidence that the native CLI/dependencies build. They are useful for rapid numerical and parser validation while dependency acquisition is unavailable.
 
+The standalone route compiles every source in the core, execution, image, application and method
+partitions, observes headers during that same compilation, and directly links all fresh objects.
+Registered package headers and private native prefixes are refused, including system-marked
+includes. It uses the production environment-injection policy and compiler-detected system roots.
+Opaque consumed GNU precompiled headers are refused; the GNU route exercises that refusal with
+real compiler controls alongside owned-header acceptance and package-header rejection.
+Each of the ten named suites must execute positive assertion work; this liveness check supplements
+the independent numerical and ownership properties rather than measuring their coverage.
+
 ## Recovery and diagnostic evidence
 
 A source-integrity mismatch is fatal. First inspect the named source and receipt. Do not edit lock pins merely to make a modified cache pass. To deliberately reacquire a dependency, remove only its named source directory and receipt after reviewing their contents, then invoke acquisition again. If a lock or feature policy changes, create a fresh build directory/private prefix; do not mix old installed libraries with new headers.
@@ -263,12 +346,25 @@ audits. `DE_BUILD_TOOLS` is unsupported and refused; use a fresh build tree. Pac
 remains the explicitly labeled full declared-source inventory, not a binary-composition certificate. Native dependency audit runs before the application build even
 when unit tests are disabled. Package directories, includes and archives stay in the owning prefix.
 
+Manual `Quality gates` dispatch accepts `native_diagnostic: true` to run structural, seven-platform
+native and sanitizer diagnostics without fuzz campaigns. The boolean defaults to false; PR, main
+push and default manual runs retain both strict fuzz engines. The required aggregate still refuses
+a skipped fuzz job, so a diagnostic run cannot qualify a release or replace required green CI.
+
 The Docker gate selects the Linux daemon's native architecture explicitly. `DOCKER_DEFAULT_PLATFORM`
 is refused; its image and native volumes bind architecture, image contents and dependency/build
 policy. Verified locked source inputs use a separate volume bound to the checkout, source lock
 and acquisition/verification rules; changing a native build recipe does not duplicate those inputs.
-One gate owns a checkout at a time. Each run retains its own diagnostic log, with
-`latest.log` a convenience copy. An interrupted writer claim requires inspection before removal.
+One gate owns a checkout at a time. The exact development image and verified host source/archive
+cache must already exist; the normal gate never builds or pulls an image. Its runtime has no
+network access. Native build volumes use the inspected immutable image ID, so rebuilding the same recipe tag
+selects fresh native products while preserving prior volumes. Only lock-selected source directories
+and receipts seed the Linux source volume;
+original locked archives remain on a read-only host mount. The checkout is read-only inside the
+container, with native outputs, tool caches and per-run temporary files in their owned overlays.
+Each run retains bounded diagnostics, with `latest.log` an atomic convenience hard link. A
+truncated diagnostic stream cannot qualify the gate. One native-CI-derived deadline includes
+execution and reserved daemon cleanup; no phase resets its clock. An interrupted writer claim requires inspection before removal.
 The gate labels its uniquely named container and removes only a verified owned identity.
 A failed daemon query or removal fails the gate and retains the inspection-required writer claim.
 After interruption or unsuccessful CLI completion, an empty query establishes absence only at

@@ -20,6 +20,8 @@ struct GrayFixture {
     bool interlaced;
     unsigned filter = 0;
     std::vector<std::uint8_t> samples;
+    // Independent malformed-artifact control; ordinary source expansion ignores unused bits.
+    std::uint8_t unused_tail = 0;
 };
 inline void append_be32(std::vector<std::uint8_t>& out, std::uint32_t value) {
     for (const unsigned shift : {24U, 16U, 8U, 0U}) {
@@ -127,7 +129,8 @@ inline void append_pass(std::vector<std::uint8_t>& raw, const GrayFixture& fixtu
             }
         }
         if (bits != 0) {
-            row.push_back(static_cast<std::uint8_t>(packed << (8U - bits)));
+            row.push_back(static_cast<std::uint8_t>(
+                (packed << (8U - bits)) | (fixture.unused_tail & ((1U << (8U - bits)) - 1))));
         }
         append_filtered(raw, row, previous, fixture.filter);
         previous = std::move(row);

@@ -7,7 +7,6 @@
 #include "docenhance/methods/morphology.hpp"
 #include "docenhance/methods/parameter_domains.hpp"
 
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -52,10 +51,6 @@ core::Result<void> line_pass(LineStorage storage, ExtremaPass pass, std::uint32_
             return core::cancelled();
         }
         const auto value = value_at(input, pass, line, p);
-        if (!std::isfinite(value) || value < 0 || value > 1) {
-            return core::failure(core::ErrorCode::numerical,
-                                 "I02 extrema input is not unit finite luminance");
-        }
         while (count != 0 && queue.subspan(first, 1).front() + diameter < p) {
             first = (first + 1) % capacity;
             --count;
@@ -82,15 +77,16 @@ core::Result<void> line_pass(LineStorage storage, ExtremaPass pass, std::uint32_
 core::Result<void> extrema_pass(image::PlaneView<const double> input,
                                 image::PlaneView<double> output, std::span<std::uint64_t> queue,
                                 ExtremaPass pass, const core::Cancellation& cancellation) {
+    const auto lines = pass.horizontal ? input.height() : input.width();
     if (input.empty() || input.width() != output.width() || input.height() != output.height() ||
         image::overlaps(input, output) || image::overlaps(queue, input.storage()) ||
         image::overlaps(queue, output.storage()) ||
         pass.radius < background_radius_domain.minimum ||
-        pass.radius > background_radius_domain.maximum || queue.size() < (2 * pass.radius) + 1) {
+        pass.radius > background_radius_domain.maximum || queue.size() < (2 * pass.radius) + 1 ||
+        pass.first_line >= pass.last_line || pass.last_line > lines) {
         return core::failure(core::ErrorCode::argument, "Invalid I02 extrema pass storage");
     }
-    const auto lines = pass.horizontal ? input.height() : input.width();
-    for (std::uint32_t line = 0; line < lines; ++line) {
+    for (auto line = pass.first_line; line < pass.last_line; ++line) {
         auto result =
             line_pass({.input = input, .output = output, .queue = queue}, pass, line, cancellation);
         if (!result) {

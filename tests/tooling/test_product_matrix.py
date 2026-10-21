@@ -16,6 +16,10 @@ from unittest.mock import patch
 
 from tools_path import ROOT
 
+from test_response_schema import response_branch
+
+from project_version import project_version
+
 sys.path.insert(0, str(ROOT / "tests/product"))
 sys.path.insert(0, str(ROOT / "tests/cli"))
 
@@ -77,15 +81,15 @@ class MatrixAcceptanceTests(unittest.TestCase):
 
     def test_schema_failure_is_retained_and_the_next_case_executes(self) -> None:
         """Malformed schema observations become failed evidence instead of terminating replay."""
+        # Synthetic schema control, not an observation of the actual executable.
+        help_fields = response_branch("root", "usage")["properties"]
         help_response = {
-            "schema_version": json.loads(
-                (ROOT / "schemas/command-response.schema.json").read_text(encoding="utf-8")
-            )["properties"]["schema_version"]["const"],
+            "schema_version": 15,
             "command": "root",
-            "version": "0.7.0",
+            "version": project_version(),
             "exit_code": 0,
-            "usage": "docenhance COMMAND [OPTIONS]",
-            "options": [],
+            "usage": help_fields["usage"]["const"],
+            "options": help_fields["options"]["const"],
         }
         observed = [
             subprocess.CompletedProcess[bytes](args=[], returncode=0, stdout=b"{}", stderr=b""),

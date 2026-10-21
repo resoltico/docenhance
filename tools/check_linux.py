@@ -14,15 +14,23 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import uuid
 from pathlib import Path
 
 from cache_lock import exclusive_cache
-from docker_execution import LABEL, run_container
+from docker_execution import LABEL, remaining, rpc_timeout, run_container
+from linux_gate_logs import (
+    admit_diagnostics,
+    publish_latest,
+    retain_command,
+    retain_preflight_failure,
+)
 from parallel import MAX_JOBS
-from process_execution import owned_process
+from workflow_config import workflow
 
 ROOT = Path(__file__).resolve().parents[1]
+IMAGE_RECORD_FIELDS = 2
 IMAGE_PATTERN = re.compile(r"[a-z0-9./_-]+@sha256:[0-9a-f]{64}")
 IMAGE_FILES = (
     "tools/linux-gate.Dockerfile",
@@ -90,7 +98,6 @@ def run_arguments(image: str, platform: str, name: str, token: str, root: Path =
     command = [
         docker_executable(),
         "run",
-        "--rm",
         "--init",
         "--name",
         name,
@@ -101,7 +108,7 @@ def run_arguments(image: str, platform: str, name: str, token: str, root: Path =
         "--workdir",
         "/source",
     ]
-    command += ["--mount", f"type=bind,source={root},target=/source"]
+    command += ["--mount", f"type=bind,source={root},target=/source,readonly"]
     for directory in ("out", ".cache", "dist"):
         suffix = directory.removeprefix(".")
         command += [
@@ -112,62 +119,75 @@ def run_arguments(image: str, platform: str, name: str, token: str, root: Path =
         "--mount",
         f"type=volume,source={source_cache_identity(root)},target=/source/.cache/deps",
     ]
-    host_cache = root / ".cache/deps"
-    if host_cache.is_dir():
-        command += ["--mount", f"type=bind,source={host_cache},target=/host-deps,readonly"]
     jobs = os.environ.get("DE_BUILD_JOBS", "2")
     if not re.fullmatch(r"[1-9][0-9]*", jobs) or not 1 <= int(jobs) <= MAX_JOBS:
         msg = f"DE_BUILD_JOBS must be a canonical integer in [1,{MAX_JOBS}]"
         raise ValueError(msg)
-    command += ["--env", f"DE_BUILD_JOBS={jobs}", image, "sh", "tools/linux_gate.sh"]
+    command += host_cache_mounts(root)
+    command += ["--network", "none", "--pull", "never"]
+    for setting in (
+        f"DE_BUILD_JOBS={jobs}",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "RUFF_CACHE_DIR=/source/.cache/ruff",
+        "MYPY_CACHE_DIR=/source/.cache/mypy",
+        f"TMPDIR=/tmp/docenhance-linux-tmp/{token}",
+    ):
+        command += ["--env", setting]
+    command += [image, "sh", "tools/linux_gate.sh"]
     return command
 
 
-def invoke(arguments: list[str], log: Path) -> bool:
-    """Retain every diagnostic and fail on the actual subprocess status."""
-    with log.open("a", encoding="utf-8") as stream:
-        stream.write("\n" + " ".join(arguments) + "\n")
-        stream.flush()
-        with owned_process(arguments, dict(os.environ), stream, cwd=ROOT, graceful=True) as process:
-            status = process.wait()
-    return status == 0
+def host_cache_mounts(root: Path) -> list[str]:
+    """Read only the prepared host cache and original locked archives; never acquire here."""
+    cache = root / ".cache/deps"
+    archives = cache / "archives"
+    if cache.is_symlink() or archives.is_symlink() or not archives.is_dir():
+        msg = "Linux gate requires the prepared host cache and original locked archives"
+        raise ValueError(msg)
+    return [
+        "--mount",
+        f"type=bind,source={cache},target=/host-deps,readonly",
+        "--mount",
+        f"type=bind,source={archives},target=/source/.cache/deps/archives,readonly",
+    ]
 
 
-def prepare_image(base: str, image: str, platform: str, log: Path) -> bool:
-    """Use a content-addressed image cache; image preparation is explicit and separate."""
-    found = subprocess.run(
-        [docker_executable(), "image", "inspect", image],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+def cached_image(image: str, platform: str, deadline: float) -> str:
+    """Bind a prepared image's immutable ID without pulling or starting a daemon build."""
+    result = subprocess.run(
+        [
+            docker_executable(),
+            "image",
+            "inspect",
+            "--format",
+            "{{.Id}} {{.Os}}/{{.Architecture}}",
+            image,
+        ],
+        capture_output=True,
+        text=True,
         check=False,
+        timeout=rpc_timeout(deadline),
     )
-    if found.returncode == 0:
-        return True
-    with tempfile.TemporaryDirectory(prefix="docenhance-linux-image-") as directory:
-        context = Path(directory)
-        for name in IMAGE_FILES:
-            target = context / name
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / name, target)
-        return invoke(
-            [
-                docker_executable(),
-                "build",
-                "--platform",
-                platform,
-                "--build-arg",
-                f"BASE_IMAGE={base}",
-                "--tag",
-                image,
-                "--file",
-                str(context / "tools/linux-gate.Dockerfile"),
-                str(context),
-            ],
-            log,
-        )
+    fields = result.stdout.split()
+    if result.returncode or len(fields) != IMAGE_RECORD_FIELDS:
+        msg = f"Required cached Linux image {image} is absent; prepare the locked image explicitly"
+        raise ValueError(msg)
+    if re.fullmatch(r"sha256:[0-9a-f]{64}", fields[0]) is None or fields[1] != platform:
+        msg = "Cached Linux image identity or native platform differs"
+        raise ValueError(msg)
+    return fields[0]
 
 
-def native_platform() -> str:
+def gate_seconds() -> int:
+    """Use the existing reviewed native CI ceiling, not a second global timeout authority."""
+    minutes = workflow(ROOT / ".github/workflows/ci.yml")["jobs"]["native"]["timeout-minutes"]
+    if not isinstance(minutes, str) or re.fullmatch(r"[1-9][0-9]*", minutes) is None:
+        msg = "Native CI must declare a positive integer timeout-minutes"
+        raise ValueError(msg)
+    return int(minutes) * 60
+
+
+def native_platform(deadline: float) -> str:
     """Select the Linux daemon's native architecture explicitly, not an ambient emulation hint."""
     if os.environ.get("DOCKER_DEFAULT_PLATFORM"):
         msg = "DOCKER_DEFAULT_PLATFORM is unsupported for the native Linux gate"
@@ -177,6 +197,7 @@ def native_platform() -> str:
         capture_output=True,
         text=True,
         check=True,
+        timeout=rpc_timeout(deadline),
     ).stdout.strip()
     names = {
         "linux/x86_64": "linux/amd64",
@@ -194,31 +215,55 @@ def main() -> int:
     """One writer per checkout, isolated state and retained diagnostics for every gate run."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.parse_args()
+    seconds = gate_seconds()
+    deadline = time.monotonic() + seconds
     logs = ROOT / ".cache/linux-gate"
     logs.mkdir(parents=True, exist_ok=True)
     lock = logs / "active"
     log = logs / "latest.log"
+    primary: BaseException | None = None
     try:
         with exclusive_cache(lock):
+            admit_diagnostics(logs)
             directory = Path(tempfile.mkdtemp(prefix="run-", dir=logs))
             log = directory / "diagnostics.log"
-            log.write_text("", encoding="utf-8")
             print(f"Linux Docker gate: full build/test diagnostics: {log}", flush=True)
-            platform = native_platform()
-            base, image = image_identity(platform)
+            platform = native_platform(deadline)
+            _base, image = image_identity(platform)
+            image_id = cached_image(image, platform, deadline)
             token = uuid.uuid4().hex
             name = f"docenhance-gate-{token}"
-            if not prepare_image(base, image, platform, log) or not run_container(
-                run_arguments(image, platform, name, token), log, ROOT, name, token
-            ):
+            arguments = run_arguments(image_id, platform, name, token)
+            metadata = (
+                json.dumps(
+                    {
+                        "argv": arguments,
+                        "container": name,
+                        "label": token,
+                        "image_tag": image,
+                        "image_id": image_id,
+                        "total_seconds": seconds,
+                    },
+                    indent=2,
+                )
+                + "\n"
+            ).encode("utf-8")
+            retain_command(directory / "command.json", metadata)
+            if not run_container(arguments, log, name, token, deadline):
+                primary = RuntimeError("Linux Docker gate returned a failed status")
                 print(f"FAIL: Linux Docker gate; complete diagnostics: {log}", file=sys.stderr)
                 return 1
     except (OSError, ValueError, KeyError, RuntimeError, subprocess.SubprocessError) as error:
+        primary = error
+        retain_preflight_failure(log, error)
         print(f"FAIL: Linux Docker gate: {error}; diagnostics: {log}", file=sys.stderr)
         return 1
     finally:
-        if log != logs / "latest.log" and log.is_file():
-            shutil.copy2(log, logs / "latest.log")
+        if log != logs / "latest.log":
+            publish_latest(
+                log, logs / "latest.log", primary if primary is not None else sys.exception()
+            )
+    remaining(deadline)
     print(f"PASS: Linux native release workflow and local checks; evidence: {log}")
     return 0
 

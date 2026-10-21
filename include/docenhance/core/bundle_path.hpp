@@ -8,6 +8,8 @@
 
 namespace docenhance::core {
 inline constexpr std::size_t bundle_path_max_bytes = 128;
+inline constexpr std::string_view bundle_path_pattern =
+    R"(^(?!\.{1,2}(?:/|(?![\s\S])))[^/\\:\u0000]+(?:/(?!\.{1,2}(?:/|(?![\s\S])))[^/\\:\u0000]+)*(?![\s\S]))";
 // Portable artifact names, distinct from admitted native directory paths. Preserve all bytes.
 [[nodiscard]] constexpr bool valid_bundle_path(std::string_view name) noexcept {
     if (name.size() > bundle_path_max_bytes || !valid_path(name) || name.front() == '/' ||

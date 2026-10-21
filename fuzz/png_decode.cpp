@@ -1,9 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "docenhance/codec/png.hpp"
+#include "docenhance/codec/continuous_png.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
-#include "docenhance/image/plane.hpp"
+#include "docenhance/image/output.hpp"
+#include "docenhance/image/raster.hpp"
 #include "support/entry_point.hpp"
 #include "support/oracle.hpp"
 #include "support/png_shape.hpp"
@@ -49,8 +50,7 @@ bool static_container(std::span<const std::uint8_t> bytes) {
 struct Decoded {
     bool accepted = false;
     docenhance::core::ErrorCode error = docenhance::core::ErrorCode::input;
-    std::uint32_t width = 0;
-    std::uint32_t height = 0;
+    docenhance::image::RasterShape shape;
     std::vector<std::uint8_t> samples;
     bool operator==(const Decoded&) const = default;
 };
@@ -59,19 +59,25 @@ Decoded decode(std::span<const std::uint8_t> bytes, std::size_t limit) {
     docenhance::core::Budget budget{limit};
     Decoded snapshot;
     {
-        auto decoded = docenhance::codec::decode_grayscale_png(
-            bytes, budget, {.encoded_bytes = 65536, .pixels = 4096});
+        auto decoded = docenhance::codec::decode_png_raster(
+            bytes, budget, docenhance::image::ProfilePolicy::embedded, {},
+            {.encoded_bytes = 65536, .pixels = 4096});
         if (decoded) {
-            require(static_container(bytes),
-                    "accepted grayscale PNG is one static framed container");
+            require(static_container(bytes), "accepted source PNG is one static framed container");
             snapshot.accepted = true;
-            snapshot.width = decoded->width();
-            snapshot.height = decoded->height();
-            require(snapshot.width != 0 && snapshot.height != 0, "decoded dimensions are positive");
-            require(static_cast<std::uint64_t>(snapshot.width) * snapshot.height <= 4096,
+            snapshot.shape = decoded->shape;
+            const auto row_bytes = docenhance::image::raster_row_bytes(snapshot.shape);
+            require(row_bytes.has_value(),
+                    "decoded typed channel/depth shape has bounded row bytes");
+            require(snapshot.shape.width != 0 && snapshot.shape.height != 0,
+                    "decoded dimensions are positive");
+            require(static_cast<std::uint64_t>(snapshot.shape.width) * snapshot.shape.height <=
+                        4096,
                     "decoded dimensions respect the pixel limit");
-            for (std::uint32_t y = 0; y < snapshot.height; ++y) {
-                const auto row = decoded->view().row(y);
+            for (std::uint32_t y = 0; y < snapshot.shape.height; ++y) {
+                const auto row = decoded->pixels.view().row(y);
+                require(row.size() == *row_bytes,
+                        "snapshot includes every logical channel/depth byte");
                 snapshot.samples.insert(snapshot.samples.end(), row.begin(), row.end());
             }
         } else {

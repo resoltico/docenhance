@@ -17,8 +17,8 @@
 ## Input support
 
 - `png`: `preserve`, `gray`, `bw`.
-- `jpeg`: `preserve`, `gray`.
-- `tiff`: `preserve`, `gray`.
+- `jpeg`: `preserve`, `gray`, `bw`.
+- `tiff`: `preserve`, `gray`, `bw`.
 
 ## Grammar
 
@@ -48,7 +48,7 @@ Explicit presence is required when this option applies.
 
 **Domain/default:** preserve; preserve | gray | bw.
 
-Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. Continuous output defaults to no enhancement filter and is verified before publication. Explicit stages follow geometry, illumination, denoising, restoration, contrast, sharpening and final quantization. Gray converts linear luminance; bw explicitly activates stored-sample binarization. JPEG and TIFF/BigTIFF support preserve/gray only; bw requires grayscale PNG.
+Preserve keeps the decoded gray/color category, not source bytes, ICC space, metadata or alpha. All modes share interpretation, geometry and the fixed photometric stages. Gray quantizes final linear luminance; bw classifies terminal sRGB Q16 samples and writes physical 1-bit PNG.
 
 ## `--bit-depth DEPTH`
 
@@ -68,7 +68,7 @@ Continuous output depth; auto keeps 16-bit source precision, otherwise 8.
 
 Composite alpha over white or black in linear light, or reject any non-opaque pixel.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--profile-policy POLICY`
 
@@ -78,7 +78,7 @@ Composite alpha over white or black in linear light, or reject any non-opaque pi
 
 Interpret supported colour declarations, or override them with sRGB.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--rotate DEGREES`
 
@@ -86,7 +86,7 @@ Interpret supported colour declarations, or override them with sRGB.
 
 **Domain/default:** 0; 0 | 90 | 180 | 270.
 
-Exact clockwise quarter-turn; continuous input follows metadata orientation, bw rotates stored samples.
+Exact clockwise quarter-turn after metadata orientation, in every output mode.
 
 ## `--protect-mask PATH`
 
@@ -94,9 +94,27 @@ Exact clockwise quarter-turn; continuous input follows metadata orientation, bw 
 
 **Domain/default:** optional; well-formed UTF-8 path.
 
-1/8-bit grey PNG in metadata-oriented source dimensions; non-zero samples are never changed by photometric stages.
+1/8-bit gray PNG in metadata-oriented source dimensions; non-zero samples protect photometric stages. Binarization still classifies every pixel.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
+
+## `--threads N`
+
+**Scope:** `process`.
+
+**Domain/default:** auto; auto | integer [1,256].
+
+Maximum scheduler workers; auto uses detected concurrency bounded to 1..256. Execution settings are response diagnostics, not persistent method configuration.
+
+**Automatic resolution:** detected concurrency clamped to the admitted worker domain; hardware zero uses its minimum.
+
+## `--memory-limit MIB`
+
+**Scope:** `process`.
+
+**Domain/default:** 1024; integer [64,262144].
+
+One charged processing budget in MiB for snapshots, interpretation, methods, encoding and publication. Charged bytes are not a process-RSS limit; verification retains its separate fixed budget.
 
 ## `--json`
 
@@ -132,7 +150,7 @@ Select illumination
 
 **Applicable methods:** I01, I02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--background-strength A`
 
@@ -144,7 +162,7 @@ Exponent applied to the illumination gain; 0 is an exact no-op.
 
 **Applicable methods:** I01, I02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--background-max-gain G`
 
@@ -156,7 +174,7 @@ Largest multiplicative gain applied to any sample; 1 is an exact no-op.
 
 **Applicable methods:** I01, I02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--background-target TARGET`
 
@@ -168,7 +186,7 @@ Linear-light target; 'source' uses the fitted background's nearest-rank 90th per
 
 **Applicable methods:** I01, I02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--background-cell SIZE`
 
@@ -182,7 +200,7 @@ Cell edge in processing pixels.
 
 **Applicable methods:** I01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--background-quantile Q`
 
@@ -194,7 +212,7 @@ Nearest-rank quantile of eligible cell samples.
 
 **Applicable methods:** I01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--background-smooth BETA`
 
@@ -206,7 +224,7 @@ Grid-Laplacian weight of the logarithmic background fit.
 
 **Applicable methods:** I01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--background-radius RADIUS`
 
@@ -220,7 +238,7 @@ Square closing radius in processing pixels; Gaussian sigma = max(0.5, radius/2).
 
 **Applicable methods:** I02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--denoise METHOD`
 
@@ -232,7 +250,7 @@ Select denoising
 
 **Applicable methods:** D01, D02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--denoise-blend A`
 
@@ -244,7 +262,7 @@ Blend in perceptual luminance; 0 keeps entering samples.
 
 **Applicable methods:** D01, D02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--nlm-h H`
 
@@ -256,7 +274,7 @@ Filter strength in equivalent 8-bit perceptual points; higher values may remove 
 
 **Applicable methods:** D01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--nlm-patch PIXELS`
 
@@ -268,7 +286,7 @@ Square patch width.
 
 **Applicable methods:** D01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--nlm-search PIXELS`
 
@@ -280,7 +298,7 @@ Square search width; at least the patch width.
 
 **Applicable methods:** D01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--tv-lambda LAMBDA`
 
@@ -292,7 +310,7 @@ L1 fidelity weight; larger values smooth less.
 
 **Applicable methods:** D02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--tv-iterations N`
 
@@ -304,7 +322,7 @@ Iteration cap; exhaustion keeps the iterate and warns.
 
 **Applicable methods:** D02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--tv-tolerance EPS`
 
@@ -316,7 +334,7 @@ Primal and dual update tolerance at two consecutive checkpoints.
 
 **Applicable methods:** D02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--deblur METHOD`
 
@@ -328,7 +346,7 @@ Select restoration
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--psf KIND`
 
@@ -342,7 +360,7 @@ Explicit presence is required when this option applies.
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--psf-sigma SIGMA`
 
@@ -356,7 +374,7 @@ Gaussian standard deviation in pixels.
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--psf-length LENGTH`
 
@@ -370,7 +388,7 @@ Motion segment length in pixels.
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--psf-angle ANGLE`
 
@@ -384,7 +402,7 @@ Motion direction, degrees clockwise from +x in y-down coordinates.
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--psf-file PATH`
 
@@ -400,7 +418,7 @@ Explicit presence is required when this option applies.
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--wiener-k K`
 
@@ -412,7 +430,7 @@ Positive regularizer in |H|^2+K; not a measured noise ratio.
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--deblur-blend A`
 
@@ -424,7 +442,7 @@ Blend of entering and restored linear luminance before clamping.
 
 **Applicable methods:** R01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--contrast METHOD`
 
@@ -436,7 +454,7 @@ Select contrast
 
 **Applicable methods:** C01, C02, C03.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--contrast-blend A`
 
@@ -448,7 +466,7 @@ Blend in perceptual luminance; 0 keeps entering samples.
 
 **Applicable methods:** C01, C02, C03.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--levels-low P`
 
@@ -460,7 +478,7 @@ Nearest-rank lower percentile of unprotected perceptual samples.
 
 **Applicable methods:** C01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--levels-high P`
 
@@ -472,7 +490,7 @@ Nearest-rank upper percentile; greater than the lower one.
 
 **Applicable methods:** C01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--gamma G`
 
@@ -484,7 +502,7 @@ f' = f^G; above 1 darkens midtones; 1 is an exact identity.
 
 **Applicable methods:** C02.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--clahe-grid CxR`
 
@@ -496,7 +514,7 @@ Contextual columns x rows; every tile at least 16 pixels per side.
 
 **Applicable methods:** C03.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--clahe-clip C`
 
@@ -508,7 +526,7 @@ Pre-redistribution clip multiplier relative to mean occupancy.
 
 **Applicable methods:** C03.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--sharpen METHOD`
 
@@ -520,7 +538,7 @@ Select sharpening
 
 **Applicable methods:** S01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--sharpen-sigma S`
 
@@ -532,7 +550,7 @@ Gaussian standard deviation in pixels.
 
 **Applicable methods:** S01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--sharpen-amount A`
 
@@ -544,7 +562,7 @@ Soft-thresholded high-pass gain; 0 is an exact identity.
 
 **Applicable methods:** S01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--sharpen-threshold T`
 
@@ -556,7 +574,7 @@ Soft threshold in equivalent 8-bit perceptual points.
 
 **Applicable methods:** S01.
 
-**Output modes:** preserve, gray.
+**Output modes:** preserve, gray, bw.
 
 ## `--binarize METHOD`
 
@@ -612,7 +630,7 @@ Normalized deviation scale.
 
 **Domain/default:** 0.5; finite [0,1].
 
-Black iff the normalized stored grayscale sample is at most T.
+Black iff the normalized terminal Q16 code is at most T.
 
 **Applicable methods:** B03.
 

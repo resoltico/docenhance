@@ -6,6 +6,7 @@
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/numeric.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
 
 #include <algorithm>
@@ -65,6 +66,10 @@ core::Result<Profile> embedded_profile(const Context& context, image::RasterShap
     if (declared != bytes.size()) {
         return core::failure(core::ErrorCode::input, "ICC declared size does not match its bytes");
     }
+    if (!context.good()) {
+        return std::unexpected(
+            context.error("Cannot open ICC profile with unavailable color context"));
+    }
     Profile profile{cmsOpenProfileFromMemTHR(context.get(), bytes.data(),
                                              static_cast<cmsUInt32Number>(bytes.size()))};
     if (!profile || !context.good()) {
@@ -92,14 +97,23 @@ Curve transfer_curve(const Context& context, const image::RasterMetadata& metada
     return srgb_transfer(context);
 }
 } // namespace
-core::Result<void> validate_output_profile(image::RasterShape shape,
-                                           std::span<const std::byte> bytes, core::Budget& budget,
+core::Result<void> validate_output_profile(image::PngShape shape, std::span<const std::byte> bytes,
+                                           core::Budget& budget,
                                            const core::Cancellation& cancellation) {
+    if (shape.depth.bits() == 1 && !bytes.empty()) {
+        return core::failure(core::ErrorCode::input,
+                             "Binary PNG output cannot embed an ICC profile");
+    }
     if (bytes.empty()) {
         return {};
     }
     const Context context{budget};
-    auto profile = embedded_profile(context, shape, bytes);
+    const image::RasterShape decoded{
+        .width = shape.width,
+        .height = shape.height,
+        .model = shape.model,
+    };
+    auto profile = embedded_profile(context, decoded, bytes);
     if (!profile) {
         return std::unexpected(profile.error());
     }

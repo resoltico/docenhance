@@ -1,258 +1,262 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Collect all fixed quality roles, retaining declared evidence and observed refusals."""
+"""Collect every fixed v3 role while preserving original and finished attempt observations."""
 
 from __future__ import annotations
 
-import copy
-import os
-import subprocess
+import stat
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 from jsonschema import ValidationError
 
-from document_quality import read_json, validator
-from quality_evidence import command_options, confined, digest, evidence_error, reference
+from quality_acquisition import confined
+from quality_attempt import ATTEMPT_KINDS, issue
+from quality_commands import command_options
 from quality_execution import execution_evidence
+from quality_observations import original_ready
 from quality_protocol import BUNDLE_ROLES
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from quality_replay import ReplayObservation
+    from quality_attempt import CaptureAdmission
 
-SEMANTIC_FACTS = ("source", "request", "execution", "protection", "output", "build")
-EVIDENCE_ERRORS = (
-    OSError,
-    ValueError,
-    TypeError,
-    KeyError,
-    ValidationError,
-    subprocess.SubprocessError,
-)
+
+SEMANTIC_FACTS = ("source", "request", "execution", "assets", "output", "build")
+EVIDENCE_ERRORS = (OSError, ValueError, TypeError, KeyError, MemoryError, ValidationError)
+
+
+class BundleRun(Protocol):
+    """The actual run state consumed by collection and record/replay receiving boundaries."""
+
+    root: Path
+    executable: Path
+    slots: list[dict[str, Any]]
+    pages: list[dict[str, Any]]
+    admission: CaptureAdmission
+
+    def original(self, observation: dict[str, Any]) -> None:
+        """Persist this original observation exactly once."""
+        ...
+
+    def invoke(self, index: int) -> dict[str, Any]:
+        """Consume one planned invocation and return its actual observation."""
+        ...
+
+    def skip(self, index: int, causecode: str = "not_eligible") -> dict[str, Any]:
+        """Account one invocation without preparing or launching a producer."""
+        ...
 
 
 @dataclass(frozen=True)
 class BundleChecks:
-    """One selected executable and its actual verification/replay/fidelity owners."""
+    """The admitted run and its concrete record/replay/independent fidelity owners."""
 
-    executable: Path
+    run: BundleRun
     build: dict[str, Any]
-    read_bundle: Callable[..., dict[str, Any]]
-    replay: Callable[..., ReplayObservation]
-    fidelity: Callable[..., None]
+    read_bundle: Callable[[BundleChecks, int, str, dict[str, Any]], dict[str, Any]]
+    replay: Callable[[BundleChecks, int, str, dict[str, Any]], dict[str, Any] | None]
+    fidelity: Callable[[Path, dict[str, str], dict[str, dict[str, Any]]], None]
 
 
-def delivered_path(destination: str, name: str) -> str:
-    """Preserve admitted identity bytes using the product's platform separator rule."""
-    separator = "/"
-    if os.name == "nt":
-        index = max(destination.rfind("/"), destination.rfind("\\"))
-        separator = destination[index] if index >= 0 else "\\"
-    return destination + separator + name
-
-
-def completed_record(
-    root: Path, page: dict[str, Any], role: dict[str, Any], name: str, checks: BundleChecks
-) -> tuple[dict[str, Any], dict[str, Any], Path]:
-    """Bind delivered success to the scored record and immutable actual replay."""
-    destination, _ = command_options(
-        page["commands"][name], page["source"]["path"], checks.executable
-    )
-    if role["bundle"] != destination:
-        message = "Completed bundle differs from frozen output destination"
+def frozen_processing_assets(
+    record: dict[str, Any], options: list[str], references: list[dict[str, Any]]
+) -> None:
+    """Bind actual supplied bytes to preregistered argv assets before any replay."""
+    selected = dict(zip(options[::2], options[1::2], strict=True))
+    frozen = {reference["path"]: reference["sha256"] for reference in references}
+    protection = record["request"]["protection"]
+    mask = protection["supplied"] if protection is not None else None
+    kernels = [asset for asset in record["assets"] if asset["role"] == "psf_kernel"]
+    if len(kernels) > 1:
+        message = "Scored record contains duplicate supplied PSF identities"
         raise ValueError(message)
-    directory = confined(root, destination)
-    record = checks.read_bundle(checks.executable, directory, page["source"]["sha256"])
-    response_record = role["execution"]["response"]["record"]
-    if (
-        response_record["run"] != record["record"]["run"]
-        or response_record["sha256"] != digest(directory / "run.json")
-        or response_record["bytes"] != (directory / "run.json").stat().st_size
-        or role["execution"]["response"]["output"] != delivered_path(destination, "result.png")
+    for option, actual in (
+        ("--protect-mask", mask),
+        ("--psf-file", kernels[0] if kernels else None),
     ):
-        message = "Delivered success differs from the scored bundle identity"
-        raise ValueError(message)
-    if record["build"] != checks.build:
-        message = "Bundle build differs from independently referenced build provenance"
-        raise ValueError(message)
-    return (
-        record,
-        {
-            "record_sha256": digest(directory / "run.json"),
-            "command": page["commands"][name].copy(),
-            "role": name,
-        },
-        directory,
-    )
+        path = selected.get(option)
+        if path is None:
+            if actual is not None:
+                message = "Scored supplied asset is absent from its frozen command"
+                raise ValueError(message)
+        elif actual is None or frozen.get(path) != actual["sha256"]:
+            message = "Scored supplied asset differs from its frozen identity"
+            raise ValueError(message)
 
 
-def replay_record(
-    root: Path,
-    record: dict[str, Any],
-    report: dict[str, Any],
+def _reject(
+    checks: BundleChecks, report: dict[str, Any], phase: str, error: Exception | None = None
+) -> None:
+    """Retain a bounded role cause without rewriting declared facts or finished attempts."""
+    cause = issue(phase, report["original"]["role_index"], error)
+    if report["validation"][phase] is None:
+        report["validation"][phase] = cause
+    report["outcome"] = "missing_evidence"
+    checks.run.admission.close(cause)
+
+
+def _skip_role(checks: BundleChecks, index: int) -> None:
+    """Even expected ineligible roles retain all three default invocation observations."""
+    for offset in range(len(ATTEMPT_KINDS)):
+        checks.run.skip(3 * index + offset)
+
+
+def _directory(
+    checks: BundleChecks, report: dict[str, Any], identities: set[tuple[int, int]]
+) -> None:
+    path = confined(checks.run.root, report["declared"]["bundle"])
+    observed = path.stat(follow_symlinks=False)
+    if not stat.S_ISDIR(observed.st_mode):
+        message = "Scored bundle directory is unavailable"
+        raise ValueError(message)
+    identity = observed.st_dev, observed.st_ino
+    if identity in identities:
+        message = "Scored roles alias the same physical bundle directory"
+        raise ValueError(message)
+    identities.add(identity)
+
+
+def _completed(
     checks: BundleChecks,
-) -> None:
-    """Expose every actual replay attempt before assessing record agreement."""
-    name = report.pop("role")
-    observed = checks.replay(report.pop("command"), root)
-    report["replay_attempt"] = observed.attempt
-    report["replay_argv"] = observed.attempt["argv"]
-    if observed.record is None:
-        message = "Frozen replay failed; retained actual command/effect evidence is incomplete"
-        raise ValueError(message)
-    if observed.record["record"]["run"] == record["record"]["run"]:
-        message = "Replay must be independently identified from its scored execution"
-        raise ValueError(message)
-    if any(observed.record[field] != record[field] for field in SEMANTIC_FACTS):
-        message = f"Frozen {name} differs from actual processing by selected executable"
-        raise ValueError(message)
-
-
-def role_evidence(
-    root: Path, page: dict[str, Any], role: dict[str, Any], name: str, checks: BundleChecks
-) -> tuple[dict[str, Any], dict[str, Any] | None, Path | None]:
-    """Observe one declared role; failures preserve its original effect evidence."""
-    report = {
-        "outcome": role["outcome"],
-        "declared": copy.deepcopy(role),
-        "errors": [],
-        "record_sha256": None,
-        "replay_argv": None,
-        "replay_attempt": None,
-        "observed_publication": "unknown",
-    }
-    record, directory = None, None
+    policy: dict[str, Any],
+    report: dict[str, Any],
+    identities: set[tuple[int, int]],
+) -> tuple[dict[str, Any], dict[str, Any]] | None:
+    index = report["original"]["role_index"]
+    name = BUNDLE_ROLES[index % 3]
+    source = policy["source"]
+    phase = "record"
+    replay_consumed = False
     try:
-        if role["outcome"] != "missing_evidence":
-            execution_evidence(role, root, report)
-            if role["outcome"] == "completed":
-                record, facts, directory = completed_record(root, page, role, name, checks)
-                report.update(facts)
-                replay_record(root, record, report, checks)
+        response = report["original"]["response"]
+        # Always consumes scored_verify before any artifact inspection, even on failure.
+        record = checks.read_bundle(checks, 3 * index, source["sha256"], response)
+        phase = "role_identity"
+        destination, options = command_options(
+            policy["commands"][name], source["path"], checks.run.executable
+        )
+        phase = "role_identity"
+        if report["declared"]["bundle"] != destination:
+            message = "Completed bundle differs from its frozen command destination"
+            raise ValueError(message)
+        _directory(checks, report, identities)
+        phase = "source"
+        if record["source"]["sha256"] != source["sha256"]:
+            message = "Scored record source differs from frozen bytes"
+            raise ValueError(message)
+        phase = "build"
+        if record["build"] != checks.build:
+            message = "Bundle build differs from frozen provenance"
+            raise ValueError(message)
+        phase = "record"
+        frozen_processing_assets(record, options, policy["assets"])
+        report["record_sha256"] = response["record_sha256"]
+        replay_consumed = True
+        repeated = checks.replay(checks, index, source["sha256"], record)
     except EVIDENCE_ERRORS as error:
-        report["outcome"] = "missing_evidence"
-        report["errors"].append(evidence_error(error))
-    return report, record, directory
+        _reject(checks, report, phase, error)
+        if not replay_consumed:
+            checks.run.skip(3 * index + 1)
+            checks.run.skip(3 * index + 2)
+        return None
+
+    else:
+        return None if repeated is None else (record, repeated)
 
 
-def prior_reviews(root: Path, assessment: dict[str, Any]) -> list[dict[str, Any]]:
-    """Retained revisions cannot silently discard previously observed harm or uncertainty."""
-    revisions = []
-    for ref in assessment["review_revisions"]:
-        revision = read_json(reference(root, ref).read_bytes())
-        validator("review_revision").validate(revision)
-        if revision["sample"] != assessment["sample"]:
-            message = "Prior review revision belongs to another physical page"
-            raise ValueError(message)
-        revisions.append(revision)
-    return revisions
-
-
-def invalidate(role: dict[str, Any]) -> None:
-    """Absent coherent evidence abstains; original declarations remain separately reported."""
-    role.update(outcome="missing_evidence", bundle=None, execution=None)
-
-
-def validate_revisions(revisions: list[dict[str, Any]], page: dict[str, Any]) -> None:
-    """Retained human judgments still belong to the frozen pair and panel."""
-    for revision in revisions:
-        reviewers = [review["reviewer"] for review in revision["reviews"]]
-        if (
-            len(reviewers) != len(set(reviewers))
-            or not set(reviewers).issubset(page["panel"])
-            or any(review["blind_pair"] != page["blind_pair"] for review in revision["reviews"])
-        ):
-            message = "Prior reviews differ from frozen pair and panel"
-            raise ValueError(message)
-
-
-def inspect_directory(
-    directory: Path, identities: set[tuple[int, int]], report: dict[str, Any]
-) -> None:
-    """Namespace loss or aliasing is one role's missing evidence, never an abort-first error."""
+def _original(checks: BundleChecks, report: dict[str, Any]) -> bool:
+    original = report["original"]
+    declared = report["declared"]
     try:
-        stat = directory.stat()
-        identity = stat.st_dev, stat.st_ino
-        if identity in identities:
-            report["outcome"] = "missing_evidence"
-            report["errors"].append("Roles alias the same physical bundle directory")
-        identities.add(identity)
+        if declared["execution"] is not None:
+            execution_evidence(original, checks.run.root, checks.run.admission)
     except EVIDENCE_ERRORS as error:
-        report["outcome"] = "missing_evidence"
-        report["errors"].append(evidence_error(error))
+        _reject(checks, report, "delivery", error)
+    finally:
+        # All 3N original observations are persisted once, including expected unavailable ones.
+        checks.run.original(original)
+    if any(original["errors"].values()) or any(
+        any(original[name]["errors"].values()) for name in ("stdout", "stderr")
+    ):
+        _reject(checks, report, "delivery")
+        return False
+    if declared["outcome"] != "completed":
+        return False
+    if original["stderr"]["retained_bytes"] != 0:
+        _reject(checks, report, "raw_stderr")
+        return False
+    if not original_ready(original):
+        _reject(checks, report, "delivery")
+        return False
+    return checks.run.admission.is_open
 
 
-def validate_run_identities(
-    records: dict[str, dict[str, Any]], roles: dict[str, dict[str, Any]]
+def _runs(
+    checks: BundleChecks, report: dict[str, Any], pair: tuple[dict[str, Any], ...], seen: set[str]
+) -> bool:
+    runs = [record["record"]["run"] for record in pair]
+    if len(set(runs)) != len(runs) or any(run in seen for run in runs):
+        _reject(checks, report, "role_identity")
+        return False
+    seen.update(runs)
+    return True
+
+
+def _page(
+    checks: BundleChecks,
+    policy: dict[str, Any],
+    page: dict[str, Any],
+    identities: set[tuple[int, int]],
+    runs: set[str],
 ) -> None:
-    """All scored roles and actual replays require distinct execution identities."""
-    runs = [record["record"]["run"] for record in records.values()]
-    runs.extend(role["replay_attempt"]["response"]["record"]["run"] for role in roles.values())
-    if len(set(runs)) != len(runs):
-        message = "Scored roles and replays require pairwise distinct run identities"
-        raise ValueError(message)
-
-
-def page_evidence(
-    root: Path, page: dict[str, Any], assessment: dict[str, Any], checks: BundleChecks
-) -> dict[str, Any]:
-    """A page retains all roles, prior reviews and independent cross-role fidelity errors."""
-    records: dict[str, dict[str, Any]] = {}
-    identities: set[tuple[int, int]] = set()
-    roles: dict[str, dict[str, Any]] = {}
-    failures, revisions = [], []
+    records = {}
+    if any(page["validation"].values()):
+        checks.run.admission.close(next(cause for cause in page["validation"].values() if cause))
     for name in BUNDLE_ROLES:
-        report, record, directory = role_evidence(root, page, assessment[name], name, checks)
-        roles[name] = report
-        if directory is not None:
-            inspect_directory(directory, identities, report)
-        if report["outcome"] == "missing_evidence":
-            invalidate(assessment[name])
-        elif record is not None:
-            records[name] = record
+        report = page["roles"][name]
+        index = report["original"]["role_index"]
+        if report["declared"]["outcome"] == "completed":
+            report["outcome"] = "missing_evidence"
+        if not _original(checks, report):
+            if report["declared"]["outcome"] == "completed":
+                report["outcome"] = "missing_evidence"
+            _skip_role(checks, index)
+            continue
+        pair = _completed(checks, policy, report, identities)
+        if pair is not None and _runs(checks, report, pair, runs):
+            report["outcome"] = "completed"
+            records[name] = pair[0]
+    _page_fidelity(checks, page, records)
+
+
+def _page_fidelity(
+    checks: BundleChecks, page: dict[str, Any], records: dict[str, dict[str, Any]]
+) -> None:
+    """Apply one actual cross-role fidelity refusal to all engineering denominators."""
+    if len(records) != len(BUNDLE_ROLES):
+        return
     try:
-        revisions = prior_reviews(root, assessment)
-        validate_revisions(revisions, page)
-        if len(records) == len(BUNDLE_ROLES):
-            validate_run_identities(records, roles)
-            paths = {name: assessment[name]["bundle"] for name in BUNDLE_ROLES}
-            checks.fidelity(root, paths, records)
+        paths = {name: page["roles"][name]["declared"]["bundle"] for name in BUNDLE_ROLES}
+        checks.fidelity(checks.run.root, paths, records)
     except EVIDENCE_ERRORS as error:
-        failures.append(evidence_error(error))
-        for name in BUNDLE_ROLES:
-            invalidate(assessment[name])
-            roles[name]["outcome"] = "missing_evidence"
-    return {
-        "sample": assessment["sample"],
-        "frozen_policy": {
-            "source": copy.deepcopy(page["source"]),
-            "commands": copy.deepcopy(page["commands"]),
-            "assets": copy.deepcopy(page["assets"]),
-        },
-        "roles": roles,
-        "fidelity_errors": failures,
-        "prior_reviews": revisions,
-        "reviews": copy.deepcopy(assessment["reviews"]),
-        "review_revisions": copy.deepcopy(assessment["review_revisions"]),
-    }
+        # Cross-role refusal applies to every engineering denominator, not human judgments.
+        cause = issue("fidelity", page["roles"][BUNDLE_ROLES[0]]["original"]["role_index"], error)
+        if page["validation"]["fidelity"] is None:
+            page["validation"]["fidelity"] = cause
+        for report in page["roles"].values():
+            _reject(checks, report, "fidelity", error)
 
 
-def collect(
-    plan: dict[str, Any], root: Path, checks: BundleChecks
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Retain every intended page after valid protocol admission, without failure replay."""
-    assessed = copy.deepcopy(plan)
+def collect(plan: dict[str, Any], checks: BundleChecks) -> list[dict[str, Any]]:
+    """Use preattached report projections; every 9N slot and 3N original is accounted once."""
     policies = {page["sample"]: page for page in plan["protocol"]["pages"]}
     samples = {sample["id"]: sample for sample in plan["protocol"]["corpus"]}
-    panel = {person["id"] for person in plan["protocol"]["panel"]}
-    evidence = []
-    for assessment in assessed["assessments"]:
-        page = policies[assessment["sample"]] | {
-            "source": samples[assessment["sample"]],
-            "panel": panel,
-        }
-        evidence.append(page_evidence(root, page, assessment, checks))
-    return assessed, evidence
+    identities: set[tuple[int, int]] = set()
+    runs: set[str] = set()
+    for page in checks.run.pages:
+        policy = policies[page["sample"]] | {"source": samples[page["sample"]]}
+        _page(checks, policy, page, identities, runs)
+    return checks.run.pages

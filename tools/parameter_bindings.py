@@ -19,7 +19,7 @@ PREAMBLE = (
     '#include "admission.hpp"\n'
     '#include "docenhance/core/result.hpp"\n'
     '#include "docenhance/methods/parameters.hpp"\n'
-    "#include <string_view>\n#include <utility>\n#include <variant>\n"
+    "#include <string_view>\n#include <variant>\n"
     "namespace docenhance::app {\n"
     "template <typename Parameters>\n"
     "[[nodiscard]] core::Result<Parameters> bind_parameters(const SuppliedOptions& options);\n"
@@ -73,7 +73,7 @@ def surface_mode(family: dict[str, Any], method: dict[str, Any]) -> str:
 
 
 def psf_binding(parameters: list[dict[str, Any]], by_name: dict[str, dict[str, Any]]) -> str:
-    """Bind the required explicit PSF kind and preserve the current owned FilePsf.path."""
+    """Bind the closed PSF configuration; admission separately owns the kernel resource."""
     options = [by_name[parameter["option"]] for parameter in parameters]
     groups = psf_groups(options)
     text = (
@@ -83,13 +83,11 @@ def psf_binding(parameters: list[dict[str, Any]], by_name: dict[str, dict[str, A
     for index, (spelling, type_name) in enumerate(PSF_TYPES):
         prefix = "if" if index == 0 else "else if"
         text += f"    {prefix} (*kind == {json.dumps(spelling)}) {{\n"
-        text += f"        methods::{type_name} psf;\n"
-        text += assignments(psf_members(spelling, groups[spelling]), "psf")
-        text += (
-            "        p.psf = "
-            + ("std::move(psf)" if spelling == "kernel" else "psf")
-            + ";\n    }\n"
-        )
+        members = psf_members(spelling, groups[spelling])
+        qualifier = "const " if not members else ""
+        text += f"        {qualifier}methods::{type_name} psf;\n"
+        text += assignments(members, "psf")
+        text += "        p.psf = psf;\n    }\n"
     text += "    else { return binding_error(); }\n"
     return text + assignments(groups["common"], "p")
 

@@ -1,10 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/image/linear.hpp"
 #include "docenhance/image/numeric.hpp"
 #include "docenhance/image/plane.hpp"
-#include "linear_fixture.hpp"
 #include "surface_reference.hpp"
 
 #include <algorithm>
@@ -63,15 +61,14 @@ struct LogReference {
 struct ReferenceCell {
     std::uint32_t left{}, top{}, right{}, bottom{};
 };
-inline std::vector<double> collect_cell(LinearFixture& source,
+inline std::vector<double> collect_cell(image::PlaneView<const double> source,
                                         image::PlaneView<const std::uint8_t> protection,
                                         ReferenceCell cell) {
     std::vector<double> values;
     for (auto y = cell.top; y < cell.bottom; ++y) {
         for (auto x = cell.left; x < cell.right; ++x) {
             if (protection.empty() || protection.row(y).subspan(x, 1).front() == 0) {
-                values.push_back(
-                    source.row(y).subspan(std::size_t{x} * image::rgb_channels, 1).front());
+                values.push_back(source.row(y).subspan(x, 1).front());
             }
         }
     }
@@ -87,10 +84,10 @@ struct ReferenceCells {
     std::vector<double> weights;
     std::vector<double> quantiles; // Zero marks an unmeasured cell.
 };
-inline ReferenceCells measure_reference_cells(LinearFixture& source,
+inline ReferenceCells measure_reference_cells(image::PlaneView<const double> source,
                                               image::PlaneView<const std::uint8_t> protection,
                                               std::uint32_t cell) {
-    const auto extent = source.extent();
+    const auto extent = image::Extent{.width = source.width(), .height = source.height()};
     const auto columns = (extent.width + cell - 1) / cell;
     const auto rows = (extent.height + cell - 1) / cell;
     ReferenceCells cells{
@@ -128,10 +125,10 @@ inline ReferenceCells measure_reference_cells(LinearFixture& source,
 }
 // The fitted field for the given smoothing, after the linear-domain dark-cell rule: a cell below
 // a quarter of the measured cells' 90th-percentile quantile is left unmeasured.
-inline LogReference illumination_reference(LinearFixture& source,
+inline LogReference illumination_reference(image::PlaneView<const double> source,
                                            image::PlaneView<const std::uint8_t> protection,
                                            std::uint32_t cell, double smooth) {
-    const auto extent = source.extent();
+    const auto extent = image::Extent{.width = source.width(), .height = source.height()};
     auto cells = measure_reference_cells(source, protection, cell);
     std::vector<double> measured;
     std::ranges::copy_if(cells.quantiles, std::back_inserter(measured),

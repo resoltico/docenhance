@@ -3,21 +3,16 @@
 #include "docenhance/report/render.hpp"
 
 #include "continuous.hpp"
-#include "contrast.hpp"
-#include "denoising.hpp"
 #include "docenhance/app/dispatch.hpp"
-#include "docenhance/app/options.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/core/utf8.hpp"
-#include "docenhance/record/fields.hpp"
+#include "docenhance/report/response.hpp"
+#include "docenhance/report/warnings.hpp"
 #include "help.hpp"
-#include "illumination.hpp"
-#include "restoration.hpp"
-#include "sharpening.hpp"
 
-#include <nlohmann/json.hpp>
+#include <expected>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -25,249 +20,114 @@
 #include <variant>
 namespace docenhance::report {
 namespace {
-using Json = nlohmann::ordered_json;
 constexpr int json_indent = 2;
-
-std::string_view publication_name(core::Publication publication) noexcept {
-    switch (publication) {
-    case core::Publication::not_started:
-        return "not_started";
-    case core::Publication::not_published:
-        return "not_published";
-    case core::Publication::completed:
-        return "completed";
-    case core::Publication::unknown:
-        return "unknown";
-    }
-    return "unknown";
-}
-
 std::string publication_text(core::Publication publication) {
-    std::string text = "Publication: " + std::string(publication_name(publication)) + "\n";
+    std::string text = "Publication: ";
     switch (publication) {
     case core::Publication::not_started:
-        text += "Publication did not start; correct the reported problem before retrying.\n";
+        text += "not_started\nPublication did not start; correct the reported problem before "
+                "retrying.\n";
         break;
     case core::Publication::not_published:
-        text += "No result was published; correct the reported problem before retrying.\n";
+        text += "not_published\nNo result was published; correct the reported problem before "
+                "retrying.\n";
         break;
     case core::Publication::completed:
-        text += "A result was published; inspect the destination and use 'docenhance verify "
-                "DIRECTORY' before taking further action. Do not retry blindly.\n";
+        text +=
+            "completed\nA result was published; inspect the destination and use 'docenhance verify "
+            "DIRECTORY' before taking further action. Do not retry blindly.\n";
         break;
     case core::Publication::unknown:
-        text += "Effects are unconfirmed; inspect the destination and staging entries before "
-                "taking further action. Do not retry blindly.\n";
+        text +=
+            "unknown\nEffects are unconfirmed; inspect the destination and staging entries before "
+            "taking further action. Do not retry blindly.\n";
         break;
     }
-    text += "An incomplete response or delivery failure does not prove absence of effects.\n";
-    return text;
-}
-
-// Common fields first, then the payload's own fields in their given order.
-Json envelope(const app::Outcome& outcome, const Json& fields) {
-    Json json = {
-        {"schema_version", app::response_schema_version},
-        {"command", app::command_name(outcome.command)},
-        {"version", outcome.build.version},
-        {"exit_code", static_cast<int>(outcome.exit_code())},
-    };
-    json.update(fields);
-    return json;
-}
-// Identity fields must never be silently repaired. Diagnostic text alone may be substituted;
-// malformed identities cause serialization failure, contained by the transport boundary.
-std::string dump(const Json& json) {
-    return json.dump(json_indent) + "\n";
+    return text + "An incomplete response or delivery failure does not prove absence of effects.\n";
 }
 std::string_view diagnostic(const core::Error& error) noexcept {
     if (error.message.empty()) {
         return error.code == core::ErrorCode::resource ? "The system refused an allocation"
                                                        : "No diagnostic was reported";
     }
+    if (error.message.contains('\0')) {
+        return "The diagnostic contained a NUL character";
+    }
     return core::valid_utf8(error.message) ? std::string_view{error.message}
                                            : "The diagnostic was not well-formed UTF-8";
 }
-Json capability_fields(const app::Capabilities& capabilities) {
-    Json methods = Json::array();
-    for (const auto& method : capabilities.methods) {
-        Json selectors = Json::array();
-        for (const auto selector : method.selectors) {
-            selectors.push_back(selector);
-        }
-        Json parameters = Json::array();
-        for (const auto& parameter : method.parameters) {
-            parameters.push_back({
-                {"option", parameter.option},
-                {"kind", parameter.kind},
-                {"domain", parameter.domain},
-                {"description", parameter.description},
-            });
-        }
-        methods.push_back({
-            {"id", method.id},
-            {"method_version", method.method_version},
-            {"name", method.name},
-            {"family", method.family},
-            {"selectors", std::move(selectors)},
-            {"parameters", std::move(parameters)},
-        });
+std::string verified_text(const app::Verified& value) {
+    std::string text = "Bundle agrees with its record: " + value.directory + "\n";
+    text += "run " + value.run + " recorded " + value.recorded + "\n";
+    for (const auto& artifact : value.confirmed) {
+        text += artifact.name + " " + artifact.identity.sha256 + "\n";
     }
-    Json formats = Json::array();
-    Json support = Json::array();
-    for (const auto& item : capabilities.input_support) {
-        formats.push_back(item.format);
-        Json modes = {"preserve", "gray"};
-        if (item.binary) {
-            modes.push_back("bw");
-        }
-        support.push_back({{"format", item.format}, {"output_modes", modes}});
-    }
-    return {{"methods", methods}, {"supported_formats", formats}, {"input_support", support}};
+    return text + "Agreement is not authenticity: a digest detects disagreement with "
+                  "expected bytes, it does not identify who produced them.\n";
 }
-Json option_fields(app::Command command) {
-    Json options = Json::array();
-    for (const auto& option : app::option_catalog) {
-        if (!option.scope.contains(command)) {
-            continue;
-        }
-        options.push_back({
-            {"name", option.name},
-            {"metavar", option.metavar},
-            {"description", option.description},
-            {"domain", option.domain},
-            {"methods", option.methods},
-        });
+core::Result<Output> failure_text(const app::ProcessFailure& payload) {
+    auto completed = completed_text(payload.completed);
+    if (!completed) {
+        return std::unexpected(std::move(completed.error()));
     }
-    return options;
-}
-std::string failure_stages(const app::ProcessFailure& payload) {
-    if (!payload.stages) {
-        return {};
+    core::Result<std::string> diagnostics{std::string{}};
+    if (payload.diagnostics) {
+        diagnostics = diagnostics_text(*payload.diagnostics);
     }
-    const auto& stages = *payload.stages;
-    return illumination_text(stages.illumination) + denoising_text(stages.denoising) +
-           restoration_text(stages.restoration) + contrast_text(stages.contrast) +
-           sharpening_text(stages.sharpening);
-}
-Json failure_fields(const app::ProcessFailure& payload) {
-    const Json error = {
-        {"code", payload.error.identifier()},
-        {"message", diagnostic(payload.error)},
+    if (!diagnostics) {
+        return std::unexpected(std::move(diagnostics.error()));
+    }
+    auto warnings = warnings_text(failure_warnings(payload));
+    if (!warnings) {
+        return std::unexpected(std::move(warnings.error()));
+    }
+    return Output{
+        .out = {},
+        .err = std::string(payload.error.identifier()) + ": " +
+               std::string(diagnostic(payload.error)) + "\n" +
+               publication_text(payload.publication) + *completed + *diagnostics + *warnings,
     };
-    Json fields = {{"error", error}, {"publication", publication_name(payload.error.publication)}};
-    if (payload.stages) {
-        const auto& stages = *payload.stages;
-        fields.emplace("illumination", record::illumination_fields(stages.illumination));
-        fields.emplace("denoising", record::denoising_fields(stages.denoising));
-        fields.emplace("restoration", record::restoration_fields(stages.restoration));
-        fields.emplace("contrast", record::contrast_fields(stages.contrast));
-        fields.emplace("sharpening", record::sharpen_fields(stages.sharpening));
-    }
-    return fields;
 }
-Output text_form(const app::Outcome& outcome) {
+core::Result<Output> text_form(const app::Outcome& outcome) {
     return std::visit(
-        [&outcome](const auto& payload) -> Output {
-            using Payload = std::decay_t<decltype(payload)>;
-            if constexpr (std::is_same_v<Payload, app::Help>) {
-                return {.out = help_text(outcome, payload), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::Version>) {
-                return {
+        [&](const auto& payload) -> core::Result<Output> {
+            using Value = std::decay_t<decltype(payload)>;
+            if constexpr (std::is_same_v<Value, app::Help>) {
+                return Output{.out = help_text(outcome, payload), .err = {}};
+            } else if constexpr (std::is_same_v<Value, app::Version>) {
+                return Output{
                     .out = "DocEnhance " + std::string(outcome.build.version) + "\n",
                     .err = {},
                 };
-            } else if constexpr (std::is_same_v<Payload, app::Methods>) {
-                return {.out = methods_text(payload.capabilities.methods), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::Processed>) {
-                return {.out = "Wrote " + payload.output + "\n", .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::PublishedContinuous>) {
-                return {.out = continuous_text(payload), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::Verified>) {
-                std::string text = "Bundle agrees with its record: " + payload.directory + "\n";
-                text += "run " + payload.run + " recorded " + payload.recorded + "\n";
-                for (const auto& artifact : payload.confirmed) {
-                    text += artifact.name + " " + artifact.identity.sha256 + "\n";
+            } else if constexpr (std::is_same_v<Value, app::Methods>) {
+                return Output{.out = methods_text(payload.capabilities.methods), .err = {}};
+            } else if constexpr (std::is_same_v<Value, app::Published>) {
+                auto text = continuous_text(payload);
+                if (!text) {
+                    return std::unexpected(std::move(text.error()));
                 }
-                text += "Agreement is not authenticity: a digest detects disagreement with "
-                        "expected bytes, it does not identify who produced them.\n";
-                return {.out = std::move(text), .err = {}};
+                return Output{.out = std::move(*text), .err = {}};
+            } else if constexpr (std::is_same_v<Value, app::Verified>) {
+                return Output{.out = verified_text(payload), .err = {}};
             } else {
-                return {
-                    .out = {},
-                    .err = std::string(payload.error.identifier()) + ": " +
-                           std::string(diagnostic(payload.error)) + "\n" +
-                           publication_text(payload.error.publication) + failure_stages(payload),
-                };
-            }
-        },
-        outcome.payload);
-}
-Output json_form(const app::Outcome& outcome) {
-    return std::visit(
-        [&outcome](const auto& payload) -> Output {
-            using Payload = std::decay_t<decltype(payload)>;
-            if constexpr (std::is_same_v<Payload, app::Help>) {
-                const Json fields = {
-                    {"usage", app::command_usage(outcome.command)},
-                    {"options", option_fields(outcome.command)},
-                };
-                return {.out = dump(envelope(outcome, fields)), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::Version>) {
-                Json fields = {
-                    {"dependency_lock_sha256", outcome.build.dependency_lock_sha256},
-                    {"platform", outcome.build.platform},
-                    {"compiler", outcome.build.compiler},
-                };
-                fields.update(capability_fields(payload.capabilities));
-                return {.out = dump(envelope(outcome, fields)), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::Methods>) {
-                const auto fields = capability_fields(payload.capabilities);
-                return {.out = dump(envelope(outcome, fields)), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::Processed>) {
-                const Json fields = {
-                    {"binarization", record::binarization_fields(payload.otsu)},
-                    {"rotation_degrees", payload.rotation.degrees()},
-                    {"method", payload.method.id},
-                    {"method_version", payload.method.method_version},
-                    {"output", payload.output},
-                    {"publication", "completed"},
-                    {"record", record::record_fields(payload.run, payload.record)},
-                    {
-                        "source_decoding",
-                        payload.source_decoding ? record::source_fields(*payload.source_decoding)
-                                                : Json(nullptr),
-                    },
-                };
-                return {.out = dump(envelope(outcome, fields)), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::PublishedContinuous>) {
-                return {.out = dump(envelope(outcome, continuous_fields(payload))), .err = {}};
-            } else if constexpr (std::is_same_v<Payload, app::Verified>) {
-                Json confirmed = Json::array();
-                for (const auto& artifact : payload.confirmed) {
-                    confirmed.push_back({
-                        {"path", artifact.name},
-                        {"sha256", artifact.identity.sha256},
-                        {"bytes", artifact.identity.bytes},
-                    });
-                }
-                const Json fields = {
-                    {"directory", payload.directory},
-                    {"run", payload.run},
-                    {"recorded", payload.recorded},
-                    {"confirmed", confirmed},
-                    {"establishes", "artifacts_agree_with_record"},
-                };
-                return {.out = dump(envelope(outcome, fields)), .err = {}};
-            } else {
-                const auto fields = failure_fields(payload);
-                return {.out = dump(envelope(outcome, fields)), .err = {}};
+                return failure_text(payload);
             }
         },
         outcome.payload);
 }
 } // namespace
-Output render(const app::Outcome& outcome, Format format) {
-    return format == Format::json ? json_form(outcome) : text_form(outcome);
+core::Result<Output> render(const app::Outcome& outcome, Format format) {
+    if (format == Format::json) {
+        auto value = response_value(outcome);
+        if (!value) {
+            return std::unexpected(std::move(value.error()));
+        }
+        auto encoded = encode_response(*value);
+        if (!encoded) {
+            return std::unexpected(std::move(encoded.error()));
+        }
+        return Output{.out = encoded->dump(json_indent) + "\n", .err = {}};
+    }
+    return text_form(outcome);
 }
 } // namespace docenhance::report

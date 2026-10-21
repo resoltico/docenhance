@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Generate typed parameters, options, discovery and schemas from reviewed contracts."""
+"""Generate typed parameters, requests, options and discovery from reviewed contracts."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from typing import Any
 
 from capability_reference import render_methods, render_reference
 from method_metadata import metadata_outputs, support_matrix
-from option_cpp import render_options
+from option_cpp import render_execution_limits, render_options
 from parameter_bindings import render_bindings
 from parameter_contract import merged_options
 from parameter_cpp import format_outputs, render_domains
-from parameter_structs import render_parameters
-from parameter_values import invalid
+from parameter_structs import parameter_fields, render_parameters
+from request_types import request_types
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -42,35 +42,20 @@ def outputs() -> dict[Path, str]:
     methods = json.loads((ROOT / "spec/method-contract.json").read_text(encoding="utf-8"))
     options = merged_options(cli, methods)
     support_matrix(cli["formats"])
-    schema = json.loads((ROOT / "spec/command-response.schema.json").read_text(encoding="utf-8"))
-    record = json.loads((ROOT / "spec/run-record.schema.json").read_text(encoding="utf-8"))
-    record_version = record["properties"]["record"]["properties"]["version"]["const"]
-    response_version = schema["properties"]["schema_version"]["const"]
-    if any(type(v) is not int or v < 1 for v in (record_version, response_version)):
-        invalid("Envelope versions must be positive integers")
-    confirmed_limit = next(
-        branch["properties"]["confirmed"]["maxItems"]
-        for branch in schema["oneOf"]
-        if "confirmed" in branch.get("properties", {})
-    )
-    record_header = (
-        "// SPDX-FileCopyrightText: 2026 Ervins Strauhmanis\n"
-        "// SPDX-License-Identifier: MPL-2.0\n"
-        "// Generated from spec/run-record.schema.json by tools/generate_spec.py.\n"
-        "#pragma once\nnamespace docenhance::record {\n"
-        f"inline constexpr unsigned record_version = {record_version}U;\n"
-        "} // namespace docenhance::record\n"
-    )
+    request_data, request_fields = request_types(methods["families"], options)
     result = {
-        ROOT / "include/docenhance/record/record_version.hpp": record_header,
-        ROOT / "include/docenhance/app/options.hpp": render_options(
-            cli, options, response_version, confirmed_limit
-        ),
+        ROOT / "include/docenhance/core/execution_limits.hpp": render_execution_limits(options),
+        ROOT / "include/docenhance/record/method_requests.hpp": request_data,
+        ROOT / "include/docenhance/record/method_request_fields.hpp": request_fields,
+        ROOT / "include/docenhance/app/options.hpp": render_options(cli, options),
         ROOT / "include/docenhance/methods/parameter_domains.hpp": render_domains(
             [option for option in options if option["family"]]
         ),
         ROOT / "include/docenhance/methods/parameters.hpp": render_parameters(
             methods["families"], options
+        ),
+        ROOT / "include/docenhance/methods/parameter_fields.hpp": parameter_fields(
+            methods["families"], {option["name"]: option for option in options}
         ),
         ROOT / "src/app/parameter_bindings.hpp": render_bindings(methods["families"], options),
         ROOT / "docs/cli-reference.md": render_reference(cli, options),

@@ -30,7 +30,7 @@ from parameter_contract import merged_options
 
 EXECUTABLE_MODE = 0o755
 LOCKED_DEPENDENCIES = frozenset(
-    {"zlib", "jpeg", "png", "tiff", "opencv", "lcms", "json", "picosha2", "catch2"}
+    {"zlib", "jpeg", "png", "tiff", "lcms", "json", "picosha2", "catch2", "pocketfft"}
 )
 MIN_CLANG_TIDY_MAJOR = 23
 

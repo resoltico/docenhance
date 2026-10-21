@@ -16,39 +16,42 @@ from jsonschema import Draft202012Validator
 SCHEMA = json.loads((ROOT / "schemas/command-response.schema.json").read_text(encoding="utf-8"))
 
 
-def methods_response() -> dict[str, Any]:
-    """Return one complete, valid response for mutation tests."""
+def response_branch(command: str, member: str) -> dict[str, Any]:
+    """Select the native-emitted closed shape; this is schema testing, not CLI evidence."""
+    return next(
+        branch
+        for branch in SCHEMA["oneOf"]
+        if branch["properties"]["command"]["const"] == command and member in branch["properties"]
+    )
+
+
+def header(command: str, exit_code: int) -> dict[str, Any]:
+    """Use the emitted compiled version while challenging envelope semantics independently."""
+    branch = SCHEMA["oneOf"][0]["properties"]
     return {
         "schema_version": 15,
-        "command": "methods",
-        "version": "0.2.0",
-        "exit_code": 0,
-        "methods": [
-            {
-                "id": "B03",
-                "method_version": 1,
-                "name": "Fixed threshold",
-                "family": "binarization",
-                "selectors": ["fixed"],
-                "parameters": [
-                    {
-                        "option": "--fixed-threshold",
-                        "kind": "decimal",
-                        "domain": "0.5; finite [0,1]",
-                        "description": (
-                            "Black iff the normalized stored grayscale sample is at most T."
-                        ),
-                    }
-                ],
-            }
-        ],
-        "supported_formats": ["png", "jpeg", "tiff"],
-        "input_support": [
-            {"format": "png", "output_modes": ["preserve", "gray", "bw"]},
-            {"format": "jpeg", "output_modes": ["preserve", "gray"]},
-            {"format": "tiff", "output_modes": ["preserve", "gray"]},
-        ],
+        "command": command,
+        "version": branch["version"]["const"],
+        "exit_code": exit_code,
     }
+
+
+def methods_response() -> dict[str, Any]:
+    """Use the actual B03 singleton metadata as a positive schema mutation fixture."""
+    fields = response_branch("methods", "methods")["properties"]
+    methods = next(
+        value for value in fields["methods"]["enum"] if len(value) == 1 and value[0]["id"] == "B03"
+    )
+    return header("methods", 0) | {
+        "methods": copy.deepcopy(methods),
+        "supported_formats": copy.deepcopy(fields["supported_formats"]["const"]),
+        "input_support": copy.deepcopy(fields["input_support"]["const"]),
+    }
+
+
+def failure_context() -> dict[str, Any]:
+    """Synthetic unstarted fields; no runtime acquisition or measurement is claimed."""
+    return {"failed_stage": None, "completed": {}, "diagnostics": None, "warnings": []}
 
 
 class ResponseSchemaTests(unittest.TestCase):
@@ -59,13 +62,20 @@ class ResponseSchemaTests(unittest.TestCase):
         Draft202012Validator.check_schema(SCHEMA)
         Draft202012Validator(SCHEMA).validate(methods_response())
 
-    def test_real_unstarted_response_rejects_invented_work(self) -> None:
-        """A real acquisition refusal carries selection facts, never completed or measured work."""
-        response = json.loads(
-            (ROOT / "tests/fixtures/response/unstarted-continuous.json").read_bytes()
+    def test_current_unstarted_shape_and_obsolete_real_fixture(self) -> None:
+        """Current synthetic absence is closed; retained old real bytes stay obsolete."""
+        old = json.loads((ROOT / "tests/fixtures/response/unstarted-continuous.json").read_bytes())
+        response = (
+            header("process", 3)
+            | failure_context()
+            | {
+                "publication": "not_started",
+                "error": {"code": "E_INPUT", "message": "Refused input"},
+            }
         )
         validator = Draft202012Validator(SCHEMA)
         validator.validate(response)
+        self.assertFalse(validator.is_valid(old))
         for family in ("illumination", "denoising", "restoration", "contrast", "sharpening"):
             for field, value in (
                 ("progress", "completed"),
@@ -73,11 +83,11 @@ class ResponseSchemaTests(unittest.TestCase):
                 ("complete", True),
             ):
                 altered = copy.deepcopy(response)
-                altered[family][field] = value
+                altered[family] = {field: value}
                 with self.subTest(family=family, field=field):
                     self.assertFalse(validator.is_valid(altered))
         altered = copy.deepcopy(response)
-        altered["illumination"]["application"]["gain_capped_fraction"] = 0
+        altered["completed"]["illumination"] = {"gain_capped_fraction": 0}
         self.assertFalse(validator.is_valid(altered))
 
     def test_bad_envelopes_are_rejected(self) -> None:
@@ -100,6 +110,8 @@ class ResponseSchemaTests(unittest.TestCase):
             {"schema_version": 12},
             {"schema_version": 13},
             {"schema_version": 14},
+            {"version": "garbage"},
+            {"version": base["version"] + "\n"},
             {"exit_code": True},
             {"methods": [base["methods"][0] | {"method_version": True}]},
             {"methods": [base["methods"][0] | {"invented": 1}]},
@@ -109,6 +121,7 @@ class ResponseSchemaTests(unittest.TestCase):
             {"error": {"code": "E_INPUT", "message": "bad"}},
         ]
         validator = Draft202012Validator(SCHEMA)
+        change: dict[str, Any]
         for change in mutations:
             with self.subTest(change=change):
                 self.assertFalse(validator.is_valid(base | change))
@@ -117,89 +130,109 @@ class ResponseSchemaTests(unittest.TestCase):
             del missing[name]
             self.assertFalse(validator.is_valid(missing))
 
-    def test_publication_uncertainty_is_distinct(self) -> None:
-        """Unknown publication has one error code and may not claim a safe retry."""
-        response = {
-            "schema_version": 15,
-            "command": "process",
-            "version": "0.2.0",
-            "exit_code": 7,
-            "publication": "unknown",
-            "error": {"code": "E_PUBLICATION_UNKNOWN", "message": "Inspect output"},
-        }
+    def test_uncertainty_cause_does_not_replace_actual_publication_fact(self) -> None:
+        """The typed cause retains exit7; processing publication independently records effects."""
+        response = (
+            header("process", 7)
+            | failure_context()
+            | {
+                "publication": "unknown",
+                "error": {"code": "E_PUBLICATION_UNKNOWN", "message": "Inspect output"},
+            }
+        )
         validator = Draft202012Validator(SCHEMA)
-        validator.validate(response)
-        self.assertFalse(validator.is_valid(response | {"publication": "not_started"}))
+        for publication in ("not_started", "not_published", "completed", "unknown"):
+            validator.validate(response | {"publication": publication})
         self.assertFalse(validator.is_valid(response | {"exit_code": 5}))
-        self.assertFalse(validator.is_valid(response | {"publication": "completed"}))
-
-    def test_unimplemented_capability_never_starts_publication(self) -> None:
-        """An unavailable processing branch has exit four and no execution effects."""
-        response = {
-            "schema_version": 15,
-            "command": "process",
-            "version": "0.6.0",
-            "exit_code": 4,
-            "publication": "not_started",
-            "error": {"code": "E_NOT_IMPLEMENTED", "message": "Unsupported branch"},
-        }
-        validator = Draft202012Validator(SCHEMA)
-        validator.validate(response)
-        for publication in ("not_published", "completed", "unknown"):
-            with self.subTest(publication=publication):
-                self.assertFalse(validator.is_valid(response | {"publication": publication}))
-        self.assertFalse(validator.is_valid(response | {"exit_code": 3}))
-
-    def test_integrity_failure_can_retain_known_publication(self) -> None:
-        """A failed postcommit inspection cannot erase an observed successful rename."""
-        response = {
-            "schema_version": 15,
-            "command": "process",
-            "version": "0.3.0",
-            "exit_code": 5,
-            "publication": "completed",
-            "error": {"code": "E_OUTPUT_VERIFY", "message": "Inspect the published bundle"},
-        }
-        validator = Draft202012Validator(SCHEMA)
-        validator.validate(response)
-        self.assertFalse(validator.is_valid(response | {"publication": "unknown"}))
         self.assertFalse(validator.is_valid(response | {"command": "verify"}))
+
+    def test_non_cancelled_process_causes_admit_independent_publication(self) -> None:
+        """A machine response must not infer actual effects from a general error category."""
+        causes = (
+            ("E_ARGUMENT", 2),
+            ("E_INPUT", 3),
+            ("E_RESOURCE", 4),
+            ("E_OUTPUT", 5),
+            ("E_OUTPUT_VERIFY", 5),
+            ("E_PUBLICATION_UNKNOWN", 7),
+            ("E_NOT_IMPLEMENTED", 4),
+            ("E_METHOD_INAPPLICABLE", 4),
+            ("E_NUMERICAL", 4),
+            ("E_INVARIANT", 8),
+        )
+        validator = Draft202012Validator(SCHEMA)
+        for code, exit_code in causes:
+            response = (
+                header("process", exit_code)
+                | failure_context()
+                | {"error": {"code": code, "message": "Synthetic cause, independent effect"}}
+            )
+            for publication in ("not_started", "not_published", "completed", "unknown"):
+                with self.subTest(code=code, publication=publication):
+                    validator.validate(response | {"publication": publication})
+                    self.assertFalse(
+                        validator.is_valid(response | {"publication": publication, "exit_code": 0})
+                    )
+        unknown = (
+            header("process", 8)
+            | failure_context()
+            | {"publication": "unknown", "error": {"code": "E_INVENTED", "message": "Unknown"}}
+        )
+        self.assertFalse(validator.is_valid(unknown))
+
+    def test_integrity_or_resource_failure_retains_the_actual_publication(self) -> None:
+        """Confirmed completion and uncertainty remain representable after a later failure."""
+        validator = Draft202012Validator(SCHEMA)
+        for code, exit_code in (("E_OUTPUT_VERIFY", 5), ("E_RESOURCE", 4)):
+            response = (
+                header("process", exit_code)
+                | failure_context()
+                | {"publication": "completed", "error": {"code": code, "message": "Retain effects"}}
+            )
+            validator.validate(response)
+            validator.validate(response | {"publication": "unknown"})
+            self.assertFalse(validator.is_valid(response | {"command": "verify"}))
 
     def test_help_options_are_typed(self) -> None:
         """Every option item has the complete closed descriptor shape."""
         response = {
             "schema_version": 15,
             "command": "root",
-            "version": "0.2.0",
+            "version": header("root", 0)["version"],
             "exit_code": 0,
-            "usage": "docenhance COMMAND",
-            "options": [],
+            "usage": response_branch("root", "usage")["properties"]["usage"]["const"],
+            "options": copy.deepcopy(
+                response_branch("root", "usage")["properties"]["options"]["const"]
+            ),
         }
+        if "error" in response:
+            response.update(failure_context())
         validator = Draft202012Validator(SCHEMA)
         validator.validate(response)
         self.assertFalse(validator.is_valid(response | {"options": [{"name": "--help"}]}))
 
     def test_cancellation_cannot_claim_completion_or_uncertainty(self) -> None:
-        """Cancellation has its own status; ambiguous publication is a different outcome."""
-        response = {
-            "schema_version": 15,
-            "command": "process",
-            "version": "0.3.0",
-            "exit_code": 130,
-            "publication": "not_started",
-            "error": {"code": "E_CANCELLED", "message": "Cancelled"},
-        }
+        """Only cancellation has the shared publication restriction; readonly work is empty."""
+        response = (
+            header("process", 130)
+            | failure_context()
+            | {
+                "publication": "not_started",
+                "error": {"code": "E_CANCELLED", "message": "Cancelled"},
+            }
+        )
         validator = Draft202012Validator(SCHEMA)
         validator.validate(response)
         validator.validate(response | {"publication": "not_published"})
-        validator.validate(response | {"command": "verify"})
-        self.assertFalse(
-            validator.is_valid(response | {"command": "verify", "publication": "not_published"})
-        )
+        for command in ("verify", "root", "methods", "version"):
+            validator.validate(response | {"command": command})
+            self.assertFalse(
+                validator.is_valid(response | {"command": command, "publication": "not_published"})
+            )
+        change: dict[str, Any]
         for change in (
             {"publication": "completed"},
             {"publication": "unknown"},
-            {"command": "methods"},
             {"exit_code": 0},
             {"exit_code": 7},
         ):
@@ -211,11 +244,12 @@ class ResponseSchemaTests(unittest.TestCase):
         response: dict[str, Any] = {
             "schema_version": 15,
             "command": "verify",
-            "version": "0.5.0",
+            "version": header("root", 0)["version"],
             "exit_code": 3,
             "publication": "not_started",
             "error": {"code": "E_INPUT", "message": "Refused input"},
         }
+        response.update(failure_context())
         validator = Draft202012Validator(SCHEMA)
         for command in ("verify", "root", "methods", "version"):
             validator.validate(response | {"command": command})
@@ -232,22 +266,29 @@ class ResponseSchemaTests(unittest.TestCase):
         response: dict[str, Any] = {
             "schema_version": 15,
             "command": "verify",
-            "version": "0.5.0",
+            "version": header("root", 0)["version"],
             "exit_code": 0,
             "directory": "bundle",
             "run": "a" * 32,
             "recorded": "2026-10-02T00:00:00Z",
             "establishes": "artifacts_agree_with_record",
-            "confirmed": [{"path": "result.png", "sha256": "b" * 64, "bytes": 1}],
+            "confirmed": [
+                {"path": "result.png", "sha256": "b" * 64, "bytes": 1},
+                {"path": "run.json", "sha256": "c" * 64, "bytes": 1},
+            ],
         }
+        if "error" in response:
+            response.update(failure_context())
         validator = Draft202012Validator(SCHEMA)
         validator.validate(response)
         changes: list[dict[str, Any]] = [
             {"directory": ""},
             {"recorded": "yesterday"},
             {"confirmed": []},
+            {"confirmed": response["confirmed"][:1]},
             {"confirmed": response["confirmed"] * 17},
         ]
+        change: dict[str, Any]
         for change in changes:
             with self.subTest(change=change):
                 self.assertFalse(validator.is_valid(response | change))
@@ -257,6 +298,7 @@ class ResponseSchemaTests(unittest.TestCase):
             "../foreign",
             "a/../foreign",
             "a//b",
+            "a\n//b",
             "a/",
             "a\\b",
             "a:b",
@@ -269,3 +311,46 @@ class ResponseSchemaTests(unittest.TestCase):
         altered = copy.deepcopy(response)
         altered["confirmed"][0]["bytes"] = 0
         self.assertFalse(validator.is_valid(altered))
+
+    def test_failed_stage_order_is_distinct_from_general_error_publication(self) -> None:
+        """A real typed earlier fact cannot appear at or after the reported failed family."""
+        gamma = {
+            "method": "C02",
+            "disposition": "no_change",
+            "reason": "identity_gamma",
+            "counts": {"eligible": 1, "protected": 0, "evaluated": 0, "changed": 0},
+        }
+        response = (
+            header("process", 4)
+            | failure_context()
+            | {
+                "publication": "not_started",
+                "failed_stage": "sharpening",
+                "completed": {"contrast": gamma},
+                "error": {"code": "E_RESOURCE", "message": "Synthetic later stage refusal"},
+            }
+        )
+        validator = Draft202012Validator(SCHEMA)
+        validator.validate(response)
+        change: dict[str, Any]
+        for change in (
+            {"failed_stage": "contrast"},
+            {"failed_stage": "illumination"},
+            {"publication": "completed"},
+        ):
+            with self.subTest(change=change):
+                self.assertFalse(validator.is_valid(response | change))
+        readonly = (
+            header("verify", 4)
+            | failure_context()
+            | {"publication": "not_started", "error": response["error"]}
+        )
+        validator.validate(readonly)
+        for change in (
+            {"completed": {"contrast": gamma}},
+            {"failed_stage": "sharpening"},
+            {"warnings": ["W_DEPTH_REDUCED"]},
+            {"diagnostics": {"threads": 1, "memory_limit_mib": 1024, "charged_peak_bytes": 1}},
+        ):
+            with self.subTest(readonly_change=change):
+                self.assertFalse(validator.is_valid(readonly | change))

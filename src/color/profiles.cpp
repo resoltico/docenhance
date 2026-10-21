@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "context.hpp"
+#include "docenhance/color/profile.hpp"
 #include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/memory.hpp"
 #include "docenhance/core/result.hpp"
@@ -67,6 +68,13 @@ Profile linear_rgb_profile(const Context& context) {
     std::array<cmsToneCurve*, image::rgb_channels> curves{curve.get(), curve.get(), curve.get()};
     return Profile{cmsCreateRGBProfileTHR(context.get(), &d65, &primaries, curves.data())};
 }
+Profile linear_gray_profile(const Context& context) {
+    const Curve curve{cmsBuildGamma(context.get(), 1.0)};
+    if (!curve) {
+        return {};
+    }
+    return Profile{cmsCreateGrayProfileTHR(context.get(), cmsD50_xyY(), curve.get())};
+}
 core::Result<core::Buffer> output_profile(const Context& context, core::Budget& budget, bool gray,
                                           const core::Cancellation& cancellation) {
     if (cancellation.requested(core::Checkpoint::verification)) {
@@ -100,5 +108,16 @@ core::Result<core::Buffer> output_profile(const Context& context, core::Budget& 
         return std::unexpected(context.error("Cannot finalize canonical output profile identity"));
     }
     return serialize(context, fixed.get(), budget);
+}
+core::Result<core::Buffer> make_output_profile(core::Budget& budget, bool gray,
+                                               const core::Cancellation& cancellation) {
+    if (cancellation.requested(core::Checkpoint::verification)) {
+        return core::cancelled();
+    }
+    const Context context{budget};
+    if (!context.good()) {
+        return std::unexpected(context.error("Cannot create bounded output profile context"));
+    }
+    return output_profile(context, budget, gray, cancellation);
 }
 } // namespace docenhance::color

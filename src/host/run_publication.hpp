@@ -2,80 +2,27 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/app/process.hpp"
-#include "docenhance/color/converter.hpp"
-#include "docenhance/core/cancellation.hpp"
 #include "docenhance/core/identity.hpp"
 #include "docenhance/core/memory.hpp"
-#include "docenhance/core/result.hpp"
-#include "docenhance/image/continuous.hpp"
-#include "docenhance/image/geometry.hpp"
-#include "docenhance/image/plane.hpp"
-#include "docenhance/image/source_facts.hpp"
-#include "docenhance/methods/binarization.hpp"
-#include "docenhance/methods/contrast.hpp"
-#include "docenhance/methods/denoising.hpp"
-#include "docenhance/methods/illumination.hpp"
-#include "docenhance/methods/otsu.hpp"
-#include "docenhance/methods/restoration.hpp"
-#include "docenhance/methods/sharpening.hpp"
-#include "docenhance/methods/stages.hpp"
+#include "docenhance/exec/scheduler.hpp"
+#include "docenhance/pipeline/render.hpp"
 #include "docenhance/record/record.hpp"
 
-#include <cstdint>
 #include <functional>
 #include <optional>
 #include <string>
-#include <variant>
-
 namespace docenhance::host {
-// Publishing a run: the image, the mask that was in force and the record describing both, written
-// as one inventory and committed together. The record comes last because it carries their digests.
-
-// The mask actually applied, and the identity of the file it was read from. The stored asset is
-// the canonical plane that excluded samples, which may differ in depth from the file supplied.
-struct MaskFacts {
-    core::ContentIdentity supplied;
-    image::PlaneView<const std::uint8_t> canonical;
-};
-
-// Representation selects its matching operation and observation owners together.
-struct BinaryArtwork {
-    image::PlaneView<const std::uint8_t> samples;
-    methods::Binarization method;
-    std::optional<methods::OtsuObservation> otsu = std::nullopt;
-};
-struct ContinuousArtwork {
-    std::reference_wrapper<image::RowSource> rows;
-    image::Continuous operation;
-    std::reference_wrapper<const color::Converter> converter;
-    std::optional<MaskFacts> mask;
-    std::reference_wrapper<const methods::StageObservations> stages;
-};
-using Artwork = std::variant<BinaryArtwork, ContinuousArtwork>;
+// Concrete synchronous handoff. Every encoded owner stays live through writes and reconciliation.
 struct RunPublication {
-    std::reference_wrapper<const std::string> output_directory;
-    Artwork artwork;
+    std::reference_wrapper<const app::ProcessRequest> request;
+    std::reference_wrapper<pipeline::Rendering> rendering;
     std::reference_wrapper<core::Budget> budget;
-    std::reference_wrapper<const core::Cancellation> cancellation;
-    std::reference_wrapper<const record::RunContext> context;
+    std::reference_wrapper<const exec::Scheduler> scheduler;
+    record::RunContext context;
     core::ContentIdentity source;
     std::string source_name;
-    std::optional<image::SourceFacts> source_decoding = std::nullopt;
-    image::QuarterTurn rotation = image::QuarterTurn::identity();
+    std::optional<core::ContentIdentity> mask;
+    std::reference_wrapper<bool> publication_started;
 };
-
-// What was published, and what the response needs to identify it.
-struct PublishedRun {
-    std::string output;
-    std::string run;
-    core::ContentIdentity record;
-    record::Verification verification = record::Verification::not_performed;
-    // What the conversion observed while the image was produced, as the record states it.
-    std::optional<image::ConversionReport> conversion;
-};
-
-[[nodiscard]] core::Result<app::PublishedContinuous>
-published_continuous(PublishedRun published, image::SourceFacts source,
-                     methods::StageObservations& reports, image::AlphaPolicy alpha);
-[[nodiscard]] core::Result<PublishedRun> publish_run(const RunPublication& run);
+[[nodiscard]] app::ProcessResult publish_run(RunPublication& run, app::ProcessFailure& failure);
 } // namespace docenhance::host

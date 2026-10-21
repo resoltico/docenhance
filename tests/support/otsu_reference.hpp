@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "docenhance/image/plane.hpp"
-#include "docenhance/methods/otsu.hpp"
 
 #include <algorithm>
 #include <array>
@@ -12,6 +11,12 @@
 #include <span>
 
 namespace docenhance::tests {
+// Independent byte recipe expectations used only after exact Q=257*byte fixture embedding.
+struct OtsuByteReference {
+    std::uint16_t threshold_bin = 2047;
+    bool single_bin_fallback = false;
+    bool operator==(const OtsuByteReference&) const = default;
+};
 inline std::uint16_t otsu_reference_bin(std::uint8_t sample) {
     constexpr double scale = 4095.0 / 255.0;
     return static_cast<std::uint16_t>(std::floor((static_cast<double>(sample) * scale) + 0.5));
@@ -43,7 +48,7 @@ inline double otsu_reference_score(std::span<const std::uint64_t> counts, std::u
 // Scores are constant from each occupied bin until the next occupied bin. Evaluating their
 // first thresholds retains all 4095 candidates' scores and earliest eligible threshold exactly.
 // The byte-frequency class partition and floating quantizer remain independent of production.
-inline methods::OtsuObservation otsu_reference(image::PlaneView<const std::uint8_t> source) {
+inline OtsuByteReference otsu_reference(image::PlaneView<const std::uint8_t> source) {
     std::array<std::uint64_t, 256> counts{};
     for (std::uint32_t y = 0; y < source.height(); ++y) {
         for (const auto sample : source.row(y)) {

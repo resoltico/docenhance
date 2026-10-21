@@ -78,7 +78,7 @@ def representation_cases() -> list[Case]:
                 ("--alpha", "reject"),
                 exit_code=3,
                 error="E_INPUT",
-                publication="not_published",
+                publication="not_started",
             )
         )
     for depth in ("8", "16"):

@@ -6,6 +6,6 @@
 #include "docenhance/app/process.hpp"
 #include "docenhance/core/result.hpp"
 namespace docenhance::app {
-[[nodiscard]] core::Result<ProcessPlan> prepare_plan(const Invocation& invocation,
-                                                     const SuppliedOptions& supplied);
+[[nodiscard]] core::Result<methods::Plan> prepare_plan(const Invocation& invocation,
+                                                       const SuppliedOptions& supplied);
 } // namespace docenhance::app

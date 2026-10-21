@@ -19,6 +19,7 @@ namespace docenhance::core {
 struct ContentIdentity {
     std::string sha256; // 64 lowercase hexadecimal characters
     std::uint64_t bytes = 0;
+    bool operator==(const ContentIdentity&) const = default;
 };
 // A file named relative to a directory, and the identity of what it holds.
 struct NamedContent {
@@ -30,6 +31,9 @@ inline constexpr std::size_t sha256_hex_length = 64;
 
 inline constexpr std::size_t run_identity_hex_length = 32;
 [[nodiscard]] bool valid_hexadecimal(std::string_view value, std::size_t length);
+inline constexpr std::size_t instant_length = 20;
+inline constexpr std::string_view instant_pattern =
+    "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$";
 [[nodiscard]] bool valid_instant(std::string_view value);
 
 // The identity of this build, as the build system recorded it.

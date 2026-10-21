@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Frozen offline quality evaluation plan and factual report v2",
+  "title": "Frozen offline quality v3 plan and completed quality_run",
   "oneOf": [
     {
       "$ref": "#/$defs/plan"
     },
     {
-      "$ref": "#/$defs/report"
+      "$ref": "#/$defs/quality_run"
     }
   ],
   "$defs": {
@@ -62,12 +62,13 @@
       ],
       "properties": {
         "protocol_version": {
-          "const": 2
+          "const": 3
         },
         "protocol": {
           "type": "object",
           "additionalProperties": false,
           "required": [
+            "evidence_contract",
             "source_commit",
             "executable_sha256",
             "frozen_corpus_sha256",
@@ -81,6 +82,9 @@
             "claim_policy"
           ],
           "properties": {
+            "evidence_contract": {
+              "const": "docenhance-quality-v3"
+            },
             "source_commit": {
               "type": "string",
               "pattern": "^[0-9a-f]{40}$"
@@ -417,11 +421,12 @@
         "clearance",
         "build_commit_binding",
         "evidence",
-        "report_sha256"
+        "report_sha256",
+        "errors"
       ],
       "properties": {
         "protocol_version": {
-          "const": 2
+          "const": 3
         },
         "scope": {
           "type": "string",
@@ -525,7 +530,7 @@
             "required": [
               "sample",
               "roles",
-              "fidelity_errors",
+              "validation",
               "prior_reviews",
               "reviews",
               "review_revisions",
@@ -554,13 +559,6 @@
                   "replicate": {
                     "$ref": "#/$defs/role_report"
                   }
-                }
-              },
-              "fidelity_errors": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "minLength": 1
                 }
               },
               "prior_reviews": {
@@ -648,6 +646,9 @@
                     "uniqueItems": true
                   }
                 }
+              },
+              "validation": {
+                "$ref": "#/$defs/validation_errors"
               }
             }
           }
@@ -655,6 +656,9 @@
         "report_sha256": {
           "type": "string",
           "pattern": "^[0-9a-f]{64}$"
+        },
+        "errors": {
+          "$ref": "#/$defs/run_errors"
         }
       }
     },
@@ -1069,11 +1073,12 @@
       "required": [
         "outcome",
         "declared",
-        "errors",
-        "record_sha256",
-        "replay_argv",
-        "replay_attempt",
-        "observed_publication"
+        "original",
+        "scored_verify",
+        "replay_process",
+        "replay_verify",
+        "validation",
+        "record_sha256"
       ],
       "properties": {
         "outcome": {
@@ -1087,151 +1092,31 @@
         "declared": {
           "$ref": "#/$defs/role"
         },
-        "errors": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
+        "original": {
+          "$ref": "#/$defs/original"
+        },
+        "scored_verify": {
+          "$ref": "#/$defs/attempt"
+        },
+        "replay_process": {
+          "$ref": "#/$defs/attempt"
+        },
+        "replay_verify": {
+          "$ref": "#/$defs/attempt"
+        },
+        "validation": {
+          "$ref": "#/$defs/validation_errors"
         },
         "record_sha256": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
-        "replay_argv": {
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "string"
-          }
-        },
-        "replay_attempt": {
           "oneOf": [
             {
               "type": "null"
             },
             {
-              "$ref": "#/$defs/replay_attempt"
-            }
-          ]
-        },
-        "observed_publication": {
-          "enum": [
-            "not_started",
-            "not_published",
-            "completed",
-            "unknown"
-          ]
-        }
-      }
-    },
-    "replay_attempt": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "argv",
-        "stdout",
-        "stderr",
-        "exit_code",
-        "timed_out",
-        "response",
-        "publication",
-        "outcome",
-        "errors",
-        "artifact_directory",
-        "response_truncated"
-      ],
-      "properties": {
-        "argv": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "minItems": 6
-        },
-        "stdout": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "path",
-            "sha256"
-          ],
-          "properties": {
-            "path": {
-              "type": "string",
-              "minLength": 1
-            },
-            "sha256": {
               "type": "string",
               "pattern": "^[0-9a-f]{64}$"
             }
-          }
-        },
-        "stderr": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": [
-            "path",
-            "sha256"
-          ],
-          "properties": {
-            "path": {
-              "type": "string",
-              "minLength": 1
-            },
-            "sha256": {
-              "type": "string",
-              "pattern": "^[0-9a-f]{64}$"
-            }
-          }
-        },
-        "exit_code": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "minimum": -2147483648,
-          "maximum": 4294967295
-        },
-        "timed_out": {
-          "type": "boolean"
-        },
-        "response": {
-          "type": [
-            "object",
-            "null"
           ]
-        },
-        "publication": {
-          "enum": [
-            "not_started",
-            "not_published",
-            "completed",
-            "unknown"
-          ]
-        },
-        "outcome": {
-          "enum": [
-            "completed",
-            "failed"
-          ]
-        },
-        "errors": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "artifact_directory": {
-          "type": "string",
-          "minLength": 1
-        },
-        "response_truncated": {
-          "type": "boolean"
         }
       }
     },
@@ -1307,6 +1192,1403 @@
             "natural_document",
             "synthetic_control"
           ]
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "errno",
+        "winerror",
+        "subject"
+      ],
+      "properties": {
+        "code": {
+          "enum": [
+            "admission_closed",
+            "append_flush",
+            "append_write",
+            "build",
+            "close",
+            "comparator",
+            "deadline_exceeded",
+            "delivery",
+            "fidelity",
+            "final_close",
+            "final_flush",
+            "final_write",
+            "finished_persist",
+            "flush",
+            "geometry",
+            "hash",
+            "header_flush",
+            "header_write",
+            "identity_mismatch",
+            "interpret_stdout",
+            "join_stderr_reader",
+            "join_stdout_reader",
+            "launch",
+            "mask",
+            "metadata_unavailable",
+            "no_child_admission",
+            "not_eligible",
+            "open_stderr",
+            "open_stdout",
+            "overflow",
+            "plan",
+            "prepare_argv",
+            "prepare_directory",
+            "prepared_persist",
+            "prior_reviews",
+            "raw_stderr",
+            "raw_stdout",
+            "read",
+            "reap_producer",
+            "record",
+            "record_agreement",
+            "referenced_evidence",
+            "repetition",
+            "response_schema",
+            "role_identity",
+            "schema_refused",
+            "serialization_allowance",
+            "source",
+            "start_stderr_reader",
+            "start_stdout_reader",
+            "stat",
+            "stop_producer",
+            "storage_admission",
+            "unexpected_exception",
+            "wait",
+            "work_index",
+            "write"
+          ]
+        },
+        "errno": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 2147483647
+            }
+          ]
+        },
+        "winerror": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
+          ]
+        },
+        "subject": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0
+            }
+          ]
+        }
+      }
+    },
+    "validation_errors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "raw_stdout",
+        "raw_stderr",
+        "delivery",
+        "source",
+        "build",
+        "record",
+        "role_identity",
+        "repetition",
+        "comparator",
+        "geometry",
+        "mask",
+        "fidelity",
+        "prior_reviews"
+      ],
+      "properties": {
+        "raw_stdout": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "raw_stderr": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "delivery": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "source": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "build": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "record": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "role_identity": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "repetition": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "comparator": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "geometry": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "mask": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "fidelity": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "prior_reviews": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        }
+      }
+    },
+    "run_errors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan",
+        "referenced_evidence",
+        "work_index",
+        "serialization_allowance",
+        "storage_admission",
+        "no_child_admission",
+        "header_write",
+        "header_flush",
+        "append_write",
+        "append_flush",
+        "final_write",
+        "final_flush",
+        "final_close"
+      ],
+      "properties": {
+        "plan": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "referenced_evidence": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "work_index": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "serialization_allowance": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "storage_admission": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "no_child_admission": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "header_write": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "header_flush": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "append_write": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "append_flush": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "final_write": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "final_flush": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "final_close": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        }
+      }
+    },
+    "attempt_errors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prepare_directory",
+        "prepare_argv",
+        "open_stdout",
+        "open_stderr",
+        "prepared_persist",
+        "launch",
+        "start_stdout_reader",
+        "start_stderr_reader",
+        "wait",
+        "interpret_stdout",
+        "response_schema",
+        "record_agreement"
+      ],
+      "properties": {
+        "prepare_directory": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "prepare_argv": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "open_stdout": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "open_stderr": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "prepared_persist": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "launch": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "start_stdout_reader": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "start_stderr_reader": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "wait": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "interpret_stdout": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "response_schema": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "record_agreement": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        }
+      }
+    },
+    "cleanup_errors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stop_producer",
+        "reap_producer",
+        "join_stdout_reader",
+        "join_stderr_reader",
+        "finished_persist"
+      ],
+      "properties": {
+        "stop_producer": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "reap_producer": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "join_stdout_reader": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "join_stderr_reader": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "finished_persist": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        }
+      }
+    },
+    "stream_errors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "read",
+        "write",
+        "flush",
+        "close",
+        "stat",
+        "hash",
+        "overflow"
+      ],
+      "properties": {
+        "read": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "write": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "flush": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "close": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "stat": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "hash": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        },
+        "overflow": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        }
+      }
+    },
+    "stream": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "read_state",
+        "retention_state",
+        "observed_prefix_bytes",
+        "observed_extent",
+        "retained_bytes",
+        "sha256",
+        "closed",
+        "errors"
+      ],
+      "properties": {
+        "path": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "read_state": {
+          "enum": [
+            "not_started",
+            "eof",
+            "cut_short",
+            "unavailable"
+          ]
+        },
+        "retention_state": {
+          "enum": [
+            "not_started",
+            "complete",
+            "prefix",
+            "unavailable"
+          ]
+        },
+        "observed_prefix_bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            }
+          ]
+        },
+        "observed_extent": {
+          "enum": [
+            "exact",
+            "at_least",
+            "unavailable"
+          ]
+        },
+        "retained_bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9223372036854775807
+            }
+          ]
+        },
+        "sha256": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          ]
+        },
+        "closed": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "errors": {
+          "$ref": "#/$defs/stream_errors"
+        }
+      }
+    },
+    "attempt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "role_index",
+        "source_slot",
+        "requested_argv",
+        "argv",
+        "artifact_directory",
+        "launch_state",
+        "pid",
+        "exit_code",
+        "timed_out",
+        "direct_join",
+        "descendant_cleanup",
+        "stdout",
+        "stderr",
+        "response",
+        "response_origin",
+        "publication",
+        "outcome",
+        "primary_error",
+        "errors",
+        "cleanup_errors"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "replay_process",
+            "scored_verify",
+            "replay_verify"
+          ]
+        },
+        "role_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "source_slot": {
+          "enum": [
+            "scored",
+            "replay"
+          ]
+        },
+        "requested_argv": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "argv": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "artifact_directory": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "launch_state": {
+          "enum": [
+            "not_started",
+            "may_have_started",
+            "child_returned",
+            "joined"
+          ]
+        },
+        "pid": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4294967295
+            }
+          ]
+        },
+        "exit_code": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": -2147483648,
+              "maximum": 4294967295
+            }
+          ]
+        },
+        "timed_out": {
+          "type": "boolean"
+        },
+        "direct_join": {
+          "enum": [
+            "not_started",
+            "unconfirmed",
+            "confirmed"
+          ]
+        },
+        "descendant_cleanup": {
+          "enum": [
+            "not_applicable",
+            "unconfirmed",
+            "confirmed"
+          ]
+        },
+        "stdout": {
+          "$ref": "#/$defs/stream"
+        },
+        "stderr": {
+          "$ref": "#/$defs/stream"
+        },
+        "response": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "response_origin": {
+          "enum": [
+            null,
+            "complete_pipe_bytes",
+            "identity_bound_file"
+          ]
+        },
+        "publication": {
+          "enum": [
+            null,
+            "not_started",
+            "not_published",
+            "completed",
+            "unknown"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "completed",
+            "failed"
+          ]
+        },
+        "primary_error": {
+          "enum": [
+            null,
+            "errors.prepare_directory",
+            "errors.prepare_argv",
+            "errors.open_stdout",
+            "errors.open_stderr",
+            "errors.prepared_persist",
+            "errors.launch",
+            "errors.start_stdout_reader",
+            "errors.start_stderr_reader",
+            "errors.wait",
+            "errors.interpret_stdout",
+            "errors.response_schema",
+            "errors.record_agreement",
+            "cleanup_errors.stop_producer",
+            "cleanup_errors.reap_producer",
+            "cleanup_errors.join_stdout_reader",
+            "cleanup_errors.join_stderr_reader",
+            "cleanup_errors.finished_persist",
+            "stdout.errors.read",
+            "stdout.errors.write",
+            "stdout.errors.flush",
+            "stdout.errors.close",
+            "stdout.errors.stat",
+            "stdout.errors.hash",
+            "stdout.errors.overflow",
+            "stderr.errors.read",
+            "stderr.errors.write",
+            "stderr.errors.flush",
+            "stderr.errors.close",
+            "stderr.errors.stat",
+            "stderr.errors.hash",
+            "stderr.errors.overflow"
+          ]
+        },
+        "errors": {
+          "$ref": "#/$defs/attempt_errors"
+        },
+        "cleanup_errors": {
+          "$ref": "#/$defs/cleanup_errors"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "replay_process"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "requested_argv": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 6
+              },
+              "publication": {
+                "enum": [
+                  "not_started",
+                  "not_published",
+                  "completed",
+                  "unknown"
+                ]
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "publication": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "original": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role_index",
+        "declared",
+        "stdout",
+        "stderr",
+        "response",
+        "observed_publication",
+        "errors"
+      ],
+      "properties": {
+        "role_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "declared": {
+          "$ref": "#/$defs/role"
+        },
+        "stdout": {
+          "$ref": "#/$defs/stream"
+        },
+        "stderr": {
+          "$ref": "#/$defs/stream"
+        },
+        "response": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "observed_publication": {
+          "enum": [
+            "not_started",
+            "not_published",
+            "completed",
+            "unknown"
+          ]
+        },
+        "errors": {
+          "$ref": "#/$defs/validation_errors"
+        }
+      }
+    },
+    "work_index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "role_index",
+        "kind",
+        "source_slot",
+        "requested_argv",
+        "argv",
+        "planned_directory",
+        "planned_target",
+        "planned_stdout",
+        "planned_stderr"
+      ],
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "role_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "kind": {
+          "enum": [
+            "scored_verify",
+            "replay_process",
+            "replay_verify"
+          ]
+        },
+        "source_slot": {
+          "enum": [
+            "scored",
+            "replay"
+          ]
+        },
+        "requested_argv": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "argv": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            }
+          ]
+        },
+        "planned_directory": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "planned_target": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "planned_stdout": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        },
+        "planned_stderr": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "minLength": 1
+            }
+          ]
+        }
+      }
+    },
+    "intended": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "plan",
+        "referenced_evidence",
+        "invocations"
+      ],
+      "properties": {
+        "plan": {
+          "$ref": "#/$defs/plan"
+        },
+        "referenced_evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "reference",
+              "value"
+            ],
+            "properties": {
+              "reference": {
+                "$ref": "#/$defs/reference"
+              },
+              "value": {
+                "type": [
+                  "object",
+                  "null"
+                ]
+              }
+            }
+          }
+        },
+        "invocations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/work_index"
+          }
+        }
+      }
+    },
+    "event": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "event",
+            "role_index",
+            "observation"
+          ],
+          "properties": {
+            "event": {
+              "const": "original_observed"
+            },
+            "role_index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "observation": {
+              "$ref": "#/$defs/original"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "event",
+            "invocation_index",
+            "observation"
+          ],
+          "properties": {
+            "event": {
+              "const": "invocation_prepared"
+            },
+            "invocation_index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "observation": {
+              "$ref": "#/$defs/attempt"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "event",
+            "invocation_index",
+            "observation"
+          ],
+          "properties": {
+            "event": {
+              "const": "invocation_finished"
+            },
+            "invocation_index": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "observation": {
+              "$ref": "#/$defs/attempt"
+            }
+          }
+        }
+      ]
+    },
+    "terminal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "accounted_roles",
+        "accounted_invocations",
+        "event_count",
+        "launch_admission",
+        "closure_reason"
+      ],
+      "properties": {
+        "state": {
+          "const": "finished"
+        },
+        "accounted_roles": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accounted_invocations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "launch_admission": {
+          "enum": [
+            "open",
+            "closed"
+          ]
+        },
+        "closure_reason": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/issue"
+            }
+          ]
+        }
+      }
+    },
+    "quality_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "protocol_version",
+        "evidence_contract",
+        "protocol_sha256",
+        "intended",
+        "events",
+        "report",
+        "terminal"
+      ],
+      "properties": {
+        "kind": {
+          "const": "quality_run"
+        },
+        "protocol_version": {
+          "const": 3
+        },
+        "evidence_contract": {
+          "const": "docenhance-quality-v3"
+        },
+        "protocol_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "intended": {
+          "$ref": "#/$defs/intended"
+        },
+        "events": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/event"
+          }
+        },
+        "report": {
+          "$ref": "#/$defs/report"
+        },
+        "terminal": {
+          "$ref": "#/$defs/terminal"
         }
       }
     }

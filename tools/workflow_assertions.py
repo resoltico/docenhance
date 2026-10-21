@@ -38,6 +38,39 @@ def require_evidence_upload(
     return step
 
 
+def require_native_diagnostics(
+    job: dict[str, Any], preset: str, identity: str, after: dict[str, Any]
+) -> None:
+    """Retain only bounded compressed native diagnostics after the owning build."""
+    name = "Retain complete native diagnostics"
+    matches = [item for item in job.get("steps", []) if item.get("name") == name]
+    if len(matches) != 1:
+        msg = "Required native diagnostic upload is missing or duplicated"
+        raise ValueError(msg)
+    step = matches[0]
+    prefix = f"out/{preset}/app/native-*/"
+    expected = {
+        "name": f"native-${{{{ matrix.{identity} }}}}"
+        "-${{ github.run_id }}-${{ github.run_attempt }}",
+        "path": "\n".join(
+            prefix + suffix for suffix in ("ctest-output*.gz*", "ctest.xml.gz*", "native-*.json")
+        )
+        + "\n",
+        "if-no-files-found": "error",
+        "compression-level": "0",
+        "retention-days": "7",
+    }
+    if (
+        step.get("uses") != "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+        or step.get("if") != "always()"
+        or step.get("with") != expected
+        or step.get("continue-on-error", "false") != "false"
+        or job["steps"].index(step) <= job["steps"].index(after)
+    ):
+        msg = "Required native diagnostic upload has unsafe settings or ordering"
+        raise ValueError(msg)
+
+
 def aggregate_job(document: dict[str, Any]) -> None:
     """The always-running aggregate refuses every non-success result from every required job."""
     names = set(JOB_TITLES) - {"gate"}
@@ -88,10 +121,13 @@ def action_errors(document: dict[str, Any]) -> list[str]:
     return errors
 
 
-def required_job(document: dict[str, Any], name: str) -> dict[str, Any]:
-    """Required execution jobs cannot be conditional, optional or remapped by defaults."""
+def required_job(
+    document: dict[str, Any], name: str, *, condition: str | None = None
+) -> dict[str, Any]:
+    """Required jobs retain only the exact reviewed route condition and fatal execution."""
     job: dict[str, Any] = document["jobs"][name]
-    if "if" in job or job.get("continue-on-error", "false") != "false" or "defaults" in job:
+    invalid_condition = "if" in job if condition is None else job.get("if") != condition
+    if invalid_condition or job.get("continue-on-error", "false") != "false" or "defaults" in job:
         msg = f"Required job is conditional, optional or changes execution defaults: {name}"
         raise ValueError(msg)
     if "needs" in job:

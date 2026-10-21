@@ -1,13 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
-#include "docenhance/color/converter.hpp"
+#include "docenhance/color/interpretation.hpp"
 #include "docenhance/core/memory.hpp"
-#include "docenhance/image/continuous.hpp"
+#include "docenhance/image/numeric.hpp"
+#include "docenhance/image/output.hpp"
 #include "docenhance/image/plane.hpp"
 #include "docenhance/image/raster.hpp"
 #include "fuzz_input.hpp"
 #include "oracle.hpp"
+#include "png_depth_fixture.hpp"
 
 #include <algorithm>
 #include <array>
@@ -90,13 +92,6 @@ inline std::array<std::uint16_t, 4> source_pixel(FuzzInput& input, unsigned dept
     }
     return pixel;
 }
-inline unsigned oracle_sample(std::span<const std::uint8_t> row, std::size_t& at, unsigned depth) {
-    unsigned result = row.subspan(at++, 1).front();
-    if (depth == 16) {
-        result = (result << 8U) | row.subspan(at++, 1).front();
-    }
-    return result;
-}
 inline void fill_source(ColorFixture& f, FuzzInput& input, image::Raster& source) {
     for (std::uint32_t y = 0; y < f.height; ++y) {
         const auto row = source.pixels.view().row(y);
@@ -109,38 +104,72 @@ inline void fill_source(ColorFixture& f, FuzzInput& input, image::Raster& source
         }
     }
 }
-inline void compare_row(const ColorFixture& f, std::span<const std::uint8_t> row, std::uint32_t y) {
+inline void compare_block(const ColorFixture& f, std::span<const double> linear, std::uint32_t y,
+                          std::uint32_t first) {
     const unsigned channels = f.gray ? 1 : 3;
-    const auto width = f.orientation >= 5 ? f.height : f.width;
-    std::size_t at = 0;
-    for (std::uint32_t x = 0; x < width; ++x) {
-        const auto expected = expected_pixel(f, oriented_index(f, x, y));
+    const double maximum = f.output_depth == 16 ? 65535 : 255;
+    for (std::size_t pixel = 0; pixel < linear.size() / 3; ++pixel) {
+        const auto rgb = linear.subspan(pixel * 3, 3);
+        const auto expected =
+            expected_pixel(f, oriented_index(f, first + static_cast<std::uint32_t>(pixel), y));
+        // Gray output still extracts RGB from this RGBA source; output Y is not a source category.
+        const double luminance = (0.2126 * rgb.front()) + (0.7152 * rgb.subspan(1).front()) +
+                                 (0.0722 * rgb.subspan(2).front());
         for (unsigned c = 0; c < channels; ++c) {
-            const auto actual = oracle_sample(row, at, f.output_depth);
+            const auto encoded = image::srgb_encode(f.gray ? luminance : rgb.subspan(c).front());
+            const auto actual = static_cast<std::uint16_t>(
+                std::floor((maximum * std::clamp(encoded, 0.0, 1.0)) + 0.5));
             require(actual == expected.at(c), "independent scalar color sample");
         }
     }
 }
-inline void compare_rows(const ColorFixture& f, color::Converter& converter, core::Budget& budget) {
-    const auto shape = converter.descriptor().shape;
+inline void compare_rows(const ColorFixture& f, color::Interpretation& interpreter,
+                         core::Budget& budget) {
+    const auto descriptor = interpreter.descriptor();
+    const auto shape = descriptor.output;
     const auto width = f.orientation >= 5 ? f.height : f.width;
     const auto height = f.orientation >= 5 ? f.width : f.height;
-    require(shape.width == width && shape.height == height && shape.depth.bits() == f.output_depth,
+    require(shape.width == width && shape.height == height &&
+                shape.depth.bits() == f.output_depth &&
+                shape.model == (f.gray ? image::SampleModel::gray : image::SampleModel::rgb),
             "independent oriented color shape");
-    const unsigned channels = f.gray ? 1 : 3;
-    auto output =
-        image::Plane<std::uint8_t>::allocate(budget, width * channels * (f.output_depth / 8), 1)
-            .value();
+    require(interpreter.category() == image::InterpretationCategory::color3,
+            "RGBA source retains RGB extraction even for gray output");
+    const auto capacity = std::min(width, image::linear_block_pixels);
+    auto output = image::Plane<double>::allocate(budget, capacity * 3, 2).value();
+    auto reader = interpreter.reader();
+    require(reader.has_value(), "structured interpreter admits one exclusive reader");
+    image::BlockObservation total;
     for (std::uint32_t y = 0; y < height; ++y) {
-        const auto row = output.view().row(0);
-        require(converter.row(y, row, image::RowUse::output).has_value(),
-                "valid structured color row succeeds");
-        compare_row(f, row, y);
+        for (std::uint32_t first = 0; first < width; first += capacity) {
+            const auto count = std::min(capacity, width - first) * 3;
+            const auto initial =
+                reader.value().read_rgb(y, first, output.view().row(0).first(count));
+            require(initial.has_value(), "valid structured RGB block succeeds");
+            require(interpreter.descriptor() == descriptor,
+                    "extraction keeps descriptor immutable");
+            const auto repeated =
+                reader.value().read_rgb(y, first, output.view().row(1).first(count));
+            require(repeated.has_value() && *initial == *repeated &&
+                        std::ranges::equal(output.view().row(0).first(count),
+                                           output.view().row(1).first(count)),
+                    "structured linear samples and owned observations repeat exactly");
+            require(interpreter.descriptor() == descriptor,
+                    "repeated extraction cannot recount samples");
+            require(image::valid_unit_samples(output.view().row(0).first(count)),
+                    "structured interpretation returns finite unit RGB");
+            compare_block(f, output.view().row(0).first(count), y, first);
+            total.flattened_pixels += initial->flattened_pixels;
+            total.clipped_components += initial->clipped_components;
+        }
     }
     const auto maximum = f.source_depth == 16 ? 65535 : 255;
     const auto flattened = static_cast<std::uint64_t>(std::ranges::count_if(
         f.pixels, [maximum](const auto& pixel) { return pixel.back() != maximum; }));
-    require(converter.report().flattened_pixels == flattened, "color observations count once");
+    require(total.flattened_pixels == flattened && total.clipped_components == 0,
+            "extraction owner counts each alpha observation once");
+    require(descriptor.flattened_pixels == 0 && descriptor.clipped_components == 0,
+            "interpretation descriptor does not own extraction counters");
 }
 inline void check_color_samples(std::span<const std::uint8_t> bytes) {
     namespace image = docenhance::image;
@@ -179,18 +208,23 @@ inline void check_color_samples(std::span<const std::uint8_t> bytes) {
                             budget, f.width * 4 * (f.source_depth / 8), f.height)
                             .value();
         fill_source(f, input, source);
-        const auto operation =
-            image::Continuous::create(
-                {
-                    .mode = f.gray ? image::ToneMode::gray : image::ToneMode::preserve,
-                    .depth =
-                        f.output_depth == 16 ? image::OutputDepth::word : image::OutputDepth::byte,
-                    .alpha = f.black ? image::AlphaPolicy::black : image::AlphaPolicy::white,
-                })
-                .value();
-        auto converter = color::Converter::create(source, operation, budget);
-        require(converter.has_value(), "valid structured color source must convert");
-        compare_rows(f, **converter, budget);
+        const auto width = f.orientation >= 5 ? f.height : f.width;
+        const auto height = f.orientation >= 5 ? f.width : f.height;
+        const image::PngShape output{
+            .width = width,
+            .height = height,
+            .model = f.gray ? image::SampleModel::gray : image::SampleModel::rgb,
+            .depth = docenhance::tests::fixture_png_depth(f.output_depth),
+        };
+        auto interpreter = color::Interpretation::create(
+            source,
+            {
+                .alpha = f.black ? image::AlphaPolicy::black : image::AlphaPolicy::white,
+                .rotation = {},
+            },
+            output, budget);
+        require(interpreter.has_value(), "valid structured color source must interpret");
+        compare_rows(f, **interpreter, budget);
     }
     require(budget.used() == 0, "structured color conversion refunds every allocation");
 }

@@ -5,6 +5,7 @@
 // nothing on stderr; errors on stderr in text mode; parsed JSON flags select JSON, while
 // option values keep their role; syntax failures retain raw-token fallback. Repeated runs agree.
 #include "docenhance/app/options.hpp"
+#include "docenhance/app/response.hpp"
 #include "docenhance/cli/run.hpp"
 #include "processor.hpp"
 #include "stub_verifier.hpp"
