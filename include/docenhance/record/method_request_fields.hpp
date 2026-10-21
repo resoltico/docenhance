@@ -40,10 +40,10 @@ template <> struct core::Fields<record::SurfaceRequest> {
     };
 };
 template <> struct core::EnumNames<record::MorphologyRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::MorphologyRequest::Selector::selected,
                   methods::Morphology::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::MorphologyRequest> {
     static constexpr std::string_view key = "method";
@@ -59,9 +59,9 @@ template <> struct core::Fields<record::MorphologyRequest> {
     };
 };
 template <> struct core::EnumNames<record::NlmRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::NlmRequest::Selector::selected, methods::Nlm::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::NlmRequest> {
     static constexpr std::string_view key = "method";
@@ -77,9 +77,9 @@ template <> struct core::Fields<record::NlmRequest> {
     };
 };
 template <> struct core::EnumNames<record::Tvl1Request::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::Tvl1Request::Selector::selected, methods::Tvl1::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::Tvl1Request> {
     static constexpr std::string_view key = "method";
@@ -95,10 +95,10 @@ template <> struct core::Fields<record::Tvl1Request> {
     };
 };
 template <> struct core::EnumNames<record::WienerRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::WienerRequest::Selector::selected,
                   methods::Wiener::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::WienerRequest> {
     static constexpr std::string_view key = "method";
@@ -114,10 +114,10 @@ template <> struct core::Fields<record::WienerRequest> {
     };
 };
 template <> struct core::EnumNames<record::LevelsRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::LevelsRequest::Selector::selected,
                   methods::Levels::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::LevelsRequest> {
     static constexpr std::string_view key = "method";
@@ -133,9 +133,9 @@ template <> struct core::Fields<record::LevelsRequest> {
     };
 };
 template <> struct core::EnumNames<record::GammaRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::GammaRequest::Selector::selected, methods::Gamma::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::GammaRequest> {
     static constexpr std::string_view key = "method";
@@ -151,9 +151,9 @@ template <> struct core::Fields<record::GammaRequest> {
     };
 };
 template <> struct core::EnumNames<record::ClaheRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::ClaheRequest::Selector::selected, methods::Clahe::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::ClaheRequest> {
     static constexpr std::string_view key = "method";
@@ -169,10 +169,10 @@ template <> struct core::Fields<record::ClaheRequest> {
     };
 };
 template <> struct core::EnumNames<record::UnsharpRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::UnsharpRequest::Selector::selected,
                   methods::Unsharp::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::UnsharpRequest> {
     static constexpr std::string_view key = "method";
@@ -188,9 +188,9 @@ template <> struct core::Fields<record::UnsharpRequest> {
     };
 };
 template <> struct core::EnumNames<record::OtsuRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::OtsuRequest::Selector::selected, methods::Otsu::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::OtsuRequest> {
     static constexpr std::string_view key = "method";
@@ -206,10 +206,10 @@ template <> struct core::Fields<record::OtsuRequest> {
     };
 };
 template <> struct core::EnumNames<record::SauvolaRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::SauvolaRequest::Selector::selected,
                   methods::Sauvola::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::SauvolaRequest> {
     static constexpr std::string_view key = "method";
@@ -225,10 +225,10 @@ template <> struct core::Fields<record::SauvolaRequest> {
     };
 };
 template <> struct core::EnumNames<record::FixedThresholdRequest::Selector> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::FixedThresholdRequest::Selector::selected,
                   methods::FixedThreshold::descriptor().selector},
-    };
+    });
 };
 template <> struct core::WireTag<record::FixedThresholdRequest> {
     static constexpr std::string_view key = "method";

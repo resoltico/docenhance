@@ -14,10 +14,12 @@ from typing import Any
 from native_journal import snapshot_ctest_output
 from native_output import archive_ctest_output
 from process_execution import CapturePolicy, bounded_capture
-from test_evidence import complete_junit, report_xml
+from restoration_resource_records import RESOURCE_PATTERN, resource_cases
+from run_native_suite import MAX_TEST_PROCESSES
+from test_evidence import complete_junit, discovery, report_xml
 from windows_resource_artifacts import identity
 from windows_resource_producer import compilation, native_context
-from windows_resource_records import CASES, capture_maps, native_records
+from windows_resource_records import capture_maps, native_records
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "out/windows-resource-proof"
@@ -107,30 +109,34 @@ def directives(record: dict[str, Any], phase: str, deadline: float) -> None:
         target["actual_DEFAULTLIB"] = sorted(libraries)
 
 
-def debug_cases(deadline: float, record: dict[str, Any]) -> None:
+def debug_cases(deadline: float, record: dict[str, Any], executables: dict[str, str]) -> None:
     """Retain fresh complete raw/JUnit after the owned child group has unwound."""
     build, directory = ROOT / "out/dev/app", OUT / "debug"
     owner = directory.lstat()
     expected_owner = [owner.st_dev, owner.st_ino]
     record["selected_owner"] = {"path": str(directory), "identity": expected_owner}
+    tests = discovery("ctest", build)
+    names = resource_cases(tests, executables)
+    record["selected_cases"] = sorted(names)
     before = snapshot_ctest_output(build)
     command = [
         "ctest",
         "--test-dir",
         str(build),
         "-R",
-        "^(fft-native-resources|restoration-native-resources)$",
+        RESOURCE_PATTERN,
         "--no-tests=error",
         "--stop-on-failure",
         "--parallel",
-        "1",
+        str(MAX_TEST_PROCESSES),
         "--timeout",
         "90",
         "--output-junit",
         str(directory / "ctest.xml"),
     ]
     record["argv"] = command
-    remaining = min(185, deadline - time.monotonic() - 30)
+    slots = (len(names) + MAX_TEST_PROCESSES - 1) // MAX_TEST_PROCESSES
+    remaining = min(90 * slots, deadline - time.monotonic() - 30)
     if remaining <= 0:
         message = "Debug test admission exhausted its archive reserve"
         raise ValueError(message)
@@ -151,7 +157,7 @@ def debug_cases(deadline: float, record: dict[str, Any]) -> None:
         record["exit_code"] = exit_code
         record["child_error"] = repr(failure) if failure is not None else None
         try:
-            archive_ctest_output(build, directory, before, deadline, len(CASES))
+            archive_ctest_output(build, directory, before, deadline, len(names))
         except BaseException as error:
             record["archive_error"] = repr(error)
             if failure is not None:
@@ -163,16 +169,16 @@ def debug_cases(deadline: float, record: dict[str, Any]) -> None:
     if exit_code != 0:
         message = f"Debug resource CTest failed: {exit_code}"
         raise ValueError(message)
-    exact_debug_junit(directory / "ctest.xml")
-    record["evidence"] = native_records(directory, expected_owner)
+    exact_debug_junit(directory / "ctest.xml", names)
+    record["evidence"] = native_records(directory, expected_owner, tests, executables)
 
 
-def exact_debug_junit(path: Path) -> None:
-    """Only Debug requires exactly two cases and truthful zero-adverse suite counters."""
-    complete_junit(path, set(CASES))
+def exact_debug_junit(path: Path, names: set[str]) -> None:
+    """Debug requires every discovered resource case and truthful zero-adverse counters."""
+    complete_junit(path, names)
     suite = report_xml(path.read_text(encoding="utf-8"))
-    if suite.get("tests") != "2" or any(
+    if suite.get("tests") != str(len(names)) or any(
         suite.get(key, "0") != "0" for key in ("failures", "errors", "skipped", "disabled")
     ):
-        message = "Debug JUnit suite counters differ from two executed healthy resource cases"
+        message = "Debug JUnit suite counters differ from executed healthy resource cases"
         raise ValueError(message)

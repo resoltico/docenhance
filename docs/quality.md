@@ -315,3 +315,11 @@ A workflow definition, local pass or identity hash is not execution, trust or na
 [Document quality](document-quality.md) separately requires cleared provenance, independent physical
 pages, complete per-class denominators, blinded review and separate harms, uncertainty and abstention.
 Source/package eligibility and signed/notarized native distribution retain their separate requirements.
+
+The exhaustive restoration allocation-refusal proof uses independent, deterministic process shards
+from the same resource executable; CMake owns their count. Every shard calibrates the real hooks,
+then checks its assigned ordinals for each original extent. Full archived output must establish
+identical healthy allocation traces across shards and a disjoint, complete union of all calibrated
+failure ordinals. A separate required process checks pressure, exact budgets, native-error precedence
+and simultaneous callers once. Ordinary and Windows Release/Debug evidence use the same reconciliation;
+passing selected processes or clipped JUnit output cannot establish complete resource coverage.

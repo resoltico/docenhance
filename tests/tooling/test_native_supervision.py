@@ -103,6 +103,7 @@ class NativeOutputIntegrationTests(unittest.TestCase):
                 + ([{"name": "other"}] if self.expected_count == OMITTED_CASE_COUNT else []),
             ),
             mock.patch.object(suite, "compilation"),
+            mock.patch.object(suite, "resource_results"),
             mock.patch.object(suite, "registrations", return_value={"unit"}),
             mock.patch.object(suite, "bounded_process", side_effect=self.child),
         ):
@@ -117,6 +118,21 @@ class NativeOutputIntegrationTests(unittest.TestCase):
     def test_real_finally_archives_both_before_exact_catch_checks(self) -> None:
         """An executed Catch case with an assertion still uses the original raw JUnit checker."""
         self.assertEqual(self.execute(), 0)
+        self.assertTrue((self.evidence() / "ctest-output.gz").exists())
+        self.assertTrue((self.evidence() / "ctest.xml.gz").exists())
+
+    def test_resource_reconciliation_cannot_extend_the_execution_deadline(self) -> None:
+        """Successful archive and parsing still refuse an exhausted original execution clock."""
+
+        def clock() -> float:
+            coverage = suite.resource_results
+            return 2000.0 if isinstance(coverage, mock.Mock) and coverage.called else 0.0
+
+        with (
+            mock.patch("run_native_suite.time.monotonic", side_effect=clock),
+            self.assertRaisesRegex(EvidenceError, "execution deadline"),
+        ):
+            self.execute()
         self.assertTrue((self.evidence() / "ctest-output.gz").exists())
         self.assertTrue((self.evidence() / "ctest.xml.gz").exists())
 

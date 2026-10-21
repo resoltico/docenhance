@@ -31,12 +31,14 @@ def identity(path: Path) -> dict[str, Any]:
         raise ValueError(message)
     digest = hashlib.sha256()
     with path.open("rb") as stream:
-        if journal_identity(os.fstat(stream.fileno())) != before:
+        opened = os.fstat(stream.fileno())
+        if journal_identity(opened) != before:
             message = f"Identity changed while opening: {path}"
             raise ValueError(message)
         while chunk := stream.read(65536):
             digest.update(chunk)
-        if journal_identity(os.fstat(stream.fileno())) != before:
+        after = os.fstat(stream.fileno())
+        if journal_identity(after) != before or after.st_ctime_ns != opened.st_ctime_ns:
             message = f"Identity changed while hashing: {path}"
             raise ValueError(message)
     if identify_journal(path) != before:
@@ -75,11 +77,13 @@ def archive_map(path: Path, directory: Path) -> tuple[bytes, dict[str, Any]]:
         raise ValueError(message)
     before = identity(path)
     with path.open("rb") as original:
-        if journal_identity(os.fstat(original.fileno())) != epoch:
+        opened = os.fstat(original.fileno())
+        if journal_identity(opened) != epoch:
             message = "Windows map opened another source epoch"
             raise ValueError(message)
         data = original.read(MAP_BYTES + 1)
-        if journal_identity(os.fstat(original.fileno())) != epoch:
+        after = os.fstat(original.fileno())
+        if journal_identity(after) != epoch or after.st_ctime_ns != opened.st_ctime_ns:
             message = "Windows map source epoch changed during read"
             raise ValueError(message)
     if len(data) != before["bytes"] or identity(path) != before:

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import re
 import stat
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -39,11 +40,18 @@ Snapshot = dict[str, Journal | None]
 
 
 def journal_identity(info: os.stat_result) -> Journal:
-    """Return the immutable regular-file epoch without following a path."""
+    """Use a shared path/fd epoch: Windows creation time, POSIX metadata change time."""
     if not stat.S_ISREG(info.st_mode):
         msg = "CTest journal must be a regular file, never a symlink"
         raise OutputError(msg)
-    return Journal(info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+    changed = info.st_ctime_ns
+    if sys.platform == "win32":
+        try:
+            changed = info.st_birthtime_ns
+        except AttributeError as error:
+            msg = "Windows file identities require nanosecond birth time"
+            raise OutputError(msg) from error
+    return Journal(info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, changed)
 
 
 def identify_journal(path: Path) -> Journal | None:

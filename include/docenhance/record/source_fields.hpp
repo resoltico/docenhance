@@ -5,9 +5,9 @@
 
 namespace docenhance {
 template <> struct core::EnumNames<record::PngDecoderPolicy> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::PngDecoderPolicy::bounded, std::string_view{"bounded-png-1"}},
-    };
+    });
 };
 template <> struct core::WireTag<record::PngContainer> {
     static constexpr std::string_view key = "format";
@@ -26,25 +26,25 @@ template <> struct core::Fields<record::PngContainer> {
     };
 };
 template <> struct core::EnumNames<record::JpegDecoderPolicy> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::JpegDecoderPolicy::bounded,
                   std::string_view{"jpeg-islow-fancy-no-smoothing-1"}},
-    };
+    });
 };
 template <> struct core::EnumNames<record::JpegCoding> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::JpegCoding::huffman, std::string_view{"huffman"}},
-    };
+    });
 };
 template <> struct core::EnumNames<record::ResolutionPrecedence> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::ResolutionPrecedence::exif_then_jfif, std::string_view{"exif_then_jfif"}},
-    };
+    });
 };
 template <> struct core::EnumNames<record::TiffDecoderPolicy> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::TiffDecoderPolicy::bounded, std::string_view{"bounded-tiff-striles-1"}},
-    };
+    });
 };
 template <> struct core::EnumNames<image::JpegColor> {
     static constexpr std::array list{

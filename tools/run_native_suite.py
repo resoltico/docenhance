@@ -20,7 +20,12 @@ from audit_build import read_cache
 from fuzz_manifest import targets
 from native_journal import snapshot_ctest_output
 from native_output import archive_ctest_output
+from native_resource_capture import retained_bodies
 from process_execution import bounded_process
+from restoration_resource_records import (
+    reconcile_restoration_records,
+    resource_cases,
+)
 from sanitizer_evidence import check_compilation
 from test_evidence import EvidenceError, complete_junit, discovery
 
@@ -116,6 +121,7 @@ def registrations(build: Path, tests: list[dict[str, Any]]) -> set[str]:
                 f"{test['name']}"
             )
             raise EvidenceError(msg)
+    resource_cases(tests, manifest["resource_binaries"])
     return units
 
 
@@ -194,6 +200,16 @@ def _execute_owned(
     return exit_code
 
 
+def resource_results(directory: Path, tests: list[dict[str, Any]], build: Path) -> None:
+    """Successful native execution must cover the complete actual resource shard union."""
+    bodies = retained_bodies(directory)
+    manifest = json.loads((build / "native-tests.json").read_text())
+    result = reconcile_restoration_records(tests, bodies["journal"], manifest["resource_binaries"])
+    (directory / "native-restoration-resources.json").write_text(
+        json.dumps(result, indent=2) + "\n"
+    )
+
+
 def run(args: argparse.Namespace) -> int:
     """Create fresh evidence, execute every test, and refuse incomplete or skipped results."""
     deadline = time.monotonic() + NATIVE_EXECUTION_SECONDS
@@ -217,6 +233,11 @@ def run(args: argparse.Namespace) -> int:
     ]
     exit_code = _execute_owned(command, build, directory, deadline, len(tests))
     complete_junit(directory / "ctest.xml", {test["name"] for test in tests}, units)
+    if exit_code == 0:
+        resource_results(directory, tests, build)
+        if time.monotonic() >= deadline:
+            msg = "Native resource reconciliation exceeded the execution deadline"
+            raise EvidenceError(msg)
     return exit_code
 
 

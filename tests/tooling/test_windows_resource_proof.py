@@ -18,6 +18,11 @@ from unittest.mock import patch
 
 from tools_path import prepare_tool_imports
 
+from restoration_resource_fixture import RESOURCE_EXECUTABLES, resource_fixture
+
+import native_resource_capture as capture
+import restoration_resource_records as resource
+import run_native_suite as suite
 import windows_resource_artifacts as artifacts
 import windows_resource_execution as execution
 import windows_resource_proof as proof
@@ -101,7 +106,7 @@ class WindowsResourceProofTests(unittest.TestCase):
     def test_full_calibrations_fail_for_missing_unobserved_or_zero_counter(self) -> None:
         """C137/CPP211 and unmeasured controls remain mandatory, including native contract."""
         body = calibration_body()
-        self.assertEqual(len(records.calibrations(body)), 5)
+        self.assertEqual(len(capture.calibrations(body)), 5)
         for changed in (
             body.replace(b'"acquired":137', b'"acquired":0'),
             body.split(b"\n", 1)[1],
@@ -110,26 +115,13 @@ class WindowsResourceProofTests(unittest.TestCase):
             ),
         ):
             with self.subTest(body=changed), self.assertRaises(ValueError):
-                records.calibrations(changed)
+                capture.calibrations(changed)
 
-    def test_retained_actual_case_parser_requires_both_passed_cases_and_all_rows(self) -> None:
+    def test_retained_actual_case_parser_requires_all_passed_shards_and_controls(self) -> None:
         """Tiny synthetic gzip records exercise full raw provenance and missing/skipped refusal."""
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
-            journal = b"\n".join(
-                str(index).encode()
-                + b"/2 Testing: "
-                + name.encode()
-                + b"\n"
-                + calibration_body()
-                + b"\n<end of output>"
-                for index, name in enumerate(records.CASES, 1)
-            )
-            junit = (
-                "<testsuite>"
-                + "".join('<testcase name="' + name + '" status="run"/>' for name in records.CASES)
-                + "</testsuite>"
-            ).encode()
+            tests, journal, junit = resource_fixture()
             metadata: dict[str, Any] = {"errors": [], "artifacts": {}}
             for key, data in (("journal", journal), ("junit", junit)):
                 path = directory / (key + ".gz")
@@ -146,10 +138,22 @@ class WindowsResourceProofTests(unittest.TestCase):
             self.assertEqual(
                 set(
                     records.native_records(
-                        directory, [directory.stat().st_dev, directory.stat().st_ino]
+                        directory,
+                        [directory.stat().st_dev, directory.stat().st_ino],
+                        tests,
+                        RESOURCE_EXECUTABLES,
                     )["cases"]
                 ),
-                set(records.CASES),
+                resource.resource_cases(tests, RESOURCE_EXECUTABLES),
+            )
+            (directory / "native-tests.json").write_text(
+                json.dumps({"resource_binaries": RESOURCE_EXECUTABLES})
+            )
+            suite.resource_results(directory, tests, directory)
+            summary = json.loads((directory / "native-restoration-resources.json").read_text())
+            self.assertEqual(summary["shard_count"], 2)
+            self.assertEqual(
+                set(summary["cases"]), resource.resource_cases(tests, RESOURCE_EXECUTABLES)
             )
             for bad in (b"<testsuite/>", junit.replace(b'status="run"', b'status="notrun"')):
                 path = directory / "junit.gz"
@@ -162,7 +166,10 @@ class WindowsResourceProofTests(unittest.TestCase):
                 output.write_text(json.dumps(metadata))
                 with self.assertRaises(ValueError):
                     records.native_records(
-                        directory, [directory.stat().st_dev, directory.stat().st_ino]
+                        directory,
+                        [directory.stat().st_dev, directory.stat().st_ino],
+                        tests,
+                        RESOURCE_EXECUTABLES,
                     )
 
     def test_map_archive_exact_roundtrip_and_exclusive_output(self) -> None:
@@ -221,12 +228,13 @@ class WindowsResourceProofTests(unittest.TestCase):
         """The same control exception escapes after retention failure is attached."""
         original = KeyboardInterrupt("controlled")
         with (
+            patch.object(execution, "discovery", return_value=resource_fixture()[0]),
             patch.object(execution, "snapshot_ctest_output", return_value={}),
             patch.object(execution, "bounded_capture", side_effect=original),
             patch.object(execution, "archive_ctest_output", side_effect=OSError("archive")),
             self.assertRaises(KeyboardInterrupt) as raised,
         ):
-            execution.debug_cases(time.monotonic() + 100, {})
+            execution.debug_cases(time.monotonic() + 100, {}, RESOURCE_EXECUTABLES)
         self.assertIs(raised.exception, original)
         self.assertIn("archival also failed", original.__notes__[0])
 
@@ -234,12 +242,13 @@ class WindowsResourceProofTests(unittest.TestCase):
         """A failed archive never erases the actual nonzero CTest outcome."""
         record: dict[str, Any] = {}
         with (
+            patch.object(execution, "discovery", return_value=resource_fixture()[0]),
             patch.object(execution, "snapshot_ctest_output", return_value={}),
             patch.object(execution, "bounded_capture", return_value=8),
             patch.object(execution, "archive_ctest_output", side_effect=OSError("archive")),
             self.assertRaises(OSError),
         ):
-            execution.debug_cases(time.monotonic() + 100, record)
+            execution.debug_cases(time.monotonic() + 100, record, RESOURCE_EXECUTABLES)
         self.assertEqual(record["exit_code"], 8)
         self.assertIn("archive", record["archive_error"])
 

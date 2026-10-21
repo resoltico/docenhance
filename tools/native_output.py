@@ -84,11 +84,13 @@ class _BoundedWriter(io.RawIOBase):
             self.stream.flush()
 
 
-def _check_source(descriptor: int, path: Path, identity: Journal) -> None:
-    """Require the opened descriptor and current pathname to retain one source epoch."""
-    if journal_identity(os.fstat(descriptor)) != identity or identify_journal(path) != identity:
+def _check_source(descriptor: int, path: Path, identity: Journal) -> int:
+    """Validate the opened epoch and retain its same-API metadata change time."""
+    opened = os.fstat(descriptor)
+    if journal_identity(opened) != identity or identify_journal(path) != identity:
         msg = "CTest journal changed while opening its owned source"
         raise OutputError(msg)
+    return opened.st_ctime_ns
 
 
 def _close_failed_source(descriptor: int, original: BaseException) -> None:
@@ -104,11 +106,11 @@ def _close_failed_source(descriptor: int, original: BaseException) -> None:
             raise original
 
 
-def _source(path: Path, identity: Journal) -> BinaryIO:
+def _source(path: Path, identity: Journal, opened_change: list[int]) -> BinaryIO:
     flags = os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_BINARY", 0)
     descriptor = os.open(path, flags)
     try:
-        _check_source(descriptor, path, identity)
+        opened_change.append(_check_source(descriptor, path, identity))
         return os.fdopen(descriptor, "rb")
     except BaseException as original:
         _close_failed_source(descriptor, original)
@@ -137,10 +139,13 @@ def _compress(
 def _write_archive(
     path: Path, identity: Journal, partial: Path, deadline: float | None
 ) -> tuple[int, str, bool, int]:
-    with _source(path, identity) as source, partial.open("xb") as target:
+    opened_change: list[int] = []
+    with _source(path, identity, opened_change) as source, partial.open("xb") as target:
         result = _compress(source, _BoundedWriter(target, deadline), deadline)
+        after = os.fstat(source.fileno())
         if (
-            journal_identity(os.fstat(source.fileno())) != identity
+            journal_identity(after) != identity
+            or after.st_ctime_ns != opened_change[0]
             or identify_journal(path) != identity
         ):
             msg = "CTest journal changed during archival"

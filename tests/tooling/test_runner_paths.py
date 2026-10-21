@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -73,8 +74,30 @@ class RunnerPathTests(unittest.TestCase):
         ]
         with tempfile.TemporaryDirectory() as directory:
             build = Path(directory)
+            resource_binaries = {
+                target: str(build / "tests" / (target + ".exe"))
+                for target in ("de_fft_resources", "de_restoration_resources")
+            }
+            restoration = str(build / "alias/../tests/de_restoration_resources.exe")
+            tests.extend(
+                [
+                    {
+                        "name": "fft-native-resources",
+                        "command": [str(build / "alias/../tests/de_fft_resources.exe")],
+                    },
+                    {"name": "restoration-native-controls", "command": [restoration, "--controls"]},
+                    *(
+                        {
+                            "name": f"restoration-native-resources-{index}",
+                            "command": [restoration, "--shard", str(index)],
+                        }
+                        for index in range(2)
+                    ),
+                ]
+            )
             manifest = {
                 "unit_binary": str(build / "unit"),
+                "resource_binaries": resource_binaries,
                 "static_tests": [test["name"] for test in tests],
             }
             (build / "native-tests.json").write_text(json.dumps(manifest))
@@ -120,3 +143,33 @@ class RunnerPathTests(unittest.TestCase):
                 tests[0]["command"] = [sys.executable, "/different/runner.py", str(scripts[0])]
                 with self.assertRaises(EvidenceError):
                     run_native_suite.registrations(build, tests)
+
+    def test_cmake_resource_inventory_keeps_actual_target_file_paths(self) -> None:
+        """Real target-file metadata preserves explicit names without suffix guesses."""
+        cmake = shutil.which("cmake")
+        self.assertIsNotNone(cmake)
+        source = (ROOT / "tests/CMakeLists.txt").read_text()
+        marker = 'string(JSON de_native_inventory SET "${de_native_inventory}" "resource_binaries"'
+        emission = source[source.index(marker) :]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            expected = {
+                "de_fft_resources": (root / "provider-fft.exe").as_posix(),
+                "de_restoration_resources": (root / "provider-restoration.bin").as_posix(),
+            }
+            project = "cmake_minimum_required(VERSION 4.4)\nproject(Paths NONE)\n"
+            for target, location in expected.items():
+                project += f"add_executable({target} IMPORTED)\n"
+                project += (
+                    f'set_target_properties({target} PROPERTIES IMPORTED_LOCATION "{location}")\n'
+                )
+            project += 'set(de_native_inventory "{}")\n' + emission
+            (root / "CMakeLists.txt").write_text(project)
+            subprocess.run(
+                [str(cmake), "-S", str(root), "-B", str(root / "build"), "-G", "Ninja"],
+                check=True,
+                capture_output=True,
+                timeout=10,
+            )
+            actual = json.loads((root / "build/native-tests.json").read_text())
+            self.assertEqual(actual["resource_binaries"], expected)

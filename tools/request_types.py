@@ -111,8 +111,8 @@ def selection_fields(selection: str, method: str, own: list[dict[str, Any]]) -> 
     else:
         text += f"template <> struct core::EnumNames<{owner}::Selector> {{\n"
         text += (
-            f"    static constexpr std::array list{{std::pair{{{owner}::Selector::selected, "
-            f"methods::{method}::descriptor().selector}},}};\n}};\n"
+            "    static constexpr auto list = std::to_array({std::pair{"
+            f"{owner}::Selector::selected, methods::{method}::descriptor().selector}},}});\n}};\n"
         )
     text += f"template <> struct core::WireTag<{owner}> {{\n"
     text += (

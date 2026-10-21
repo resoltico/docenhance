@@ -77,7 +77,8 @@ inline void restoration_warm_application(const methods::Wiener& method,
         require(result.has_value(), "original warm whole-method application completes");
     }
 }
-inline void restoration_observed_case(image::Extent extent) {
+inline void restoration_observed_case(image::Extent extent, const unsigned shard,
+                                      const unsigned shards) {
     const auto method = resource_wiener();
     const auto psf = resource_psf();
     const auto coefficients = psf.coefficients;
@@ -105,8 +106,15 @@ inline void restoration_observed_case(image::Extent extent) {
             conservative <= bound.payload + bound.native && budget.peak() == baseline + bound.peak,
         "actual observed family mode and charged phase peaks satisfy distinct source envelopes");
     restoration_observation_report(extent, 0, healthy, bound, visibility);
+    require(shards > 0 && shard < shards && healthy.attempts >= shards,
+            "each compiled shard has actual calibrated failure work for this extent");
     bool all_attained = true;
+    std::size_t executed = 0;
     for (std::size_t failure = 1; failure <= healthy.attempts; ++failure) {
+        if ((failure - 1) % shards != shard) {
+            continue;
+        }
+        ++executed;
         RestorationResourceFixture failed{budget, extent};
         const auto held = budget.used();
         const auto observed = restoration_observe(failed, method, psf, scheduler, failure);
@@ -126,6 +134,10 @@ inline void restoration_observed_case(image::Extent extent) {
     }
     require(all_attained,
             "every required calibrated full-method fail-N ordinal must actually be reached");
+    require(executed > 0, "each actual sweep process executes failure observations");
+    std::cout << R"({"restoration_sweep_complete":true,"width":)" << extent.width << R"(,"height":)"
+              << extent.height << R"(,"healthy_attempts":)" << healthy.attempts
+              << R"(,"executed_failures":)" << executed << "}\n";
 }
 struct RestorationNativeStop {
     static inline std::atomic<std::size_t> target{0}, entries{0}, late_visits{0}, first_attempts{0};

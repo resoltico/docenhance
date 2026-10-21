@@ -8,11 +8,13 @@ import gzip
 import hashlib
 import json
 import os
+import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
-from typing import Literal, override
+from types import SimpleNamespace
+from typing import Literal, cast, override
 from unittest import mock
 
 from tools_path import prepare_tool_imports
@@ -253,3 +255,50 @@ class NativeOutputTests(unittest.TestCase):
         self.assertIs(caught.exception, error)
         self.assertEqual(closing.call_count, 1)
         self.assertTrue(any("descriptor close also failed" in note for note in error.__notes__))
+
+    def test_windows_archive_keeps_descriptor_change_time_stability(self) -> None:
+        """Canonical birth time permits the APIs to differ, never the fd epoch to change."""
+        before = journal.snapshot_ctest_output(self.build)
+        self.populate()
+        actual_fstat = os.fstat
+
+        def windows_stat(info: os.stat_result, changed: int) -> os.stat_result:
+            values = {
+                name: getattr(info, name)
+                for name in ("st_mode", "st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+            }
+            values.update(st_birthtime_ns=17, st_ctime_ns=changed)
+            return cast("os.stat_result", SimpleNamespace(**values))
+
+        def path_epoch(path: Path) -> journal.Journal | None:
+            try:
+                return journal.journal_identity(windows_stat(path.lstat(), 17))
+            except FileNotFoundError:
+                return None
+
+        for changed in (False, True):
+            observations = 0
+            directory = self.evidence / str(changed)
+            directory.mkdir()
+            (directory / "ctest.xml").write_bytes((self.evidence / "ctest.xml").read_bytes())
+
+            def fd_epoch(descriptor: int, *, mutating: bool = changed) -> os.stat_result:
+                nonlocal observations
+                observations += 1
+                value = 30 if mutating and observations == POST_READ_IDENTITY_CHECK else 29
+                return windows_stat(actual_fstat(descriptor), value)
+
+            with (
+                self.subTest(changed=changed),
+                mock.patch.object(sys, "platform", "win32"),
+                mock.patch.object(journal, "identify_journal", side_effect=path_epoch),
+                mock.patch.object(output, "identify_journal", side_effect=path_epoch),
+                mock.patch.object(os, "fstat", side_effect=fd_epoch),
+            ):
+                if changed:
+                    with self.assertRaisesRegex(journal.OutputError, "changed during"):
+                        output.archive_ctest_output(self.build, directory, before, None, 1)
+                else:
+                    archived = output.archive_ctest_output(self.build, directory, before, None, 1)
+                    raw = gzip.decompress(Path(archived["journal"]["archive"]).read_bytes())
+                    self.assertEqual(raw, self.raw)

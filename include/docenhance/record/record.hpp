@@ -153,30 +153,30 @@ template <> struct core::Fields<record::SourceFacts> {
     };
 };
 template <> struct core::EnumNames<record::MaskFrame> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::MaskFrame::oriented_source, std::string_view{"metadata_oriented_source"}},
-    };
+    });
 };
 template <> struct core::EnumNames<record::MaskPath> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::MaskPath::canonical, std::string_view{record::mask_name}},
-    };
+    });
 };
 template <> struct core::EnumNames<record::PsfPath> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::PsfPath::canonical, std::string_view{record::psf_name}},
-    };
+    });
 };
 template <> struct core::EnumNames<record::OutputPath> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::OutputPath::canonical, std::string_view{record::image_name}},
-    };
+    });
 };
 template <> struct core::EnumNames<record::Verification> {
-    static constexpr std::array list{
+    static constexpr auto list = std::to_array({
         std::pair{record::Verification::decoded_and_compared,
                   std::string_view{"decoded_and_compared"}},
-    };
+    });
 };
 template <> struct core::WireTag<record::ProtectionAsset> {
     static constexpr std::string_view key = "role";

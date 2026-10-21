@@ -119,6 +119,7 @@ try:
              patch('run_native_suite.compilation'), \\
              patch('run_native_suite.registrations', return_value=set()), \\
              patch('run_native_suite.complete_junit'), \\
+             patch('run_native_suite.resource_results'), \\
              patch('run_native_suite.bounded_process', side_effect=boundary):
             result = run_native_suite.run(argparse.Namespace(build=root,ctest='fixture',jobs=1))
     elif mode == 'campaign':

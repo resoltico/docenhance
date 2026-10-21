@@ -65,8 +65,18 @@ de_apply_options(de_restoration_resources)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
   target_link_options(de_restoration_resources PRIVATE "LINKER:--wrap=malloc" "LINKER:--wrap=free")
 endif()
-add_test(NAME restoration-native-resources COMMAND de_restoration_resources)
-set_tests_properties(restoration-native-resources PROPERTIES TIMEOUT 90)
+# One source authority for compiled process partitioning and required CTest inventory.
+set(de_restoration_resource_shards 16)
+target_compile_definitions(de_restoration_resources PRIVATE
+  DE_RESTORATION_RESOURCE_SHARDS=${de_restoration_resource_shards})
+math(EXPR de_restoration_last_shard "${de_restoration_resource_shards} - 1")
+foreach(de_shard RANGE 0 ${de_restoration_last_shard})
+  add_test(NAME restoration-native-resources-${de_shard}
+    COMMAND de_restoration_resources --shard ${de_shard})
+  set_tests_properties(restoration-native-resources-${de_shard} PROPERTIES TIMEOUT 90)
+endforeach()
+add_test(NAME restoration-native-controls COMMAND de_restoration_resources --controls)
+set_tests_properties(restoration-native-controls PROPERTIES TIMEOUT 90)
 
 # The admitted R5 numerical case is explicit, never part of routine CTest or a campaign.
 add_executable(de_restoration_numerics support/restoration_numerics.cpp)

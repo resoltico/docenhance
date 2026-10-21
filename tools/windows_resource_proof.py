@@ -15,10 +15,16 @@ import time
 from pathlib import Path
 from typing import Any
 
+from test_evidence import discovery
 from windows_resource_artifacts import identity, write_json
 from windows_resource_execution import debug_cases, debug_producer, directives
 from windows_resource_producer import compilation
-from windows_resource_records import capture_maps, native_records, stable_producer
+from windows_resource_records import (
+    capture_maps,
+    executable_paths,
+    native_records,
+    stable_producer,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "out/windows-resource-proof"
@@ -48,6 +54,9 @@ def sources() -> dict[str, str]:
             "tools/windows_resource_proof.py",
             "tools/windows_resource_execution.py",
             "tools/windows_resource_records.py",
+            "tools/restoration_resource_records.py",
+            "tools/native_resource_capture.py",
+            "tools/run_native_suite.py",
             "tools/windows_resource_producer.py",
             "tools/windows_resource_artifacts.py",
             "tools/native_output.py",
@@ -179,7 +188,12 @@ def complete(release_exit: int) -> None:
         record["release"] = {"producer": {}, "maps": [], "selected_owner": fresh}
         compilation(ROOT / "out/release", record["release"]["producer"], debug=False)
         capture_maps(ROOT / "out/release", release, record["release"]["maps"], debug=False)
-        record["release"]["evidence"] = native_records(Path(fresh["path"]), fresh["identity"])
+        record["release"]["evidence"] = native_records(
+            Path(fresh["path"]),
+            fresh["identity"],
+            discovery("ctest", ROOT / "out/release/app"),
+            executable_paths(record["release"]["producer"]),
+        )
         directives(record["release"], "release", start + CAP_SECONDS)
         require_release_pass(release_exit)
         (OUT / "debug").mkdir()
@@ -187,7 +201,9 @@ def complete(release_exit: int) -> None:
         deadline = start + CAP_SECONDS
         debug_producer(deadline, record["debug"])
         record["debug"]["execution"] = {}
-        debug_cases(deadline, record["debug"]["execution"])
+        debug_cases(
+            deadline, record["debug"]["execution"], executable_paths(record["debug"]["producer"])
+        )
         completed_inputs(saved, record, deadline)
         record["status"] = "passed_current_release_and_debug_resource_proof"
     except BaseException as error:
