@@ -10,10 +10,12 @@
 #include <array>
 #include <cstdio>
 #include <exception>
+#include <ios>
 
 int main() {
     namespace tests = docenhance::tests;
     try {
+        static_cast<void>(std::ios_base::sync_with_stdio(false));
         tests::restoration_resource_calibration();
         constexpr auto extents = std::to_array<docenhance::image::Extent>({
             {.width = 1, .height = 1},
