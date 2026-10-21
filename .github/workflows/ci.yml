@@ -154,6 +154,8 @@ jobs:
               environment.write(f"DE_BUILD_JOBS={cores}\n")
       - name: Build, test and package
         if: runner.os != 'Windows'
+        env:
+          DE_NATIVE_DIAGNOSTIC: ${{ github.event_name == 'workflow_dispatch' && inputs.native_diagnostic }}
         run: cmake --workflow --preset release
       - name: Smoke-test the package without publishing it
         if: runner.os != 'Windows'
@@ -163,6 +165,8 @@ jobs:
       - name: Build, test and package with MSVC
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          DE_NATIVE_DIAGNOSTIC: ${{ github.event_name == 'workflow_dispatch' && inputs.native_diagnostic }}
         run: ./tools/ci_windows.ps1
       - name: Retain complete native diagnostics
         if: always()

@@ -105,7 +105,7 @@ unsigned Interpretation::workers() const noexcept {
 }
 core::Result<InterpretationReader> Interpretation::reader() & {
     const MetadataLock lock{state_->reader_guard};
-    for (auto& reader : state_->readers) {
+    for (const auto& reader : state_->readers) {
         if (!reader->leased) {
             reader->leased = true;
             return InterpretationReader{*reader};

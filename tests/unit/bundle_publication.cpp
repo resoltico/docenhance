@@ -186,9 +186,9 @@ TEST_CASE("Completed publication retains explicit verifier detail and generic "
     const TemporaryDirectory temporary{"docenhance-verifier-detail"};
     const auto output = temporary.path / "result";
     const std::string content = "committed bytes remain available";
-    const std::array files{
+    const auto files = std::to_array<fs::BundleFile>({
         fs::BundleFile{.relative = "result.png", .bytes = bytes(content)},
-    };
+    });
     const std::string detail = "Exact verifier refusal: " + std::string(256, 'x');
     ValidationRefusal refusal{.calls = 0, .throws = false, .detail = detail};
     bool expect_detail = true;

@@ -352,6 +352,9 @@ Manual `Quality gates` dispatch accepts `native_diagnostic: true` to run structu
 native and sanitizer diagnostics without fuzz campaigns. The boolean defaults to false; PR, main
 push and default manual runs retain both strict fuzz engines. The required aggregate still refuses
 a skipped fuzz job, so a diagnostic run cannot qualify a release or replace required green CI.
+In this mode, native Ninja builds continue independent ready edges after errors within the same
+graph, worker count and job deadline. The build still fails; later CTest and package stages do not
+proceed. Blocked edges and cascading diagnostics can remain, so this is not a complete error census.
 
 The Docker gate selects the Linux daemon's native architecture explicitly. `DOCKER_DEFAULT_PLATFORM`
 is refused; its image and native volumes bind architecture, image contents and dependency/build

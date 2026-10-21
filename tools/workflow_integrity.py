@@ -173,8 +173,18 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     required_step(native, "python tools/install_build_tools.py")
     required_step(native, "python tools/install_llvm.py")
     source_cache(native, required_step(native, "cmake -P cmake/AcquireDependencies.cmake"))
-    required_step(native, "cmake --workflow --preset release", "runner.os != 'Windows'")
+    native_other = required_step(
+        native, "cmake --workflow --preset release", "runner.os != 'Windows'"
+    )
     native_build = required_step(native, "./tools/ci_windows.ps1", "runner.os == 'Windows'")
+    diagnostic_env = {
+        "DE_NATIVE_DIAGNOSTIC": (
+            "${{ github.event_name == 'workflow_dispatch' && inputs.native_diagnostic }}"
+        )
+    }
+    if any(step.get("env") != diagnostic_env for step in (native_build, native_other)):
+        msg = "Required native diagnostic environment differs"
+        raise ValueError(msg)
     required_step(native, NATIVE_SMOKE, "runner.os != 'Windows'")
     require_native_diagnostics(native, "release", "platform", native_build)
     require_windows_resource_proof(native, native_build)

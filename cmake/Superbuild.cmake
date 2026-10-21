@@ -96,6 +96,15 @@ endforeach()
 # Only the older upstream recipients above consume the default-policy argument.
 set(de_application_common ${de_common})
 list(FILTER de_application_common EXCLUDE REGEX "^-DCMAKE_POLICY_DEFAULT_CMP0091:")
+set(de_native_build_suffix "")
+if(DEFINED ENV{DE_NATIVE_DIAGNOSTIC})
+  if("$ENV{DE_NATIVE_DIAGNOSTIC}" STREQUAL "true")
+    list(APPEND de_native_build_suffix -- -k 0)
+  elseif(NOT "$ENV{DE_NATIVE_DIAGNOSTIC}" STREQUAL "" AND
+      NOT "$ENV{DE_NATIVE_DIAGNOSTIC}" STREQUAL "false")
+    message(FATAL_ERROR "DE_NATIVE_DIAGNOSTIC must be true, false or empty")
+  endif()
+endif()
 set(de_inner "${PROJECT_BINARY_DIR}/app")
 ExternalProject_Add(de_native
   SOURCE_DIR "${PROJECT_SOURCE_DIR}" BINARY_DIR "${de_inner}"
@@ -122,7 +131,7 @@ ExternalProject_Add(de_native
     "-DDE_BUILD_JOBS:STRING=${DE_BUILD_JOBS}"
     "-DDE_TOOLCHAIN:STRING=${DE_TOOLCHAIN}"
     "-DPython3_EXECUTABLE:FILEPATH=${Python3_EXECUTABLE}"
-  BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --parallel "${DE_BUILD_JOBS}"
+  BUILD_COMMAND "${CMAKE_COMMAND}" --build <BINARY_DIR> --parallel "${DE_BUILD_JOBS}" ${de_native_build_suffix}
   BUILD_ALWAYS TRUE INSTALL_COMMAND "" TEST_COMMAND ""
   DEPENDS ${de_previous}
   USES_TERMINAL_CONFIGURE TRUE USES_TERMINAL_BUILD TRUE)

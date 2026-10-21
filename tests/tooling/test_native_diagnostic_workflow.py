@@ -6,7 +6,15 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import re
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
+from pathlib import Path
 
 from tools_path import ROOT
 
@@ -153,3 +161,154 @@ class NativeDiagnosticWorkflowTests(unittest.TestCase):
                 self.assertRaisesRegex(ValueError, "Aggregate"),
             ):
                 integrity.quality_workflow(changed, major)
+
+    def test_keep_going_environment_is_exact_manual_native_opt_in(self) -> None:
+        """Both actual native build steps forward only the typed manual diagnostic decision."""
+        original = workflow(ROOT / ".github/workflows/ci.yml")
+        major = str(
+            json.loads((ROOT / "deps/tools.json").read_text())["clang_tidy"]["version"]
+        ).split(".")[0]
+        integrity.quality_workflow(original, major)
+        for command in ("./tools/ci_windows.ps1", "cmake --workflow --preset release"):
+            for value in (None, "true", "false", "1", "${{ inputs.native_diagnostic }}"):
+                changed = copy.deepcopy(original)
+                step = next(
+                    s for s in changed["jobs"]["native"]["steps"] if s.get("run") == command
+                )
+                if value is None:
+                    step.pop("env")
+                else:
+                    step["env"]["DE_NATIVE_DIAGNOSTIC"] = value
+                with (
+                    self.subTest(command=command, value=value),
+                    self.assertRaisesRegex(ValueError, "Required native diagnostic environment"),
+                ):
+                    integrity.quality_workflow(changed, major)
+
+    def test_actual_native_build_command_keeps_only_literal_true_going(self) -> None:
+        """Configure the production command fragment; no compiler or dependency build runs."""
+        source = (ROOT / "cmake/Superbuild.cmake").read_text()
+        start = source.index('set(de_native_build_suffix "")')
+        end = source.index("add_custom_target(de_verify_configuration", start)
+        fragment = source[start:end]
+        references = set(re.findall(r"\$\{([A-Za-z_]\w*)\}", fragment))
+        owned = {
+            "de_native_build_suffix",
+            "de_inner",
+            "CMAKE_COMMAND",
+            "PROJECT_SOURCE_DIR",
+            "PROJECT_BINARY_DIR",
+            "DE_BUILD_JOBS",
+        }
+        context = "".join(f'set({name} "")\n' for name in sorted(references - owned))
+        cmake, ninja = shutil.which("cmake"), shutil.which("ninja")
+        self.assertIsNotNone(cmake)
+        self.assertIsNotNone(ninja)
+        for windows, value, accepted in (
+            (True, None, True),
+            (True, "", True),
+            (True, "false", True),
+            (True, "true", True),
+            (True, "TRUE", False),
+            (True, "1", False),
+            (False, "true", True),
+            (False, "nonsense", False),
+        ):
+            with (
+                self.subTest(windows=windows, value=value),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                text = (
+                    "cmake_minimum_required(VERSION 4.4)\nproject(NativeCommand NONE)\n"
+                    "include(ExternalProject)\n"
+                    + context
+                    + f'set(PROJECT_SOURCE_DIR "{ROOT.as_posix()}")\n'
+                    f"set(WIN32 {'TRUE' if windows else 'FALSE'})\n"
+                    "set(DE_BUILD_JOBS 3)\n"
+                    + fragment
+                    + "get_property(native_command TARGET de_native PROPERTY _EP_BUILD_COMMAND)\n"
+                    + 'file(WRITE "${CMAKE_BINARY_DIR}/native-command.txt" "${native_command}")\n'
+                )
+                (root / "CMakeLists.txt").write_text(text)
+                environment = os.environ.copy()
+                environment.pop("DE_NATIVE_DIAGNOSTIC", None)
+                if value is not None:
+                    environment["DE_NATIVE_DIAGNOSTIC"] = value
+                built = subprocess.run(
+                    [
+                        str(cmake),
+                        "--warn-uninitialized",
+                        "-Werror=dev",
+                        "-S",
+                        str(root),
+                        "-B",
+                        str(root / "build"),
+                        "-G",
+                        "Ninja",
+                    ],
+                    env=environment,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=15,
+                )
+                if not accepted:
+                    self.assertNotEqual(built.returncode, 0)
+                    self.assertIn(
+                        "DE_NATIVE_DIAGNOSTIC must be true, false or empty",
+                        built.stdout + built.stderr,
+                    )
+                    continue
+                self.assertEqual(built.returncode, 0, built.stdout + built.stderr)
+                tokens = (root / "build/native-command.txt").read_text().split(";")
+                tail = tokens[tokens.index("--parallel") :]
+                expected = ["--parallel", "3"] + (["--", "-k", "0"] if value == "true" else [])
+                self.assertEqual(tail, expected)
+
+    def test_keep_going_ready_edge_does_not_erase_failure(self) -> None:
+        """A tiny independent Ninja edge completes in diagnostic mode, still with failure."""
+        ninja = shutil.which("ninja")
+        self.assertIsNotNone(ninja)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = root / "command.py"
+            script.write_text(
+                "import sys\nfrom pathlib import Path\n"
+                "with Path('events').open('a') as stream: stream.write(sys.argv[1]+'\\n')\n"
+                "if sys.argv[1] == 'fail': raise SystemExit(1)\n"
+                "Path('marker').write_text('attained')\n"
+            )
+            quote = subprocess.list2cmdline if os.name == "nt" else shlex.join
+            fail = quote([sys.executable, str(script), "fail"]).replace("$", "$$")
+            mark = quote([sys.executable, str(script), "mark"]).replace("$", "$$")
+            (root / "build.ninja").write_text(
+                f"rule fail\n  command = {fail}\nrule mark\n  command = {mark}\n"
+                "build failure: fail\nbuild marker: mark\ndefault failure marker\n"
+            )
+            for suffix in ([], ["-k", "0"]):
+                (root / "marker").unlink(missing_ok=True)
+                (root / "events").unlink(missing_ok=True)
+                result = subprocess.run(
+                    [
+                        str(ninja),
+                        "-f",
+                        str(root / "build.ninja"),
+                        "-j",
+                        "1",
+                        *suffix,
+                        "failure",
+                        "marker",
+                    ],
+                    cwd=root,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=5,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                if suffix:
+                    self.assertEqual((root / "marker").read_text(), "attained")
+                    self.assertCountEqual(
+                        (root / "events").read_text().splitlines(), ["fail", "mark"]
+                    )
