@@ -110,9 +110,10 @@ class ClientRegistrationTests(unittest.TestCase):
                 'PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${PROJECT_SOURCE_DIR}/png")\n'
                 "add_library(DE::unreviewed INTERFACE IMPORTED)\n"
             ) + body
+            # Discover the real C++ compiler once; every variant still reruns CMake policy.
+            build = root / "usage"
             for public in ("nlohmann_json::nlohmann_json", "DE::unreviewed"):
                 with self.subTest(public=public):
-                    build = root / ("healthy" if public.startswith("nlohmann") else "refused")
                     (root / "CMakeLists.txt").write_text(
                         text + "de_library(de_record LAYER record SOURCES probe.cpp "
                         'HEADERS "${DE_INCLUDE}/record/probe.hpp" '
@@ -144,7 +145,8 @@ class ClientRegistrationTests(unittest.TestCase):
                         capture_output=True,
                         text=True,
                         check=False,
-                        timeout=15,
+                        # Cold hosted Windows compiler discovery exceeded 15 seconds.
+                        timeout=30 if public == "nlohmann_json::nlohmann_json" else 15,
                     )
                     if public == "DE::unreviewed":
                         self.assertNotEqual(result.returncode, 0)

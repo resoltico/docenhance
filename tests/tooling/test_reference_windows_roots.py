@@ -134,7 +134,6 @@ class ReferenceWindowsRootsTests(unittest.TestCase):
                 ]
                 with (
                     self.subTest(identity=identity),
-                    patch("check_reference_suite.shutil.which", return_value="cmake"),
                     patch("check_reference_suite.subprocess.run", side_effect=replies) as run,
                 ):
                     suite.generate_build_facts(directory, "selected-clang++", "4.4")
@@ -173,7 +172,6 @@ class ReferenceWindowsRootsTests(unittest.TestCase):
                 ]
                 with (
                     self.subTest(value=value),
-                    patch("check_reference_suite.shutil.which", return_value="cmake"),
                     patch("check_reference_suite.subprocess.run", side_effect=replies),
                     self.assertRaisesRegex(RuntimeError, "selected Clang resource"),
                 ):
@@ -196,9 +194,34 @@ class ReferenceWindowsRootsTests(unittest.TestCase):
                 roots.write_text("unchanged")
                 with (
                     self.subTest(error=type(error)),
-                    patch("check_reference_suite.shutil.which", return_value="cmake"),
                     patch("check_reference_suite.subprocess.run", side_effect=[None, error]),
                     self.assertRaises(type(error)),
                 ):
                     suite.generate_build_facts(directory, "selected-clang++", "4.4")
                 self.assertEqual(roots.read_text(), "unchanged")
+
+    def test_clang_resource_controls_preserve_windows_compiler_lookup(self) -> None:
+        """Mocking the resource query must not replace the independent selected cl.exe owner."""
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            vc, sdk = base / "vc", base / "sdk"
+            (vc / "include").mkdir(parents=True)
+            compiler = vc / "bin/Hostx64/x64/cl.exe"
+            compiler.parent.mkdir(parents=True)
+            compiler.write_bytes(b"selected compiler fixture")
+            (sdk / "Include/10.0.26100.0/ucrt").mkdir(parents=True)
+            environment = {
+                "VCTOOLSINSTALLDIR": str(vc),
+                "WINDOWSSDKDIR": str(sdk),
+                "WINDOWSSDKVERSION": "10.0.26100.0/",
+            }
+            with (
+                patch("reference_closure.sys.platform", "win32"),
+                patch.dict("reference_closure.os.environ", environment),
+                patch(
+                    "reference_closure.shutil.which",
+                    side_effect=lambda name: str(compiler) if name == "cl.exe" else "cmake",
+                ),
+            ):
+                self.test_selected_clang_resource_query_adds_only_the_observed_include_owner()
+                self.test_malformed_missing_or_broad_clang_resource_cannot_append_roots()
