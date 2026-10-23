@@ -1,0 +1,124 @@
+{
+  "binary": "out/release/bin/docenhance",
+  "bounds": {
+    "notes": "Known fixed6.54MP8bit RGB/gray workloads: raw encoded row outputs conservatively under600MiB total plus metadata;1GiB allows retained evidence headroom. Cooperative checks before/after each fixed-size trial, not a filesystem quota. Failure/budget stop retains incomplete outcomes and lists unstarted trials.",
+    "owned_allocated_bytes": 1073741824,
+    "per_command_seconds": 180,
+    "series_seconds_excluding_build_and_cooldown": 900
+  },
+  "checkout": "/Users/erst/.codex/worktrees/foundation-baseline/docenhance",
+  "created_utc": "2026-10-15T06:58:25.520713+00:00",
+  "eligibility": "At least180seconds after all local heavy build/test work completes; no active compiler/ninja/test workflow; AC power, low-power mode disabled, no reported CPU throttling, observed CPU idle>=90percent on eligibility samples. Retain unavailable observations as unknown; never claim complete thermal control. Capture context before/after every trial.",
+  "environment": "Platform release compiler, original release preset with tests/IPO/native features unchanged, pinned dependencies/shared verified source cache, configuration-private build/prefix; capture lock/features/recipes/cache/compilation/SDK/linker/machine/load/power/thermal. No runtime method/default overrides or ambient package substitution.",
+  "input": "corpus/images/armenian-incipit.jpg",
+  "input_height": 3000,
+  "input_sha256": "a642b1a0ce2201ad1da772c644300286bedad62f7e5d7c4eaae52d8b6aed258a",
+  "input_width": 2179,
+  "interpretation": "Retain original observed table and refreshed source-bound reference separately. No universal performance/quality promises. Actual PR3/4 acceptance reruns this exact pinned old executable alongside candidate in the same window under a separately frozen balanced paired order; material environment changes require rebuilding both exact commits consistently. Noise is inconclusive, no invented regression tolerance.",
+  "order": "Ten process rows in cyclic offsets0,4,8 for repetitions1,2,3. Verify immediately after full in each repetition.33fresh processes total.",
+  "process_command": [
+    "BINARY",
+    "process",
+    "INPUT",
+    "--out-dir",
+    "UNIQUE_TRIAL/bundle",
+    "--json",
+    "OPTIONS..."
+  ],
+  "repetitions": 3,
+  "retention": "Keep every owned trial bundle, raw response/stderr/time and full record; no automatic pruning, no retry/reuse after uncertain effect; no source or cache flushing/modification.",
+  "schema_version": 1,
+  "source_commit": "e72a00f58303c01f31eea18c64745c93efbdabec",
+  "status": "Frozen before timing; first source-bound baseline series, not final paired acceptance",
+  "summary": "Median with full min/max range per row, raw native wall/user/sys/RSS, wrapper wall, every command/exit/stdout/stderr/record/artifact identity retained. No outlier exclusion or best-run selection.",
+  "time_tool": [
+    "/usr/bin/time",
+    "-l",
+    "-o",
+    "UNIQUE_TRIAL/time.raw",
+    "COMMAND..."
+  ],
+  "verify_command": [
+    "BINARY",
+    "verify",
+    "SAME_EXECUTABLE_SAME_REPETITION_FULL_BUNDLE",
+    "--json"
+  ],
+  "workloads": [
+    {
+      "case": "plain",
+      "options": []
+    },
+    {
+      "case": "gray",
+      "options": [
+        "--output-mode",
+        "gray"
+      ]
+    },
+    {
+      "case": "illum",
+      "options": [
+        "--illumination",
+        "surface"
+      ]
+    },
+    {
+      "case": "nlm",
+      "options": [
+        "--denoise",
+        "nlm"
+      ]
+    },
+    {
+      "case": "tv",
+      "options": [
+        "--denoise",
+        "tvl1"
+      ]
+    },
+    {
+      "case": "levels",
+      "options": [
+        "--contrast",
+        "levels"
+      ]
+    },
+    {
+      "case": "clahe",
+      "options": [
+        "--contrast",
+        "clahe"
+      ]
+    },
+    {
+      "case": "sharp",
+      "options": [
+        "--sharpen",
+        "unsharp"
+      ]
+    },
+    {
+      "case": "wiener",
+      "options": [
+        "--deblur",
+        "wiener",
+        "--psf",
+        "gaussian"
+      ]
+    },
+    {
+      "case": "full",
+      "options": [
+        "--illumination",
+        "surface",
+        "--denoise",
+        "nlm",
+        "--contrast",
+        "levels",
+        "--sharpen",
+        "unsharp"
+      ]
+    }
+  ]
+}
