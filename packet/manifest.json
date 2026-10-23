@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "scope": "One exact qualified04 old/current restored-product plain conversion and own-verify diagnostic on a freshly matched Intel host. Zero new builds, four SUT slots, no full33 R17 campaign or retry, tuning, full qualification or natural-quality claim. Historical producer records stay unchanged with explicit local restoration mapping.",
+  "source_commits": {
+    "old": "e72a00f58303c01f31eea18c64745c93efbdabec",
+    "current": "f577bf67cad6c433ea2a53cfaa4bc3294a2f8cb5"
+  },
+  "payload_sha256": {
+    "initialize.py": "5f55d23a92d5ffc55a8f80b592259a19e30ace8d77c3f8246e9494339883e6bd",
+    "restore.py": "42757bdb525b5eea2af169a3f172ca2163c00ef239b71aaa25d32944c2e9ec5e",
+    "artifact-manifest.json": "6f83724b665a2bc0b903fb3f818fa4135cc1424462735f8211e4ded57d35a76e",
+    "measure.py": "17f8132e8a36656052d82625781b2d0dbef4e02710ff7e1b0a38895820b2df91",
+    "run_pair.py": "e30c6adf18c061f0537c2b3a4f1f99e839d7405b2fe75f005bfcc58b4354e407",
+    "source-old.json": "187f5cb5e665d3c3bf516136752bc5c2dcf4d0b72a9eca82947959ef5ecf09ab",
+    "source-current.json": "f37b7491e47ea940c7f6f9ae3f6a38d4702a56ca155f715cea11680fba12e5ee",
+    "protocol.json": "2a7332fc804149a862da10e508f8d664ba02b1a87c5aef956b25a15661f53192"
+  },
+  "workflow_sha256": "13d4cd3bd1c25397380fc6a7a4da297725a480fc8a83f375e507872d561f6503",
+  "bounds": {
+    "restoration_total_seconds": 120,
+    "restoration_zip_bytes": 20971520,
+    "restoration_owner_bytes": 134217728,
+    "restoration_minimum_free_disk_bytes": 3221225472,
+    "prepair_total_seconds": 240,
+    "quiet_after_verification_seconds": 180,
+    "pair_total_seconds": 524,
+    "pair_cleanup_seconds": 30,
+    "pair_owned_allocated_bytes": 201326592,
+    "SUT_slots": 4,
+    "new_builds": 0,
+    "campaigns": 0,
+    "CPU_query_seconds": 6,
+    "CPU_idle_samples": 3,
+    "CPU_idle_minimum_percent": 90,
+    "sampling_is_quota": false
+  },
+  "historical_build": {
+    "run": 40010346336,
+    "capsule_commit": "5bc5b45b1ecd107740c85a0aadfa594af8e878d7",
+    "artifact_id": 12529461168,
+    "zip_bytes": 17125546,
+    "zip_sha256": "0cdfedd1748d4cd25c02d061c2fe418f268ce8871cb18a734691864188d8f4a8",
+    "producer": "Both fresh exact products qualified after3324.310861576seconds. Producer0SUT, closed children and absent claim. Pairfirsttop6s timed out with empty streams, reaped/readers closed; four unstarted slots. No previous timing success inferred.",
+    "original_zip_review_sha256": "38bd336b36e8b2efb84e61b10462a5b93a998881a404ca4e8120460b8b4aad95"
+  },
+  "reviewed_component_seals": {
+    "restoration_checkpoint_sha256": "3bc6e272a438bbf37338f058567f51ab489271740c69cd84fd872a58788fa6fb",
+    "restoration_peer_sha256": "e771d625d043f38ed6ab756612e2ddec2cea67a014b0182692a63cbdcd49d4bc",
+    "binder_checkpoint_sha256": "8b753536f3083b70cf899450c1e9e1c719876b21412a3787619b7a196804b427",
+    "top_F_checkpoint_sha256": "b14f9b6045db5a6ce2af1a4a98da880f2c9976486707a5b2352d8f6dae399655",
+    "distinct_design_review_sha256": "da9c92ffb620e4166a1e87bf2a5937d225e6fb5fd802cd76752784cbb447f7e7",
+    "compiler_readiness_checkpoint_sha256": "41ce5013c1935861eddd46565c3575f823c76af6e570032f234b2b3f7d653150"
+  },
+  "CPU_query_change": "Only add -F to omit framework VM statistics; Apple source establishes separate unchanged HOST_CPU_LOAD_INFO system-wide CPU computation. Timeout cause and fit are not inferred. Same6s cap, three newidle>=90, separate process census, power and thermal gates; no warmup or automatic retry.",
+  "reused_work": "Both exact previously qualified products restored together after all original ZIP/member/source/role/log/provenance checks. Current compiler bytes and original OS/compiler/SDK/linker/machine context must match. No fake fresh build tree or rewritten historical record.",
+  "prior_restored_attempt": {
+    "run": 40020981674,
+    "capsule_commit": "376255ae7267566afa2e9b89d803a34512bb19be",
+    "outcome": "Exact original products restored; first cold compiler comparison4s timed out before CPU admission. Zero SUT, all4slots unstarted, children closed and claim absent. Original retained.",
+    "original_zip_review_sha256": "4a571ccd0f04c0af5b4163562cd940985be2456d8305aa1c44ed343a9845aa73"
+  },
+  "compiler_readiness_correction": "Restore original producer ONE read-only compiler readiness step before180quiet, cap30 clipped to remaining original<60s work within240prepair; exact209B original raw version SHA/current compiler bytes before+after; no SUT warmup, retry, fallback or cap changes. Original04 readiness actually took8.7477s. Same subsequent4s comparability and6s CPU observations,524driver."
+}
