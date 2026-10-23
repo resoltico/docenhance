@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "scope": "One isolated exact-source fresh e72/current188 producer and four-slot plain conversion+ownverify diagnostic. No full33R17 campaign, retries, automatic tuning, fullqualification or naturalquality claim.",
+  "source_commits": {
+    "old": "e72a00f58303c01f31eea18c64745c93efbdabec",
+    "current": "f577bf67cad6c433ea2a53cfaa4bc3294a2f8cb5"
+  },
+  "payload_sha256": {
+    "initialize.py": "5f55d23a92d5ffc55a8f80b592259a19e30ace8d77c3f8246e9494339883e6bd",
+    "produce.py": "9851e4ee2689972fd2292ac31ef67b52c0a852ed31fb3ea360afd64b0f2aabab",
+    "qualify_products.py": "3d3d1ebc6db908e2a9813c73730f6febfa25361d19b2b386e8fd425a5ae7d900",
+    "measure.py": "29dde895c8699f8107bf3bda02cc6ab854b05c5839e9d18c594a8cb04064edea",
+    "run_pair.py": "9fdf4cd6814c5685c7e1cbcb3d554d732909d687dc6d91b58b9250453cda1d21",
+    "source-old.json": "187f5cb5e665d3c3bf516136752bc5c2dcf4d0b72a9eca82947959ef5ecf09ab",
+    "source-current.json": "f37b7491e47ea940c7f6f9ae3f6a38d4702a56ca155f715cea11680fba12e5ee",
+    "protocol.json": "2a7332fc804149a862da10e508f8d664ba02b1a87c5aef956b25a15661f53192"
+  },
+  "workflow_sha256": "d2e2e0e8f13b58bdfe8169ba85f5c56dd2428e9895c6bd9dc3e40bdb7370f95f",
+  "bounds": {
+    "producer_total_seconds": 6000,
+    "producer_cleanup_seconds": 150,
+    "producer_sampled_max_per_entry_charged_bytes": 3221225472,
+    "producer_maximum_RSS_bytes": 4294967296,
+    "producer_evidence_bytes": 201326592,
+    "minimum_free_disk_bytes": 5368709120,
+    "prepair_total_seconds": 240,
+    "quiet_after_verification_seconds": 180,
+    "pair_total_seconds": 524,
+    "pair_cleanup_seconds": 30,
+    "pair_owned_allocated_bytes": 201326592,
+    "SUT_slots": 4,
+    "source_campaigns": 0,
+    "sampling_is_quota": false
+  },
+  "reviewed_component_seals": {
+    "producer_checkpoint_sha256": "f961f0256b5ed309ff7dd2831a16f0fe13efa73ff51838ac99f26a6438eb391d",
+    "producer_peer_sha256": "dc8cc7f6e310d2616922d902ecf5127afa1e151c5c94d8bb08a3b5521d495313",
+    "driver_peer_sha256": "633634c841d91d62e7958a9c03f119343c76a5530581e66ed4251f50042fa25e",
+    "wire_controls_sha256": "d746165a6b93167a0170afcba674375901bc53df5d64b7c328a0f221c517ac14",
+    "wrapper_v2_peer_sha256": "ea808b5dfdf3af1c09c61529dc1209b088f77c521216863a2469269052092116"
+  }
+}
