@@ -18,7 +18,7 @@ import subprocess
 from pathlib import Path
 
 from architecture import ArchitectureError, Manifest
-from deps import ROOT
+from deps import ROOT, digest_file
 
 
 class LayerRoots:
@@ -51,12 +51,31 @@ def layer_of(manifest: Manifest, path: str) -> str | None:
 
 def compilation_database(manifest: Manifest, build: Path) -> list[dict[str, str]]:
     """Load the build's compilation database, keeping the first-party translation units."""
-    path = build / "compile_commands.json"
-    if not path.is_file():
-        msg = f"No compilation database at {path}; configure a build first (docs/build.md)"
-        raise ArchitectureError(msg)
-    entries: list[dict[str, str]] = json.loads(path.read_text(encoding="utf-8"))
-    return [entry for entry in entries if layer_of(manifest, entry["file"]) is not None]
+    return [
+        entry for entry in compiler_entries(build) if layer_of(manifest, entry["file"]) is not None
+    ]
+
+
+def compiler_entries(build: Path) -> list[dict[str, str]]:
+    """Bind every CDB driver to its exact directory's configured compiler identity once."""
+    configuration = json.loads((build / "build-identity.json").read_text(encoding="utf-8"))
+    kind = configuration["CMAKE_CXX_COMPILER_ID"]
+    compiler = Path(configuration["CMAKE_CXX_COMPILER"]).resolve(strict=True)
+    if kind not in {"GNU", "Clang", "AppleClang"} or (
+        digest_file(compiler) != configuration["CXX_compiler_sha256"]
+    ):
+        message = "Configured compiler identity is unsupported or changed"
+        raise ArchitectureError(message)
+    entries: list[dict[str, str]] = json.loads(
+        (build / "compile_commands.json").read_text(encoding="utf-8")
+    )
+    for entry in entries:
+        driver = Path(entry["directory"]) / compiler_arguments(entry)[0]
+        if driver.resolve(strict=True) != compiler:
+            message = "Compilation database driver differs from its configured CXX owner"
+            raise ArchitectureError(message)
+        entry["compiler_id"] = kind
+    return entries
 
 
 def compiler_arguments(entry: dict[str, str]) -> list[str]:
@@ -107,12 +126,14 @@ def included_headers(entry: dict[str, str], *, syntax: bool = True) -> list[tupl
         entry["directory"],
         f"Cannot read the includes of {entry['file']}",
     )
-    return header_trace(output.stderr, entry["directory"], entry["file"])
+    return header_trace(output.stderr, entry["directory"], entry["file"], entry["compiler_id"])
 
 
-def header_trace(output: str, directory: str, source: str) -> list[tuple[str, str]]:
+def header_trace(
+    output: str, directory: str, source: str, compiler_id: str
+) -> list[tuple[str, str]]:
     """Resolve a real compiler -H trace, including literal spaces and dollar signs."""
-    consumed, names = header_trace_values(output)
+    consumed, names = header_trace_values(output, compiler_id)
     if consumed:
         path = (Path(directory) / consumed).resolve()
         msg = f"Cannot audit consumed precompiled header for {source}: {path}"
@@ -125,9 +146,30 @@ def header_trace(output: str, directory: str, source: str) -> list[tuple[str, st
     return list(zip(spellings, (str(path) for path in paths), strict=True))
 
 
-def header_trace_values(output: str) -> tuple[str | None, list[str]]:
+def header_trace_values(output: str, compiler_id: str) -> tuple[str | None, list[str]]:
     """Decode the existing -H text without opening or resolving any observed file."""
+    if compiler_id not in {"GNU", "Clang", "AppleClang"}:
+        message = "Unsupported compiler include-trace emitter"
+        raise ArchitectureError(message)
     consumed = re.search(r"^! (.+)$", output, flags=re.MULTILINE)
-    return consumed.group(1) if consumed else None, re.findall(
-        r"^\.+ (.+)$", output, flags=re.MULTILINE
-    )
+    names = re.findall(r"^\.+ (.+)$", output, flags=re.MULTILINE)
+    return consumed.group(1) if consumed else None, [
+        _header_name(name, compiler_id) for name in names
+    ]
+
+
+def _header_name(name: str, compiler_id: str) -> str:
+    """Invert only Clang Stringify transport once; GNU paths are already literal bytes."""
+    if compiler_id == "GNU":
+        return name
+    try:
+        decoded: str = json.loads('"' + name + '"', strict=False)
+    except json.JSONDecodeError as error:
+        message = "Malformed Clang include-trace filename escaping"
+        raise ArchitectureError(message) from error
+    # Stringify escapes backslash/quote and collapses CR/LF to \n. The latter is ambiguous.
+    encoded = decoded.replace("\\", "\\\\").replace('"', '\\"')
+    if "\n" in decoded or "\r" in decoded or encoded != name:
+        message = "Ambiguous or noncanonical Clang include-trace filename escaping"
+        raise ArchitectureError(message)
+    return decoded

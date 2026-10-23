@@ -33,6 +33,7 @@ from compile_db import (
     LayerRoots,
     compilation_database,
     compiler_arguments,
+    compiler_entries,
     included_headers,
     layer_of,
     package_roots,
@@ -202,7 +203,7 @@ def client_link_errors(manifest: Manifest, root: str, record: dict[str, str]) ->
 
 def client_violations(manifest: Manifest, build: Path) -> list[str]:
     """Observe registered clients' actual compiler includes and generator-time direct links."""
-    entries = json.loads((build / "compile_commands.json").read_text(encoding="utf-8"))
+    entries = compiler_entries(build)
     errors, observed, targets = [], set(), set()
     for path in sorted(build.glob("architecture-client-*.json")):
         record = json.loads(path.read_text(encoding="utf-8"))

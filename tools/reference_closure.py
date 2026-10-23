@@ -132,12 +132,14 @@ def system_roots(paths: list[str], *, simulate_id: str = "") -> list[Path]:
     return sorted(set(roots))
 
 
-def observe_headers(trace: str, directory: Path, source: Path, allowed_roots: list[Path]) -> None:
+def observe_headers(
+    trace: str, directory: Path, source: Path, allowed_roots: list[Path], compiler_id: str
+) -> None:
     """Audit the same object compilation's canonical headers; package rejection comes first."""
     manifest = load_manifest()
     roots = [path.resolve() for path in allowed_roots]
     private = [(ROOT / name).resolve() for name in (".cache", "out")]
-    for spelled, canonical in header_trace(trace, str(directory), str(source)):
+    for spelled, canonical in header_trace(trace, str(directory), str(source), compiler_id):
         path = Path(canonical)
         names = (Path(spelled).as_posix(), path.as_posix())
         package = any(manifest.package_of_header(name) for name in names)
@@ -198,7 +200,7 @@ def verify_gnu_pch(compiler: str, flags: list[str], directory: Path) -> None:
         )
         return result.stderr
 
-    observe_headers(compile_object(), control, source, [control])
+    observe_headers(compile_object(), control, source, [control], "GNU")
     executable = control / "control"
     subprocess.run([compiler, *flags, str(target), "-o", str(executable)], check=True)
     subprocess.run([str(executable)], check=True)
@@ -221,7 +223,7 @@ def verify_gnu_pch(compiler: str, flags: list[str], directory: Path) -> None:
 def refuse_trace(trace: str, directory: Path, source: Path, diagnostic: str) -> None:
     """Require the intended actual observer refusal, never an unrelated compiler failure."""
     try:
-        observe_headers(trace, directory, source, [directory])
+        observe_headers(trace, directory, source, [directory], "GNU")
     except ArchitectureError as error:
         if diagnostic in str(error):
             return

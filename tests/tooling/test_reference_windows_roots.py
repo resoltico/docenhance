@@ -89,6 +89,7 @@ class ReferenceWindowsRootsTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
             (directory / "toolchain-roots.txt").write_text("")
+            (directory / "compiler-id.txt").write_text("Clang")
             fact = directory / "compiler-simulate-id.txt"
             for value in (None, "MSVC", "MSVC\n", "GNU"):
                 if value is None:
@@ -114,7 +115,7 @@ class ReferenceWindowsRootsTests(unittest.TestCase):
             patch.object(closure, "header_trace", return_value=[(str(private), str(private))]),
             self.assertRaisesRegex(ArchitectureError, "native/package"),
         ):
-            closure.observe_headers("", ROOT, ROOT / "tests/reference.cpp", [ROOT])
+            closure.observe_headers("", ROOT, ROOT / "tests/reference.cpp", [ROOT], "Clang")
 
     def test_selected_clang_resource_query_adds_only_the_observed_include_owner(self) -> None:
         """Both Clang driver families expose their own resource directory once, with a clock."""

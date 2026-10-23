@@ -47,7 +47,8 @@ class ReferenceCompilationTests(unittest.TestCase):
             for jobs in (1, 2):
                 build = directory / f"build-{jobs}"
                 build.mkdir()
-                shutil.copyfile(facts / "toolchain-roots.txt", build / "toolchain-roots.txt")
+                for name in ("toolchain-roots.txt", "compiler-id.txt"):
+                    shutil.copyfile(facts / name, build / name)
                 binary = check_reference_suite.build_reference(
                     str(compiler), [], sources, build, jobs
                 )
@@ -56,7 +57,8 @@ class ReferenceCompilationTests(unittest.TestCase):
             sources[1].write_text("#error controlled-reference-failure\n")
             broken = directory / "broken"
             broken.mkdir()
-            shutil.copyfile(facts / "toolchain-roots.txt", broken / "toolchain-roots.txt")
+            for name in ("toolchain-roots.txt", "compiler-id.txt"):
+                shutil.copyfile(facts / name, broken / name)
             with self.assertRaises(subprocess.CalledProcessError) as raised:
                 check_reference_suite.build_reference(str(compiler), [], sources, broken, 2)
             self.assertIn("controlled-reference-failure", raised.exception.stderr)
@@ -82,6 +84,7 @@ class ReferenceCompilationTests(unittest.TestCase):
             patch("check_reference_suite.subprocess.run", side_effect=execute),
         ):
             directory = Path(temporary)
+            (directory / "compiler-id.txt").write_text("Clang", encoding="utf-8")
             check_reference_suite.build_reference(
                 "compiler",
                 ["-fno-fast-math"],

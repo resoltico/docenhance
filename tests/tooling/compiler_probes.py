@@ -4,12 +4,18 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import platform
+import re
+import shutil
 import subprocess
 from pathlib import Path
 
+from tools_path import ROOT
+
 import architecture_api
+from architecture import ArchitectureError
 
 
 def fixture_compiler(system: str, query: Path) -> Path:
@@ -32,11 +38,53 @@ def compiler_probe(root: Path, source: Path, text: str) -> dict[str, str]:
             text=True,
         ).strip()
         sdk_flags = f' -isysroot "{sdk}"'
+    kind = observed_compiler_id(compiler)
+    (root / "build-identity.json").write_text(
+        json.dumps(
+            {
+                "CMAKE_CXX_COMPILER": str(compiler.resolve()),
+                "CMAKE_CXX_COMPILER_ID": kind,
+                "CXX_compiler_sha256": hashlib.sha256(compiler.read_bytes()).hexdigest(),
+            }
+        ),
+        encoding="utf-8",
+    )
     source_name = source.resolve().as_posix()
     entry = {
         "directory": root.resolve().as_posix(),
+        "compiler_id": kind,
         "file": source_name,
         "command": f'"{compiler.as_posix()}" -std=c++23{sdk_flags} -c "{source_name}"',
     }
-    (root / "compile_commands.json").write_text(json.dumps([entry]), encoding="utf-8")
+    (root / "compile_commands.json").write_text(
+        json.dumps([{key: value for key, value in entry.items() if key != "compiler_id"}]),
+        encoding="utf-8",
+    )
     return entry
+
+
+def observed_compiler_id(compiler: str | Path) -> str:
+    """Use one actual driver observation for this compiler-backed fixture's trace kind."""
+    result = subprocess.run(
+        [str(compiler), "--version"], capture_output=True, text=True, check=True, timeout=15
+    )
+    if re.search(r"\bApple clang version\b", result.stdout):
+        return "AppleClang"
+    if re.search(r"\bclang version\b", result.stdout):
+        return "Clang"
+    if "Free Software Foundation" in result.stdout:
+        return "GNU"
+    message = "Compiler fixture cannot identify its actual driver emitter"
+    raise ArchitectureError(message)
+
+
+def available_compiler() -> tuple[str, str]:
+    """Select an available native GNU-style driver and observe its actual trace format."""
+    major = json.loads((ROOT / "deps/tools.json").read_text())["clang_tidy"]["version"].split(".")[
+        0
+    ]
+    compiler = shutil.which(f"clang++-{major}") or shutil.which("clang++") or shutil.which("g++")
+    if compiler is None:
+        message = "Compiler-backed controls require a native C++ driver"
+        raise ArchitectureError(message)
+    return compiler, observed_compiler_id(compiler)

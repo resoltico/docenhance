@@ -87,11 +87,12 @@ class NativeCaptureParsers(unittest.TestCase):
         )
         with patch("compile_db.run_compiler") as process:
             self.assertEqual(
-                compile_db.header_trace_values(text),
+                compile_db.header_trace_values(text, "GNU"),
                 (None, ["generated/version.hpp", "include/a b$.hpp", "generated/version.hpp"]),
             )
             self.assertEqual(
-                compile_db.header_trace_values("! cache/a b$.pch\n" + text)[0], "cache/a b$.pch"
+                compile_db.header_trace_values("! cache/a b$.pch\n" + text, "GNU")[0],
+                "cache/a b$.pch",
             )
             process.assert_not_called()
 
@@ -101,13 +102,13 @@ class NativeCaptureParsers(unittest.TestCase):
             path = Path(directory) / "a b$.hpp"
             path.write_text("// header\n", encoding="utf-8")
             self.assertEqual(
-                compile_db.header_trace(". a b$.hpp\n", directory, "control.cpp"),
+                compile_db.header_trace(". a b$.hpp\n", directory, "control.cpp", "GNU"),
                 [(f"{directory}/a b$.hpp", str(path.resolve()))],
             )
             with self.assertRaises(ArchitectureError):
-                compile_db.header_trace(". absent.hpp\n", directory, "control.cpp")
+                compile_db.header_trace(". absent.hpp\n", directory, "control.cpp", "GNU")
             with self.assertRaises(ArchitectureError):
-                compile_db.header_trace("! a b$.pch\n", directory, "control.cpp")
+                compile_db.header_trace("! a b$.pch\n", directory, "control.cpp", "GNU")
 
 
 if __name__ == "__main__":

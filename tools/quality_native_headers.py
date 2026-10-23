@@ -53,7 +53,9 @@ def header_scope(body: dict[str, Any], selected: list[dict[str, str]], files: se
             "Header observation differs from the actual selected compile command",
         )
         text = text_snapshot(observed["stderr"])
-        consumed, spellings = header_trace_values(text)
+        consumed, spellings = header_trace_values(
+            text, object_snapshot(body["configuration"])["CMAKE_CXX_COMPILER_ID"]
+        )
         need(consumed is None, "Consumed precompiled headers lack actual reviewed closure")
         need(
             isinstance(observed["files"], list)

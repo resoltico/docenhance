@@ -17,6 +17,8 @@ from unittest.mock import patch
 
 from tools_path import ROOT
 
+from compiler_probes import available_compiler
+
 import check_reference_suite
 import reference_closure
 from architecture import ArchitectureError, Manifest
@@ -43,21 +45,18 @@ class ReferenceClosureTests(unittest.TestCase):
 
     def compiler(self) -> str:
         """Require an actual available GNU-style C++ driver rather than skipping the proof."""
-        major = json.loads((ROOT / "deps/tools.json").read_text())["clang_tidy"]["version"]
-        compiler = (
-            shutil.which(f"clang++-{major.split('.')[0]}")
-            or shutil.which("clang++")
-            or shutil.which("g++")
-        )
-        if compiler is None:
-            self.fail("Reference closure controls require a native C++ driver")
+        compiler, self.compiler_id = available_compiler()
         return compiler
 
-    @staticmethod
-    def observed_system_roots(trace: str, directory: Path, source: Path) -> list[Path]:
+    def observed_system_roots(self, trace: str, directory: Path, source: Path) -> list[Path]:
         """Admit only compiler/SDK roots classified by the production policy."""
         return reference_closure.system_roots(
-            [canonical for _, canonical in header_trace(trace, str(directory), str(source))]
+            [
+                canonical
+                for _, canonical in header_trace(
+                    trace, str(directory), str(source), self.compiler_id
+                )
+            ]
         )
 
     def test_transitive_system_package_is_rejected_after_real_compilation(self) -> None:
@@ -91,7 +90,7 @@ class ReferenceClosureTests(unittest.TestCase):
             roots = self.observed_system_roots(result.stderr, directory, source)
             with self.assertRaisesRegex(REFUSALS, "nlohmann"):
                 reference_closure.observe_headers(
-                    result.stderr, directory, source, [directory, system, *roots]
+                    result.stderr, directory, source, [directory, system, *roots], self.compiler_id
                 )
 
     def test_real_owned_header_trace_is_accepted(self) -> None:
@@ -120,7 +119,9 @@ class ReferenceClosureTests(unittest.TestCase):
                 check=True,
             )
             roots = self.observed_system_roots(result.stderr, directory, source)
-            reference_closure.observe_headers(result.stderr, directory, source, [directory, *roots])
+            reference_closure.observe_headers(
+                result.stderr, directory, source, [directory, *roots], self.compiler_id
+            )
 
     def test_closed_flags_reject_extra_link_inputs_and_discard(self) -> None:
         """No extra archive/object/library, discarded undefined code or macro payload enters."""
@@ -266,6 +267,7 @@ class ReferenceClosureTests(unittest.TestCase):
             )
             roots = self.observed_system_roots(probe.stderr, directory, source)
             (directory / "toolchain-roots.txt").write_text(";".join(map(str, roots)))
+            (directory / "compiler-id.txt").write_text(self.compiler_id, encoding="utf-8")
             with (
                 patch.object(
                     subprocess, "run", partial(subprocess.run, capture_output=True, text=True)

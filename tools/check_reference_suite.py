@@ -162,6 +162,7 @@ def build_reference(
         "-I",
         str(directory / "generated"),
     ]
+    compiler_id = (directory / "compiler-id.txt").read_text(encoding="utf-8")
     roots_file = directory / "toolchain-roots.txt"
     simulate_file = directory / "compiler-simulate-id.txt"
     simulate_id = simulate_file.read_text(encoding="utf-8") if simulate_file.is_file() else ""
@@ -182,7 +183,7 @@ def build_reference(
             text=True,
             check=True,
         )
-        observe_headers(result.stderr, Path.cwd(), source, roots)
+        observe_headers(result.stderr, Path.cwd(), source, roots, compiler_id)
         return target
 
     objects = ordered_map(compile_source, enumerate(sources), jobs)

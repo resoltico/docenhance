@@ -165,7 +165,9 @@ class ArchitectureExecutionTests(unittest.TestCase):
                     )
             self.assertTrue(any("overlapping throw restriction" in report for report in found))
             self.assertTrue(any(header.name in report for report in found), diagnostic)
-            compiler_probe(root, Path(entry["file"]), "namespace broken { invalid syntax }\n")
+            Path(entry["file"]).write_text(
+                "namespace broken { invalid syntax }\n", encoding="utf-8"
+            )
             with self.assertRaises(architecture.ArchitectureError):
                 architecture_api.api_violations(query, root, entry, rules)
             with self.assertRaises(architecture.ArchitectureError):

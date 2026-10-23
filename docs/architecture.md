@@ -333,6 +333,9 @@ through public interfaces. The registered CLI fuzz client is checked against the
 using real includes and generator-time target links. Final CMake target properties must agree with
 production registrations, including additions made after registration. White-box tests intentionally
 use private numerical/native failure seams; they are not production layers.
+Include trace decoding uses the configured compiler identity from the same build owner. Clang
+backslash/quote transport escapes are decoded once; ambiguous line-break escapes are refused. GNU
+trace names remain literal. Decoding preserves path bytes and never chooses between existing aliases.
 AST locations use exact compiler-observed file spellings and resolved layer ownership; a checkout
 ancestor named `src` cannot make foreign code subject to project permissions. An unparsed translation
 unit or unanswered matcher is a failure, never an empty success result.

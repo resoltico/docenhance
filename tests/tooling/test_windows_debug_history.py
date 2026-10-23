@@ -74,6 +74,7 @@ class WindowsDebugHistoryTests(unittest.TestCase):
             return {"fixture": True}
 
         with (
+            patch("windows_resource_execution.time.monotonic", return_value=1000.0),
             patch.object(execution, "discovery", return_value=self.tests),
             patch.object(execution, "bounded_capture", side_effect=capture) as child,
             patch.object(execution, "archive_ctest_output"),
