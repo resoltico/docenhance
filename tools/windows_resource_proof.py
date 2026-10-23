@@ -52,6 +52,7 @@ def sources() -> dict[str, str]:
             ".github/workflows/ci.yml",
             "tools/windows_resource_proof.py",
             "tools/windows_resource_execution.py",
+            "tools/test_evidence.py",
             "tools/windows_resource_records.py",
             "tools/restoration_resource_records.py",
             "tools/restoration_resource_cases.py",

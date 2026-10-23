@@ -9,10 +9,8 @@ from typing import Any
 
 PREFIX = "restoration-native-resources-"
 CONTROLS = "restoration-native-controls"
-RESOURCE_PATTERN = (
-    r"^(fft-native-resources|restoration-native-controls|"
-    r"restoration-native-resources-(0|[1-9][0-9]*))$"
-)
+# Select the complete families so malformed roles cannot disappear before admission.
+RESOURCE_PATTERN = r"^(fft-native|restoration-native-)"
 
 
 def resource_cases(tests: list[dict[str, Any]], executables: dict[str, str]) -> set[str]:

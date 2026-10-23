@@ -17,10 +17,13 @@ class EvidenceError(ValueError):
     """Discovery or execution cannot establish complete passing verification."""
 
 
-def discovery(ctest: str, build: Path) -> list[dict[str, Any]]:
+def discovery(ctest: str, build: Path, *, pattern: str | None = None) -> list[dict[str, Any]]:
     """Read actual configured tests, refusing disabled and skippable registrations."""
+    command = [ctest, "--test-dir", str(build), "--show-only=json-v1"]
+    if pattern is not None:
+        command.extend(["-R", pattern])
     result = subprocess.run(
-        [ctest, "--test-dir", str(build), "--show-only=json-v1"],
+        command,
         capture_output=True,
         text=True,
         check=True,

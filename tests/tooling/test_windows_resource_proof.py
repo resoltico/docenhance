@@ -231,7 +231,7 @@ class WindowsResourceProofTests(unittest.TestCase):
         (execution.ROOT / "out/dev/app").mkdir(parents=True)
         original = KeyboardInterrupt("controlled")
         with (
-            patch.object(execution, "discovery", return_value=resource_fixture()[0]),
+            patch.object(execution, "resource_discovery", return_value=resource_fixture()[0]),
             patch.object(execution, "snapshot_ctest_output", return_value={}),
             patch.object(execution, "bounded_capture", side_effect=original),
             patch.object(execution, "archive_ctest_output", side_effect=OSError("archive")),
@@ -246,7 +246,7 @@ class WindowsResourceProofTests(unittest.TestCase):
         (execution.ROOT / "out/dev/app").mkdir(parents=True)
         record: dict[str, Any] = {}
         with (
-            patch.object(execution, "discovery", return_value=resource_fixture()[0]),
+            patch.object(execution, "resource_discovery", return_value=resource_fixture()[0]),
             patch.object(execution, "snapshot_ctest_output", return_value={}),
             patch.object(execution, "bounded_capture", return_value=8),
             patch.object(execution, "archive_ctest_output", side_effect=OSError("archive")),

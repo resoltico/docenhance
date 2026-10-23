@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from native_history import owned_native_history
+from native_history import owned_native_history, regular_directory
 from native_journal import snapshot_ctest_output
 from native_output import archive_ctest_output
 from native_resource_capture import calibrations, retained_bodies
@@ -27,6 +27,7 @@ from windows_resource_records import capture_maps, native_records, retained_owne
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "out/windows-resource-proof"
+FFT_PATTERN = r"^fft-native-resources$"
 
 
 def run(command: list[str], name: str, cap: float, deadline: float, record: dict[str, Any]) -> None:
@@ -113,6 +114,20 @@ def directives(record: dict[str, Any], phase: str, deadline: float) -> None:
         target["actual_DEFAULTLIB"] = sorted(libraries)
 
 
+def resource_discovery(build: Path, pattern: str) -> list[dict[str, Any]]:
+    """Query the owned partial-build scope and bind each actual registered working directory."""
+    regular_directory(build)
+    regular_directory(build / "tests")
+    tests = discovery("ctest", build, pattern=pattern)
+    for test in tests:
+        properties = {item["name"]: item["value"] for item in test.get("properties", [])}
+        working = properties.get("WORKING_DIRECTORY")
+        if not isinstance(working, str) or Path(working) != build / "tests":
+            message = "Resource registration working directory differs from its producer"
+            raise ValueError(message)
+    return tests
+
+
 def debug_cases(deadline: float, record: dict[str, Any], executables: dict[str, str]) -> None:
     """Retain fresh complete raw/JUnit after owned child cleanup."""
     build, directory = ROOT / "out/dev/app", OUT / "debug"
@@ -125,7 +140,7 @@ def debug_cases(deadline: float, record: dict[str, Any], executables: dict[str, 
         history.directory = directory
         history.admit()
         retained_owner(record["selected_owner"])
-        tests = discovery("ctest", build)
+        tests = resource_discovery(build, RESOURCE_PATTERN)
         names = resource_cases(tests, executables)
         record["selected_cases"] = sorted(names)
         before = snapshot_ctest_output(build)
@@ -200,12 +215,11 @@ def release_fft_preflight(deadline: float, record: dict[str, Any]) -> None:
     manifest = build / "native-tests.json"
     expected = (build / "tests/de_fft_resources.exe").resolve()
     binary = Path(json.loads(manifest.read_text())["resource_binaries"]["de_fft_resources"])
-    selected = [
-        test for test in discovery("ctest", build) if test["name"] == "fft-native-resources"
-    ]
+    selected = resource_discovery(build, FFT_PATTERN)
     if (
         binary.resolve() != expected
         or len(selected) != 1
+        or selected[0]["name"] != "fft-native-resources"
         or len(selected[0]["command"]) != 1
         or Path(selected[0]["command"][0]).resolve() != expected
     ):
@@ -217,7 +231,7 @@ def release_fft_preflight(deadline: float, record: dict[str, Any]) -> None:
         "--test-dir",
         str(build),
         "-R",
-        "^fft-native-resources$",
+        FFT_PATTERN,
         "--no-tests=error",
         "--stop-on-failure",
         "--parallel",

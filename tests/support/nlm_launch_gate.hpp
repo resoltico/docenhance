@@ -10,9 +10,11 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstddef>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <new>
+#include <span>
 #include <stdexcept>
 #include <thread>
 
@@ -68,7 +70,10 @@ class NlmLaunchGate {
         return !expired_.load();
     }
     [[nodiscard]] std::size_t arrivals(std::size_t phase) const noexcept {
-        return arrivals_.at(phase).load();
+        if (phase >= arrivals_.size()) {
+            std::terminate();
+        }
+        return std::span{arrivals_}.subspan(phase, 1).front().load();
     }
     void require_valid() const {
         require(valid(), "NLM launch watchdog use refuses resource qualification");
@@ -101,8 +106,13 @@ class NlmLaunchGate {
         if (!enabled_.load() || released_.load()) {
             return;
         }
-        const auto arrived = arrivals_.at(phase_.load()).fetch_add(1) + 1;
-        arrivals_.at(phase_.load()).notify_all();
+        const auto phase = phase_.load();
+        if (phase >= arrivals_.size()) {
+            std::terminate();
+        }
+        auto& arrivals = std::span{arrivals_}.subspan(phase, 1).front();
+        const auto arrived = arrivals.fetch_add(1) + 1;
+        arrivals.notify_all();
         if (arrived >= 2) {
             release();
             return;

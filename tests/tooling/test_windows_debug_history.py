@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 from tools_path import prepare_tool_imports
 
-from restoration_resource_fixture import RESOURCE_EXECUTABLES, resource_fixture
+from restoration_resource_fixture import resource_executables, resource_fixture
 
 import native_history
 import windows_resource_execution as execution
@@ -34,7 +34,11 @@ class WindowsDebugHistoryTests(unittest.TestCase):
         self.root = Path(temporary.name)
         self.build = self.root / "out/dev/app"
         self.directory = self.root / "out/windows-resource-proof/debug"
-        self.build.mkdir(parents=True)
+        (self.build / "tests").mkdir(parents=True)
+        self.executables = resource_executables(self.build)
+        self.tests = resource_fixture(self.build)[0]
+        for test in self.tests:
+            test["properties"] = [{"name": "WORKING_DIRECTORY", "value": str(self.build / "tests")}]
         self.directory.mkdir(parents=True)
         self.map = self.directory / "retained.map.gz"
         self.map.write_bytes(b"map")
@@ -70,13 +74,13 @@ class WindowsDebugHistoryTests(unittest.TestCase):
             return {"fixture": True}
 
         with (
-            patch.object(execution, "discovery", return_value=resource_fixture()[0]),
+            patch.object(execution, "discovery", return_value=self.tests),
             patch.object(execution, "bounded_capture", side_effect=capture) as child,
             patch.object(execution, "archive_ctest_output"),
             patch.object(execution, "exact_debug_junit"),
             patch.object(execution, "native_records", side_effect=qualification),
         ):
-            execution.debug_cases(time.monotonic() + 100, record, RESOURCE_EXECUTABLES)
+            execution.debug_cases(time.monotonic() + 100, record, self.executables)
         self.assertEqual(child.call_count, 1)
         self.assertEqual(record["exit_code"], 0)
         self.assertEqual(self.map.read_bytes(), b"map")
@@ -98,13 +102,13 @@ class WindowsDebugHistoryTests(unittest.TestCase):
             return 0
 
         with (
-            patch.object(execution, "discovery", return_value=resource_fixture()[0]),
+            patch.object(execution, "discovery", return_value=self.tests),
             patch.object(native_history, "RAW_BYTES", 8),
             patch.object(execution, "bounded_capture", side_effect=grow) as child,
             patch.object(execution, "archive_ctest_output") as archive,
             self.assertRaisesRegex(ValueError, "raw JUnit/journal exceeds"),
         ):
-            execution.debug_cases(time.monotonic() + 100, record, RESOURCE_EXECUTABLES)
+            execution.debug_cases(time.monotonic() + 100, record, self.executables)
         self.assertEqual(child.call_count, 1)
         self.assertEqual(archive.call_count, 1)
         self.assertIsNone(record["exit_code"])
@@ -116,12 +120,12 @@ class WindowsDebugHistoryTests(unittest.TestCase):
     def test_retained_maps_consume_current_owner_before_child(self) -> None:
         """The second admission includes already-retained maps instead of granting a fresh quota."""
         with (
-            patch.object(execution, "discovery", return_value=resource_fixture()[0]),
+            patch.object(execution, "discovery", return_value=self.tests),
             patch.object(native_history, "RUN_BYTES", 2),
             patch.object(execution, "bounded_capture") as child,
             self.assertRaisesRegex(ValueError, "run owner exceeds"),
         ):
-            execution.debug_cases(time.monotonic() + 100, {}, RESOURCE_EXECUTABLES)
+            execution.debug_cases(time.monotonic() + 100, {}, self.executables)
         child.assert_not_called()
         self.assertEqual(self.map.read_bytes(), b"map")
         self.assertFalse((self.directory / "ctest.xml").exists())

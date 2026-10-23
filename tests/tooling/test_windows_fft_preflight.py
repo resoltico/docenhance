@@ -44,7 +44,13 @@ class WindowsFftPreflightTests(unittest.TestCase):
         self.manifest.write_text(
             json.dumps({"resource_binaries": {"de_fft_resources": str(self.binary)}})
         )
-        self.selected = [{"name": "fft-native-resources", "command": [str(self.binary)]}]
+        self.selected = [
+            {
+                "name": "fft-native-resources",
+                "command": [str(self.binary)],
+                "properties": [{"name": "WORKING_DIRECTORY", "value": str(self.binary.parent)}],
+            }
+        ]
         self.journal = framed({"fft-native-resources": calibration_rows()})
         for module in (execution, proof):
             for name, value in (("ROOT", self.root), ("OUT", self.output)):
@@ -87,13 +93,14 @@ class WindowsFftPreflightTests(unittest.TestCase):
 
     def test_missing_duplicate_extra_argument_or_foreign_registered_command_refuses(self) -> None:
         """No selected case or unowned executable is an admission failure before native effects."""
-        for selected in (
+        for candidate in (
             [],
             self.selected * 2,
             [{"name": "foreign", "command": [str(self.binary)]}],
             [{"name": "fft-native-resources", "command": [str(self.binary), "ignored"]}],
             [{"name": "fft-native-resources", "command": ["/foreign/fft.exe"]}],
         ):
+            selected = [dict(test, properties=self.selected[0]["properties"]) for test in candidate]
             with (
                 self.subTest(selected=selected),
                 patch.object(execution, "discovery", return_value=selected),
