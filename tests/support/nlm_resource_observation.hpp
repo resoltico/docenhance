@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 #pragma once
 #include "allocation_observer.hpp"
+#include "nlm_launch_gate.hpp"
 #include "nlm_resource_cases.hpp"
 
 #include <cstddef>
@@ -27,6 +28,8 @@ struct NlmObservedCall {
     std::size_t attempts = 0;
     std::size_t live = 0;
     std::size_t workers = 0;
+    std::size_t gather_arrivals = 0;
+    std::size_t mapping_arrivals = 0;
 };
 class NlmObservationScope {
   public:
@@ -72,7 +75,8 @@ inline NlmObservedCall nlm_observe(NlmWorkingFixture& fixture, unsigned workers,
                                    std::size_t failure) {
     const auto concurrency = exec::Concurrency::resolve(workers, 7, 0, 0);
     require(concurrency.has_value(), "resource observation has admitted worker count");
-    const exec::Scheduler scheduler{*concurrency};
+    NlmLaunchGate launch_gate{workers};
+    const exec::Scheduler scheduler{*concurrency, core::Cancellation{{}, &NlmLaunchGate::observe}};
     const auto method = methods::Nlm::create({.h = 1, .patch = 3, .search = 7});
     require(method.has_value(), "resource observation has admitted actual NLM method");
     NlmObservedCall observed;
@@ -88,12 +92,17 @@ inline NlmObservedCall nlm_observe(NlmWorkingFixture& fixture, unsigned workers,
                 observed.error = result.error().code;
             }
         }
+        // Join the pre-observation watchdog before observing counters or live owners.
+        launch_gate.finish();
         // Error diagnostics must be destroyed before the live-owner observation.
         observed.peak = nlm_allocation::peak.load();
         observed.attempts = nlm_allocation::allocation_attempts.load();
         observed.live = nlm_allocation::live.load();
         observed.workers = nlm_allocation::worker_count;
+        observed.gather_arrivals = launch_gate.arrivals(0);
+        observed.mapping_arrivals = launch_gate.arrivals(1);
     }
+    launch_gate.require_valid();
     return observed;
 }
 inline void nlm_print_observation(unsigned workers, std::size_t failure,
@@ -106,7 +115,8 @@ inline void nlm_print_observation(unsigned workers, std::size_t failure,
     std::cout << R"({"mode":")" << mode << R"(","workers":)" << workers << R"(,"fail_n":)"
               << failure << R"(,"attempts":)" << observed.attempts << R"(,"peak":)" << observed.peak
               << R"(,"live_after":)" << observed.live << R"(,"observed_workers":)"
-              << observed.workers << "}\n";
+              << observed.workers << R"(,"gather_arrivals":)" << observed.gather_arrivals
+              << R"(,"mapping_arrivals":)" << observed.mapping_arrivals << "}\n";
 }
 [[nodiscard]] inline bool nlm_observed_failures(unsigned workers) {
     NlmWorkingFixture healthy{9, 449, nlm_working_test_scratch};
@@ -114,12 +124,14 @@ inline void nlm_print_observation(unsigned workers, std::size_t failure,
     const NlmBacking before{healthy};
     const auto reference = nlm_working_reference(healthy, {.h = 1, .patch = 3, .search = 7});
     const auto successful = nlm_observe(healthy, workers, 0);
+    nlm_print_observation(workers, 0, successful);
     require(successful.facts && *successful.facts == reference.facts &&
                 successful.facts->counts.changed > 0 && successful.live == 0 &&
                 successful.workers <= 8 && nlm_allocation::observation_valid(),
             "healthy actual method joins and releases observed owners with full independent Facts");
+    require(workers == 1 || (successful.gather_arrivals == 2 && successful.mapping_arrivals == 2),
+            "healthy calibration holds both launch phases until two actual workers arrive");
     nlm_resource_complete(healthy, before, reference);
-    nlm_print_observation(workers, 0, successful);
     require(workers == 1 || successful.attempts > 0,
             "real multitask scheduler must expose ordinary thread-start metadata allocations");
     bool all_attained = true;

@@ -6,18 +6,12 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from typing import Any
 
+import restoration_resource_cases as cases
 from native_output import ARCHIVE_LIMIT, RAW_LIMIT
 from native_resource_capture import calibrations, number, trace, visibility, whole
 
-PREFIX = "restoration-native-resources-"
-CONTROLS = "restoration-native-controls"
-RESOURCE_PATTERN = (
-    r"^(fft-native-resources|restoration-native-controls|"
-    r"restoration-native-resources-(0|[1-9][0-9]*))$"
-)
 VISIBILITY_FIELDS = 4
 EXTENTS = ((1, 1), (1, 409), (419, 1), (129, 97), (503, 211))
 
@@ -26,39 +20,6 @@ def require(condition: object, message: str) -> None:
     """Refuse evidence rather than inferring work from a success exit alone."""
     if not condition:
         raise ValueError(message)
-
-
-def resource_cases(tests: list[dict[str, Any]], executables: dict[str, str]) -> set[str]:
-    """Bind contiguous actual shard discovery to one EXE and exact role arguments."""
-    selected = [t for t in tests if t["name"].startswith("restoration-native-")]
-    names = [t["name"] for t in selected]
-    count = len(selected) - 1
-    expected = {CONTROLS, *(PREFIX + str(i) for i in range(count))}
-    require(
-        count > 1 and len(names) == len(set(names)) and set(names) == expected,
-        "Restoration discovery is missing, duplicate or noncontiguous",
-    )
-    require(
-        set(executables) == {"de_fft_resources", "de_restoration_resources"},
-        "Both selected resource producer paths are required",
-    )
-    executable = Path(executables["de_restoration_resources"]).resolve()
-    for test in selected:
-        name = test["name"]
-        suffix = ["--controls"] if name == CONTROLS else ["--shard", name.removeprefix(PREFIX)]
-        require(
-            Path(test["command"][0]).resolve() == executable and test["command"][1:] == suffix,
-            "Resource producer or role command differs",
-        )
-    fft = [t for t in tests if t["name"].startswith("fft-native")]
-    require(
-        len(fft) == 1
-        and fft[0]["name"] == "fft-native-resources"
-        and len(fft[0]["command"]) == 1
-        and Path(fft[0]["command"][0]).resolve() == Path(executables["de_fft_resources"]).resolve(),
-        "Missing actual FFT resource case",
-    )
-    return expected | {"fft-native-resources"}
 
 
 def section(journal: bytes, name: str) -> bytes:
@@ -117,9 +78,19 @@ def sweep(pairs: list[tuple[dict[str, Any], bytes]], index: int, count: int) -> 
         )
         for row, _ in visible:
             visibility(row)
+        overheads = [r["core_backing_overhead_bytes"] for r, _ in visible]
+        expected_overhead = max(
+            overheads[0] + overheads[2],
+            overheads[0] + 2 * overheads[1],
+            overheads[0] + overheads[3],
+        )
         position += 4
         healthy, raw = pairs[position]
         whole(healthy)
+        require(
+            healthy["observed_core_backing_overhead_envelope"] == expected_overhead,
+            "Healthy core backing overhead differs from actual size probes",
+        )
         require(
             (healthy["width"], healthy["height"], healthy["fail_n"]) == (width, height, 0),
             "Healthy extent differs",
@@ -131,6 +102,10 @@ def sweep(pairs: list[tuple[dict[str, Any], bytes]], index: int, count: int) -> 
         for ordinal in assigned:
             row, _ = pairs[position]
             whole(row)
+            require(
+                row["observed_core_backing_overhead_envelope"] == expected_overhead,
+                "Failure core backing overhead differs from actual size probes",
+            )
             require(
                 (row["width"], row["height"], row["fail_n"]) == (width, height, ordinal),
                 "Missing, duplicate or wrong-residue resource ordinal",
@@ -219,7 +194,7 @@ def _reconcile(
     tests: list[dict[str, Any]], journal: bytes, executables: dict[str, str]
 ) -> dict[str, Any]:
     """Reconcile the full compiled-role inventory and disjoint complete calibrated sweep union."""
-    names = resource_cases(tests, executables)
+    names = cases.resource_cases(tests, executables)
     require(len(journal) <= RAW_LIMIT, "Native journal exceeds raw cap")
     observed = [
         m.group(1).decode()
@@ -239,8 +214,8 @@ def _reconcile(
         if name == "fft-native-resources":
             continue
         pairs = row_pairs(body)[5:]
-        index = 0 if name == CONTROLS else int(name.removeprefix(PREFIX))
-        role = "controls" if name == CONTROLS else "sweep"
+        index = 0 if name == cases.CONTROLS else int(name.removeprefix(cases.PREFIX))
+        role = "controls" if name == cases.CONTROLS else "sweep"
         require(
             exact(
                 pairs[0][0],
@@ -255,7 +230,7 @@ def _reconcile(
             ),
             "Resource process completion differs",
         )
-        if name == CONTROLS:
+        if name == cases.CONTROLS:
             overlap_rows = controls(pairs[1:-1])
         else:
             actual = sweep(pairs[1:-1], index, count)
@@ -276,7 +251,12 @@ def _reconcile(
         require(
             trace(row, callers) == callers * baseline["attempts"]
             and row["heap_peak"]
-            <= callers * (baseline["native_capacity"] + baseline["observed_core_payload_envelope"])
+            <= callers
+            * (
+                baseline["native_capacity"]
+                + baseline["observed_core_payload_envelope"]
+                + baseline["observed_core_backing_overhead_envelope"]
+            )
             and row["charged_peak"]
             <= row["resident"] + callers * baseline["source_scratch_peak_candidate"],
             "Overlap coverage or source envelopes differ",

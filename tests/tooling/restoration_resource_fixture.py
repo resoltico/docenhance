@@ -12,7 +12,7 @@ from typing import Any
 
 from tools_path import prepare_tool_imports
 
-import restoration_resource_records as records
+import restoration_resource_cases as cases
 
 prepare_tool_imports()
 RESOURCE_BUILD = Path("/build")
@@ -62,6 +62,7 @@ def visibility_rows() -> list[dict[str, Any]]:
             "core_route": "Budget_allocate_scalar_aligned_nothrow64",
             "actual_core_payload_bytes": size,
             "observed_core_heap_bytes": 0,
+            "core_backing_overhead_bytes": 0,
             "attempts": 0,
             "c_attempts": 0,
             "events": [],
@@ -89,6 +90,7 @@ def whole_row(width: int, height: int, ordinal: int) -> dict[str, Any]:
         "observed_peak": 0 if ordinal == 1 else 10,
         "live_after": 0,
         "observed_core_payload_envelope": 0,
+        "observed_core_backing_overhead_envelope": 0,
         "unobserved_core_payload_envelope": 64,
         "payload_envelope": 64,
         "native_capacity": 20,
@@ -173,9 +175,9 @@ def resource_fixture(build: Path = RESOURCE_BUILD) -> tuple[list[dict[str, Any]]
     """Share one complete synthetic two-shard journal and its deliberately clipped JUnit stdout."""
     rows = {
         "fft-native-resources": calibration_rows(),
-        records.CONTROLS: protocol_rows(None),
-        records.PREFIX + "0": protocol_rows(0),
-        records.PREFIX + "1": protocol_rows(1),
+        cases.CONTROLS: protocol_rows(None),
+        cases.PREFIX + "0": protocol_rows(0),
+        cases.PREFIX + "1": protocol_rows(1),
     }
     executables = resource_executables(build)
     tests = [
@@ -184,7 +186,7 @@ def resource_fixture(build: Path = RESOURCE_BUILD) -> tuple[list[dict[str, Any]]
             "command": [executables["de_fft_resources"]]
             if name == "fft-native-resources"
             else [executables["de_restoration_resources"], "--controls"]
-            if name == records.CONTROLS
+            if name == cases.CONTROLS
             else [executables["de_restoration_resources"], "--shard", name[-1]],
         }
         for name in rows
@@ -211,7 +213,9 @@ def write_archives(directory: Path, journal: bytes, junit: bytes) -> dict[str, A
             "archive_sha256": hashlib.sha256(packed).hexdigest(),
             "raw_bytes": len(body),
             "raw_sha256": hashlib.sha256(body).hexdigest(),
-            "status": "diagnostic_only_complete",
+            "status": "diagnostic_only_complete"
+            if name == "journal"
+            else "diagnostic_only_unvalidated_junit",
         }
     metadata = {"errors": [], "artifacts": artifacts}
     (directory / "native-output.json").write_text(json.dumps(metadata))

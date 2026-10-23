@@ -26,6 +26,7 @@ from restoration_resource_fixture import (
 )
 
 import native_resource_capture as capture
+import restoration_resource_cases as cases
 import restoration_resource_records as records
 
 prepare_tool_imports()
@@ -44,6 +45,61 @@ class RestorationResourceRecordsTests(unittest.TestCase):
             {"1x1": 4, "1x409": 4, "419x1": 4, "129x97": 4, "503x211": 4},
         )
         self.assertEqual(set(actual["cases"]), {t["name"] for t in tests})
+
+    def test_exact_release_backing_overhead_is_separate_and_bounded(self) -> None:
+        """Single-block raw backing metadata never becomes charged payload or an open allowance."""
+        tests, _, _ = resource_fixture()
+        bodies = {
+            "fft-native-resources": calibration_rows(),
+            cases.CONTROLS: protocol_rows(None),
+            cases.PREFIX + "0": protocol_rows(0),
+            cases.PREFIX + "1": protocol_rows(1),
+        }
+        for rows in bodies.values():
+            for row in rows:
+                if "actual_core_payload_bytes" in row:
+                    raw = row["actual_core_payload_bytes"] + 71
+                    row.update(
+                        source_C_provider_route="static_CRT_malloc_base_free_base",
+                        observed_core_heap_bytes=raw,
+                        core_backing_overhead_bytes=71,
+                        attempts=1,
+                        c_attempts=1,
+                        events=[[raw, 0], [raw, 1]],
+                    )
+                if "whole_method" in row:
+                    row.update(
+                        observed_core_backing_overhead_envelope=213,
+                        observed_core_payload_envelope=80,
+                        unobserved_core_payload_envelope=0,
+                        payload_envelope=80,
+                        source_scratch_peak_candidate=100,
+                    )
+        self.assertEqual(
+            records.reconcile_restoration_records(tests, framed(bodies), RESOURCE_EXECUTABLES)[
+                "shard_count"
+            ],
+            2,
+        )
+        visible = bodies[cases.PREFIX + "0"][6]
+        for key, value in (
+            ("core_backing_overhead_bytes", 72),
+            ("core_backing_overhead_bytes", 0),
+            ("core_backing_overhead_bytes", True),
+            ("observed_core_heap_bytes", visible["observed_core_heap_bytes"] - 1),
+            ("source_C_provider_route", "static_debug_CRT_malloc_dbg_free_dbg"),
+            ("c_attempts", 0),
+            ("events", [[1, 0], [1, 1]]),
+        ):
+            changed = copy.deepcopy(visible)
+            changed[key] = value
+            with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                capture.visibility(changed)
+        for value in (0, 142, 214):
+            changed = copy.deepcopy(bodies)
+            changed[cases.PREFIX + "0"][10]["observed_core_backing_overhead_envelope"] = value
+            with self.subTest(envelope=value), self.assertRaises(ValueError):
+                records.reconcile_restoration_records(tests, framed(changed), RESOURCE_EXECUTABLES)
 
     def test_discovery_refuses_missing_duplicate_unknown_or_changed_commands(self) -> None:
         """Actual executable and complete contiguous registered role arguments are mandatory."""
@@ -65,7 +121,7 @@ class RestorationResourceRecordsTests(unittest.TestCase):
             bad.append(changed)
         for value in bad:
             with self.subTest(value=value), self.assertRaises(ValueError):
-                records.resource_cases(value, RESOURCE_EXECUTABLES)
+                cases.resource_cases(value, RESOURCE_EXECUTABLES)
 
     def test_protocol_negative_controls(self) -> None:
         """No count, completion, healthy identity, ordinal, trace or controls shortcut qualifies."""
@@ -124,9 +180,9 @@ class RestorationResourceRecordsTests(unittest.TestCase):
                     framed(
                         {
                             "fft-native-resources": calibration_rows(),
-                            records.CONTROLS: protocol_rows(None),
-                            records.PREFIX + "0": protocol_rows(0),
-                            records.PREFIX + "1": altered,
+                            cases.CONTROLS: protocol_rows(None),
+                            cases.PREFIX + "0": protocol_rows(0),
+                            cases.PREFIX + "1": altered,
                         }
                     ),
                     RESOURCE_EXECUTABLES,
@@ -155,9 +211,9 @@ class RestorationResourceRecordsTests(unittest.TestCase):
                     framed(
                         {
                             "fft-native-resources": calibration_rows(),
-                            records.CONTROLS: controls,
-                            records.PREFIX + "0": protocol_rows(0),
-                            records.PREFIX + "1": protocol_rows(1),
+                            cases.CONTROLS: controls,
+                            cases.PREFIX + "0": protocol_rows(0),
+                            cases.PREFIX + "1": protocol_rows(1),
                         }
                     ),
                     RESOURCE_EXECUTABLES,

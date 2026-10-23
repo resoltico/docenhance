@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
@@ -129,6 +130,31 @@ class LinuxCacheSeedTests(unittest.TestCase):
             with self.assertRaisesRegex(dep_verify.DependencyError, "changed before"):
                 copy(str(original), str(root / "new"))
             self.assertFalse((root / "new").exists())
+
+    def test_membership_refusal_does_not_depend_on_directory_timestamp_refresh(self) -> None:
+        """A late child still refuses when directory stat epochs appear unchanged."""
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            source.mkdir()
+            (source / "original").write_text("kept")
+            admitted = seed.source_plan(source)
+            epoch = seed.source_epoch
+
+            def unchanged_directory(info: os.stat_result) -> tuple[int, ...]:
+                return (0,) if stat.S_ISDIR(info.st_mode) else epoch(info)
+
+            def admit_then_grow(_source: Path) -> dict[str, os.stat_result]:
+                (source / "late").mkdir()
+                return admitted
+
+            with (
+                patch.object(seed, "source_epoch", side_effect=unchanged_directory),
+                patch.object(seed, "source_plan", side_effect=admit_then_grow),
+                self.assertRaisesRegex(dep_verify.DependencyError, "changed during seeding"),
+            ):
+                seed.copy_source(source, root / "target")
+            self.assertFalse((root / "target/late").exists())
 
     def test_directory_growth_after_admission_is_refused_and_not_copied(self) -> None:
         """An added empty directory cannot bypass the pre-admitted membership bound."""

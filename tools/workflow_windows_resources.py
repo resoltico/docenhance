@@ -9,6 +9,10 @@ from typing import Any
 WINDOWS_PATHS = (
     "snapshot.json",
     "proof.json",
+    "preflight.json",
+    "release-preflight/ctest-output*.gz*",
+    "release-preflight/ctest.xml.gz*",
+    "release-preflight/native-*.json",
     "release/*.map.gz*",
     "debug/*.map.gz*",
     "debug/ctest-output*.gz*",

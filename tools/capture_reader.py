@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Attest bounded output-reader shutdown before closing its pipe and sink borrows."""
+"""Bound captured diagnostics and attest reader shutdown before closing its borrows."""
 
 from __future__ import annotations
 
+import contextlib
+import os
 import sys
 from typing import TYPE_CHECKING
 
@@ -123,3 +125,42 @@ def finish_capture_reader(
             failure = _prefer(original, sys.exception(), "Capture reader cleanup")
             _failed_reader(reader, source, sink, failure)
     _close_streams(source, sink, original)
+
+
+def _capture_bounded(source: IO[bytes], destination: IO[bytes], limit: int) -> None:
+    """Retain startup and final diagnostics without storing repetitive progress forever."""
+    head_limit = limit // 2
+    tail_limit = limit - head_limit
+    head = 0
+    tail = bytearray()
+    total = 0
+    while data := os.read(source.fileno(), 65536):
+        total += len(data)
+        first = data[: max(0, head_limit - head)]
+        if first:
+            destination.write(first)
+            destination.flush()
+            head += len(first)
+        tail.extend(data[len(first) :])
+        if len(tail) > tail_limit:
+            del tail[: len(tail) - tail_limit]
+    if total > limit:
+        destination.write(f"\n[engine output omitted: {total - limit} bytes]\n".encode("ascii"))
+    destination.write(tail)
+    destination.flush()
+
+
+def capture_or_drain(
+    pipe: IO[bytes],
+    stream: IO[bytes],
+    limit: int,
+    failures: list[OSError | ValueError | RuntimeError],
+) -> None:
+    """Report a capture failure while keeping the pipe live until group shutdown."""
+    try:
+        _capture_bounded(pipe, stream, limit)
+    except (OSError, ValueError, RuntimeError) as exc:
+        failures.append(exc)
+        with contextlib.suppress(OSError):
+            while os.read(pipe.fileno(), 65536):
+                pass

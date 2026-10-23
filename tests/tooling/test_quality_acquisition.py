@@ -10,7 +10,8 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from typing import TYPE_CHECKING
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
 from tools_path import prepare_tool_imports
@@ -45,6 +46,51 @@ EXPECTED_PAGE_COUNT = 2
 
 class QualityAcquisitionTests(unittest.TestCase):
     """Keep descriptor extents and same-byte acquisition truthful."""
+
+    def test_windows_path_birth_time_and_descriptor_change_time_keep_distinct_guards(self) -> None:
+        """Cross-API birth identity matches; descriptor metadata mutation still refuses."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            path = root / "value"
+            path.write_bytes(b"abc")
+            info = path.stat()
+            reference = {"path": "value", "bytes": 3, "sha256": hashlib.sha256(b"abc").hexdigest()}
+
+            def stamp(changed: int, birth: int = 11) -> os.stat_result:
+                return cast(
+                    "os.stat_result",
+                    SimpleNamespace(
+                        st_dev=info.st_dev,
+                        st_ino=info.st_ino,
+                        st_mode=info.st_mode,
+                        st_size=3,
+                        st_mtime_ns=info.st_mtime_ns,
+                        st_ctime_ns=changed,
+                        st_birthtime_ns=birth,
+                    ),
+                )
+
+            path_info, descriptor = stamp(11), stamp(23)
+            with (
+                patch("native_journal.sys.platform", "win32"),
+                patch.object(Path, "stat", return_value=path_info),
+                patch("quality_file_snapshot.os.fstat", return_value=descriptor),
+            ):
+                acquired = acquire_file(root, reference)
+                self.assertTrue(acquired.identity_bound)
+                self.assertEqual(acquired.payload, b"abc")
+            for changed, birth in ((24, 11), (23, 12)):
+                final = stamp(changed, birth)
+                with (
+                    self.subTest(changed=changed, birth=birth),
+                    patch("native_journal.sys.platform", "win32"),
+                    patch.object(Path, "stat", return_value=path_info),
+                    patch("quality_file_snapshot.os.fstat", side_effect=[descriptor, final]),
+                ):
+                    acquired = acquire_file(root, reference)
+                    self.assertFalse(acquired.identity_bound)
+                    self.assertIsNone(acquired.payload)
+                    self.assertIn("read", acquired.failures)
 
     def test_metadata_larger_than_response_limit_uses_its_actual_extent(self) -> None:
         """Metadata larger than response limit uses its actual extent."""
@@ -146,8 +192,12 @@ class QualityAcquisitionTests(unittest.TestCase):
                 acquired = acquire_file(root, copy.deepcopy(reference))
             self.assertFalse(acquired.identity_bound)
             self.assertIsNone(acquired.payload)
-            self.assertIn("stat", acquired.failures)
-            self.assertEqual(json.loads((root / "revision.json").read_bytes()), second)
+            if isinstance(acquired.failures.get("read"), PermissionError):
+                self.assertEqual(json.loads((root / "revision.json").read_text()), first)
+                self.assertTrue((root / "replacement").is_file())
+            else:
+                self.assertIn("stat", acquired.failures)
+                self.assertEqual(json.loads((root / "revision.json").read_text()), second)
 
     def test_original_overflow_closes_every_later_launch_but_accounts_all_intended_roles(
         self,

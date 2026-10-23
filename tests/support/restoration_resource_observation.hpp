@@ -57,6 +57,7 @@ inline void restoration_observation_report(image::Extent extent, std::size_t fai
               << observed.attempts << R"(,"c_attempts":)" << observed.c_attempts
               << R"(,"observed_peak":)" << observed.peak << R"(,"live_after":)" << observed.live
               << R"(,"observed_core_payload_envelope":)" << visibility.observed_payload()
+              << R"(,"observed_core_backing_overhead_envelope":)" << visibility.observed_overhead()
               << R"(,"unobserved_core_payload_envelope":)" << visibility.unobserved_payload(bound)
               << R"(,"payload_envelope":)" << bound.payload << R"(,"native_capacity":)"
               << bound.native << R"(,"source_scratch_peak_candidate":)" << bound.peak
@@ -102,8 +103,10 @@ inline void restoration_observed_case(image::Extent extent, const unsigned shard
     const auto completed = gamma_bits(fixture.luminance.view().storage());
     const auto conservative = healthy.peak + visibility.unobserved_payload(bound);
     require(
-        healthy.peak <= bound.native + visibility.observed_payload() &&
-            conservative <= bound.payload + bound.native && budget.peak() == baseline + bound.peak,
+        healthy.peak <=
+                bound.native + visibility.observed_payload() + visibility.observed_overhead() &&
+            conservative <= bound.payload + bound.native + visibility.observed_overhead() &&
+            budget.peak() == baseline + bound.peak,
         "actual observed family mode and charged phase peaks satisfy distinct source envelopes");
     restoration_observation_report(extent, 0, healthy, bound, visibility);
     require(shards > 0 && shard < shards && healthy.attempts >= shards,

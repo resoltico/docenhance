@@ -9,10 +9,8 @@ from pathlib import Path
 from typing import Any
 
 from native_resource_capture import retained_bodies
-from restoration_resource_records import (
-    reconcile_restoration_records,
-    resource_cases,
-)
+from restoration_resource_cases import resource_cases
+from restoration_resource_records import reconcile_restoration_records
 from test_evidence import report_xml
 from windows_resource_artifacts import TARGETS, archive_map, identity, map_routes
 
@@ -84,3 +82,32 @@ def stable_producer(record: dict[str, Any]) -> None:
         if identity(Path(item["path"])) != item:
             message = "Windows resource producer bytes changed during proof"
             raise ValueError(message)
+
+
+def release_directories(root: Path) -> dict[str, list[int]]:
+    """Record actual regular directory identities, never choose the newest stale report."""
+    directories = {}
+    for path in (root / "out/release/app").glob("native-*"):
+        info = path.lstat()
+        if getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+            message = "Native evidence owner is a Windows reparse point"
+            raise ValueError(message)
+        if stat.S_ISREG(info.st_mode):
+            continue
+        if not stat.S_ISDIR(info.st_mode):
+            message = "Native evidence owner is not a regular directory"
+            raise ValueError(message)
+        directories[str(path.resolve())] = [info.st_dev, info.st_ino]
+    return directories
+
+
+def retained_owner(owner: dict[str, Any]) -> None:
+    """The selected evidence directory remains the same object through completion."""
+    info = Path(owner["path"]).lstat()
+    if (
+        getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        or not stat.S_ISDIR(info.st_mode)
+        or [info.st_dev, info.st_ino] != owner["identity"]
+    ):
+        message = "Selected evidence directory owner changed"
+        raise ValueError(message)

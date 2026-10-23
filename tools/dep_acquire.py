@@ -6,10 +6,12 @@ from __future__ import annotations
 
 import json
 import shutil
+import stat
+import sys
 import tempfile
 import urllib.request
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from dep_verify import (
     Dependency,
@@ -20,6 +22,10 @@ from dep_verify import (
     safe_extract,
     verify,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 MAX_DOWNLOAD_BYTES = 1_000_000_000
 DOWNLOAD_CHUNK_BYTES = 1024 * 1024
@@ -117,6 +123,22 @@ def write_receipt(receipt: dict[str, Any], target: Path) -> None:
     temp_receipt.replace(target)
 
 
+def remove_readonly(function: Callable[[str], object], path: str, error: BaseException) -> None:
+    """Retry only Windows readonly regular files inside the owned staging cleanup."""
+    if sys.platform == "win32" and isinstance(error, PermissionError):
+        info = Path(path).lstat()
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_mode & stat.S_IWRITE
+            or getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        ):
+            raise error
+        Path(path).chmod(info.st_mode | stat.S_IWRITE)
+        function(path)
+        return
+    raise error
+
+
 def fetch(dep: Dependency, cache: Path) -> None:
     """Acquire one dependency into the cache through a staging directory, or verify it."""
     source = cache / "sources" / dep["name"]
@@ -138,4 +160,4 @@ def fetch(dep: Dependency, cache: Path) -> None:
         print(f"Acquired and verified {dep['name']} {dep['version']}")
     finally:
         if staging.exists():
-            shutil.rmtree(staging)
+            shutil.rmtree(staging, onexc=remove_readonly)

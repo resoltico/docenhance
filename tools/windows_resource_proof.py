@@ -9,22 +9,21 @@ import argparse
 import json
 import os
 import platform
-import stat
 import sys
 import time
 from pathlib import Path
 from typing import Any
 
+import windows_resource_records as records
 from test_evidence import discovery
 from windows_resource_artifacts import identity, write_json
-from windows_resource_execution import debug_cases, debug_producer, directives
-from windows_resource_producer import compilation
-from windows_resource_records import (
-    capture_maps,
-    executable_paths,
-    native_records,
-    stable_producer,
+from windows_resource_execution import (
+    debug_cases,
+    debug_producer,
+    directives,
+    release_fft_preflight,
 )
+from windows_resource_producer import compilation
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "out/windows-resource-proof"
@@ -55,33 +54,20 @@ def sources() -> dict[str, str]:
             "tools/windows_resource_execution.py",
             "tools/windows_resource_records.py",
             "tools/restoration_resource_records.py",
+            "tools/restoration_resource_cases.py",
             "tools/native_resource_capture.py",
             "tools/run_native_suite.py",
+            "tools/native_history.py",
+            "tools/cache_lock.py",
             "tools/windows_resource_producer.py",
             "tools/windows_resource_artifacts.py",
             "tools/native_output.py",
             "tools/native_journal.py",
             "tools/process_execution.py",
+            "tools/capture_reader.py",
         )
     )
     return {str(path.relative_to(ROOT)): identity(path)["sha256"] for path in sorted(files)}
-
-
-def release_directories() -> dict[str, list[int]]:
-    """Record actual regular directory identities, never choose the newest stale report."""
-    directories = {}
-    for path in (ROOT / "out/release/app").glob("native-*"):
-        info = path.lstat()
-        if getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
-            message = "Native evidence owner is a Windows reparse point"
-            raise ValueError(message)
-        if stat.S_ISREG(info.st_mode):
-            continue
-        if not stat.S_ISDIR(info.st_mode):
-            message = "Native evidence owner is not a regular directory"
-            raise ValueError(message)
-        directories[str(path.resolve())] = [info.st_dev, info.st_ino]
-    return directories
 
 
 def snapshot() -> None:
@@ -95,7 +81,7 @@ def snapshot() -> None:
         {
             "head": os.environ["GITHUB_SHA"],
             "sources": sources(),
-            "release_before": release_directories(),
+            "release_before": records.release_directories(ROOT),
             "environment": {
                 key: os.environ.get(key)
                 for key in (
@@ -125,13 +111,18 @@ def require_release_pass(exit_code: int) -> None:
         raise ValueError(message)
 
 
-def admitted_release(saved: dict[str, Any]) -> dict[str, Any]:
-    """Select exactly the new evidence owner from this actual invocation."""
+def current_invocation(saved: dict[str, Any]) -> None:
+    """Keep source and native-shell admission shared by early and complete Release checks."""
     unchanged(saved)
     if platform.system() != "Windows" or saved["head"] != os.environ["GITHUB_SHA"]:
         message = "Current source or actual Windows invocation differs"
         raise ValueError(message)
-    owners = release_directories()
+
+
+def admitted_release(saved: dict[str, Any]) -> dict[str, Any]:
+    """Select exactly the new evidence owner from this actual invocation."""
+    current_invocation(saved)
+    owners = records.release_directories(ROOT)
     new = set(owners) - set(saved["release_before"])
     if len(new) != 1:
         message = "Expected exactly one new Release native evidence directory"
@@ -148,29 +139,60 @@ def same_toolchain(record: dict[str, Any]) -> None:
             raise ValueError(message)
 
 
-def retained_owner(owner: dict[str, Any]) -> None:
-    """The selected evidence directory remains the same object through completion."""
-    info = Path(owner["path"]).lstat()
-    if (
-        getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
-        or not stat.S_ISDIR(info.st_mode)
-        or [info.st_dev, info.st_ino] != owner["identity"]
-    ):
-        message = "Selected evidence directory owner changed"
-        raise ValueError(message)
-
-
 def completed_inputs(saved: dict[str, Any], record: dict[str, Any], deadline: float) -> None:
     """Refuse changed source/products or an exhausted operational qualification deadline."""
     unchanged(saved)
     same_toolchain(record)
-    stable_producer(record["release"])
-    stable_producer(record["debug"])
-    retained_owner(record["release"]["selected_owner"])
-    retained_owner(record["debug"]["execution"]["selected_owner"])
+    records.stable_producer(record["release"])
+    records.stable_producer(record["debug"])
+    records.retained_owner(record["release"]["selected_owner"])
+    records.retained_owner(record["debug"]["execution"]["selected_owner"])
     if time.monotonic() >= deadline:
         message = "Windows resource proof exceeded its operational deadline"
         raise ValueError(message)
+
+
+def current_preflight_inputs(saved: dict[str, Any], deadline: float) -> None:
+    """Source admission and its final rehash share the original early-run deadline."""
+    current_invocation(saved)
+    if time.monotonic() >= deadline:
+        message = "Early FFT preflight exceeded its original120second deadline"
+        raise ValueError(message)
+
+
+def preflight() -> None:
+    """One fresh actual FFT run precedes the full Release build in the selected Windows shell."""
+    path = OUT / "preflight.json"
+    if path.exists() or path.is_symlink():
+        message = "Early FFT preflight already attempted; no retry or report adoption"
+        raise ValueError(message)
+    start = time.monotonic()
+    record: dict[str, Any] = {
+        "status": "incomplete",
+        "total_seconds": 120,
+        "case_seconds": 90,
+        "archive_reserve_seconds": 30,
+        "scope": "One early FFT resource case only; full suite/proof still required",
+    }
+    try:
+        saved = json.loads((OUT / "snapshot.json").read_text())
+        current_preflight_inputs(saved, start + 120)
+        release_fft_preflight(start + 120, record)
+        current_preflight_inputs(saved, start + 120)
+        record["status"] = "passed_early_fft_case_only"
+    except BaseException as error:
+        record["error"] = repr(error)
+        raise
+    finally:
+        primary = sys.exception()
+        record["elapsed_seconds"] = time.monotonic() - start
+        try:
+            write_json(path, record)
+        except BaseException as error:
+            if primary is not None:
+                primary.add_note(f"Early FFT metadata also failed: {error!r}")
+                raise primary from error
+            raise
 
 
 def complete(release_exit: int) -> None:
@@ -196,12 +218,12 @@ def complete(release_exit: int) -> None:
         release.mkdir()
         record["release"] = {"producer": {}, "maps": [], "selected_owner": fresh}
         compilation(ROOT / "out/release", record["release"]["producer"], debug=False)
-        capture_maps(ROOT / "out/release", release, record["release"]["maps"], debug=False)
-        record["release"]["evidence"] = native_records(
+        records.capture_maps(ROOT / "out/release", release, record["release"]["maps"], debug=False)
+        record["release"]["evidence"] = records.native_records(
             Path(fresh["path"]),
             fresh["identity"],
             discovery("ctest", ROOT / "out/release/app"),
-            executable_paths(record["release"]["producer"]),
+            records.executable_paths(record["release"]["producer"]),
         )
         directives(record["release"], "release", start + CAP_SECONDS)
         require_release_pass(release_exit)
@@ -211,7 +233,9 @@ def complete(release_exit: int) -> None:
         debug_producer(deadline, record["debug"])
         record["debug"]["execution"] = {}
         debug_cases(
-            deadline, record["debug"]["execution"], executable_paths(record["debug"]["producer"])
+            deadline,
+            record["debug"]["execution"],
+            records.executable_paths(record["debug"]["producer"]),
         )
         completed_inputs(saved, record, deadline)
         record["status"] = "passed_current_release_and_debug_resource_proof"
@@ -232,14 +256,16 @@ def complete(release_exit: int) -> None:
 
 
 def main() -> int:
-    """Expose only the two concrete phases enclosing this actual Release invocation."""
+    """Expose the concrete snapshot, early FFT and complete proof phases."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("phase", choices=("snapshot", "complete"))
+    parser.add_argument("phase", choices=("snapshot", "preflight", "complete"))
     parser.add_argument("--release-exit", type=int, default=0)
     args = parser.parse_args()
     try:
         if args.phase == "snapshot":
             snapshot()
+        elif args.phase == "preflight":
+            preflight()
         else:
             complete(args.release_exit)
     except (OSError, ValueError, KeyError) as error:

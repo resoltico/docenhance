@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, BinaryIO, TypedDict, override
 
 from native_journal import (
+    JUNIT_NAMES,
     Journal,
     JournalFrame,
     OutputError,
@@ -227,12 +228,17 @@ def _journal_output(build: Path, before: Snapshot, expected_case_count: int) -> 
 
 
 def _junit_output(directory: Path) -> _Output:
-    path = directory / "ctest.xml"
-    identity = identify_journal(path)
-    if identity is None:
-        msg = "Fresh owned JUnit is absent"
+    candidates = [
+        (directory / name, identity)
+        for name in JUNIT_NAMES
+        if (identity := identify_journal(directory / name)) is not None
+    ]
+    if len(candidates) != 1:
+        msg = "Fresh owned JUnit is absent or ambiguous"
         raise OutputError(msg)
-    return _Output(path, identity, "unvalidated_junit", "ctest.xml")
+    path, identity = candidates[0]
+    status = "unvalidated_junit" if path.name == JUNIT_NAMES[0] else "partial"
+    return _Output(path, identity, status, "ctest.xml")
 
 
 def archive_ctest_output(
@@ -243,7 +249,10 @@ def archive_ctest_output(
     if expected_case_count < 1:
         msg = "Expected journal count must come from nonempty actual discovery"
         raise OutputError(msg)
-    if not stat.S_ISDIR(directory.lstat().st_mode):
+    owner = directory.lstat()
+    if not stat.S_ISDIR(owner.st_mode) or (
+        getattr(owner, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    ):
         msg = "CTest archive destination must be its owned evidence directory"
         raise OutputError(msg)
     archived: dict[str, OutputReceipt] = {}

@@ -10,23 +10,65 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
-from typing import TYPE_CHECKING
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 from unittest.mock import patch
 
 from tools_path import ROOT
 
 from check_advisories import scan
-from fuzz_archive_inputs import source_entries
+from fuzz_archive_inputs import Entry, metadata, source_entries
 from fuzz_manifest import targets
 from package_fuzz_evidence import ArchiveWriter, archive_evidence, describe
 from triage_fuzz_findings import triage
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Iterator
 
 
 class WeeklyEvidenceTests(unittest.TestCase):
     """Fake campaign metadata must never be mistaken for full engine work."""
+
+    def test_windows_metadata_cross_api_identity_keeps_descriptor_mutation_guard(self) -> None:
+        """A creation/change timestamp mismatch is normal; a changed handle is not."""
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "campaign.json"
+            path.write_text('{"state":"complete"}')
+            info = path.lstat()
+
+            def stamp(changed: int) -> os.stat_result:
+                return cast(
+                    "os.stat_result",
+                    SimpleNamespace(
+                        st_dev=info.st_dev,
+                        st_ino=info.st_ino,
+                        st_mode=info.st_mode,
+                        st_size=info.st_size,
+                        st_mtime_ns=info.st_mtime_ns,
+                        st_ctime_ns=changed,
+                        st_birthtime_ns=11,
+                    ),
+                )
+
+            path_info, handle_info = stamp(11), stamp(23)
+            entry = Entry(path, "campaign.json", path_info)
+            with (
+                patch("native_journal.sys.platform", "win32"),
+                patch.object(Path, "lstat", return_value=path_info),
+                patch("fuzz_archive_inputs.os.fstat", return_value=handle_info),
+            ):
+                self.assertEqual(metadata(entry), {"state": "complete"})
+            with (
+                patch("native_journal.sys.platform", "win32"),
+                patch.object(Path, "lstat", return_value=path_info),
+                patch(
+                    "fuzz_archive_inputs.os.fstat",
+                    side_effect=[handle_info, handle_info, stamp(24)],
+                ),
+                self.assertRaisesRegex(ValueError, "changed during"),
+            ):
+                metadata(entry)
 
     def test_archive_writer_checks_before_crossing_exact_capacity(self) -> None:
         """The exact cap fits; the next byte is refused before reaching the file."""

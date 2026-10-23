@@ -110,7 +110,7 @@ if mode.startswith('nested'):
 def boundary(*args, **kwargs):
     assert kwargs['graceful'] is True
     if mode == 'native':
-        assert args[2] is None and 0 < args[3] <= 1740
+        assert 0 < args[2] <= 1740 and callable(args[3])
     return process_execution.bounded_process(
         command, dict(os.environ), root/'engine.log', 10, graceful=True)
 try:
@@ -120,7 +120,7 @@ try:
              patch('run_native_suite.registrations', return_value=set()), \\
              patch('run_native_suite.complete_junit'), \\
              patch('run_native_suite.resource_results'), \\
-             patch('run_native_suite.bounded_process', side_effect=boundary):
+             patch('run_native_suite.monitored_process', side_effect=boundary):
             result = run_native_suite.run(argparse.Namespace(build=root,ctest='fixture',jobs=1))
     elif mode == 'campaign':
         with patch('run_fuzz_campaign.registration', return_value={'fixture'}), \\
@@ -360,7 +360,11 @@ class ProcessExecutionTests(unittest.TestCase):
 
                 # Archive mechanics have independent real-file controls; this case owns time.
                 retained = {
-                    "journal": {"status": "diagnostic_only_complete", "completed_raw_case_count": 1}
+                    "journal": {
+                        "status": "diagnostic_only_complete",
+                        "completed_raw_case_count": 1,
+                    },
+                    "junit": {"status": "diagnostic_only_unvalidated_junit"},
                 }
                 with (
                     patch("run_native_suite.time.monotonic", side_effect=clock),
@@ -371,7 +375,7 @@ class ProcessExecutionTests(unittest.TestCase):
                     patch(
                         "run_native_suite.archive_ctest_output", return_value=retained
                     ) as archive,
-                    patch("run_native_suite.bounded_process", return_value=7) as execution,
+                    patch("run_native_suite.monitored_process", return_value=7) as execution,
                 ):
                     if admitted_at > NATIVE_BUDGET:
                         with self.assertRaisesRegex(EvidenceError, "exhausted"):
@@ -384,7 +388,7 @@ class ProcessExecutionTests(unittest.TestCase):
                         remaining = (
                             NATIVE_BUDGET - admitted_at - run_native_suite.NATIVE_ARCHIVE_SECONDS
                         )
-                        self.assertEqual(execution.call_args.args[3], remaining)
+                        self.assertEqual(execution.call_args.args[2], remaining)
                         archive.assert_called_once()
                         self.assertEqual(archive.call_args.args[3], NATIVE_BUDGET)
                         self.assertEqual(archive.call_args.args[4], 1)

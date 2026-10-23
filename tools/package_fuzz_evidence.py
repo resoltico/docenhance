@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any, override
 
 import fuzz_archive_inputs
 from fuzz_manifest import targets
+from native_journal import journal_identity
 
 if TYPE_CHECKING:
     from collections.abc import Buffer
@@ -125,11 +126,15 @@ def _prepare_entry(
     if info.size > remaining:
         message = "Fuzz evidence exceeds the admitted archive budget"
         raise ValueError(message)
-    if fuzz_archive_inputs.stamp(observed) != fuzz_archive_inputs.stamp(
-        entry.observed
-    ) or info.size != (0 if directory else observed.st_size):
+    same_owner = (
+        fuzz_archive_inputs.stamp(observed) == fuzz_archive_inputs.stamp(entry.observed)
+        if directory
+        else journal_identity(observed) == journal_identity(entry.observed)
+    )
+    if not same_owner or info.size != (0 if directory else observed.st_size):
         message = "Fuzz archive entry changed after inventory"
         raise ValueError(message)
+    info.mode = stat.S_IMODE(entry.observed.st_mode)
     info.uid = info.gid = 0
     info.uname = info.gname = ""
     info.mtime = 0
@@ -148,16 +153,21 @@ def _add_entry(archive: tarfile.TarFile, entry: fuzz_archive_inputs.Entry, remai
         archive.addfile(info)
         return info.size
     with fuzz_archive_inputs.regular(entry) as original:
+        before = os.fstat(original.fileno())
         info = _prepare_entry(
             archive.gettarinfo(str(entry.path), arcname=entry.member, fileobj=original),
             entry,
             remaining,
-            os.fstat(original.fileno()),
+            before,
         )
         archive.addfile(info, original)
-        if original.read(1) or fuzz_archive_inputs.stamp(
-            os.fstat(original.fileno())
-        ) != fuzz_archive_inputs.stamp(entry.observed):
+        if (
+            original.read(1)
+            or fuzz_archive_inputs.stamp(os.fstat(original.fileno()))
+            != fuzz_archive_inputs.stamp(before)
+            or fuzz_archive_inputs.stamp(entry.path.lstat())
+            != fuzz_archive_inputs.stamp(entry.observed)
+        ):
             message = "Fuzz archive entry changed during bounded copying"
             raise ValueError(message)
         return info.size

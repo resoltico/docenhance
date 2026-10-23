@@ -86,6 +86,20 @@ def source_copy(planned: dict[str, os.stat_result]) -> Callable[[str, str], str]
     return copy
 
 
+def source_membership(source: Path, planned: dict[str, os.stat_result]) -> None:
+    """Re-enumerate only admitted names; directory timestamps cannot prove membership."""
+    current: set[str] = set()
+    for path in source.rglob("*"):
+        name = str(path)
+        if name not in planned or len(current) >= len(planned):
+            msg = "Source cache membership changed during seeding"
+            raise DependencyError(msg)
+        current.add(name)
+    if current != set(planned):
+        msg = "Source cache membership changed during seeding"
+        raise DependencyError(msg)
+
+
 def copy_source(source: Path, target: Path) -> None:
     """Copy only pre-admitted members, refusing any directory or link epoch change."""
     root_info = source.lstat()
@@ -116,6 +130,7 @@ def copy_source(source: Path, target: Path) -> None:
             raise DependencyError(msg)
         if stat.S_ISDIR(info.st_mode):
             shutil.copystat(original, target / original.relative_to(source), follow_symlinks=False)
+    source_membership(source, planned)
     if source_epoch(source.lstat()) != source_epoch(root_info):
         msg = "Source cache root changed during seeding"
         raise DependencyError(msg)

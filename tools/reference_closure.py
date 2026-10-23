@@ -4,8 +4,11 @@
 
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 from architecture import ArchitectureError, load_manifest
@@ -64,9 +67,48 @@ def validate_flags(flags: list[str]) -> None:
         raise ArchitectureError(msg)
 
 
+def windows_system_roots() -> list[Path]:
+    """Bind active VC/SDK include owners to the actual selected developer-shell compiler."""
+    if sys.platform == "win32":
+        toolset = os.environ.get("VCTOOLSINSTALLDIR", "")
+        sdk = os.environ.get("WINDOWSSDKDIR", "")
+        version = os.environ.get("WINDOWSSDKVERSION", "").rstrip("/\\")
+        compiler = shutil.which("cl.exe")
+        if (
+            not toolset
+            or not sdk
+            or not compiler
+            or not re.fullmatch(r"[0-9]+(?:\.[0-9]+){3}", version)
+        ):
+            message = "Reference Windows compiler/SDK provenance is unavailable"
+            raise ArchitectureError(message)
+        vc, sdk_root = Path(toolset).resolve(), Path(sdk).resolve()
+        binary = Path(compiler).resolve()
+        include = (vc / "include").resolve()
+        if (
+            not binary.is_file()
+            or not binary.is_relative_to(vc / "bin")
+            or not include.is_dir()
+            or not include.is_relative_to(vc)
+        ):
+            message = "Reference Windows compiler does not own the selected toolset"
+            raise ArchitectureError(message)
+        roots = [include]
+        for family in ("ucrt", "shared", "um", "winrt", "cppwinrt"):
+            include = (sdk_root / "Include" / version / family).resolve()
+            if include.is_dir():
+                if not include.is_relative_to(sdk_root):
+                    message = "Reference Windows SDK include owner escapes its selected SDK"
+                    raise ArchitectureError(message)
+                roots.append(include)
+        return roots
+    return []
+
+
 def system_roots(paths: list[str]) -> list[Path]:
     """Narrow real CMake implicit paths to compiler, C++ library, OS and selected SDK roots."""
     roots = []
+    windows = windows_system_roots()
     for name in paths:
         path = Path(name).resolve()
         spelling = path.as_posix()
@@ -76,8 +118,11 @@ def system_roots(paths: list[str]) -> list[Path]:
             r"gcc/[^/]+/[^/]+/include(?:-fixed)?)$",
             spelling,
         )
+        windows_owner = next((base for base in windows if path.is_relative_to(base)), None)
         operating_system = spelling == "/usr/include" or spelling.startswith("/usr/include/")
-        if sdk is not None:
+        if windows_owner is not None:
+            roots.append(windows_owner)
+        elif sdk is not None:
             roots.append(sdk)
         elif re.search(r"/lib/clang/[^/]+/include$", spelling):
             # Sanitized Clang also traces resource/share/asan_ignorelist.txt as an input.

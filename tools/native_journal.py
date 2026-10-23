@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import stat
 import sys
@@ -11,14 +12,24 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    import os
     from pathlib import Path
 
 FRAGMENT_BYTES = 256
 METADATA_STAGE = 2
 OUTPUT_STAGE = 4
 
-JOURNALS = ("LastTest.log", "LastTest.log.tmp")
+JOURNAL_NAME = "LastTest.log"
+JUNIT_NAMES = ("ctest.xml", "ctest.xml.tmp")
+JOURNAL_DIRECTORY_ENTRIES = 4096
+
+
+def journal_status(name: str) -> str | None:
+    """Recognize the exact final or default five-hex generated CTest journal name."""
+    if name == JOURNAL_NAME:
+        return "complete"
+    if re.fullmatch(re.escape(JOURNAL_NAME) + r"\.tmp[0-9a-f]{5}", name):
+        return "partial"
+    return None
 
 
 class OutputError(ValueError):
@@ -41,7 +52,9 @@ Snapshot = dict[str, Journal | None]
 
 def journal_identity(info: os.stat_result) -> Journal:
     """Use a shared path/fd epoch: Windows creation time, POSIX metadata change time."""
-    if not stat.S_ISREG(info.st_mode):
+    if not stat.S_ISREG(info.st_mode) or (
+        getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    ):
         msg = "CTest journal must be a regular file, never a symlink"
         raise OutputError(msg)
     changed = info.st_ctime_ns
@@ -57,32 +70,53 @@ def journal_identity(info: os.stat_result) -> Journal:
 def identify_journal(path: Path) -> Journal | None:
     """Observe a regular pathname itself, permitting only an absent journal."""
     try:
-        return journal_identity(path.lstat())
+        info = path.lstat()
     except FileNotFoundError:
         return None
+    return journal_identity(info)
 
 
 def snapshot_ctest_output(build: Path) -> Snapshot:
-    """Snapshot both possible journals before launching the owned CTest group."""
+    """Snapshot canonical and retained generated journals through a bounded namespace walk."""
     directory = build / "Testing/Temporary"
     for parent in (build / "Testing", directory):
         try:
             info = parent.lstat()
         except FileNotFoundError:
             continue
-        if not stat.S_ISDIR(info.st_mode):
+        if not stat.S_ISDIR(info.st_mode) or (
+            getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        ):
             msg = "CTest journal parent must be an owned directory, never a symlink"
             raise OutputError(msg)
-    return {name: identify_journal(directory / name) for name in JOURNALS}
+    result: Snapshot = {JOURNAL_NAME: None}
+    try:
+        with os.scandir(directory) as children:
+            for count, child in enumerate(children, 1):
+                if count > JOURNAL_DIRECTORY_ENTRIES:
+                    msg = "CTest journal namespace exceeds its entry bound"
+                    raise OutputError(msg)
+                if journal_status(child.name) is not None:
+                    result[child.name] = identify_journal(directory / child.name)
+    except FileNotFoundError:
+        return result
+    return result
 
 
 def select_journal(build: Path, before: Snapshot) -> tuple[Path, Journal, str]:
     """Require exactly one changed journal after the owned child group is reaped."""
-    if set(before) != set(JOURNALS):
+    if (
+        JOURNAL_NAME not in before
+        or len(before) > JOURNAL_DIRECTORY_ENTRIES + 1
+        or any(journal_status(name) is None for name in before)
+        or any(value is not None and not isinstance(value, Journal) for value in before.values())
+    ):
         msg = "CTest journal snapshot is incomplete"
         raise OutputError(msg)
     after = snapshot_ctest_output(build)
-    fresh = [name for name in JOURNALS if after[name] is not None and after[name] != before[name]]
+    fresh = [
+        name for name, value in after.items() if value is not None and value != before.get(name)
+    ]
     if len(fresh) != 1:
         msg = "Expected exactly one fresh CTest journal, never stale or ambiguous"
         raise OutputError(msg)
@@ -91,7 +125,10 @@ def select_journal(build: Path, before: Snapshot) -> tuple[Path, Journal, str]:
     if not isinstance(identity, Journal):
         msg = "CTest journal identity is absent"
         raise OutputError(msg)
-    status = "partial" if name.endswith(".tmp") else "complete"
+    status = journal_status(name)
+    if status is None:
+        msg = "CTest journal name is not admitted"
+        raise OutputError(msg)
     return build / "Testing/Temporary" / name, identity, status
 
 

@@ -188,6 +188,10 @@ jobs:
           path: |
             out/windows-resource-proof/snapshot.json
             out/windows-resource-proof/proof.json
+            out/windows-resource-proof/preflight.json
+            out/windows-resource-proof/release-preflight/ctest-output*.gz*
+            out/windows-resource-proof/release-preflight/ctest.xml.gz*
+            out/windows-resource-proof/release-preflight/native-*.json
             out/windows-resource-proof/release/*.map.gz*
             out/windows-resource-proof/debug/*.map.gz*
             out/windows-resource-proof/debug/ctest-output*.gz*

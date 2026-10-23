@@ -206,7 +206,8 @@ bool concurrent_case(unsigned workers, fft::Axis axis, bool inverse) {
     const auto rows = axis == fft::Axis::rows;
     const auto length = rows ? 864U : 480U;
     const auto element = rows ? sizeof(double) : sizeof(fft::Complex);
-    gate::arm((std::size_t{length} * fft::native_lanes() * element) + core::buffer_alignment);
+    const auto padding = fft::native_lanes() == 1 ? 0U : core::buffer_alignment;
+    gate::arm((std::size_t{length} * fft::native_lanes() * element) + padding);
     allocation::observing.store(true);
     probe.start.store(true);
     while (gate::arrivals.load() != workers && !gate::failed.load()) {

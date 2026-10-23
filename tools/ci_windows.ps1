@@ -19,9 +19,13 @@ if ($releaseStatus -eq 0) {
 }
 if ($releaseStatus -eq 0) {
     cmake --build out/release/app --parallel 2 --target `
-        "tests/CMakeFiles/de_fft_resources.dir/support/allocation_interpose.cpp.obj" `
+        "de_fft_resources" `
         "tests/CMakeFiles/de_restoration_resources.dir/support/allocation_interpose.cpp.obj" `
         "tests/CMakeFiles/de_fft_allocation_observer.dir/support/allocation_observer.cpp.obj"
+    $releaseStatus = $LASTEXITCODE
+}
+if ($releaseStatus -eq 0) {
+    python tools/windows_resource_proof.py preflight
     $releaseStatus = $LASTEXITCODE
 }
 if ($releaseStatus -eq 0) {

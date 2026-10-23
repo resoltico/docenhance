@@ -107,8 +107,8 @@ inline RestorationOverlapObservation restoration_overlap_run(RestorationOverlap&
     RestorationOverlapObservation observed;
     {
         const RestorationObservationScope scope{0};
-        restoration_gate::arm((std::size_t{576} * fft::native_lanes() * sizeof(double)) +
-                              core::buffer_alignment);
+        const auto padding = fft::native_lanes() == 1 ? 0U : core::buffer_alignment;
+        restoration_gate::arm((std::size_t{576} * fft::native_lanes() * sizeof(double)) + padding);
         probe.start.store(true);
         while (restoration_gate::arrivals.load() != probe.callers &&
                !restoration_gate::failed.load()) {
@@ -143,8 +143,11 @@ inline void restoration_overlap_case(unsigned callers) {
     const auto owned = bound.real + bound.spectrum;
     require(
         observed.charge == baseline + (callers * (owned + *phase)) &&
-            observed.simultaneous <= callers * (*phase + visibility.real + visibility.spectrum) &&
-            observed.peak <= callers * (bound.native + visibility.observed_payload()) &&
+            observed.simultaneous <=
+                callers * (*phase + visibility.real.payload + visibility.spectrum.payload +
+                           visibility.real.overhead + visibility.spectrum.overhead) &&
+            observed.peak <= callers * (bound.native + visibility.observed_payload() +
+                                        visibility.observed_overhead()) &&
             probe.budget.peak() <= baseline + (callers * bound.peak),
         "simultaneous native heap and exact charged payload/row leases obey separate capacities");
     for (unsigned i = 0; i < callers; ++i) {

@@ -16,6 +16,8 @@ from native_journal import identify_journal, journal_identity
 from native_output import ARCHIVE_LIMIT, RAW_LIMIT
 
 RAW_BYTES = RAW_LIMIT
+WINDOWS_ALIGNED64_BACKING_OVERHEAD = 71
+MAX_PHASE_PAYLOAD_BLOCKS = 3
 
 
 def compressed_snapshot(path: Path) -> bytes:
@@ -88,6 +90,9 @@ def retained_bodies(directory: Path) -> dict[str, bytes]:
     if artifacts["journal"]["status"] != "diagnostic_only_complete":
         message = "Native journal incomplete"
         raise ValueError(message)
+    if artifacts["junit"]["status"] != "diagnostic_only_unvalidated_junit":
+        message = "Native JUnit incomplete"
+        raise ValueError(message)
     bodies = {}
     for key in ("journal", "junit"):
         record = artifacts[key]
@@ -128,6 +133,7 @@ WHOLE_KEYS = frozenset(
         "observed_peak",
         "live_after",
         "observed_core_payload_envelope",
+        "observed_core_backing_overhead_envelope",
         "unobserved_core_payload_envelope",
         "payload_envelope",
         "native_capacity",
@@ -196,9 +202,16 @@ def whole(row: dict[str, Any]) -> None:
         "Unattained or unrefunded resource row",
     )
     require(
-        row["observed_peak"] <= row["native_capacity"] + row["observed_core_payload_envelope"]
+        row["observed_core_backing_overhead_envelope"]
+        <= MAX_PHASE_PAYLOAD_BLOCKS * WINDOWS_ALIGNED64_BACKING_OVERHEAD
+        and row["observed_peak"]
+        <= row["native_capacity"]
+        + row["observed_core_payload_envelope"]
+        + row["observed_core_backing_overhead_envelope"]
         and row["observed_peak"] + row["unobserved_core_payload_envelope"]
-        <= row["payload_envelope"] + row["native_capacity"],
+        <= row["payload_envelope"]
+        + row["native_capacity"]
+        + row["observed_core_backing_overhead_envelope"],
         "Resource bounds exceeded",
     )
     require(trace(row) == row["attempts"], "Resource events do not cover allocation attempts")
@@ -206,7 +219,13 @@ def whole(row: dict[str, Any]) -> None:
 
 def visibility(row: dict[str, Any]) -> None:
     """Validate actual per-size payload probes, not arbitrary matching JSON blobs."""
-    numeric = {"actual_core_payload_bytes", "observed_core_heap_bytes", "attempts", "c_attempts"}
+    numeric = {
+        "actual_core_payload_bytes",
+        "observed_core_heap_bytes",
+        "core_backing_overhead_bytes",
+        "attempts",
+        "c_attempts",
+    }
     require(
         set(row) == numeric | {"source_C_provider_route", "core_route", "events"},
         "Unknown or missing visibility fields",
@@ -225,9 +244,22 @@ def visibility(row: dict[str, Any]) -> None:
         and row["core_route"] == "Budget_allocate_scalar_aligned_nothrow64",
         "Unqualified payload provider",
     )
+    overhead = row["core_backing_overhead_bytes"]
+    require(
+        overhead == 0
+        or (
+            overhead == WINDOWS_ALIGNED64_BACKING_OVERHEAD
+            and row["source_C_provider_route"] == "static_CRT_malloc_base_free_base"
+            and row["c_attempts"] == 1
+        ),
+        "Unknown core backing overhead/provider",
+    )
     require(
         row["actual_core_payload_bytes"] > 0
-        and acquired in (0, row["actual_core_payload_bytes"])
+        and (
+            (acquired == 0 and overhead == 0)
+            or acquired == row["actual_core_payload_bytes"] + overhead
+        )
         and row["attempts"] == int(acquired != 0)
         and row["c_attempts"] <= row["attempts"],
         "Visibility is neither excluded nor fully observed",

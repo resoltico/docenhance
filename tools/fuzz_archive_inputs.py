@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from fuzz_storage import MAX_WORK_PARENT_BYTES
+from native_journal import journal_identity
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -47,6 +48,14 @@ def stamp(value: os.stat_result) -> tuple[int, ...]:
 @contextmanager
 def regular(entry: Entry) -> Iterator[BinaryIO]:
     """Own a nonblocking regular descriptor; replacements cannot redirect payload reads."""
+    before = entry.path.lstat()
+    if (
+        not stat.S_ISREG(before.st_mode)
+        or getattr(before, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        or (before.st_dev, before.st_ino) != (entry.observed.st_dev, entry.observed.st_ino)
+    ):
+        message = "Fuzz evidence regular file owner changed before acquisition"
+        raise ValueError(message)
     flags = getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
     with open(
         entry.path, "rb", buffering=0, opener=lambda path, mode: os.open(path, mode | flags)
@@ -65,7 +74,7 @@ def metadata(entry: Entry) -> dict[str, Any]:
     """Parse only the same admitted regular file's initial extent, with one growth sentinel."""
     with regular(entry) as original:
         before = os.fstat(original.fileno())
-        if stamp(before) != stamp(entry.observed):
+        if journal_identity(before) != journal_identity(entry.observed):
             message = "Fuzz campaign metadata changed after inventory"
             raise ValueError(message)
         data = original.read(before.st_size + 1)

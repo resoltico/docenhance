@@ -18,14 +18,13 @@ from typing import Any
 from architecture import load_manifest
 from audit_build import read_cache
 from fuzz_manifest import targets
-from native_journal import snapshot_ctest_output
+from native_history import NativeHistory, owned_native_history
+from native_journal import JUNIT_NAMES, snapshot_ctest_output
 from native_output import archive_ctest_output
 from native_resource_capture import retained_bodies
-from process_execution import bounded_process
-from restoration_resource_records import (
-    reconcile_restoration_records,
-    resource_cases,
-)
+from process_execution import monitored_process
+from restoration_resource_cases import resource_cases
+from restoration_resource_records import reconcile_restoration_records
 from sanitizer_evidence import check_compilation
 from test_evidence import EvidenceError, complete_junit, discovery
 
@@ -156,26 +155,30 @@ def _combined_error(
         raise EvidenceError(msg) from archive_error
 
 
-def _execute_owned(
-    command: list[str], build: Path, directory: Path, deadline: float, expected_count: int
-) -> int:
-    """Archive both raw outputs after bounded_process has reaped its group, even on failure."""
+def _execute_owned(command: list[str], history: NativeHistory, expected_count: int) -> int:
+    """Archive both raw outputs after owned child cleanup, even on failure."""
+    build, directory, deadline = history.build, history.directory, history.deadline
+    if directory is None:
+        message = "Native execution requires its actual evidence directory"
+        raise EvidenceError(message)
     remaining = deadline - time.monotonic() - NATIVE_ARCHIVE_SECONDS
     if remaining <= 0:
         msg = "Native preflight exhausted the child and diagnostic archive deadline"
         raise EvidenceError(msg)
-    junit = directory / "ctest.xml"
-    if junit.exists() or junit.is_symlink():
+    if any((directory / name).exists() or (directory / name).is_symlink() for name in JUNIT_NAMES):
         msg = "Native evidence directory already contains stale JUnit"
         raise EvidenceError(msg)
     before = snapshot_ctest_output(build)
     failure: BaseException | None = None
     exit_code: int | None = None
     journal_status: str | None = None
+    junit_status: str | None = None
     journal_cases: int | None = None
     child_finished = False
     try:
-        exit_code = bounded_process(command, dict(os.environ), None, remaining, graceful=True)
+        exit_code = monitored_process(
+            command, dict(os.environ), remaining, history.check, graceful=True
+        )
         child_finished = True
     finally:
         failure = None if child_finished else sys.exception()
@@ -183,6 +186,7 @@ def _execute_owned(
         try:
             retained = archive_ctest_output(build, directory, before, deadline, expected_count)
             journal_status = retained["journal"]["status"]
+            junit_status = retained["junit"]["status"]
             journal_cases = retained["journal"]["completed_raw_case_count"]
             archived = True
         finally:
@@ -196,6 +200,9 @@ def _execute_owned(
         raise EvidenceError(msg)
     if exit_code == 0 and journal_cases != expected_count:
         msg = "Complete CTest journal case count differs from actual discovery"
+        raise EvidenceError(msg)
+    if exit_code == 0 and junit_status != "diagnostic_only_unvalidated_junit":
+        msg = "A partial CTest JUnit cannot qualify successful native execution"
         raise EvidenceError(msg)
     return exit_code
 
@@ -213,8 +220,15 @@ def resource_results(directory: Path, tests: list[dict[str, Any]], build: Path) 
 def run(args: argparse.Namespace) -> int:
     """Create fresh evidence, execute every test, and refuse incomplete or skipped results."""
     deadline = time.monotonic() + NATIVE_EXECUTION_SECONDS
-    build = args.build.resolve()
+    build = args.build.absolute()
+    with owned_native_history(build, deadline) as history:
+        return _run(args, build, deadline, history)
+
+
+def _run(args: argparse.Namespace, build: Path, deadline: float, history: NativeHistory) -> int:
+    """Keep actual discovery, raw JUnit and original native qualification in one owned scope."""
     directory = Path(tempfile.mkdtemp(prefix="native-", dir=build))
+    history.directory = directory
     print(f"Native suite evidence: {directory}", flush=True)
     tests = discovery(args.ctest, build)
     compilation(build)
@@ -231,7 +245,7 @@ def run(args: argparse.Namespace) -> int:
         "--output-junit",
         str(directory / "ctest.xml"),
     ]
-    exit_code = _execute_owned(command, build, directory, deadline, len(tests))
+    exit_code = _execute_owned(command, history, len(tests))
     complete_junit(directory / "ctest.xml", {test["name"] for test in tests}, units)
     if exit_code == 0:
         resource_results(directory, tests, build)

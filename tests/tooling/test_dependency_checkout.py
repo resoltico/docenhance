@@ -6,9 +6,11 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone unittest discovery.
@@ -19,6 +21,39 @@ import dep_verify
 
 class CheckoutTests(unittest.TestCase):
     """Exercise real Git attributes, pinned-object fetch and source-byte checkout."""
+
+    def test_staging_cleanup_retries_only_windows_readonly_regular_files(self) -> None:
+        """Owned Git readonly files may delete; writable, redirected and other errors refuse."""
+        path = "owned-object"
+        removed = mock.Mock()
+        error = PermissionError("readonly object")
+        info = SimpleNamespace(st_mode=stat.S_IFREG | stat.S_IREAD, st_file_attributes=0)
+        with (
+            mock.patch("dep_acquire.sys.platform", "win32"),
+            mock.patch.object(Path, "lstat", return_value=info),
+            mock.patch.object(Path, "chmod") as chmod,
+        ):
+            dep_acquire.remove_readonly(removed, path, error)
+            chmod.assert_called_once_with(info.st_mode | stat.S_IWRITE)
+            removed.assert_called_once_with(path)
+        for mode, attributes in (
+            (stat.S_IFREG | stat.S_IWRITE, 0),
+            (stat.S_IFLNK, stat.FILE_ATTRIBUTE_REPARSE_POINT),
+            (stat.S_IFDIR, 0),
+        ):
+            with (
+                self.subTest(mode=mode),
+                mock.patch("dep_acquire.sys.platform", "win32"),
+                mock.patch.object(
+                    Path,
+                    "lstat",
+                    return_value=SimpleNamespace(st_mode=mode, st_file_attributes=attributes),
+                ),
+                mock.patch.object(Path, "chmod") as chmod,
+                self.assertRaises(PermissionError),
+            ):
+                dep_acquire.remove_readonly(removed, path, error)
+            chmod.assert_not_called()
 
     def test_declared_text_uses_lf_under_inherited_crlf_policy(self) -> None:
         """A global native-EOL policy cannot change reviewed C++ source bytes."""

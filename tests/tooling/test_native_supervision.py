@@ -11,7 +11,10 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 from unittest import mock
 
 from tools_path import prepare_tool_imports
@@ -45,6 +48,7 @@ class NativeOutputIntegrationTests(unittest.TestCase):
         self.timeout = False
         self.partial = False
         self.no_junit = False
+        self.temporary_junit = False
         self.journal_override: bytes | None = None
         self.expected_count = 1
         self.control: BaseException | None = None
@@ -53,17 +57,18 @@ class NativeOutputIntegrationTests(unittest.TestCase):
         self,
         command: list[str],
         _env: dict[str, str],
-        _log: object,
         timeout: float,
+        monitor: Callable[[], None],
         *,
         graceful: bool,
     ) -> int:
         """Return a fixed child outcome after producing real complete or partial files."""
         self.assertNotIn("--output-on-failure", command)
         self.assertTrue(graceful)
+        self.assertTrue(callable(monitor))
         self.assertGreater(timeout, 0)
         directory = Path(command[-1]).parent
-        name = "LastTest.log.tmp" if self.partial else "LastTest.log"
+        name = "LastTest.log.tmpabcde" if self.partial else "LastTest.log"
         (self.build / "Testing/Temporary" / name).write_bytes(
             self.journal_override
             if self.journal_override is not None
@@ -75,7 +80,8 @@ class NativeOutputIntegrationTests(unittest.TestCase):
             'expectedFailures="0" skips="0"/></Catch2TestRun>'
         )
         if not self.no_junit:
-            (directory / "ctest.xml").write_text(
+            junit = directory / ("ctest.xml.tmp" if self.temporary_junit else "ctest.xml")
+            junit.write_text(
                 '<testsuite><testcase name="unit" status="run"><system-out>'
                 + html.escape(catch)
                 + "</system-out></testcase>"
@@ -105,7 +111,7 @@ class NativeOutputIntegrationTests(unittest.TestCase):
             mock.patch.object(suite, "compilation"),
             mock.patch.object(suite, "resource_results"),
             mock.patch.object(suite, "registrations", return_value={"unit"}),
-            mock.patch.object(suite, "bounded_process", side_effect=self.child),
+            mock.patch.object(suite, "monitored_process", side_effect=self.child),
         ):
             return suite.run(args)
 
@@ -158,6 +164,27 @@ class NativeOutputIntegrationTests(unittest.TestCase):
             self.execute()
         self.assertTrue((self.evidence() / "ctest-output-partial.gz").exists())
         self.assertTrue((self.evidence() / "ctest.xml.gz").exists())
+
+    def test_temporary_junit_never_qualifies_a_zero_exit(self) -> None:
+        """Even complete-looking temporary XML cannot establish completed native execution."""
+        self.temporary_junit = True
+        with self.assertRaisesRegex(EvidenceError, "partial CTest JUnit"):
+            self.execute()
+        self.assertTrue((self.evidence() / "ctest.xml.gz").exists())
+
+    def test_both_exact_junit_names_must_be_absent_before_child(self) -> None:
+        """An owned pre-existing temporary report is stale, not this child's output."""
+        self.control = SupervisorControlError("unexpected child launch")
+        for name in ("ctest.xml", "ctest.xml.tmp"):
+            directory = self.build / ("native-stale-" + name)
+            directory.mkdir()
+            (directory / name).write_text("old")
+            with (
+                mock.patch("run_native_suite.tempfile.mkdtemp", return_value=str(directory)),
+                self.assertRaisesRegex(EvidenceError, "stale JUnit"),
+            ):
+                self.execute()
+            self.assertFalse((directory / "native-output.json").exists())
 
     def test_partial_journal_never_qualifies_a_zero_exit(self) -> None:
         """Even coherent JUnit cannot turn an incomplete journal epoch into qualification."""

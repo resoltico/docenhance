@@ -11,6 +11,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import capture_reader
 import process_execution
 
 
@@ -98,7 +99,7 @@ class BoundedLogTests(unittest.TestCase):
             command = [sys.executable, "-c", "import os, time; os.write(1, b'x'); time.sleep(5)"]
             with (
                 patch.object(
-                    process_execution,
+                    capture_reader,
                     "_capture_bounded",
                     side_effect=OSError("synthetic log write failure"),
                 ),

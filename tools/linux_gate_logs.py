@@ -19,10 +19,25 @@ RETAINED_LIMIT_BYTES = 64 * 1024 * 1024
 RETAINED_LIMIT_ENTRIES = 4096
 
 
+def _missing_regular_log(log: Path) -> bool:
+    """Distinguish absence from an ordinary existing file, refusing redirected entries."""
+    try:
+        observed = log.lstat()
+    except FileNotFoundError:
+        return True
+    if (
+        not stat.S_ISREG(observed.st_mode)
+        or getattr(observed, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+    ):
+        message = "Linux gate diagnostic path is not an ordinary regular file"
+        raise OSError(message)
+    return False
+
+
 def retain_preflight_failure(log: Path, error: BaseException) -> None:
     """A diagnostic write cannot replace the actual failed gate outcome."""
     try:
-        if not log.exists():
+        if _missing_regular_log(log):
             value = f"{type(error).__name__}: {error}\n".encode("utf-8", errors="backslashreplace")
             with log.open("xb") as stream:
                 stream.write(value[:LOG_LIMIT_BYTES])

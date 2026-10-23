@@ -4,12 +4,14 @@
 
 from __future__ import annotations
 
+import io
 import json
 import subprocess
 import tempfile
 import time
 import unittest
-from pathlib import Path
+from contextlib import redirect_stderr
+from pathlib import Path, PurePosixPath
 from unittest.mock import patch
 
 import tools_path  # noqa: F401 -- Bootstrap direct tool imports for standalone unittest discovery.
@@ -31,6 +33,60 @@ class LinuxGateTests(unittest.TestCase):
                 check_all.local_checks(system),
             )
         self.assertEqual(check_all.local_checks("Linux"), check_all.CHECKS)
+
+    def test_source_failure_reports_all_checks_without_native_launch(self) -> None:
+        """A first source failure still reports all eight and never invokes Docker."""
+        for system in ("Darwin", "Windows"):
+            output = io.StringIO()
+            with (
+                self.subTest(system=system),
+                patch("check_all.platform.system", return_value=system),
+                patch("check_all.sys.argv", ["check_all.py", "--quiet"]),
+                patch("check_all.run", side_effect=[False, *([True] * 8)]) as invoked,
+                redirect_stderr(output),
+            ):
+                self.assertEqual(check_all.main(), 1)
+            self.assertEqual(invoked.call_count, 8)
+            self.assertEqual([call.args for call in invoked.call_args_list], list(check_all.CHECKS))
+            self.assertTrue(all(call.kwargs == {"quiet": True} for call in invoked.call_args_list))
+            self.assertIn("NOT RUN Linux native workflow (Docker)", output.getvalue())
+            self.assertIn("FAILED: structure and contracts", output.getvalue())
+
+    def test_healthy_source_requires_exactly_one_native_result(self) -> None:
+        """All nine reviewed checks run and native failure cannot become a local pass."""
+        for system in ("Darwin", "Windows"):
+            for native_good in (True, False):
+                output = io.StringIO()
+                with (
+                    self.subTest(system=system, native_good=native_good),
+                    patch("check_all.platform.system", return_value=system),
+                    patch("check_all.sys.argv", ["check_all.py"]),
+                    patch("check_all.run", side_effect=[*([True] * 8), native_good]) as invoked,
+                    redirect_stderr(output),
+                ):
+                    self.assertEqual(check_all.main(), 0 if native_good else 1)
+                self.assertEqual(invoked.call_count, 9)
+                self.assertEqual(
+                    [call.args for call in invoked.call_args_list],
+                    list(check_all.local_checks(system)),
+                )
+                arguments = [call.args[1] for call in invoked.call_args_list]
+                self.assertEqual(arguments.count(("tools/check_linux.py",)), 1)
+                self.assertNotIn("NOT RUN", output.getvalue())
+
+    def test_linux_source_result_never_launches_recursive_native_work(self) -> None:
+        """Linux keeps exactly eight checks with both healthy and adverse source outcomes."""
+        for source_good in (True, False):
+            with (
+                self.subTest(source_good=source_good),
+                patch("check_all.platform.system", return_value="Linux"),
+                patch("check_all.sys.argv", ["check_all.py"]),
+                patch("check_all.run", side_effect=[source_good, *([True] * 7)]) as invoked,
+                redirect_stderr(io.StringIO()),
+            ):
+                self.assertEqual(check_all.main(), 0 if source_good else 1)
+            self.assertEqual(invoked.call_count, 8)
+            self.assertEqual([call.args for call in invoked.call_args_list], list(check_all.CHECKS))
 
     def test_pinned_image_and_tool_change_invalidate_cache(self) -> None:
         """A moving tag is refused and tool installation changes produce a different image."""
@@ -82,8 +138,10 @@ class LinuxGateTests(unittest.TestCase):
             self.assertIn("RUFF_CACHE_DIR=/source/.cache/ruff", arguments)
             self.assertIn("MYPY_CACHE_DIR=/source/.cache/mypy", arguments)
             self.assertIn("TMPDIR=/tmp/docenhance-linux-tmp/token", arguments)
-            temporary = Path(next(value[7:] for value in arguments if value.startswith("TMPDIR=")))
-            self.assertFalse(temporary.is_relative_to(Path("/source")))
+            temporary = PurePosixPath(
+                next(value[7:] for value in arguments if value.startswith("TMPDIR="))
+            )
+            self.assertFalse(temporary.is_relative_to(PurePosixPath("/source")))
             self.assertFalse(any("target=/tmp" in mount for mount in mounts))
             script = Path(check_linux.__file__).with_name("linux_gate.sh").read_text()
             self.assertIn(f"temporary_root={temporary.parent}", script)
@@ -259,7 +317,9 @@ class LinuxGateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "redirected entry"):
                 linux_gate_logs.admit_diagnostics(logs)
             primary = ValueError("refused redirect")
-            linux_gate_logs.retain_preflight_failure(latest, primary)
+            with patch.object(Path, "open", side_effect=OSError("redirected open")) as opening:
+                linux_gate_logs.retain_preflight_failure(latest, primary)
+            opening.assert_not_called()
             self.assertFalse(outside.exists())
             self.assertTrue(latest.is_symlink())
             self.assertIn("retention also failed", primary.__notes__[0])

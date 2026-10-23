@@ -36,6 +36,9 @@ developer distributions, **not** part of the application's source lock or its ru
 A compiler and Git must already be installed. On Windows, use a Visual Studio Developer PowerShell
 with the current C++ workload. `tools/ci_windows.ps1` demonstrates activation through Microsoft's
 installed developer-shell script without an extra third-party Action. The same selected shell
+builds and runs the existing FFT resource executable before the remaining Release build. This early
+case has one 120-second deadline, including its 90-second case allowance and 30-second archive
+reserve; its separate evidence never replaces the later complete suite. The same shell then
 retains the actual Release resource proof, configures the existing `dev` preset in a fresh private
 Debug tree, and builds only the two native FFT/restoration resource executables and their
 dependencies. Their registered complete resource cases run with the same 90-second per-case limits.
@@ -43,6 +46,8 @@ Both configurations retain real static-CRT compile/default-library/map observati
 calibration and native-contract results; installed-source collector receipts alone do not establish
 that proof.
 
+Debug raw output and its already retained maps share the native history admission and growth
+policy below; they receive no extra disk allowance.
 The separate Windows proof artifact retains only exact map gzip files, bounded diagnostic logs and
 small identity/result records for seven days. Each map admits at most 16 MiB raw and 2 MiB
 compressed; native raw/JUnit admission remains 64 MiB each with independent 2 MiB compressed bounds.
@@ -70,6 +75,9 @@ then run `python tools/check_all.py`; it includes the full Linux
 release workflow with isolated cached native state. Use `python tools/check_linux.py` for that
 gate alone. The image/tool/source pins, retained log and precise coverage are described in
 [local Linux verification](quality.md#local-linux-verification-with-docker).
+All source checks run to report their failures before native admission. A source failure returns
+failure without launching Docker; passing source checks still require the full native workflow
+on macOS and Windows.
 
 Prepare the host cache with the explicit acquisition command above. To build the exact gate image,
 run this separately from the gate, from the checkout root with its Python tools environment active:
@@ -386,6 +394,19 @@ empty assertion work or expected-failure cases. Catch uses `SKIP_IS_FAILURE`; it
 prove assertion work, while CTest results prove every registered process completed. Passing output
 has a finite 1 MiB capture bound; truncation or missing evidence fails rather than becoming success.
 The strict tooling runner likewise requires every test module and refuses skipped cases.
+
+Native evidence writers serialize per build. Admission reserves 136 MiB and 32 entries beneath a
+384 MiB logical-byte / 4,096 visited-entry retention policy; active growth and final output are
+checked too. The reserve covers two 64 MiB raw outputs, two 2 MiB archives and 4 MiB of metadata.
+Two prior 72 MiB evidence owners, a retained 64 MiB journal and the new 136 MiB scope total
+344 MiB, leaving 40 MiB operational headroom. This is a conservative refusal policy, not a measured
+minimum or an instantaneous physical-disk quota. Inode accounting deduplicates hard links while
+every visited entry consumes entry capacity. The fixed Windows FFT preflight remains counted
+during the later full Release suite. Evidence owners are flat directories; redirected and special
+entries refuse admission. CTest temporary journals and JUnit consume the same raw-output bounds;
+interrupted output is retained only as partial diagnostics and cannot qualify a completed suite.
+Raw JUnit remains available for qualification, and no history is deleted automatically. Preserve
+needed evidence and inspect closed owners before disposing of them.
 
 Package inspection requires the independently tested application build directory (`--build`). It
 compares the relocated executable byte-for-byte, all specs/schemas and the closed file inventory,

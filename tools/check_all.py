@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 # SPDX-License-Identifier: MPL-2.0
-"""Run every local check: the authoritative list used by the Git hooks.
+"""Run every source check: the authoritative list used by the Git hooks.
 
 This is the one place the local check set is defined. `.pre-commit-config.yaml` invokes this
-script. Linux CI and source-archive jobs run this same source gate set; non-Linux contributor
-hosts additionally run the Docker native gate. Non-Linux
-developer hosts also run the real Linux release workflow through Docker. Linux hosts avoid
-container recursion; their native CI workflows remain authoritative. Fuzzing and
-additional sanitizer workflows remain explicit commands.
+script. Linux CI and source-archive jobs run the same source gate set. Non-Linux developer
+hosts additionally require the real Linux release workflow through Docker after all source
+checks pass. Linux hosts avoid container recursion; their native CI workflows remain
+authoritative. Fuzzing and additional sanitizer workflows remain explicit commands.
 
-Every check runs even when an earlier one fails, so one command reports every problem.
+Every source check runs even when an earlier one fails, so one command reports all source
+problems. A source failure returns failure without launching the native workflow.
 """
 
 from __future__ import annotations
@@ -73,12 +73,20 @@ def run(name: str, arguments: tuple[str, ...], *, quiet: bool) -> bool:
 
 
 def main() -> int:
-    """Run every check and return non-zero if any of them failed."""
+    """Report every source failure; admit mandatory native work only after source success."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--quiet", action="store_true", help="Show only the pass/fail summary")
     args = parser.parse_args()
     checks = local_checks(platform.system())
-    failed = [name for name, arguments in checks if not run(name, arguments, quiet=args.quiet)]
+    failed = [name for name, arguments in CHECKS if not run(name, arguments, quiet=args.quiet)]
+    if not failed:
+        failed = [
+            name
+            for name, arguments in checks[len(CHECKS) :]
+            if not run(name, arguments, quiet=args.quiet)
+        ]
+    elif len(checks) > len(CHECKS):
+        print("NOT RUN Linux native workflow (Docker): source checks failed", file=sys.stderr)
     if failed:
         print(f"FAILED: {', '.join(failed)}", file=sys.stderr)
         return 1

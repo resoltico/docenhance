@@ -150,10 +150,55 @@ class ReferenceClosureTests(unittest.TestCase):
 
     def test_toolchain_roots_include_resources_without_admitting_package_prefixes(self) -> None:
         """Clang sanitizer resources share a compiler root; ambient include prefixes do not."""
-        roots = reference_closure.system_roots(
-            ["/opt/compiler/lib/clang/23/include", "/usr/local/include", "/opt/homebrew/include"]
-        )
+        paths = [
+            "/opt/compiler/lib/clang/23/include",
+            "/usr/local/include",
+            "/opt/homebrew/include",
+            "/foreign/VC/Tools/MSVC/14.51/include",
+            "/foreign/Windows Kits/10/Include/10.0.26100.0/ucrt",
+        ]
+        roots = reference_closure.system_roots(paths)
         self.assertEqual(roots, [Path("/opt/compiler/lib/clang/23").resolve()])
+
+    def test_windows_roots_require_selected_compiler_and_sdk_provenance(self) -> None:
+        """A Windows-looking ambient path cannot become a selected compiler/SDK owner."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            vc, sdk = root / "toolset", root / "sdk"
+            compiler = vc / "bin/Hostx64/x64/cl.exe"
+            compiler.parent.mkdir(parents=True)
+            compiler.write_bytes(b"tool identity fixture only")
+            include = vc / "include"
+            include.mkdir()
+            ucrt = sdk / "Include/10.0.26100.0/ucrt"
+            ucrt.mkdir(parents=True)
+            environment = {
+                "VCTOOLSINSTALLDIR": str(vc),
+                "WINDOWSSDKDIR": str(sdk),
+                "WINDOWSSDKVERSION": "10.0.26100.0\\",
+                "INCLUDE": str(root / "foreign/Windows Kits/10/Include/10.0.26100.0/ucrt"),
+            }
+            paths = [str(include / "expected"), str(ucrt / "stdio.h"), environment["INCLUDE"]]
+            with (
+                patch("reference_closure.sys.platform", "win32"),
+                patch.dict(os.environ, environment),
+                patch("reference_closure.shutil.which", return_value=str(compiler)),
+            ):
+                self.assertEqual(
+                    set(reference_closure.system_roots(paths)), {include.resolve(), ucrt.resolve()}
+                )
+                with (
+                    patch(
+                        "reference_closure.shutil.which", return_value=str(root / "foreign-cl.exe")
+                    ),
+                    self.assertRaises(ArchitectureError),
+                ):
+                    reference_closure.system_roots(paths)
+                with (
+                    patch.dict(os.environ, {"WINDOWSSDKVERSION": "../foreign"}),
+                    self.assertRaises(ArchitectureError),
+                ):
+                    reference_closure.system_roots(paths)
 
     def test_real_environment_owner_rejects_injected_flags_and_search(self) -> None:
         """Run the actual production CMake refusal without scrubbing injected inputs."""
@@ -233,7 +278,10 @@ class ReferenceClosureTests(unittest.TestCase):
             # A compiled object proves refusal came from the actual final link, not an observer.
             self.assertTrue((directory / "reference-0.o").is_file())
             self.assertNotIn("-c", raised.exception.cmd)
-            self.assertIn("missing_native_dependency", raised.exception.stderr)
+            self.assertIn(
+                "missing_native_dependency",
+                (raised.exception.stdout or "") + (raised.exception.stderr or ""),
+            )
 
     def test_suite_receipts_require_exact_positive_closed_census(self) -> None:
         """Missing, duplicate, unknown, unordered and noninteger work cannot count as execution."""

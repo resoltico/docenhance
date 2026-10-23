@@ -21,7 +21,7 @@ from tools_path import prepare_tool_imports
 from restoration_resource_fixture import RESOURCE_EXECUTABLES, resource_fixture
 
 import native_resource_capture as capture
-import restoration_resource_records as resource
+import restoration_resource_cases as case_admission
 import run_native_suite as suite
 import windows_resource_artifacts as artifacts
 import windows_resource_execution as execution
@@ -131,7 +131,9 @@ class WindowsResourceProofTests(unittest.TestCase):
                     "archive_sha256": artifacts.identity(path)["sha256"],
                     "raw_bytes": len(data),
                     "raw_sha256": hashlib.sha256(data).hexdigest(),
-                    "status": "diagnostic_only_complete",
+                    "status": "diagnostic_only_complete"
+                    if key == "journal"
+                    else "diagnostic_only_unvalidated_junit",
                 }
             output = directory / "native-output.json"
             output.write_text(json.dumps(metadata))
@@ -144,7 +146,7 @@ class WindowsResourceProofTests(unittest.TestCase):
                         RESOURCE_EXECUTABLES,
                     )["cases"]
                 ),
-                resource.resource_cases(tests, RESOURCE_EXECUTABLES),
+                case_admission.resource_cases(tests, RESOURCE_EXECUTABLES),
             )
             (directory / "native-tests.json").write_text(
                 json.dumps({"resource_binaries": RESOURCE_EXECUTABLES})
@@ -153,7 +155,7 @@ class WindowsResourceProofTests(unittest.TestCase):
             summary = json.loads((directory / "native-restoration-resources.json").read_text())
             self.assertEqual(summary["shard_count"], 2)
             self.assertEqual(
-                set(summary["cases"]), resource.resource_cases(tests, RESOURCE_EXECUTABLES)
+                set(summary["cases"]), case_admission.resource_cases(tests, RESOURCE_EXECUTABLES)
             )
             for bad in (b"<testsuite/>", junit.replace(b'status="run"', b'status="notrun"')):
                 path = directory / "junit.gz"
@@ -212,7 +214,7 @@ class WindowsResourceProofTests(unittest.TestCase):
             for directories in (["old"], ["old", "new", "foreign"]):
                 with (
                     patch.object(
-                        proof,
+                        records,
                         "release_directories",
                         return_value={name: [1, 2] for name in directories},
                     ),
@@ -220,12 +222,13 @@ class WindowsResourceProofTests(unittest.TestCase):
                 ):
                     proof.admitted_release(saved)
             with patch.object(
-                proof, "release_directories", return_value={"old": [1, 2], "new": [3, 4]}
+                records, "release_directories", return_value={"old": [1, 2], "new": [3, 4]}
             ):
                 self.assertEqual(proof.admitted_release(saved), {"path": "new", "identity": [3, 4]})
 
     def test_interruption_identity_survives_archive_failure(self) -> None:
         """The same control exception escapes after retention failure is attached."""
+        (execution.ROOT / "out/dev/app").mkdir(parents=True)
         original = KeyboardInterrupt("controlled")
         with (
             patch.object(execution, "discovery", return_value=resource_fixture()[0]),
@@ -240,6 +243,7 @@ class WindowsResourceProofTests(unittest.TestCase):
 
     def test_nonzero_child_and_archive_failure_both_remain_recorded(self) -> None:
         """A failed archive never erases the actual nonzero CTest outcome."""
+        (execution.ROOT / "out/dev/app").mkdir(parents=True)
         record: dict[str, Any] = {}
         with (
             patch.object(execution, "discovery", return_value=resource_fixture()[0]),
@@ -316,11 +320,14 @@ class WindowsResourceProofTests(unittest.TestCase):
                 patch.object(proof, "OUT", output),
                 patch("windows_resource_proof.platform.system", return_value="Windows"),
                 patch("windows_resource_proof.sources", return_value={}),
-                patch("windows_resource_proof.release_directories", return_value={}),
+                patch(
+                    "windows_resource_records.release_directories", return_value={}
+                ) as directories,
                 patch.dict("os.environ", {"GITHUB_SHA": "a" * 40}),
             ):
                 self.assertFalse(output.parent.exists())
                 proof.snapshot()
+                directories.assert_called_once_with(root)
                 saved = (output / "snapshot.json").read_bytes()
                 self.assertEqual(json.loads(saved)["head"], "a" * 40)
                 with self.assertRaises(FileExistsError):

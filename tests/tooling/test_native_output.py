@@ -8,6 +8,7 @@ import gzip
 import hashlib
 import json
 import os
+import stat
 import sys
 import tempfile
 import time
@@ -23,6 +24,7 @@ from native_output_fixture import journal_bytes
 
 import native_journal as journal
 import native_output as output
+import native_resource_capture as capture
 
 prepare_tool_imports()
 
@@ -47,7 +49,7 @@ class NativeOutputTests(unittest.TestCase):
 
     def populate(self, *, partial: bool = False, failure: bool = False) -> None:
         """Write one concrete journal epoch and an independently owned raw XML fixture."""
-        name = "LastTest.log.tmp" if partial else "LastTest.log"
+        name = "LastTest.log.tmpabcde" if partial else "LastTest.log"
         (self.journals / name).write_bytes(
             self.raw.replace(b"Test Passed.", b"Test Failed.") if failure else self.raw
         )
@@ -113,6 +115,30 @@ class NativeOutputTests(unittest.TestCase):
         )
         self.assertTrue((self.evidence / "ctest-output-partial.gz").exists())
 
+    def test_temporary_junit_is_archived_but_never_qualifies(self) -> None:
+        """Fully framed journal and complete-looking XML cannot certify an unclosed JUnit name."""
+        before = journal.snapshot_ctest_output(self.build)
+        self.populate()
+        temporary = self.evidence / "ctest.xml.tmp"
+        (self.evidence / "ctest.xml").rename(temporary)
+        xml = temporary.read_bytes()
+        result = self.archive(before)
+        self.assertEqual(result["journal"]["status"], "diagnostic_only_complete")
+        self.assertEqual(result["junit"]["status"], "diagnostic_only_partial")
+        self.assertEqual(Path(result["junit"]["archive"]).name, "ctest.xml.gz")
+        self.assertEqual(gzip.decompress((self.evidence / "ctest.xml.gz").read_bytes()), xml)
+        with self.assertRaisesRegex(ValueError, "JUnit incomplete"):
+            capture.retained_bodies(self.evidence)
+
+    def test_final_and_temporary_junit_are_ambiguous(self) -> None:
+        """Never choose the newer XML name or overwrite an old final report."""
+        before = journal.snapshot_ctest_output(self.build)
+        self.populate()
+        (self.evidence / "ctest.xml.tmp").write_bytes(b"different epoch")
+        with self.assertRaisesRegex(journal.OutputError, "JUnit is absent or ambiguous"):
+            self.archive(before)
+        self.assertFalse((self.evidence / "ctest.xml.gz").exists())
+
     def test_unchanged_old_or_absent_journal_is_refused(self) -> None:
         """An old journal cannot certify the new execution, even when JUnit is fresh."""
         self.populate()
@@ -134,7 +160,7 @@ class NativeOutputTests(unittest.TestCase):
         """Never guess which concurrent or interrupted writer owns complete evidence."""
         before = journal.snapshot_ctest_output(self.build)
         self.populate()
-        (self.journals / "LastTest.log.tmp").write_bytes(b"different epoch")
+        (self.journals / "LastTest.log.tmpabcde").write_bytes(b"different epoch")
         with self.assertRaisesRegex(journal.OutputError, "ambiguous"):
             self.archive(before)
 
@@ -145,6 +171,21 @@ class NativeOutputTests(unittest.TestCase):
         (self.journals / "LastTest.log").symlink_to(target)
         with self.assertRaisesRegex(journal.OutputError, "regular file"):
             journal.snapshot_ctest_output(self.build)
+
+    def test_windows_reparse_destination_refuses_before_archival(self) -> None:
+        """A directory mode alone cannot authorize writes through a Windows junction."""
+        before = journal.snapshot_ctest_output(self.build)
+        self.populate()
+        owner = SimpleNamespace(
+            st_mode=stat.S_IFDIR, st_file_attributes=stat.FILE_ATTRIBUTE_REPARSE_POINT
+        )
+        with (
+            mock.patch.object(Path, "lstat", return_value=owner),
+            self.assertRaisesRegex(journal.OutputError, "owned evidence directory"),
+        ):
+            self.archive(before)
+        self.assertFalse((self.evidence / "ctest-output.gz").exists())
+        self.assertFalse((self.evidence / "ctest.xml.gz").exists())
 
     def test_raw_bound_is_admission_not_silent_truncation(self) -> None:
         """Both outputs exceeding a tiny bound fail rather than produce shortened evidence."""

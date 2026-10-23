@@ -10,6 +10,7 @@ import stat
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol
 
+from native_journal import journal_identity
 from quality_attempt import CHUNK_BYTES
 
 if TYPE_CHECKING:
@@ -77,7 +78,11 @@ def read_extent(
     )
     result.sha256 = digest.hexdigest()
     final = os.fstat(stream.fileno())
-    if total != extent or _handle_identity(initial) != _handle_identity(final):
+    if (
+        total != extent
+        or journal_identity(initial) != journal_identity(final)
+        or _handle_identity(initial) != _handle_identity(final)
+    ):
         message = "Evidence extent or handle changed during acquisition"
         raise ValueError(message)
     result.payload = bytes(retained) if retained is not None else None
@@ -145,7 +150,7 @@ def _regular_path(path: Path) -> os.stat_result:
 def _descriptor_extent(
     before: os.stat_result, initial: os.stat_result, reference: dict[str, Any]
 ) -> None:
-    if _handle_identity(before) != _handle_identity(initial):
+    if journal_identity(before) != journal_identity(initial):
         message = "Evidence path changed before acquisition"
         raise ValueError(message)
     if type(initial.st_size) is not int or not 0 <= initial.st_size < 2**63:
@@ -157,7 +162,7 @@ def _descriptor_extent(
 
 
 def _current_path(path: Path, initial: os.stat_result) -> None:
-    if _handle_identity(path.stat(follow_symlinks=False)) != _handle_identity(initial):
+    if journal_identity(path.stat(follow_symlinks=False)) != journal_identity(initial):
         message = "Evidence path changed during acquisition"
         raise ValueError(message)
 

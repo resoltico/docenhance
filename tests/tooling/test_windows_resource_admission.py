@@ -23,11 +23,10 @@ from restoration_resource_fixture import RESOURCE_EXECUTABLES, resource_fixture
 from test_windows_resource_proof import map_text
 
 import native_journal as journal
-import restoration_resource_records as resource
+import restoration_resource_cases as case_admission
 import windows_resource_artifacts as artifacts
 import windows_resource_execution as execution
 import windows_resource_producer as producer
-import windows_resource_proof as proof
 import windows_resource_records as records
 
 prepare_tool_imports()
@@ -58,21 +57,20 @@ class WindowsResourceAdmissionTests(unittest.TestCase):
             directory = app / "native-actual"
             directory.mkdir()
             info = directory.lstat()
-            with patch.object(proof, "ROOT", root):
-                self.assertEqual(
-                    proof.release_directories(),
-                    {str(directory.resolve()): [info.st_dev, info.st_ino]},
-                )
-                link = app / "native-link"
-                link.symlink_to(directory, target_is_directory=True)
-                with self.assertRaises(ValueError):
-                    proof.release_directories()
-                link.unlink()
-                selected = {"path": str(directory), "identity": [info.st_dev, info.st_ino]}
-                directory.rmdir()
-                directory.write_text("replaced owner")
-                with self.assertRaises(ValueError):
-                    proof.retained_owner(selected)
+            self.assertEqual(
+                records.release_directories(root),
+                {str(directory.resolve()): [info.st_dev, info.st_ino]},
+            )
+            link = app / "native-link"
+            link.symlink_to(directory, target_is_directory=True)
+            with self.assertRaises(ValueError):
+                records.release_directories(root)
+            link.unlink()
+            selected = {"path": str(directory), "identity": [info.st_dev, info.st_ino]}
+            directory.rmdir()
+            directory.write_text("replaced owner")
+            with self.assertRaises(ValueError):
+                records.retained_owner(selected)
 
     def test_native_owner_refuses_windows_reparse_file_directory_and_symlink(self) -> None:
         """Windows junctions retain directory mode; every reparse kind must refuse."""
@@ -90,13 +88,12 @@ class WindowsResourceAdmissionTests(unittest.TestCase):
                 )
                 with (
                     self.subTest(kind=kind),
-                    patch.object(proof, "ROOT", root),
                     patch.object(Path, "lstat", return_value=modeled),
                 ):
                     with self.assertRaises(ValueError):
-                        proof.release_directories()
+                        records.release_directories(root)
                     with self.assertRaisesRegex(ValueError, "owner changed"):
-                        proof.retained_owner(selected)
+                        records.retained_owner(selected)
 
     def test_intrinsic_debug_and_contradictory_defines_undefines(self) -> None:
         """MTd without explicit D_DEBUG is normal; contradictory CRT options refuse."""
@@ -150,7 +147,7 @@ class WindowsResourceAdmissionTests(unittest.TestCase):
         """An extra skipped case or adverse suite count cannot hide behind healthy resources."""
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "ctest.xml"
-            names = resource.resource_cases(resource_fixture()[0], RESOURCE_EXECUTABLES)
+            names = case_admission.resource_cases(resource_fixture()[0], RESOURCE_EXECUTABLES)
             cases = "".join(
                 '<testcase name="' + name + '" status="run"/>' for name in sorted(names)
             )
@@ -198,7 +195,7 @@ class WindowsResourceAdmissionTests(unittest.TestCase):
             root = Path(temporary)
             app = root / "app"
             app.mkdir()
-            prefix = str((root / "prefix").resolve())
+            prefix = (root / "prefix").resolve().as_posix()
             config = {
                 "CMAKE_SYSTEM_NAME": "Windows",
                 "CMAKE_CXX_COMPILER_ID": "MSVC",
@@ -260,7 +257,7 @@ class WindowsResourceAdmissionTests(unittest.TestCase):
                     directory, wrong, resource_fixture()[0], RESOURCE_EXECUTABLES
                 )
             with self.assertRaises(ValueError):
-                proof.retained_owner({"path": str(directory), "identity": wrong})
+                records.retained_owner({"path": str(directory), "identity": wrong})
 
     def test_windows_path_birth_time_and_fd_change_time_are_comparable(self) -> None:
         """A stable real file accepts unequal API ctimes without dropping fd stability."""

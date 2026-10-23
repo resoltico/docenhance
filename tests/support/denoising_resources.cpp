@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
 #include "allocation_observer.hpp"
+#include "nlm_launch_gate.hpp"
 #include "nlm_resource_cases.hpp"
 #include "nlm_resource_extremes.hpp"
 #include "nlm_resource_observation.hpp"
@@ -17,6 +18,7 @@ int main() {
             return 1;
         }
         tests::nlm_warm_exception_runtime();
+        tests::nlm_launch_gate_controls();
         tests::nlm_observer_calibration();
         tests::nlm_resource_healthy();
         tests::nlm_resource_pressure();
