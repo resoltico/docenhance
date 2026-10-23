@@ -103,9 +103,13 @@ class ArchitectureExecutionTests(unittest.TestCase):
             header.write_text(
                 "#pragma once\nnamespace unrelated_header { inline void probe() { throw 2; } }\n"
             )
+            trace = compile_db.included_headers(entry, syntax=True)
+            observed = {
+                spelling for pair in trace if Path(pair[1]) == header.resolve() for spelling in pair
+            }
+            self.assertTrue(observed, repr(trace)[-2048:])
             rules = architecture_api.matchers(
-                architecture.load_manifest(),
-                {"image": {entry["file"], header.resolve().as_posix()}},
+                architecture.load_manifest(), {"image": {entry["file"], *observed}}
             )
             rules.append(("overlapping throw restriction", rules[0][1]))
             query = architecture_api.find_clang_query()
@@ -125,6 +129,31 @@ class ArchitectureExecutionTests(unittest.TestCase):
                 check=True,
             )
             found = architecture_matches.violations(entry["file"], rules, grouped.stdout)
+            diagnostic = "\n".join(
+                f"{name}: {str(value)[:1024]}\n...tail: {str(value)[-1024:]}"
+                for name, value in (
+                    ("observed header", observed),
+                    ("expected counts", expected),
+                    ("found reports", found),
+                    ("query output", grouped.stdout),
+                )
+            )
+            self.assertEqual(expected[rules[0][0]], 2, diagnostic)
+            self.assertEqual(expected["overlapping throw restriction"], 2, diagnostic)
+            throw_reports = [
+                report
+                for report in found
+                if report.split("\n", 1)[0] == f"{entry['file']}: {rules[0][0]}"
+            ]
+            self.assertEqual(len(throw_reports), 1, diagnostic)
+            throw_files = re.findall(
+                r'^(.+):\d+:\d+: note: "rule_0" binds here$', throw_reports[0], re.MULTILINE
+            )
+            self.assertEqual(
+                {Path(name).name for name in throw_files},
+                {Path(entry["file"]).name, header.name},
+                diagnostic,
+            )
             for rule, count in expected.items():
                 reports = [
                     text for text in found if text.split("\n", 1)[0] == f"{entry['file']}: {rule}"
@@ -135,7 +164,7 @@ class ArchitectureExecutionTests(unittest.TestCase):
                         len(re.findall(r'"rule_\d+" binds here', reports[0])), count, rule
                     )
             self.assertTrue(any("overlapping throw restriction" in report for report in found))
-            self.assertTrue(any(header.name in report for report in found))
+            self.assertTrue(any(header.name in report for report in found), diagnostic)
             compiler_probe(root, Path(entry["file"]), "namespace broken { invalid syntax }\n")
             with self.assertRaises(architecture.ArchitectureError):
                 architecture_api.api_violations(query, root, entry, rules)

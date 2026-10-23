@@ -32,6 +32,7 @@ def healthy() -> dict[str, str]:
     return {
         "power": "Now drawing from 'AC Power'\n",
         "power_modes": "lowpowermode 0\n",
+        "low_power": '{"low_power_mode_enabled":false}\n',
         "thermal": host.NO_WARNING,
         "memory": (
             "Mach Virtual Memory Statistics: (page size of 4096 bytes)\n"
@@ -60,7 +61,6 @@ class PerformanceHostTests(unittest.TestCase):
             ("power", "Battery Power"),
             ("power", "Now drawing from 'Battery Power'\nAC Power available"),
             ("power", ""),
-            ("power_modes", ""),
             ("power_modes", "lowpowermode 1"),
             ("power_modes", "lowpowermode 2"),
             ("power_modes", "lowpowermode 0.5"),
@@ -93,6 +93,68 @@ class PerformanceHostTests(unittest.TestCase):
                 data[key] = text
                 self.assertFalse(host.evaluate(data, host.FREE_DISK_BYTES)["capability_admitted"])
         self.assertFalse(host.evaluate(healthy(), host.FREE_DISK_BYTES - 1)["capability_admitted"])
+
+    def test_native_low_power_boolean_is_required_even_without_pmset_field(self) -> None:
+        """Only direct OS false admits; absent pmset does not invent disabled mode."""
+        observed = healthy()
+        observed["power_modes"] = "AC Power:\n standby 0\n"
+        self.assertTrue(host.evaluate(observed, host.FREE_DISK_BYTES)["capability_admitted"])
+        for payload in (
+            "",
+            "undefined",
+            "null",
+            "false",
+            "{}",
+            '{"low_power_mode_enabled":true}',
+            '{"low_power_mode_enabled":0}',
+            '{"low_power_mode_enabled":"false"}',
+            '{"low_power_mode_enabled":null}',
+            '{"low_power_mode_enabled":false,"extra":false}',
+            '{"low_power_mode_enabled":true,"low_power_mode_enabled":false}',
+            '{"low_power_mode_enabled":false} trailing',
+        ):
+            with self.subTest(payload=payload):
+                observed["low_power"] = payload
+                self.assertFalse(
+                    host.evaluate(observed, host.FREE_DISK_BYTES)["capability_admitted"]
+                )
+        observed.pop("low_power")
+        self.assertFalse(host.evaluate(observed, host.FREE_DISK_BYTES)["capability_admitted"])
+        self.assertEqual(
+            host.QUERIES["low_power"][:4], ["/usr/bin/osascript", "-l", "JavaScript", "-e"]
+        )
+        self.assertIn('typeof value !== "boolean"', host.LOW_POWER_SCRIPT)
+        self.assertFalse({"compiler", "SDK", "linker"} & host.QUERIES.keys())
+
+    def test_native_low_power_timeout_preserves_original_failure_and_raw_streams(self) -> None:
+        """The fixed native query has the original4s bound and cannot fall back to pmset."""
+        original = subprocess.TimeoutExpired(host.QUERIES["low_power"], 4)
+        capture = self.fixture_capture(healthy())
+
+        def timeout(
+            command: list[str],
+            directory: Path,
+            seconds: float,
+            environment: dict[str, str] | None = None,
+        ) -> dict[str, Any]:
+            if directory.name == "low_power":
+                self.assertEqual(command, host.QUERIES["low_power"])
+                self.assertLessEqual(seconds, 4)
+                directory.mkdir()
+                (directory / "stdout").write_bytes(b"")
+                (directory / "stderr").write_bytes(b"")
+                raise original
+            return capture(command, directory, seconds, environment)
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "refused"
+            result = self.run_fixture(output, capture_override=timeout)
+            self.assertFalse(result["capability_admitted"])
+            self.assertEqual(result["error"], repr(original))
+            self.assertFalse((output / "thermal").exists())
+            self.assertTrue((output / "low_power/stdout").exists())
+            self.assertEqual(result["product_builds"], 0)
+            self.assertEqual(result["SUT_invocations"], 0)
 
     def test_actual_noisy_child_cannot_write_unbounded_diagnostics(self) -> None:
         """A real 8 MiB stream retains bounded head/tail and refuses overflow."""
@@ -234,7 +296,12 @@ class PerformanceHostTests(unittest.TestCase):
 
         return capture
 
-    def run_fixture(self, output: Path, adverse: str | None = None) -> dict[str, Any]:
+    def run_fixture(
+        self,
+        output: Path,
+        adverse: str | None = None,
+        capture_override: Callable[..., dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
         """Bind actual version policy, keeping all native queries mocked and deterministic."""
         with (
             patch.object(host, "ROOT", ROOT),
@@ -242,7 +309,11 @@ class PerformanceHostTests(unittest.TestCase):
             patch("check_performance_host.platform.machine", return_value="x86_64"),
             patch("check_performance_host.platform.mac_ver", return_value=("15.7.2", (), "")),
             patch.object(host, "developer_directory", return_value=Path("/selected/Xcode")),
-            patch.object(host, "capture", side_effect=self.fixture_capture(healthy(), adverse)),
+            patch.object(
+                host,
+                "capture",
+                side_effect=capture_override or self.fixture_capture(healthy(), adverse),
+            ),
             patch("check_performance_host.shutil.disk_usage") as usage,
         ):
             usage.return_value.free = host.FREE_DISK_BYTES

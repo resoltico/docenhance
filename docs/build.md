@@ -485,9 +485,12 @@ Intel macOS native lane. Replace the former `native_diagnostic` and `tooling_dia
 inputs with that choice; obsolete and unknown inputs are refused.
 
 `diagnostic=paired_capability` runs only bounded read-only observations on macOS 15 Intel,
-using the declared Xcode. It checks AC power, disabled low-power mode, reported thermal state,
-6 GiB of observed free/inactive/speculative memory and 5 GiB of free disk, retaining the original output.
-Unknown or adverse observations fail the job. It builds neither executable and runs no timing
-trials or CPU-idle admission. A passing capability observation never qualifies a later host or
+using the declared Xcode. It checks AC power, the read-only Foundation low-power Boolean through
+fixed headless JavaScript, reported thermal state, 6 GiB of observed free/inactive/speculative
+memory and 5 GiB of free disk, retaining the original output.
+Only direct Boolean false establishes disabled low-power mode; absent `pmset` fields remain
+diagnostic, while any present malformed or active field refuses. Compiler/SDK/linker provenance
+belongs to the later real producer. Unknown or adverse observations fail the job. It builds
+neither executable and runs no timing trials or CPU-idle admission. A passing capability observation never qualifies a later host or
 paired measurement window: both exact executables and fresh post-build quiet/idle admission
 remain required. Diagnostic aggregate failure remains intentional.

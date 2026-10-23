@@ -42,16 +42,19 @@ NO_WARNING = (
     "Note: No performance warning level has been recorded\n"
     "Note: No CPU power status has been recorded"
 )
+LOW_POWER_SCRIPT = (
+    'ObjC.import("Foundation"); const value = $.NSProcessInfo.processInfo.isLowPowerModeEnabled; '
+    'if (typeof value !== "boolean") { throw Error("Low-power state unavailable"); } '
+    "JSON.stringify({low_power_mode_enabled: value});"
+)
 QUERIES = {
     "OS": ["/usr/bin/sw_vers"],
     "machine": ["/usr/sbin/sysctl", "-n", "hw.memsize", "hw.ncpu", "machdep.cpu.brand_string"],
     "power": ["/usr/bin/pmset", "-g", "batt"],
     "power_modes": ["/usr/bin/pmset", "-g", "custom"],
+    "low_power": ["/usr/bin/osascript", "-l", "JavaScript", "-e", LOW_POWER_SCRIPT],
     "thermal": ["/usr/bin/pmset", "-g", "therm"],
     "memory": ["/usr/bin/vm_stat"],
-    "compiler": ["/usr/bin/clang++", "--version"],
-    "SDK": ["/usr/bin/xcrun", "--show-sdk-version"],
-    "linker": ["/usr/bin/xcrun", "--find", "ld"],
 }
 
 
@@ -145,12 +148,10 @@ def _power_causes(observed: dict[str, str]) -> list[str]:
     causes = []
     if (observed["power"].splitlines() or [""])[0] != "Now drawing from 'AC Power'":
         causes.append("ACpowernotobserved")
-    modes = [
-        line
-        for line in observed["power_modes"].splitlines()
-        if re.search(r"\blowpowermode\b", line)
-    ]
-    if not modes or any(re.fullmatch(r"\s*lowpowermode\s+0\s*", line) is None for line in modes):
+    modes = re.findall(r"(?m)^.*\blowpowermode\b.*$", observed["power_modes"])
+    if observed.get("low_power", "").strip() != '{"low_power_mode_enabled":false}' or any(
+        re.fullmatch(r"\s*lowpowermode\s+0\s*", line) is None for line in modes
+    ):
         causes.append("Lowpoweroffnotestablished")
     thermal = observed["thermal"].strip()
     if thermal == NO_WARNING:
