@@ -22,6 +22,7 @@ from tools_path import prepare_tool_imports
 from native_output_fixture import journal_bytes
 
 import run_native_suite as suite
+from native_resource_capture import retained_bodies
 from test_evidence import EvidenceError
 
 prepare_tool_imports()
@@ -109,7 +110,11 @@ class NativeOutputIntegrationTests(unittest.TestCase):
                 + ([{"name": "other"}] if self.expected_count == OMITTED_CASE_COUNT else []),
             ),
             mock.patch.object(suite, "compilation"),
-            mock.patch.object(suite, "resource_results"),
+            mock.patch.object(
+                suite,
+                "resource_results",
+                side_effect=lambda directory, *_: retained_bodies(directory)["junit"],
+            ),
             mock.patch.object(suite, "registrations", return_value={"unit"}),
             mock.patch.object(suite, "monitored_process", side_effect=self.child),
         ):
@@ -124,6 +129,7 @@ class NativeOutputIntegrationTests(unittest.TestCase):
     def test_real_finally_archives_both_before_exact_catch_checks(self) -> None:
         """An executed Catch case with an assertion still uses the original raw JUnit checker."""
         self.assertEqual(self.execute(), 0)
+        self.assertFalse((self.evidence() / "ctest.xml").exists())
         self.assertTrue((self.evidence() / "ctest-output.gz").exists())
         self.assertTrue((self.evidence() / "ctest.xml.gz").exists())
 
@@ -155,6 +161,7 @@ class NativeOutputIntegrationTests(unittest.TestCase):
         self.exit_code = 8
         self.assertEqual(self.execute(), 8)
         self.assertTrue((self.evidence() / "native-output.json").exists())
+        self.assertTrue((self.evidence() / "ctest.xml").exists())
 
     def test_timeout_retains_partial_and_original_exception(self) -> None:
         """The finally path runs after a reaped timeout without treating a partial log as pass."""
@@ -304,3 +311,19 @@ class NativeOutputIntegrationTests(unittest.TestCase):
     def test_custom_base_control_identity_survives_dual_failure(self) -> None:
         """The original-control rule covers BaseException subclasses beyond built-in signals."""
         self.assert_dual_control(SupervisorControlError("original custom control"))
+
+    def test_resource_failure_preserves_raw(self) -> None:
+        """Lossless archival alone cannot retire an unreconciled resource result."""
+        original = retained_bodies
+
+        def refuse(directory: Path) -> bytes:
+            original(directory)
+            message = "resource reconciliation refused"
+            raise EvidenceError(message)
+
+        with (
+            mock.patch(__name__ + ".retained_bodies", side_effect=refuse),
+            self.assertRaisesRegex(EvidenceError, "resource reconciliation refused"),
+        ):
+            self.execute()
+        self.assertTrue((self.evidence() / "ctest.xml").exists())

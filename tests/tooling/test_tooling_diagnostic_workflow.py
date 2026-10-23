@@ -12,7 +12,11 @@ from typing import Any
 from tools_path import ROOT
 
 import workflow_integrity as integrity
-from ci_contract import FULL_QUALITY_CONDITION, TOOLING_DIAGNOSTIC_CONDITION
+from ci_contract import (
+    FULL_QUALITY_CONDITION,
+    NATIVE_QUALITY_CONDITION,
+    TOOLING_DIAGNOSTIC_CONDITION,
+)
 from workflow_config import workflow
 
 
@@ -34,14 +38,16 @@ class ToolingDiagnosticWorkflowTests(unittest.TestCase):
         self.policy(document)
         self.assertEqual(
             FULL_QUALITY_CONDITION,
-            "github.event_name != 'workflow_dispatch' || !inputs.tooling_diagnostic",
+            "github.event_name != 'workflow_dispatch' || inputs.diagnostic == 'none' || "
+            "inputs.diagnostic == 'native'",
         )
         self.assertEqual(
             TOOLING_DIAGNOSTIC_CONDITION,
-            "github.event_name == 'workflow_dispatch' && inputs.tooling_diagnostic",
+            "github.event_name == 'workflow_dispatch' && inputs.diagnostic == 'tooling'",
         )
-        for name in ("structural", "native", "sanitize"):
+        for name in ("structural", "sanitize"):
             self.assertEqual(document["jobs"][name]["if"], FULL_QUALITY_CONDITION)
+        self.assertEqual(document["jobs"]["native"]["if"], NATIVE_QUALITY_CONDITION)
         gate = document["jobs"]["gate"]
         self.assertEqual(gate["if"], "always()")
         self.assertEqual(set(gate["needs"]), {"structural", "native", "fuzz", "sanitize"})
@@ -61,9 +67,9 @@ class ToolingDiagnosticWorkflowTests(unittest.TestCase):
                 document["jobs"][name]["if"] = "!inputs.tooling_diagnostic"
                 with self.assertRaises(ValueError):
                     self.policy(document)
-        for key, value in (("default", "true"), ("type", "string"), ("required", "true")):
+        for key, value in (("default", "tooling"), ("type", "boolean"), ("required", "true")):
             document = self.document()
-            document["on"]["workflow_dispatch"]["inputs"]["tooling_diagnostic"][key] = value
+            document["on"]["workflow_dispatch"]["inputs"]["diagnostic"][key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):
                 self.policy(document)
 

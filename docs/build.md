@@ -405,8 +405,11 @@ every visited entry consumes entry capacity. The fixed Windows FFT preflight rem
 during the later full Release suite. Evidence owners are flat directories; redirected and special
 entries refuse admission. CTest temporary journals and JUnit consume the same raw-output bounds;
 interrupted output is retained only as partial diagnostics and cannot qualify a completed suite.
-Raw JUnit remains available for qualification, and no history is deleted automatically. Preserve
-needed evidence and inspect closed owners before disposing of them.
+Raw JUnit remains available through qualification. After complete successful reconciliation, only
+that run's unchanged raw JUnit is removed after comparison with its verified lossless gzip. Failed
+or incomplete qualification retains raw evidence. Cleanup errors remain fatal and preserve the
+gzip; a successful unlink is not undone after a later failure. Prior history is never deleted
+automatically. Preserve needed evidence and inspect closed owners before disposing of them.
 
 Package inspection requires the independently tested application build directory (`--build`). It
 compares the relocated executable byte-for-byte, all specs/schemas and the closed file inventory,
@@ -469,9 +472,22 @@ for every operation, including host-qualified upload repositories, and excludes 
 routing overrides from child processes.
 
 For Python tooling portability changes, manually dispatch the existing Quality gates workflow with
-`tooling_diagnostic=true` on the exact committed branch. It runs the strict isolated tooling
+`diagnostic=tooling` on the exact committed branch. It runs the strict isolated tooling
 runner on Linux, macOS ARM64 and Windows, including real small
 compiler controls and the selected Windows developer environment. It builds no product targets or
 native dependencies and runs no fuzz campaigns. Required PR/main gates remain complete. The
 aggregate intentionally fails when the required native/fuzz/sanitizer jobs are omitted: inspect the
 three tooling job results as diagnostics, never as product or release qualification.
+
+Manual dispatch uses the single closed `diagnostic` choice. `none` runs all qualification jobs;
+`native` omits fuzzing, `tooling` runs the three tooling jobs, and `intel` runs only the current
+Intel macOS native lane. Replace the former `native_diagnostic` and `tooling_diagnostic` boolean
+inputs with that choice; obsolete and unknown inputs are refused.
+
+`diagnostic=paired_capability` runs only bounded read-only observations on macOS 15 Intel,
+using the declared Xcode. It checks AC power, disabled low-power mode, reported thermal state,
+6 GiB of observed free/inactive/speculative memory and 5 GiB of free disk, retaining the original output.
+Unknown or adverse observations fail the job. It builds neither executable and runs no timing
+trials or CPU-idle admission. A passing capability observation never qualifies a later host or
+paired measurement window: both exact executables and fresh post-build quiet/idle admission
+remain required. Diagnostic aggregate failure remains intentional.

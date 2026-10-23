@@ -9,14 +9,18 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from typing import override
+from typing import TYPE_CHECKING, BinaryIO, Literal, override
 from unittest import mock
 
 from tools_path import prepare_tool_imports
 
+import native_history as history
 import native_journal as journal
 
 prepare_tool_imports()
+
+if TYPE_CHECKING:
+    import os
 
 
 class NativeJournalTests(unittest.TestCase):
@@ -139,3 +143,114 @@ class NativeJournalTests(unittest.TestCase):
             self.assertRaisesRegex(journal.OutputError, "parent"),
         ):
             journal.snapshot_ctest_output(self.build)
+
+
+class RawJUnitRetirementTests(unittest.TestCase):
+    """Only the qualified current byte epoch can lose its redundant raw copy."""
+
+    def exercise(self, mutation: str) -> None:
+        """Keep earlier evidence and both compressed bytes untouched on every refusal."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            owner = root / "native-current"
+            owner.mkdir()
+            raw = owner / "ctest.xml"
+            body = b"qualified current raw XML"
+            raw.write_bytes(body)
+            archive = owner / "ctest.xml.gz"
+            archive.write_bytes(b"verified archive is caller-owned")
+            previous = root / "native-previous"
+            previous.mkdir()
+            (previous / "ctest.xml").write_bytes(b"older retained evidence")
+            identity, directory = journal.identify_journal(raw), owner.lstat()
+            deadline = float("inf")
+            archive_identity = journal.identify_journal(archive)
+            if mutation == "content":
+                raw.write_bytes(b"different epoch")
+            elif mutation == "replacement":
+                raw.rename(owner / "original")
+                raw.write_bytes(body)
+            elif mutation == "owner":
+                owner.rename(root / "original-owner")
+                owner.mkdir()
+                raw.write_bytes(body)
+            elif mutation == "deadline":
+                deadline = -1
+            elif mutation == "retained":
+                body = b"different retained bytes"
+            self.change_gzip(archive, mutation)
+            current = history.NativeHistory(root, deadline, owner)
+            if mutation == "healthy":
+                self.remove_closed(current, body, identity, archive_identity, directory)
+                self.assertFalse(raw.exists())
+            elif mutation == "unlink":
+                error = PermissionError("Windows open handle refuses deletion")
+                with (
+                    mock.patch.object(Path, "unlink", side_effect=error),
+                    self.assertRaises(PermissionError) as caught,
+                ):
+                    current.retire_junit(body, identity, archive_identity, directory)
+                self.assertIs(caught.exception, error)
+                self.assertTrue(raw.exists())
+            else:
+                with self.assertRaises(journal.OutputError):
+                    current.retire_junit(body, identity, archive_identity, directory)
+                self.assertTrue(raw.exists())
+            if mutation not in {"owner", "gzip_missing", "gzip_changed"}:
+                self.assertEqual(archive.read_bytes(), b"verified archive is caller-owned")
+            self.assertEqual((previous / "ctest.xml").read_bytes(), b"older retained evidence")
+
+    @staticmethod
+    def change_gzip(archive: Path, mutation: str) -> None:
+        """Exercise each observable archive loss/replacement without changing the raw epoch."""
+        if mutation == "gzip_missing":
+            archive.unlink()
+        elif mutation == "gzip_changed":
+            archive.write_bytes(b"changed gzip")
+        elif mutation == "gzip_replaced":
+            archive.rename(archive.parent / "original.gz")
+            archive.write_bytes(b"verified archive is caller-owned")
+
+    def remove_closed(
+        self,
+        current: history.NativeHistory,
+        body: bytes,
+        identity: journal.Journal | None,
+        archive_identity: journal.Journal | None,
+        directory: os.stat_result,
+    ) -> None:
+        """Assert the Windows-compatible close-before-unlink ordering with real open readers."""
+        opened: list[BinaryIO] = []
+        original_open, original_unlink = Path.open, Path.unlink
+
+        def tracked_open(path: Path, mode: Literal["rb"]) -> BinaryIO:
+            stream = original_open(path, mode)
+            opened.append(stream)
+            return stream
+
+        def closed_unlink(path: Path) -> None:
+            self.assertTrue(opened)
+            self.assertTrue(all(stream.closed for stream in opened))
+            original_unlink(path)
+
+        with (
+            mock.patch.object(Path, "open", tracked_open),
+            mock.patch.object(Path, "unlink", closed_unlink),
+        ):
+            current.retire_junit(body, identity, archive_identity, directory)
+
+    def test_only_current_duplicate_is_removed_with_all_readers_closed(self) -> None:
+        """Current bytes disappear after readers close; all prior evidence remains."""
+        self.exercise("healthy")
+
+    def test_changed_content_or_identical_replacement_is_retained(self) -> None:
+        """Changed bytes/epochs, deadline and Windows deletion refusal keep raw evidence."""
+        for mutation in ("content", "replacement", "owner", "retained", "deadline", "unlink"):
+            with self.subTest(mutation=mutation):
+                self.exercise(mutation)
+
+    def test_missing_changed_or_identically_replaced_gzip_keeps_raw(self) -> None:
+        """In-memory verified bytes never substitute for the retained gzip pathname epoch."""
+        for mutation in ("gzip_missing", "gzip_changed", "gzip_replaced"):
+            with self.subTest(mutation=mutation):
+                self.exercise(mutation)

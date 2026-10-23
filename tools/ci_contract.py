@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 WORKFLOW_PATH = ".github/workflows/ci.yml"
@@ -62,39 +63,55 @@ def require_workflow_coverage(document: dict[str, Any]) -> None:
                 raise ValueError(message)
 
 
-FULL_QUALITY_CONDITION = "github.event_name != 'workflow_dispatch' || !inputs.tooling_diagnostic"
+FULL_QUALITY_CONDITION = (
+    "github.event_name != 'workflow_dispatch' || inputs.diagnostic == 'none' || "
+    "inputs.diagnostic == 'native'"
+)
+NATIVE_QUALITY_CONDITION = FULL_QUALITY_CONDITION + " || inputs.diagnostic == 'intel'"
+FUZZ_QUALITY_CONDITION = "github.event_name != 'workflow_dispatch' || inputs.diagnostic == 'none'"
 TOOLING_DIAGNOSTIC_CONDITION = (
-    "github.event_name == 'workflow_dispatch' && inputs.tooling_diagnostic"
+    "github.event_name == 'workflow_dispatch' && inputs.diagnostic == 'tooling'"
+)
+PAIRED_CAPABILITY_CONDITION = (
+    "github.event_name == 'workflow_dispatch' && inputs.diagnostic == 'paired_capability'"
+)
+NATIVE_DIAGNOSTIC_ENV = (
+    "${{ github.event_name == 'workflow_dispatch' && "
+    "(inputs.diagnostic == 'native' || inputs.diagnostic == 'intel') }}"
+)
+NATIVE_MATRIX_INCLUDE = (
+    "${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.diagnostic == 'intel' && '"
+    + json.dumps(
+        [{"platform": "macos-x86_64", "os": NATIVE_RUNNERS["macos-x86_64"]}], separators=(",", ":")
+    )
+    + "' || '"
+    + json.dumps(
+        [{"platform": name, "os": runner} for name, runner in NATIVE_RUNNERS.items()],
+        separators=(",", ":"),
+    )
+    + "') }}"
 )
 
 
-NATIVE_DIAGNOSTIC_FUZZ_CONDITION = (
-    "(github.event_name != 'workflow_dispatch' || !inputs.native_diagnostic) && "
-    "(github.event_name != 'workflow_dispatch' || !inputs.tooling_diagnostic)"
-)
-
-
-def require_native_diagnostic_input(document: dict[str, Any]) -> None:
-    """Only an explicit manual boolean opt-in may omit fuzz campaign execution."""
+def require_diagnostic_input(document: dict[str, Any]) -> None:
+    """A closed manual choice admits one concrete scope; unknown/obsolete inputs are refused."""
     expected = {
-        "native_diagnostic": {
-            "description": "Run native diagnostics without fuzz campaigns (not qualification)",
-            "type": "boolean",
+        "diagnostic": {
+            "description": "Select one diagnostic scope; only none runs all qualification gates",
+            "type": "choice",
             "required": "false",
-            "default": "false",
+            "default": "none",
+            "options": ["none", "native", "tooling", "intel", "paired_capability"],
         }
     }
-    expected["tooling_diagnostic"] = {
-        "description": (
-            "Run complete tooling suites on three OSes without product builds (not qualification)"
-        ),
-        "type": "boolean",
-        "required": "false",
-        "default": "false",
-    }
-    require_tooling_diagnostic(document)
     if document.get("on", {}).get("workflow_dispatch") != {"inputs": expected}:
-        message = "Manual native diagnostic input must be an explicit default-false boolean"
+        message = "Manual diagnostic must be the closed default-none choice"
+        raise ValueError(message)
+    require_tooling_diagnostic(document)
+    if document["jobs"].get("paired_capability") != PAIRED_CAPABILITY_JOB:
+        message = (
+            "Paired capability must retain its exact manual read-only route and fatal evidence"
+        )
         raise ValueError(message)
 
 
@@ -136,7 +153,7 @@ exit $LASTEXITCODE
 
 TOOLING_DIAGNOSTIC_JOB: dict[str, Any] = {
     "name": "Tooling diagnostics / ${{ matrix.os }} (not qualification)",
-    "if": "github.event_name == 'workflow_dispatch' && inputs.tooling_diagnostic",
+    "if": TOOLING_DIAGNOSTIC_CONDITION,
     "strategy": {
         "fail-fast": "false",
         "matrix": {"os": ["ubuntu-24.04", "macos-26", "windows-2025-vs2026"]},
@@ -193,3 +210,40 @@ def require_tooling_diagnostic(document: dict[str, Any]) -> None:
             "native environments and complete suites"
         )
         raise ValueError(message)
+
+
+PAIRED_CAPABILITY_JOB: dict[str, Any] = {
+    "name": "Paired performance capability / macos-15-intel (not qualification)",
+    "if": PAIRED_CAPABILITY_CONDITION,
+    "runs-on": "macos-15-intel",
+    "timeout-minutes": "5",
+    "steps": [
+        {
+            "uses": "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "with": {"persist-credentials": "false", "ref": "${{ github.sha }}"},
+        },
+        {
+            "uses": "actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97",
+            "with": {"python-version": "3.12"},
+        },
+        {
+            "name": "Observe host capability without builds or timing",
+            "run": (
+                "python tools/check_performance_host.py --output "
+                '"${{ runner.temp }}/paired-capability"'
+            ),
+        },
+        {
+            "name": "Retain complete capability observations",
+            "if": "always()",
+            "uses": "actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+            "with": {
+                "name": "paired-capability-${{ github.run_id }}-${{ github.run_attempt }}",
+                "path": "${{ runner.temp }}/paired-capability",
+                "if-no-files-found": "error",
+                "compression-level": "6",
+                "retention-days": "7",
+            },
+        },
+    ],
+}

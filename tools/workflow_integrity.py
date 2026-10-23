@@ -11,11 +11,13 @@ import yaml
 
 from ci_contract import (
     FULL_QUALITY_CONDITION,
-    NATIVE_DIAGNOSTIC_FUZZ_CONDITION,
-    NATIVE_RUNNERS,
+    FUZZ_QUALITY_CONDITION,
+    NATIVE_DIAGNOSTIC_ENV,
+    NATIVE_MATRIX_INCLUDE,
+    NATIVE_QUALITY_CONDITION,
     SANITIZERS,
     fuzz_matrix,
-    require_native_diagnostic_input,
+    require_diagnostic_input,
     require_workflow_coverage,
 )
 from workflow_assertions import (
@@ -75,7 +77,7 @@ def fuzz_job(document: dict[str, Any], major: str, *, weekly: bool) -> None:
     job = required_job(
         document,
         "campaign" if weekly else "fuzz",
-        condition=None if weekly else NATIVE_DIAGNOSTIC_FUZZ_CONDITION,
+        condition=None if weekly else FUZZ_QUALITY_CONDITION,
     )
     require_strategy(job, fuzz_matrix(major))
     required_step(job, "python tools/install_build_tools.py")
@@ -143,7 +145,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
         msg = "Required quality workflow must run on every PR and main push"
         raise ValueError(msg)
     require_workflow_coverage(document)
-    require_native_diagnostic_input(document)
+    require_diagnostic_input(document)
     structural = required_job(document, "structural", condition=FULL_QUALITY_CONDITION)
     for command in (
         SOURCE_GATE,
@@ -157,11 +159,8 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
         ),
     ):
         required_step(structural, command)
-    native = required_job(document, "native", condition=FULL_QUALITY_CONDITION)
-    require_strategy(
-        native,
-        {"include": [{"platform": name, "os": runner} for name, runner in NATIVE_RUNNERS.items()]},
-    )
+    native = required_job(document, "native", condition=NATIVE_QUALITY_CONDITION)
+    require_strategy(native, {"include": NATIVE_MATRIX_INCLUDE})
     required_step(
         native, "python tools/check_runtime_platform.py --platform ${{ matrix.platform }}"
     )
@@ -176,11 +175,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
         native, "cmake --workflow --preset release", "runner.os != 'Windows'"
     )
     native_build = required_step(native, "./tools/ci_windows.ps1", "runner.os == 'Windows'")
-    diagnostic_env = {
-        "DE_NATIVE_DIAGNOSTIC": (
-            "${{ github.event_name == 'workflow_dispatch' && inputs.native_diagnostic }}"
-        )
-    }
+    diagnostic_env = {"DE_NATIVE_DIAGNOSTIC": NATIVE_DIAGNOSTIC_ENV}
     if any(step.get("env") != diagnostic_env for step in (native_build, native_other)):
         msg = "Required native diagnostic environment differs"
         raise ValueError(msg)

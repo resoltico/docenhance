@@ -19,7 +19,7 @@ from architecture import load_manifest
 from audit_build import read_cache
 from fuzz_manifest import targets
 from native_history import NativeHistory, owned_native_history
-from native_journal import JUNIT_NAMES, snapshot_ctest_output
+from native_journal import JUNIT_NAMES, identify_journal, snapshot_ctest_output
 from native_output import archive_ctest_output
 from native_resource_capture import retained_bodies
 from process_execution import monitored_process
@@ -207,7 +207,7 @@ def _execute_owned(command: list[str], history: NativeHistory, expected_count: i
     return exit_code
 
 
-def resource_results(directory: Path, tests: list[dict[str, Any]], build: Path) -> None:
+def resource_results(directory: Path, tests: list[dict[str, Any]], build: Path) -> bytes:
     """Successful native execution must cover the complete actual resource shard union."""
     bodies = retained_bodies(directory)
     manifest = json.loads((build / "native-tests.json").read_text())
@@ -215,6 +215,7 @@ def resource_results(directory: Path, tests: list[dict[str, Any]], build: Path) 
     (directory / "native-restoration-resources.json").write_text(
         json.dumps(result, indent=2) + "\n"
     )
+    return bodies["junit"]
 
 
 def run(args: argparse.Namespace) -> int:
@@ -229,6 +230,7 @@ def _run(args: argparse.Namespace, build: Path, deadline: float, history: Native
     """Keep actual discovery, raw JUnit and original native qualification in one owned scope."""
     directory = Path(tempfile.mkdtemp(prefix="native-", dir=build))
     history.directory = directory
+    owner = directory.lstat()
     print(f"Native suite evidence: {directory}", flush=True)
     tests = discovery(args.ctest, build)
     compilation(build)
@@ -246,12 +248,15 @@ def _run(args: argparse.Namespace, build: Path, deadline: float, history: Native
         str(directory / "ctest.xml"),
     ]
     exit_code = _execute_owned(command, history, len(tests))
+    identity = identify_journal(directory / "ctest.xml")
+    archive = identify_journal(directory / "ctest.xml.gz")
     complete_junit(directory / "ctest.xml", {test["name"] for test in tests}, units)
     if exit_code == 0:
-        resource_results(directory, tests, build)
+        retained = resource_results(directory, tests, build)
         if time.monotonic() >= deadline:
             msg = "Native resource reconciliation exceeded the execution deadline"
             raise EvidenceError(msg)
+        history.retire_junit(retained, identity, archive, owner)
     return exit_code
 
 

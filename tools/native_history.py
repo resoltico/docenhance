@@ -13,7 +13,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from cache_lock import exclusive_cache
-from native_journal import JUNIT_NAMES, journal_status
+from native_journal import (
+    JUNIT_NAMES,
+    Journal,
+    OutputError,
+    identify_journal,
+    journal_identity,
+    journal_status,
+)
 from native_output import ARCHIVE_LIMIT
 from native_output import RAW_LIMIT as RAW_BYTES
 from test_evidence import EvidenceError
@@ -206,6 +213,57 @@ class NativeHistory:
     def final(self) -> None:
         """Observe all retained raw/compressed outputs before releasing the writer claim."""
         self._check(0, 0)
+
+    def retire_junit(
+        self,
+        retained: bytes,
+        identity: Journal | None,
+        archive: Journal | None,
+        owner: os.stat_result,
+    ) -> None:
+        """Remove only a stable current raw JUnit whose bytes have a verified retained copy."""
+        directory = self.directory
+        if directory is None:
+            message = "Raw JUnit retirement requires its current owned directory"
+            raise OutputError(message)
+        current_owner = directory.lstat()
+        if not stat.S_ISDIR(current_owner.st_mode) or (
+            getattr(current_owner, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        ):
+            message = "Raw JUnit owner must remain an unredirected directory"
+            raise OutputError(message)
+        path = directory / JUNIT_NAMES[0]
+        if identity is None or identify_journal(path) != identity:
+            message = "Qualified raw JUnit is absent"
+            raise OutputError(message)
+        with path.open("rb") as stream:
+            opened = os.fstat(stream.fileno())
+            if journal_identity(opened) != identity:
+                message = "Raw JUnit changed while opening for retirement"
+                raise OutputError(message)
+            body = stream.read(len(retained) + 1)
+            after = os.fstat(stream.fileno())
+            if (
+                body != retained
+                or journal_identity(after) != identity
+                or after.st_ctime_ns != opened.st_ctime_ns
+            ):
+                message = "Raw JUnit differs from its verified retained copy"
+                raise OutputError(message)
+        current_owner = directory.lstat()
+        if identify_journal(path) != identity or (owner.st_dev, owner.st_ino) != (
+            current_owner.st_dev,
+            current_owner.st_ino,
+        ):
+            message = "Raw JUnit or owner changed before retirement"
+            raise OutputError(message)
+        if time.monotonic() >= self.deadline:
+            message = "Raw JUnit retirement exhausted the owning deadline"
+            raise OutputError(message)
+        if archive is None or identify_journal(directory / "ctest.xml.gz") != archive:
+            message = "Verified JUnit gzip changed before raw retirement"
+            raise OutputError(message)
+        path.unlink()  # All readers are closed before Windows deletion; failure remains fatal.
 
 
 @contextmanager

@@ -91,27 +91,28 @@ class NativeDiagnosticWorkflowTests(unittest.TestCase):
                     policy(changed, major)
 
     def test_manual_diagnostic_input_and_exact_fuzz_route(self) -> None:
-        """Opt-in is typed/default-false; every unrelated required job remains unconditional."""
+        """The closed default-none choice preserves reviewed execution routes."""
         original = workflow(ROOT / ".github/workflows/ci.yml")
         major = str(
             json.loads((ROOT / "deps/tools.json").read_text())["clang_tidy"]["version"]
         ).split(".")[0]
         integrity.quality_workflow(original, major)
         for key, value in (
-            ("default", "true"),
+            ("default", "native"),
             ("default", None),
-            ("type", "string"),
+            ("type", "boolean"),
             ("required", "true"),
+            ("options", ["none", "native", "tooling", "intel"]),
         ):
             changed = copy.deepcopy(original)
-            declaration = changed["on"]["workflow_dispatch"]["inputs"]["native_diagnostic"]
+            declaration = changed["on"]["workflow_dispatch"]["inputs"]["diagnostic"]
             if value is None:
                 declaration.pop(key)
             else:
                 declaration[key] = value
             with (
                 self.subTest(input=key, value=value),
-                self.assertRaisesRegex(ValueError, "default-false boolean"),
+                self.assertRaisesRegex(ValueError, "closed default-none choice"),
             ):
                 integrity.quality_workflow(changed, major)
         null_condition = copy.deepcopy(original)

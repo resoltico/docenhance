@@ -15,6 +15,7 @@ from typing import override
 
 from tools_path import ROOT
 
+from ci_contract import NATIVE_QUALITY_CONDITION
 from parallel import available_jobs
 from workflow_config import workflow
 from workflow_integrity import integrity_errors
@@ -301,10 +302,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
         """Skipped/optional work, detached dependencies and echoed results must fail."""
         for old, new, diagnostic in (
             (
-                (
-                    "  native:\n    if: github.event_name != 'workflow_dispatch' || "
-                    "!inputs.tooling_diagnostic\n"
-                ),
+                "  native:\n    if: " + NATIVE_QUALITY_CONDITION + "\n",
                 "  native:\n    if: false\n",
                 "Required job",
             ),
@@ -330,7 +328,7 @@ class WorkflowIntegrityTests(unittest.TestCase):
         for old, new, diagnostic in (
             ("fail-fast: false", "fail-fast: true", "matrix coverage"),
             ("preset: [sanitize, tsan]", "preset: [sanitize]", "matrix coverage"),
-            ("os: ubuntu-24.04-arm", "os: ubuntu-24.04", "matrix coverage"),
+            ('"os":"ubuntu-24.04-arm"', '"os":"ubuntu-24.04"', "matrix coverage"),
             ("CC: clang-23", "CC: gcc # CC: clang-23", "pinned compiler"),
             ("preset: fuzz-afl", "preset: fuzz", "matrix coverage"),
         ):
