@@ -4,7 +4,6 @@
 
 #include <cstddef>
 #include <cstdlib>
-#include <utility>
 #ifdef __APPLE__
 namespace {
 // dyld reads two pointer-width addresses per record. Each pair retains its actual C ABI type;
@@ -68,8 +67,7 @@ extern "C" void* __real_malloc(std::size_t bytes) noexcept;
 extern "C" void __real_free(void* pointer) noexcept;
 #endif
 namespace docenhance::tests::allocation_observer {
-void* original_allocate(std::size_t bytes) noexcept(
-    noexcept(std::declval<decltype(&std::malloc)>()(bytes))) {
+void* original_allocate(std::size_t bytes) noexcept(malloc_nothrow) {
 #if defined(_WIN32) && defined(_DEBUG)
     return _malloc_dbg(bytes, _NORMAL_BLOCK, nullptr, 0);
 #elifdef _WIN32
@@ -81,8 +79,7 @@ void* original_allocate(std::size_t bytes) noexcept(
     return std::malloc(bytes);
 #endif
 }
-void original_release(void* const pointer) noexcept(
-    noexcept(std::declval<decltype(&std::free)>()(pointer))) {
+void original_release(void* const pointer) noexcept(free_nothrow) {
 #if defined(_WIN32) && defined(_DEBUG)
     _free_dbg(pointer, _NORMAL_BLOCK);
 #elifdef _WIN32
@@ -102,8 +99,8 @@ namespace {
 static_assert(std::is_same_v<decltype(&std::malloc), decltype(&c_allocate)>);
 static_assert(std::is_same_v<decltype(&std::free), decltype(&c_release)>);
 #ifdef _DEBUG
-static_assert(noexcept(c_allocate(0)) == noexcept(_malloc_dbg(0, _NORMAL_BLOCK, nullptr, 0)));
-static_assert(noexcept(c_release(nullptr)) == noexcept(_free_dbg(nullptr, _NORMAL_BLOCK)));
+static_assert(malloc_nothrow == declared_nothrow(&_malloc_dbg));
+static_assert(free_nothrow == declared_nothrow(&_free_dbg));
 #else
 static_assert(std::is_same_v<decltype(&original_allocate), decltype(&_malloc_base)>);
 static_assert(std::is_same_v<decltype(&original_release), decltype(&_free_base)>);
@@ -315,12 +312,12 @@ bool c_contract_cases() {
 #endif
 
 #if defined(_WIN32) && defined(DE_ALLOCATION_C_OBSERVATION)
-extern "C" void* __cdecl
-malloc(std::size_t size) noexcept(noexcept(std::declval<decltype(&std::malloc)>()(size))) {
+extern "C" __declspec(restrict) void* __cdecl
+malloc(std::size_t size) noexcept(docenhance::tests::allocation_observer::malloc_nothrow) {
     return docenhance::tests::allocation_observer::c_allocate(size);
 }
 extern "C" void __cdecl
-free(void* block) noexcept(noexcept(std::declval<decltype(&std::free)>()(block))) {
+free(void* block) noexcept(docenhance::tests::allocation_observer::free_nothrow) {
     docenhance::tests::allocation_observer::c_release(block);
 }
 #endif

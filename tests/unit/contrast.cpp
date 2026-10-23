@@ -89,7 +89,7 @@ TEST_CASE("Levels eagerly measures every eligible sample and preserves protectio
     for (std::size_t i = 0; i < f.size(); ++i) {
         input.luminance.view().row(0).subspan(i, 1).front() = image::srgb_decode(f.at(i));
     }
-    std::ranges::fill(input.protection.view().row(0), 0);
+    std::ranges::fill(input.protection.view().row(0), std::uint8_t{0});
     input.protection.view().row(0).front() = 1;
     input.protection.view().row(0).back() = 1;
     const auto method = methods::Levels::create({.low = 0, .high = 100});
@@ -127,7 +127,7 @@ TEST_CASE("Contrast identities and flat eligible samples retain exact output wit
     GammaFixture input{8, 4};
     for (std::uint32_t y = 0; y < 4; ++y) {
         std::ranges::fill(input.luminance.view().row(y), .4);
-        std::ranges::fill(input.protection.view().row(y), 0);
+        std::ranges::fill(input.protection.view().row(y), std::uint8_t{0});
     }
     const auto before = gamma_bits(input.luminance.view().storage());
     core::Budget budget{budget_limit};
@@ -164,7 +164,7 @@ TEST_CASE("Contrast identities and flat eligible samples retain exact output wit
 }
 TEST_CASE("Levels baseline fits a genuine nonconstant narrow range without mapping") {
     GammaFixture input{8, 1};
-    std::ranges::fill(input.protection.view().row(0), 0);
+    std::ranges::fill(input.protection.view().row(0), std::uint8_t{0});
     for (std::uint32_t x = 0; x < 8; ++x) {
         input.luminance.view().row(0).subspan(x, 1).front() =
             0.25 + (static_cast<double>(x) * 1e-8);
@@ -198,7 +198,7 @@ TEST_CASE("Levels baseline fits a genuine nonconstant narrow range without mappi
 TEST_CASE("Contrast budgets and every bounded fitting stop refund owned storage", "[contrast]") {
     GammaFixture input{16, 8};
     for (std::uint32_t y = 0; y < 8; ++y) {
-        std::ranges::fill(input.protection.view().row(y), 0);
+        std::ranges::fill(input.protection.view().row(y), std::uint8_t{0});
     }
     const auto method = methods::Levels::create();
     REQUIRE(method);

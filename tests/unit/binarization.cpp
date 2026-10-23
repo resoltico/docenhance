@@ -140,7 +140,7 @@ void tiny_positive_sauvola_equality() {
     REQUIRE(codes);
     auto output = image::Plane<std::uint8_t>::allocate(budget, 1, 3);
     REQUIRE(output);
-    std::ranges::fill(source->view().storage(), 127);
+    std::ranges::fill(source->view().storage(), std::uint8_t{127});
     std::ranges::fill(output->view().storage(), untouched);
     const auto storage = source->view().storage();
     const std::vector<std::uint8_t> before(storage.begin(), storage.end());

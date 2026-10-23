@@ -64,7 +64,7 @@ inline void morphology_noop_and_cold_cases() {
     MorphologyWorkingFixture fixture{3, 2, 0};
     check_morphology_reference(fixture, {.strength = 0, .max_gain = 1}, 7);
     check_morphology_reference(fixture, {.max_gain = 1}, 7);
-    std::ranges::fill(fixture.protection.view().storage(), 255);
+    std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
     const auto zero = check_morphology_reference(fixture, {.strength = 0, .max_gain = 1}, 7);
     const auto unit = check_morphology_reference(fixture, {.max_gain = 1}, 7);
     const methods::MorphologyParameters defaults;
@@ -148,7 +148,7 @@ inline void morphology_map_stop_case(std::size_t allowed, bool protected_prefix)
     std::ranges::fill(fixture.luminance.view().row(0), 0.25);
     fixture.luminance.view().row(0).back() = 0.1;
     if (protected_prefix) {
-        std::ranges::fill(fixture.protection.view().row(0).first(1920), 255);
+        std::ranges::fill(fixture.protection.view().row(0).first(1920), std::uint8_t{255});
     }
     const auto expected =
         morphology_working_reference(fixture, {.max_gain = 4, .target = 0.75, .radius = 1});
@@ -216,7 +216,7 @@ inline void morphology_map_healthy_case(bool protected_prefix) {
     std::ranges::fill(fixture.luminance.view().row(0), 0.25);
     fixture.luminance.view().row(0).back() = 0.1;
     if (protected_prefix) {
-        std::ranges::fill(fixture.protection.view().row(0).first(1920), 255);
+        std::ranges::fill(fixture.protection.view().row(0).first(1920), std::uint8_t{255});
     }
     const auto resident = fixture.budget.used();
     const CheckpointStop observe{core::Checkpoint::processing,

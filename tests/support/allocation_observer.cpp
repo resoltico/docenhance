@@ -6,7 +6,6 @@
 #include "fft_allocation_trace.hpp"
 
 #include <cerrno>
-#include <utility>
 #endif
 
 #include <algorithm>
@@ -280,8 +279,7 @@ void observe_free(const volatile void* const pointer) noexcept {
 } // namespace
 #endif
 #ifdef DE_ALLOCATION_C_OBSERVATION
-void* c_allocate(std::size_t bytes) noexcept(
-    noexcept(std::declval<decltype(&std::malloc)>()(bytes))) {
+void* c_allocate(std::size_t bytes) noexcept(malloc_nothrow) {
     const int entering_errno = errno;
     if (observing.load()) {
         c_allocation_attempts.fetch_add(1);
@@ -308,8 +306,7 @@ void* c_allocate(std::size_t bytes) noexcept(
     errno = provider_errno;
     return pointer;
 }
-void c_release(void* const pointer) noexcept(
-    noexcept(std::declval<decltype(&std::free)>()(pointer))) {
+void c_release(void* const pointer) noexcept(free_nothrow) {
     const int entering_errno = errno;
     detail::CReleaseReservation reservation{allocations, allocation_mutex, pointer,
                                             instrumentation_valid};

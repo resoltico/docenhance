@@ -143,7 +143,7 @@ TEST_CASE("Materialized PNG byte output rejects absent callbacks and empty input
     core::Budget budget{std::size_t{1024} * 1024};
     auto image = image::Plane<std::uint8_t>::allocate(budget, 8, 8);
     REQUIRE(image);
-    std::ranges::fill(image->view().storage(), 0);
+    std::ranges::fill(image->view().storage(), std::uint8_t{0});
     const codec::PngImage intended{
         .shape = {.width = 8, .height = 8, .depth = image::PngDepth()},
         .pixels = image->view().as_const(),

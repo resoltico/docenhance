@@ -39,9 +39,9 @@ TEST_CASE("Working surface actual largest one dimensional hierarchy bounds its r
     constexpr std::size_t hierarchy = std::size_t{6} * 1024 * 1024;
     for (const auto shortfall : {std::size_t{0}, std::size_t{1}}) {
         SurfaceWorkingFixture fixture{524288, 8, work_and_logs + hierarchy - shortfall};
-        std::ranges::fill(fixture.protection.view().storage(), 255);
+        std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
         for (std::uint32_t y = 0; y < 2; ++y) {
-            std::ranges::fill(fixture.protection.view().row(y).first(131072), 0);
+            std::ranges::fill(fixture.protection.view().row(y).first(131072), std::uint8_t{0});
         }
         const auto held = fixture.budget.used();
         // The initial true-residual operator visits 65536/256 blocks. Next visit is inside

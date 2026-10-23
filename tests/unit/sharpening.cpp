@@ -169,7 +169,7 @@ TEST_CASE("Unsharp constants and protected destinations remain exact while prote
     REQUIRE(identity);
     CHECK(std::ranges::all_of(source.view().row(1), [](double x) { return x == 0.3125; }));
     auto mask = image::Plane<std::uint8_t>::allocate(budget, 9, 3).value();
-    std::ranges::fill(mask.view().storage(), 0);
+    std::ranges::fill(mask.view().storage(), std::uint8_t{0});
     mask.view().row(1).subspan(4, 1).front() = 1;
     std::vector<double> values(27, 0.5);
     values.at(13) = 1;

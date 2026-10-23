@@ -176,7 +176,7 @@ TEST_CASE("Every PNG encoding checkpoint cleans unpublished output", "[cancellat
     const TemporaryDirectory directory{"docenhance-stop"};
     core::Budget budget{limit};
     auto plane = image::Plane<std::uint8_t>::allocate(budget, 8, 8).value();
-    std::ranges::fill(plane.view().storage(), 1);
+    std::ranges::fill(plane.view().storage(), std::uint8_t{1});
     const auto held = budget.used();
     const auto output = utf8_spelling(directory.path / "result");
     bool completed = false;

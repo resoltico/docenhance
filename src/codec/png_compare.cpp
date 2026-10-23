@@ -158,7 +158,7 @@ core::Result<PngArtifact> read_canonical_png(std::span<const std::byte> bytes,
     if (!row) {
         return std::unexpected(std::move(row.error()));
     }
-    std::ranges::fill(row->view().row(0), 0);
+    std::ranges::fill(row->view().row(0), std::uint8_t{0});
     for (std::uint32_t y = 0; y < shape.height; ++y) {
         if (cancellation.requested(core::Checkpoint::verification)) {
             return core::cancelled();

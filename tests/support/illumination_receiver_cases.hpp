@@ -56,7 +56,7 @@ template <class Method>
 void illumination_receiver_controls(const Method& method, GammaFixture& source, bool correction) {
     for (std::uint32_t y = 0; y < 32; ++y) {
         std::ranges::fill(source.luminance.view().row(y), .5);
-        std::ranges::fill(source.protection.view().row(y), 0);
+        std::ranges::fill(source.protection.view().row(y), std::uint8_t{0});
     }
     source.protection.view().row(0).back() = 1;
     const auto before = gamma_bits(source.luminance.view().storage());

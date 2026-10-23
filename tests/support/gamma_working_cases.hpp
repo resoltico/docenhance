@@ -61,7 +61,7 @@ inline void gamma_identity_cases() {
     require(identity.reason == methods::GammaReason::identity_gamma,
             "global gamma one preserves entering bits");
     for (std::uint32_t y = 0; y < fixture.protection.view().height(); ++y) {
-        std::ranges::fill(fixture.protection.view().row(y), 255);
+        std::ranges::fill(fixture.protection.view().row(y), std::uint8_t{255});
     }
     const auto protected_zero = check_gamma_reference(fixture, {.gamma = 1, .blend = 0}, 7);
     require(protected_zero.reason == methods::GammaReason::zero_blend,
@@ -79,13 +79,13 @@ inline void gamma_write_event_cases() {
                 written.disposition == methods::Disposition::applied,
             "a perceptual change counts the real write of one over one");
     GammaFixture black{2, 1};
-    std::ranges::fill(black.protection.view().row(0), 0);
+    std::ranges::fill(black.protection.view().row(0), std::uint8_t{0});
     std::ranges::fill(black.luminance.view().row(0), -0.0);
     const auto unchanged = check_gamma_reference(black, {.gamma = 2}, 1);
     require(unchanged.reason == methods::GammaReason::no_effect && unchanged.counts.evaluated == 2,
             "active candidate equality still evaluates every eligible sample without stores");
     GammaFixture tiny{2, 1};
-    std::ranges::fill(tiny.protection.view().row(0), 0);
+    std::ranges::fill(tiny.protection.view().row(0), std::uint8_t{0});
     std::ranges::fill(tiny.luminance.view().row(0), 0.25);
     const auto rounded = check_gamma_reference(
         tiny, {.gamma = 2, .blend = std::numeric_limits<double>::denorm_min()}, 7);
@@ -94,7 +94,7 @@ inline void gamma_write_event_cases() {
 }
 inline void gamma_cancellation_cases() {
     GammaFixture fixture{2051, 1};
-    std::ranges::fill(fixture.protection.view().row(0), 0);
+    std::ranges::fill(fixture.protection.view().row(0), std::uint8_t{0});
     std::ranges::fill(fixture.luminance.view().row(0), 0.25);
     const auto before = gamma_bits(fixture.luminance.view().storage());
     const auto method = methods::Gamma::create({.gamma = 2}).value();

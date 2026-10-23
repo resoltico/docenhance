@@ -168,7 +168,7 @@ core::Result<image::Raster> decode_raster(std::span<const std::uint8_t> bytes, c
             return core::cancelled();
         }
         const auto part = storage.first(std::min(transfer, storage.size()));
-        std::ranges::fill(part, 0);
+        std::ranges::fill(part, std::uint8_t{0});
         storage = storage.subspan(part.size());
     }
     if (!raster_pixels(context, pixels->view())) {

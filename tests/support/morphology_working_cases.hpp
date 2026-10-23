@@ -140,7 +140,7 @@ inline void morphology_constant_and_excursion_cases() {
 }
 inline void morphology_fallback_case() {
     MorphologyWorkingFixture fixture{1025, 1, morphology_test_scratch};
-    std::ranges::fill(fixture.protection.view().row(0), 255);
+    std::ranges::fill(fixture.protection.view().row(0), std::uint8_t{255});
     for (std::uint32_t i = 0; i < 17; ++i) {
         fixture.protection.view().row(0).subspan((2 * i) + 1, 1).front() = 0;
     }

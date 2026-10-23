@@ -156,7 +156,7 @@ TEST_CASE("Native ICC reader upper bounds select a healthy pool and preserve ser
     source.shape = {.width = 2, .height = 64, .model = image::SampleModel::rgb};
     source.pixels = image::Plane<std::uint8_t>::allocate(budget, 6, 64).value();
     for (std::uint32_t row = 0; row < 64; ++row) {
-        std::ranges::fill(source.pixels.view().row(row), 127);
+        std::ranges::fill(source.pixels.view().row(row), std::uint8_t{127});
     }
     source.metadata.icc = color::make_output_profile(budget, false).value();
     const auto held = budget.used();
@@ -211,7 +211,7 @@ TEST_CASE("Measured shared budget pressure selects a smaller healthy native read
     source.shape = {.width = 2, .height = 64, .model = image::SampleModel::rgb};
     source.pixels = image::Plane<std::uint8_t>::allocate(budget, 6, 64).value();
     for (std::uint32_t row = 0; row < 64; ++row) {
-        std::ranges::fill(source.pixels.view().row(row), 127);
+        std::ranges::fill(source.pixels.view().row(row), std::uint8_t{127});
     }
     source.metadata.icc = color::make_output_profile(budget, false).value();
     const auto held = budget.used();

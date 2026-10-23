@@ -15,7 +15,7 @@ struct MorphologyWorkingFixture {
           luminance(image::Plane<double>::allocate(budget, width, height).value()),
           protection(image::Plane<std::uint8_t>::allocate(budget, width, height).value()) {
         std::ranges::fill(luminance.view().storage(), -1);
-        std::ranges::fill(protection.view().storage(), 255);
+        std::ranges::fill(protection.view().storage(), std::uint8_t{255});
         for (std::uint32_t y = 0; y < height; ++y) {
             for (std::uint32_t x = 0; x < width; ++x) {
                 luminance.view().row(y).subspan(x, 1).front() =

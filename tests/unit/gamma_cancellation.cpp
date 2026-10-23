@@ -26,9 +26,9 @@ void prime_gamma_planes(image::PlaneView<double> luminance, image::PlaneView<std
     for (std::uint32_t y = 0; y < 2; ++y) {
         std::ranges::fill(luminance.row(y), 0.25);
     }
-    std::ranges::fill(mask.storage(), 255);
+    std::ranges::fill(mask.storage(), std::uint8_t{255});
     for (std::uint32_t y = 0; y < 2; ++y) {
-        std::ranges::fill(mask.row(y), 0);
+        std::ranges::fill(mask.row(y), std::uint8_t{0});
     }
     mask.row(0).front() = 1;
 }

@@ -33,7 +33,7 @@ bool verify_r5() {
     auto luminance = image::Plane<double>::allocate(budget, width, height).value();
     auto mask = image::Plane<std::uint8_t>::allocate(budget, width, height).value();
     const auto value = image::srgb_decode(235.0 / 255.0);
-    std::ranges::fill(mask.view().storage(), 0);
+    std::ranges::fill(mask.view().storage(), std::uint8_t{0});
     for (std::uint32_t y = 0; y < height; ++y) {
         std::ranges::fill(luminance.view().row(y), value);
     }

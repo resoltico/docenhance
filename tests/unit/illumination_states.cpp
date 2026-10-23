@@ -83,7 +83,7 @@ TEST_CASE("Surface completed identity reasons retain their actual decision prior
         REQUIRE(luminance);
         REQUIRE(mask);
         std::ranges::fill(luminance->view().storage(), 0.5);
-        std::ranges::fill(mask->view().storage(), 1);
+        std::ranges::fill(mask->view().storage(), std::uint8_t{1});
         const auto resident = budget.used();
         const auto concurrency = exec::Concurrency::resolve(1, 1, 0, 0);
         REQUIRE(concurrency);

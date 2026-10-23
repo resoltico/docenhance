@@ -40,7 +40,7 @@ inline void surface_noop_cases() {
     require(zero && zero->reason == methods::SurfaceReason::zero_strength && unit &&
                 unit->reason == methods::SurfaceReason::unit_gain,
             "I01 zero strength precedes unit gain without scratch");
-    std::ranges::fill(fixture.protection.view().storage(), 255);
+    std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
     const std::vector<std::uint8_t> protected_before(mask.begin(), mask.end());
     const auto empty = run_surface(fixture, {.strength = 0, .max_gain = 1}, scheduler);
     require(gamma_bits(fixture.luminance.view().storage()) == before &&

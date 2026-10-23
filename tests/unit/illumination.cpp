@@ -150,7 +150,7 @@ TEST_CASE("Disabled algebra and all-protected input avoid fit allocation exactly
     auto source = image::Plane<double>::allocate(owner, page.width, page.height).value();
     std::ranges::fill(source.view().storage(), paper);
     auto mask = image::Plane<std::uint8_t>::allocate(owner, page.width, page.height).value();
-    std::ranges::fill(mask.view().storage(), 1);
+    std::ranges::fill(mask.view().storage(), std::uint8_t{1});
     core::Budget empty{0};
     const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};
     const auto protected_result =
@@ -175,7 +175,7 @@ TEST_CASE("I01 actual fit interpolation and eager application preserve protected
     auto source = image::Plane<double>::allocate(budget, page.width, page.height).value();
     std::ranges::fill(source.view().storage(), paper);
     auto mask = image::Plane<std::uint8_t>::allocate(budget, page.width, page.height).value();
-    std::ranges::fill(mask.view().storage(), 0);
+    std::ranges::fill(mask.view().storage(), std::uint8_t{0});
     mask.view().row(0).front() = 1;
     source.view().row(0).front() = 0.01;
     auto p = options().parameters();

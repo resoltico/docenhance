@@ -112,7 +112,7 @@ image::Plane<std::uint8_t> comparison_pixels(core::Budget& budget, unsigned mode
     REQUIRE(pixels);
     auto owned = std::move(*pixels);
     for (std::uint32_t y = 0; y < height; ++y) {
-        std::ranges::fill(owned.view().row(y), mode == 2 ? 1 : 255);
+        std::ranges::fill(owned.view().row(y), mode == 2 ? std::uint8_t{1} : std::uint8_t{255});
     }
     const double opacity = 128.0 / 255;
     const double linear = std::pow((opacity + 0.055) / 1.055, 2.4);
@@ -120,7 +120,7 @@ image::Plane<std::uint8_t> comparison_pixels(core::Budget& budget, unsigned mode
     const double encoded = (1.055 * std::pow(composed, 1.0 / 2.4)) - 0.055;
     const auto protected_code = static_cast<std::uint8_t>(std::floor((255 * encoded) + 0.5));
     const auto last = owned.view().row(height - 1).last(channels);
-    std::ranges::fill(last, mode == 2 ? 0 : protected_code);
+    std::ranges::fill(last, mode == 2 ? std::uint8_t{0} : protected_code);
     return owned;
 }
 image::Plane<std::uint8_t> comparison_profile(core::Budget& budget, unsigned mode) {

@@ -43,7 +43,7 @@ inline void tvl1_noop_and_admission_cases() {
                 zero.context_samples == 0,
             "zero blend consumes no five-plane workspace or solver metadata");
     for (std::uint32_t y = 0; y < 2; ++y) {
-        std::ranges::fill(fixture.protection.view().row(y), 255);
+        std::ranges::fill(fixture.protection.view().row(y), std::uint8_t{255});
     }
     const auto both = check_tvl1_reference(fixture, {.blend = 0}, 7);
     const auto protected_only = check_tvl1_reference(fixture, active_tvl1_parameters, 7);
@@ -115,7 +115,7 @@ inline void tvl1_cancel_case(core::Checkpoint phase, std::size_t allowed,
                              bool protected_prefix = false) {
     Tvl1WorkingFixture fixture{2051, 1, 5 * tvl1_plane_bytes(2051, 1)};
     if (protected_prefix) {
-        std::ranges::fill(fixture.protection.view().row(0).first(2050), 255);
+        std::ranges::fill(fixture.protection.view().row(0).first(2050), std::uint8_t{255});
         std::ranges::fill(fixture.luminance.view().row(0).first(2050), -0.0);
     }
     const auto before = gamma_bits(fixture.luminance.view().storage());
@@ -135,7 +135,7 @@ inline void tvl1_cancel_case(core::Checkpoint phase, std::size_t allowed,
 inline void tvl1_map_stop_case(bool protected_prefix) {
     Tvl1WorkingFixture fixture{2051, 1, 5 * tvl1_plane_bytes(2051, 1)};
     if (protected_prefix) {
-        std::ranges::fill(fixture.protection.view().row(0).first(2050), 255);
+        std::ranges::fill(fixture.protection.view().row(0).first(2050), std::uint8_t{255});
         std::ranges::fill(fixture.luminance.view().row(0).first(2050), -0.0);
     }
     fixture.luminance.view().row(0).back() = 0.1;

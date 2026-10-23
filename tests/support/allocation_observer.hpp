@@ -11,7 +11,6 @@
 #include <cstdlib>
 #include <functional>
 #include <mutex>
-#include <utility>
 #endif
 namespace docenhance::tests::allocation_observer {
 // A single serial observation owns these counters; native workers finish before they are read.
@@ -30,13 +29,17 @@ extern std::size_t worker_count;
 void acquire_bytes(std::size_t bytes);
 void reset_workers() noexcept;
 #ifdef DE_ALLOCATION_C_OBSERVATION
-[[nodiscard]] void* original_allocate(std::size_t bytes) noexcept(
-    noexcept(std::declval<decltype(&std::malloc)>()(bytes)));
-void original_release(void* pointer) noexcept(
-    noexcept(std::declval<decltype(&std::free)>()(pointer)));
-[[nodiscard]] void*
-c_allocate(std::size_t bytes) noexcept(noexcept(std::declval<decltype(&std::malloc)>()(bytes)));
-void c_release(void* pointer) noexcept(noexcept(std::declval<decltype(&std::free)>()(pointer)));
+// Match declared C function types; /EHc call assumptions are not an exception specification.
+template <bool Nothrow, class Return, class... Arguments>
+constexpr bool declared_nothrow(Return (* /*function*/)(Arguments...) noexcept(Nothrow)) noexcept {
+    return Nothrow;
+}
+inline constexpr bool malloc_nothrow = declared_nothrow(&std::malloc);
+inline constexpr bool free_nothrow = declared_nothrow(&std::free);
+[[nodiscard]] void* original_allocate(std::size_t bytes) noexcept(malloc_nothrow);
+void original_release(void* pointer) noexcept(free_nothrow);
+[[nodiscard]] void* c_allocate(std::size_t bytes) noexcept(malloc_nothrow);
+void c_release(void* pointer) noexcept(free_nothrow);
 #endif
 [[nodiscard]] bool c_contract_cases();
 namespace detail {

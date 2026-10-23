@@ -25,7 +25,7 @@ inline void surface_grid_noop_case() {
     const auto zero = run_surface(fixture, {.strength = 0, .cell = 8}, scheduler);
     const auto unit = run_surface(fixture, {.max_gain = 1, .cell = 8}, scheduler);
     const auto active = run_surface(fixture, {.cell = 8}, scheduler);
-    std::ranges::fill(fixture.protection.view().storage(), 255);
+    std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
     const auto empty = run_surface(fixture, {.cell = 8}, scheduler);
     require(zero && zero->reason == methods::SurfaceReason::zero_strength && unit &&
                 unit->reason == methods::SurfaceReason::unit_gain && empty &&
@@ -40,10 +40,10 @@ inline void surface_hierarchy_working_case() {
     // C1024,L8192,W57344; Q32768; actual G1365,H65664. Hierarchy peak=131200.
     for (const auto scratch : {std::size_t{131200}, std::size_t{131199}}) {
         SurfaceWorkingFixture fixture{256, 256, scratch};
-        std::ranges::fill(fixture.protection.view().storage(), 255);
+        std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
         for (std::uint32_t y = 0; y < 64; ++y) {
             if (y % 8 < 2) {
-                std::ranges::fill(fixture.protection.view().row(y), 0);
+                std::ranges::fill(fixture.protection.view().row(y), std::uint8_t{0});
             }
         }
         const auto held = fixture.budget.used();
@@ -71,7 +71,7 @@ inline void surface_prefix_case(bool protected_prefix) {
         std::ranges::fill(fixture->luminance.view().row(0), 0.25);
         fixture->luminance.view().row(0).back() = 0.1;
         if (protected_prefix) {
-            std::ranges::fill(fixture->protection.view().row(0).first(512), 255);
+            std::ranges::fill(fixture->protection.view().row(0).first(512), std::uint8_t{255});
         }
     }
     const auto before = gamma_bits(stopped.luminance.view().storage());

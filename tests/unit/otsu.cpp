@@ -97,7 +97,7 @@ void check_otsu_stop(image::PlaneView<const std::uint16_t> source,
     remaining = passes;
     core::Budget budget{methods::otsu_scratch_bytes + binary_partial_bytes(source.height(), 64)};
     const auto scheduler = otsu_schedule(4, core::Cancellation{{}, otsu_stop});
-    std::ranges::fill(destination.storage(), 42);
+    std::ranges::fill(destination.storage(), std::uint8_t{42});
     const auto result =
         methods::binarize(methods::Otsu::create(), {source, destination, budget, scheduler});
     REQUIRE(!result);

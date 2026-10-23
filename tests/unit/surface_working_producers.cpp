@@ -16,6 +16,7 @@
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <numbers>
 namespace docenhance::tests {
@@ -142,13 +143,13 @@ TEST_CASE("Working surface private producers admit new background before target 
         }
         REQUIRE(gamma_bits(fixture.luminance.view().storage()) == before);
         REQUIRE(fixture.budget.used() == held);
-        std::ranges::fill(fixture.protection.view().storage(), 255);
+        std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
         const auto protected_map = methods::map_surface_rows(working, input, 0, 8);
         REQUIRE(protected_map);
         REQUIRE(protected_map->evaluated == 0);
         REQUIRE(gamma_bits(fixture.luminance.view().storage()) == before);
         for (unsigned y = 0; y < 8; ++y) {
-            std::ranges::fill(fixture.protection.view().row(y), 0);
+            std::ranges::fill(fixture.protection.view().row(y), std::uint8_t{0});
         }
     }
 }

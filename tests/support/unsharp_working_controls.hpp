@@ -36,7 +36,7 @@ inline void unsharp_noop_cases() {
                 zero.context_samples == 0,
             "zero amount needs no Gaussian fields or observations");
     for (std::uint32_t y = 0; y < 2; ++y) {
-        std::ranges::fill(fixture.protection.view().row(y), 255);
+        std::ranges::fill(fixture.protection.view().row(y), std::uint8_t{255});
     }
     const auto both = check_unsharp_reference(fixture, {.amount = 0}, 7);
     const auto protected_only = check_unsharp_reference(fixture, default_unsharp_parameters, 7);
@@ -87,7 +87,7 @@ inline void unsharp_resource_cases() {
 }
 inline void unsharp_protect_prefix(UnsharpFixture& fixture) {
     const auto count = fixture.luminance.width() - 1;
-    std::ranges::fill(fixture.protection.view().row(0).first(count), 255);
+    std::ranges::fill(fixture.protection.view().row(0).first(count), std::uint8_t{255});
     std::ranges::fill(fixture.luminance.view().row(0).first(count), -0.0);
 }
 inline void unsharp_cancel_case(core::Checkpoint phase, std::size_t allowed,

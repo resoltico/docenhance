@@ -114,7 +114,7 @@ bool finish(PngContext& context) {
 }
 core::Result<void> logical_row(std::span<const std::uint8_t> input, std::span<std::uint8_t> packed,
                                const core::Cancellation& cancellation) {
-    std::ranges::fill(packed, 0);
+    std::ranges::fill(packed, std::uint8_t{0});
     for (std::size_t x = 0; x < input.size(); ++x) {
         constexpr std::size_t interval = 1024;
         if (x % interval == 0 && cancellation.requested(core::Checkpoint::encode)) {

@@ -76,7 +76,7 @@ inline void nlm_noop_cases() {
             std::ranges::equal(mask, mask_before) && fixture.budget.used() == held &&
             fixture.budget.peak() == held,
         "actual two-axis refusal preserves all Y/mask bytes and performs no algorithm allocation");
-    std::ranges::fill(fixture.protection.view().storage(), 255);
+    std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
     const std::vector<std::uint8_t> protected_before(mask.begin(), mask.end());
     const auto both = run_nlm(fixture, {.blend = 0}, scheduler);
     require(both && both->reason == methods::NlmReason::zero_blend &&

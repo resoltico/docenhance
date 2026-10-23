@@ -69,7 +69,7 @@ void phase_stop(core::Checkpoint phase, std::size_t allowed) {
 }
 void protect_prefix(RestorationWorkingFixture& fixture) {
     for (std::uint32_t y = 0; y < fixture.protection.height(); ++y) {
-        std::ranges::fill(fixture.protection.view().row(y).first(32), 1);
+        std::ranges::fill(fixture.protection.view().row(y).first(32), std::uint8_t{1});
     }
 }
 struct MappingTrace {

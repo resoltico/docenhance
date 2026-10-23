@@ -139,11 +139,11 @@ TEST_CASE("Eager D01 protected and zero-correction samples retain exact entering
         auto luminance = image::Plane<double>::allocate(budget, 7, 7).value();
         auto mask = image::Plane<std::uint8_t>::allocate(budget, 7, 7).value();
         std::ranges::fill(luminance.view().storage(), -2);
-        std::ranges::fill(mask.view().storage(), 255);
+        std::ranges::fill(mask.view().storage(), std::uint8_t{255});
         constexpr double entering = 0.123456789;
         for (std::uint32_t y = 0; y < 7; ++y) {
             std::ranges::fill(luminance.view().row(y), entering);
-            std::ranges::fill(mask.view().row(y), 0);
+            std::ranges::fill(mask.view().row(y), std::uint8_t{0});
         }
         mask.view().row(0).front() = 1;
         luminance.view().row(0).front() = 0.123456790;

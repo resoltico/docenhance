@@ -59,7 +59,7 @@ struct RestorationResourceFixture {
         luminance = std::move(*y);
         protection = std::move(*mask);
         std::ranges::fill(luminance.view().storage(), -1);
-        std::ranges::fill(protection.view().storage(), 255);
+        std::ranges::fill(protection.view().storage(), std::uint8_t{255});
         for (std::uint32_t row = 0; row < extent.height; ++row) {
             for (std::uint32_t x = 0; x < extent.width; ++x) {
                 luminance.view().row(row)[x] =

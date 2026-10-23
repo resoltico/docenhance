@@ -199,7 +199,7 @@ inline void surface_dark_reference_case() {
 }
 inline void surface_full_fallback_case() {
     SurfaceWorkingFixture fixture{1025, 1, surface_test_scratch};
-    std::ranges::fill(fixture.protection.view().storage(), 255);
+    std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
     std::ranges::fill(fixture.luminance.view().row(0), 0.2);
     for (std::uint32_t x = 1; x < 1025; x += 2) {
         fixture.protection.view().row(0).subspan(x, 1).front() = 0;

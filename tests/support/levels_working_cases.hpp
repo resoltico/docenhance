@@ -81,7 +81,7 @@ inline void levels_flat_cases() {
     require(result.reason == methods::LevelsReason::insufficient_dynamic_range,
             "constant Levels data is a measured no-op");
     LevelsFixture singleton{3, 1, levels_sample_bytes(1)};
-    std::ranges::fill(singleton.protection.view().row(0), 255);
+    std::ranges::fill(singleton.protection.view().row(0), std::uint8_t{255});
     singleton.protection.view().row(0).subspan(1, 1).front() = 0;
     const auto one = check_levels_reference(singleton, default_levels_parameters, 7);
     require(one.reason == methods::LevelsReason::insufficient_dynamic_range &&
@@ -94,7 +94,7 @@ inline void levels_noop_and_write_cases() {
     require(zero.reason == methods::LevelsReason::zero_blend && !zero.levels,
             "zero blend requires no fitting workspace");
     for (std::uint32_t y = 0; y < 2; ++y) {
-        std::ranges::fill(no_workspace.protection.view().row(y), 255);
+        std::ranges::fill(no_workspace.protection.view().row(y), std::uint8_t{255});
     }
     const auto protected_zero = check_levels_reference(no_workspace, {.blend = 0}, 7);
     const auto protected_only = check_levels_reference(no_workspace, default_levels_parameters, 7);

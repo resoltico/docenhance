@@ -196,7 +196,7 @@ TEST_CASE(
                 fixture.budget.peak() == resident &&
                 gamma_bits(fixture.luminance.view().storage()) == before,
             "actual singleton zero blend performs no FFT work or stores");
-    std::ranges::fill(fixture.protection.view().row(0), 1);
+    std::ranges::fill(fixture.protection.view().row(0), std::uint8_t{1});
     const auto active = methods::Wiener::create().value();
     const auto empty = run_restoration(fixture, active, psf, scheduler);
     require(empty && empty->reason == methods::WienerReason::no_eligible_samples &&
@@ -244,7 +244,7 @@ TEST_CASE("Working restoration fixed bands give exact one two seven worker outpu
     for (const auto workers : {1U, 2U, 7U}) {
         RestorationWorkingFixture fixture{width, height};
         for (std::uint32_t y = 64; y < 128; ++y) {
-            std::ranges::fill(fixture.protection.view().row(y), 1);
+            std::ranges::fill(fixture.protection.view().row(y), std::uint8_t{1});
         }
         const auto held = fixture.budget.used();
         const auto before = gamma_bits(fixture.luminance.view().storage());

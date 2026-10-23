@@ -78,9 +78,9 @@ struct NlmSourceFixture {
             source.metadata.declarations = image::TiffDeclarations{.associated_alpha = true};
         }
         std::ranges::fill(luminance.view().storage(), -2);
-        std::ranges::fill(protection.view().storage(), 255);
+        std::ranges::fill(protection.view().storage(), std::uint8_t{255});
         for (std::uint32_t y = 0; y < 32; ++y) {
-            std::ranges::fill(protection.view().row(y), 0);
+            std::ranges::fill(protection.view().row(y), std::uint8_t{0});
         }
         protection.view().row(0).front() = 255;
         const image::InterpretationPolicy policy{};

@@ -157,7 +157,7 @@ TEST_CASE("Binary output is read back and compared before it is published", "[io
     auto image = image::Plane<std::uint8_t>::allocate(budget, 8, 4);
     REQUIRE(image);
     for (std::uint32_t y = 0; y < image->height(); ++y) {
-        std::ranges::fill(image->view().row(y), y % 2 == 0 ? 0 : 1);
+        std::ranges::fill(image->view().row(y), y % 2 == 0 ? std::uint8_t{0} : std::uint8_t{1});
     }
     const auto published = temporary.path / "verified";
     REQUIRE(publish_png_fixture(utf8_spelling(published), binary_png(image->view().as_const()),

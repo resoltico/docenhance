@@ -120,7 +120,7 @@ inline void clahe_identity_cases() {
 }
 inline void clahe_cutoff_case(std::uint32_t count, double range) {
     ClaheFixture fixture{32, 32, clahe_scratch_bytes(4)};
-    std::ranges::fill(fixture.protection.view().storage(), 255);
+    std::ranges::fill(fixture.protection.view().storage(), std::uint8_t{255});
     for (std::uint32_t x = 0; x < count; ++x) {
         fixture.protection.view().row(0).subspan(x, 1).front() = 0;
         fixture.luminance.view().row(0).subspan(x, 1).front() = 0;

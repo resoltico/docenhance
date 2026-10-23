@@ -216,9 +216,9 @@ TEST_CASE("CLAHE identity cutoffs are strict for eligible count and true sample 
         for (const double range : {1.0 / 8192, 1.0 / 4096}) {
             for (std::uint32_t y = 0; y < 32; ++y) {
                 std::ranges::fill(source.luminance.view().row(y), 0);
-                std::ranges::fill(source.protection.view().row(y), 1);
+                std::ranges::fill(source.protection.view().row(y), std::uint8_t{1});
             }
-            std::ranges::fill(source.protection.view().row(0).first(count), 0);
+            std::ranges::fill(source.protection.view().row(0).first(count), std::uint8_t{0});
             source.luminance.view().row(0).front() = image::srgb_decode(range);
             const auto facts = methods::apply(
                 selection(),

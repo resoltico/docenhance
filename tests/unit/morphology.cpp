@@ -122,7 +122,7 @@ TEST_CASE("I02 protected analysis fill and eager output bypass preserve entering
     auto source = image::Plane<double>::allocate(budget, extent.width, extent.height).value();
     std::ranges::fill(source.view().storage(), 0.4);
     auto mask = image::Plane<std::uint8_t>::allocate(budget, extent.width, extent.height).value();
-    std::ranges::fill(mask.view().storage(), 0);
+    std::ranges::fill(mask.view().storage(), std::uint8_t{0});
     mask.view().row(2).subspan(4, 1).front() = 1;
     source.view().row(2).subspan(4, 1).front() = 0;
     const auto held = budget.used();
@@ -266,7 +266,7 @@ TEST_CASE("I02 fallback uses the first eligible point and rejects insufficient e
     auto source = image::Plane<double>::allocate(budget, 1025, 1).value();
     std::ranges::fill(source.view().storage(), 0.3);
     auto mask = image::Plane<std::uint8_t>::allocate(budget, 1025, 1).value();
-    std::ranges::fill(mask.view().storage(), 1);
+    std::ranges::fill(mask.view().storage(), std::uint8_t{1});
     for (unsigned x = 1; x < 34; x += 2) {
         mask.view().row(0).subspan(x, 1).front() = 0;
     }

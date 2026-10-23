@@ -51,7 +51,7 @@ struct ContinuousFixture {
 };
 ContinuousFixture continuous_fixture(core::Budget& budget) {
     auto pixels = image::Plane<std::uint8_t>::allocate(budget, 8, 8).value();
-    std::ranges::fill(pixels.view().storage(), 127);
+    std::ranges::fill(pixels.view().storage(), std::uint8_t{127});
     const auto canonical = color::make_output_profile(budget, true).value();
     auto profile = image::Plane<std::uint8_t>::allocate(
                        budget, static_cast<std::uint32_t>(canonical.size()), 1)
@@ -215,7 +215,7 @@ TEST_CASE("I01 failed independent comparison retains completed stage accounting 
     const TemporaryDirectory directory{"docenhance-color"};
     core::Budget budget{byte_budget};
     auto fixture = continuous_fixture(budget);
-    std::ranges::fill(fixture.pixels.view().storage(), 255);
+    std::ranges::fill(fixture.pixels.view().storage(), std::uint8_t{255});
     const auto held = budget.used();
     {
         const exec::Scheduler scheduler{exec::Concurrency::resolve(1, 1, 0, 0).value()};

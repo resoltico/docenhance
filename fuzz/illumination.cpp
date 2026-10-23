@@ -124,7 +124,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     docenhance::fuzz::require(source.has_value() && mask.has_value(),
                               "bounded I01 source owners allocate");
     std::ranges::fill(source->view().storage(), -1);
-    std::ranges::fill(mask->view().storage(), 255);
+    std::ranges::fill(mask->view().storage(), std::uint8_t{255});
     fill(source->view(), mask->view(), bytes);
     const auto held = budget.used();
     compare(source->view(), mask->view().as_const(), budget);

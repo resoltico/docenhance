@@ -109,9 +109,9 @@ void sauvola_interior_prefix() {
     REQUIRE(input);
     REQUIRE(output);
     REQUIRE(healthy);
-    std::ranges::fill(input->view().storage(), UINT16_MAX);
-    std::ranges::fill(output->view().storage(), 17);
-    std::ranges::fill(healthy->view().storage(), 17);
+    std::ranges::fill(input->view().storage(), std::uint16_t{UINT16_MAX});
+    std::ranges::fill(output->view().storage(), std::uint8_t{17});
+    std::ranges::fill(healthy->view().storage(), std::uint8_t{17});
     const auto source = input->view().storage();
     const std::vector<std::uint16_t> source_before(source.begin(), source.end());
     const auto entering = output->view().storage();
@@ -258,7 +258,7 @@ TEST_CASE("Fixed threshold cancellation reaches wide-row interiors", "[cancellat
     auto output = image::Plane<std::uint8_t>::allocate(budget, 4096, 1);
     REQUIRE(input);
     REQUIRE(output);
-    std::ranges::fill(input->view().storage(), UINT16_MAX);
+    std::ranges::fill(input->view().storage(), std::uint16_t{UINT16_MAX});
     constexpr std::uint8_t untouched = 17;
     std::ranges::fill(output->view().storage(), untouched);
     const auto held = budget.used();
@@ -285,7 +285,7 @@ TEST_CASE("Sauvola cancellation covers scratch admission and strip interiors", "
     auto output = image::Plane<std::uint8_t>::allocate(budget, 8192, 32);
     REQUIRE(input);
     REQUIRE(output);
-    std::ranges::fill(input->view().storage(), UINT16_MAX);
+    std::ranges::fill(input->view().storage(), std::uint16_t{UINT16_MAX});
     const auto method = methods::Sauvola::create();
     REQUIRE(method);
     const auto held = budget.used();
