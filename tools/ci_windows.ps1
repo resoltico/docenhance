@@ -11,8 +11,23 @@ python -m unittest discover -s tests/tooling -p test_build_coverage.py -v
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 python tools/windows_resource_proof.py snapshot
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-cmake --workflow --preset release
+cmake --preset release
 $releaseStatus = $LASTEXITCODE
+if ($releaseStatus -eq 0) {
+    cmake --build out/release --target de_native-configure --parallel 2
+    $releaseStatus = $LASTEXITCODE
+}
+if ($releaseStatus -eq 0) {
+    cmake --build out/release/app --parallel 2 --target `
+        "tests/CMakeFiles/de_fft_resources.dir/support/allocation_interpose.cpp.obj" `
+        "tests/CMakeFiles/de_restoration_resources.dir/support/allocation_interpose.cpp.obj" `
+        "tests/CMakeFiles/de_fft_allocation_observer.dir/support/allocation_observer.cpp.obj"
+    $releaseStatus = $LASTEXITCODE
+}
+if ($releaseStatus -eq 0) {
+    cmake --workflow --preset release
+    $releaseStatus = $LASTEXITCODE
+}
 if ($releaseStatus -eq 0) {
     python tools/package_smoke.py --build out/release
     $releaseStatus = $LASTEXITCODE

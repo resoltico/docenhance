@@ -47,6 +47,33 @@ def windows_stat(info: os.stat_result, **changes: int) -> os.stat_result:
 class WindowsResourceAdmissionTests(unittest.TestCase):
     """Synthetic admission evidence does not qualify an actual Windows compiler or runtime."""
 
+    def test_release_directories_separates_regular_manifests_and_owned_directories(self) -> None:
+        """Native manifests are files; links and replaced directory owners still refuse."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            app = root / "out/release/app"
+            app.mkdir(parents=True)
+            for name in ("native-tests.json", "native-restoration-resources.json"):
+                (app / name).write_text("{}")
+            directory = app / "native-actual"
+            directory.mkdir()
+            info = directory.lstat()
+            with patch.object(proof, "ROOT", root):
+                self.assertEqual(
+                    proof.release_directories(),
+                    {str(directory.resolve()): [info.st_dev, info.st_ino]},
+                )
+                link = app / "native-link"
+                link.symlink_to(directory, target_is_directory=True)
+                with self.assertRaises(ValueError):
+                    proof.release_directories()
+                link.unlink()
+                selected = {"path": str(directory), "identity": [info.st_dev, info.st_ino]}
+                directory.rmdir()
+                directory.write_text("replaced owner")
+                with self.assertRaises(ValueError):
+                    proof.retained_owner(selected)
+
     def test_intrinsic_debug_and_contradictory_defines_undefines(self) -> None:
         """MTd without explicit D_DEBUG is normal; contradictory CRT options refuse."""
         producer.static_crt_options(["cl.exe", "/MTd"], debug=True)

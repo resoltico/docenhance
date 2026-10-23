@@ -72,6 +72,8 @@ def release_directories() -> dict[str, list[int]]:
     directories = {}
     for path in (ROOT / "out/release/app").glob("native-*"):
         info = path.lstat()
+        if stat.S_ISREG(info.st_mode):
+            continue
         if not stat.S_ISDIR(info.st_mode):
             message = "Native evidence owner is not a regular directory"
             raise ValueError(message)

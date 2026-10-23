@@ -312,12 +312,10 @@ bool c_contract_cases() {
 #endif
 
 #if defined(_WIN32) && defined(DE_ALLOCATION_C_OBSERVATION)
-extern "C" __declspec(restrict) void* __cdecl
-malloc(std::size_t size) noexcept(docenhance::tests::allocation_observer::malloc_nothrow) {
+extern "C" __declspec(restrict) void* __cdecl malloc(std::size_t size) {
     return docenhance::tests::allocation_observer::c_allocate(size);
 }
-extern "C" void __cdecl
-free(void* block) noexcept(docenhance::tests::allocation_observer::free_nothrow) {
+extern "C" void __cdecl free(void* block) {
     docenhance::tests::allocation_observer::c_release(block);
 }
 #endif
