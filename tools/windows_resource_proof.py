@@ -72,6 +72,9 @@ def release_directories() -> dict[str, list[int]]:
     directories = {}
     for path in (ROOT / "out/release/app").glob("native-*"):
         info = path.lstat()
+        if getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+            message = "Native evidence owner is a Windows reparse point"
+            raise ValueError(message)
         if stat.S_ISREG(info.st_mode):
             continue
         if not stat.S_ISDIR(info.st_mode):
@@ -148,7 +151,11 @@ def same_toolchain(record: dict[str, Any]) -> None:
 def retained_owner(owner: dict[str, Any]) -> None:
     """The selected evidence directory remains the same object through completion."""
     info = Path(owner["path"]).lstat()
-    if not stat.S_ISDIR(info.st_mode) or [info.st_dev, info.st_ino] != owner["identity"]:
+    if (
+        getattr(info, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        or not stat.S_ISDIR(info.st_mode)
+        or [info.st_dev, info.st_ino] != owner["identity"]
+    ):
         message = "Selected evidence directory owner changed"
         raise ValueError(message)
 

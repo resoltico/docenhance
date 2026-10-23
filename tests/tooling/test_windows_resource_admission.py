@@ -74,6 +74,30 @@ class WindowsResourceAdmissionTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     proof.retained_owner(selected)
 
+    def test_native_owner_refuses_windows_reparse_file_directory_and_symlink(self) -> None:
+        """Windows junctions retain directory mode; every reparse kind must refuse."""
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            directory = root / "out/release/app/native-model"
+            directory.mkdir(parents=True)
+            info = directory.lstat()
+            selected = {"path": str(directory), "identity": [info.st_dev, info.st_ino]}
+            for kind in (stat.S_IFDIR, stat.S_IFREG, stat.S_IFLNK):
+                modeled = windows_stat(
+                    info,
+                    st_mode=kind | 0o755,
+                    st_file_attributes=stat.FILE_ATTRIBUTE_REPARSE_POINT,
+                )
+                with (
+                    self.subTest(kind=kind),
+                    patch.object(proof, "ROOT", root),
+                    patch.object(Path, "lstat", return_value=modeled),
+                ):
+                    with self.assertRaises(ValueError):
+                        proof.release_directories()
+                    with self.assertRaisesRegex(ValueError, "owner changed"):
+                        proof.retained_owner(selected)
+
     def test_intrinsic_debug_and_contradictory_defines_undefines(self) -> None:
         """MTd without explicit D_DEBUG is normal; contradictory CRT options refuse."""
         producer.static_crt_options(["cl.exe", "/MTd"], debug=True)
