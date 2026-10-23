@@ -32,6 +32,9 @@ file(GENERATE OUTPUT "${PROJECT_BINARY_DIR}/hardening-policy.json" CONTENT "${de
 function(de_dependency_flags name output)
   set(c_flags ${de_hardening_compile})
   set(cxx_flags ${de_hardening_compile})
+  if(MSVC)
+    list(APPEND cxx_flags /EHsc)
+  endif()
   if(DE_FUZZ_ONLY AND name MATCHES "^(png|zlib|lcms|jpeg|tiff)$")
     set(instrumentation -fsanitize=address,undefined,fuzzer-no-link
       -fno-sanitize-recover=all -fno-omit-frame-pointer)

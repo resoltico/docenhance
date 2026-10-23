@@ -88,6 +88,53 @@ class BinaryHardeningTests(unittest.TestCase):
         self.assertTrue(markers("Windows", headers + "0 Guard Flags\n", ""))
         self.assertTrue(markers("Windows", "Guard\nCF Instrumented\nFID table present", ""))
 
+    def test_windows_cpp_dependencies_keep_standard_exception_unwinding(self) -> None:
+        """Actual dependency flag emission keeps C++ unwinding without adding it to C."""
+        cmake = shutil.which("cmake")
+        self.assertIsNotNone(cmake)
+        with tempfile.TemporaryDirectory(prefix="windows-unwind-recipe-") as temporary:
+            source = Path(temporary)
+            (source / "CMakeLists.txt").write_text(f"""cmake_minimum_required(VERSION 4.4)
+project(NativeFlagSelection NONE)
+set(CMAKE_SYSTEM_NAME Windows)
+set(MSVC TRUE)
+include("{ROOT.as_posix()}/cmake/NativeHardening.cmake")
+de_dependency_flags("${{RECIPIENT}}" flags)
+file(WRITE "${{PROJECT_BINARY_DIR}}/arguments.txt" "${{flags}}")
+""")
+            for index, recipient in enumerate(("catch2", "tiff", "lcms")):
+                with self.subTest(recipient=recipient):
+                    build = source / f"build-{index}"
+                    result = subprocess.run(
+                        [
+                            str(cmake),
+                            "-S",
+                            str(source),
+                            "-B",
+                            str(build),
+                            "-G",
+                            "Ninja",
+                            f"-DRECIPIENT={recipient}",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                        timeout=15,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    arguments = (build / "arguments.txt").read_text().split(";")
+                    flags = {
+                        value.removeprefix("-D").partition(":")[0]: value.partition("=")[2].split()
+                        for value in arguments
+                        if value.startswith(("-DCMAKE_C_FLAGS:", "-DCMAKE_CXX_FLAGS:"))
+                    }
+                    self.assertEqual("CMAKE_CXX_FLAGS" in flags, recipient != "lcms")
+                    self.assertEqual("CMAKE_C_FLAGS" in flags, recipient != "catch2")
+                    for language, values in flags.items():
+                        self.assertIn("/GS", values)
+                        self.assertIn("/guard:cf", values)
+                        self.assertEqual(values.count("/EHsc"), int(language == "CMAKE_CXX_FLAGS"))
+
     def test_lcms_thread_flags_follow_the_requested_native_scope(self) -> None:
         """Real CMake selection is scoped; this control configures no native compiler or library."""
         cmake = shutil.which("cmake")
