@@ -9,6 +9,7 @@ import stat
 import sys
 import time
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from cache_lock import exclusive_cache
@@ -19,7 +20,6 @@ from test_evidence import EvidenceError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
-    from pathlib import Path
 
 MIB = 1024 * 1024
 HISTORY_BYTES = 384 * MIB
@@ -47,7 +47,7 @@ def regular_directory(path: Path) -> os.stat_result:
 def regular_entry(child: os.DirEntry[str]) -> os.stat_result | None:
     """Allow CTest journal renames but never traverse a known redirected or special entry."""
     try:
-        info = child.stat(follow_symlinks=False)
+        info = Path(child.path).lstat()
     except FileNotFoundError:
         return None
     if (
