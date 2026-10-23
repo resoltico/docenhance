@@ -8,13 +8,18 @@
 #include <array>
 #include <atomic>
 #include <cerrno>
+#include <charconv>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <ios>
+#include <iterator>
+#include <limits>
 #include <ostream>
 #include <span>
 #include <sstream>
-#include <string>
+#include <string_view>
+#include <system_error>
 #include <type_traits>
 #ifdef _WIN32
 #include <errhandlingapi.h>
@@ -109,7 +114,9 @@ bool emit(std::ostream& stream) {
     if (!quiescent() || !replay_prefix()) {
         return false;
     }
-    stream << "[";
+    stream << "\"";
+    constexpr std::array markers{'+', '-', '!'};
+    constexpr auto hexadecimal = 16;
     for (std::size_t index = 0; index < prefix + tail; ++index) {
         Event event{};
         if (index < prefix) {
@@ -122,12 +129,16 @@ bool emit(std::ostream& stream) {
         if (event.kind > 2) {
             return false;
         }
-        if (index != 0) {
-            stream << ",";
+        std::array<char, (2 * sizeof(std::uint64_t)) + 1> digits{};
+        const auto encoded =
+            std::to_chars(&digits.front(), &digits.back(), event.bytes, hexadecimal);
+        if (encoded.ec != std::errc{}) {
+            return false;
         }
-        stream << "[" << event.bytes << "," << event.kind << "]";
+        const auto size = static_cast<std::size_t>(std::distance(digits.data(), encoded.ptr));
+        stream << markers.at(event.kind) << std::string_view{digits.data(), size};
     }
-    stream << "]";
+    stream << "\"";
     return stream.good();
 }
 Kind golden_kind(std::size_t index) noexcept {
@@ -185,19 +196,37 @@ bool golden_replay(std::size_t count) {
     if (!emit(actual)) {
         return false;
     }
-    constexpr std::array suffixes{",0]", ",1]", ",2]"};
-    std::string expected = "[";
+    constexpr std::array markers{'+', '-', '!'};
+    std::ostringstream expected;
+    expected << "\"" << std::hex;
     std::uint64_t next_byte = 17;
     for (std::size_t index = 0; index < count; ++index) {
-        if (index != 0) {
-            expected += ',';
-        }
-        expected += '[';
-        expected += std::to_string(next_byte++);
-        expected += suffixes.at(index % suffixes.size());
+        expected << markers.at(index % markers.size()) << next_byte++;
     }
-    expected += ']';
-    return actual.str() == expected;
+    expected << "\"";
+    return actual.str() == expected.str();
+}
+bool literal_encoding() {
+    if (!reset_epoch()) {
+        return false;
+    }
+    constexpr auto maximum = std::numeric_limits<std::uint64_t>::max();
+    constexpr std::array literals{
+        Event{.bytes = 0, .kind = 0},       Event{.bytes = 0, .kind = 1},
+        Event{.bytes = 0, .kind = 2},       Event{.bytes = maximum, .kind = 0},
+        Event{.bytes = maximum, .kind = 1}, Event{.bytes = maximum, .kind = 2},
+    };
+    for (const auto event : literals) {
+        if (!commit(event)) {
+            return false;
+        }
+    }
+    std::ostringstream actual;
+    const bool exact =
+        emit(actual) &&
+        actual.str() == "\"+0-0!0+ffffffffffffffff-ffffffffffffffff!ffffffffffffffff\"";
+    actual << ':' << 17;
+    return exact && actual.str().ends_with(":17");
 }
 bool golden_case(unsigned callers, std::size_t count) {
     const SpillSession session{callers};
@@ -288,8 +317,8 @@ bool check_storage_contract() {
     if (!quiescent() || active || !reset_epoch()) {
         return false;
     }
-    const bool healthy = golden_anchors() && golden_case(1, 8192) && golden_case(2, 8193) &&
-                         golden_case(2, 16384) && golden_case(7, 57344);
+    const bool healthy = literal_encoding() && golden_anchors() && golden_case(1, 8192) &&
+                         golden_case(2, 8193) && golden_case(2, 16384) && golden_case(7, 57344);
     const bool negative =
         healthy && cap_refusal(0) && cap_refusal(7) && invalid_refusal() && file_refusals();
     return negative && reset_epoch();

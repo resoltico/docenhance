@@ -65,7 +65,7 @@ class RestorationResourceRecordsTests(unittest.TestCase):
                         core_backing_overhead_bytes=71,
                         attempts=1,
                         c_attempts=1,
-                        events=[[raw, 0], [raw, 1]],
+                        events=f"+{raw:x}-{raw:x}",
                     )
                 if "whole_method" in row:
                     row.update(
@@ -89,7 +89,7 @@ class RestorationResourceRecordsTests(unittest.TestCase):
             ("observed_core_heap_bytes", visible["observed_core_heap_bytes"] - 1),
             ("source_C_provider_route", "static_debug_CRT_malloc_dbg_free_dbg"),
             ("c_attempts", 0),
-            ("events", [[1, 0], [1, 1]]),
+            ("events", "+1-1"),
         ):
             changed = copy.deepcopy(visible)
             changed[key] = value
@@ -142,13 +142,13 @@ class RestorationResourceRecordsTests(unittest.TestCase):
             changed[index][key] = value
             variants.append(changed)
         changed = copy.deepcopy(original)
-        changed[10]["events"].reverse()
+        changed[10]["events"] = "-a+a" * 4
         variants.append(changed)
         changed = copy.deepcopy(original)
         changed[6]["actual_core_payload_bytes"] += 1
         variants.append(changed)
         changed = copy.deepcopy(original)
-        changed[10]["events"][:2] = [[11, 0], [11, 1]]
+        changed[10]["events"] = "+b-b" + changed[10]["events"][len("+a-a") :]
         changed[10]["observed_peak"] = 11
         variants.append(changed)
         for field, invalid in (
@@ -156,14 +156,14 @@ class RestorationResourceRecordsTests(unittest.TestCase):
             ("live_after", False),
             ("native_capacity", -1),
             ("unknown", 1),
-            ("events", [[10, 3]]),
+            ("events", "?a"),
         ):
             changed = copy.deepcopy(original)
             changed[11][field] = invalid
             variants.append(changed)
         changed = copy.deepcopy(original)
         changed[10]["attempts"] = 1
-        changed[10]["events"] = [[10, 0], [10, 1]]
+        changed[10]["events"] = "+a-a"
         variants.append(changed)
         variants.extend(
             (

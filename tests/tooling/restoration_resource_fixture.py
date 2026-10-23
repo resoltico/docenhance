@@ -65,7 +65,7 @@ def visibility_rows() -> list[dict[str, Any]]:
             "core_backing_overhead_bytes": 0,
             "attempts": 0,
             "c_attempts": 0,
-            "events": [],
+            "events": "",
         }
         for size in (16, 32, 48, 64)
     ]
@@ -98,9 +98,7 @@ def whole_row(width: int, height: int, ordinal: int) -> dict[str, Any]:
         "entering_charged": 16,
         "ledger_peak_before": 16,
         "ledger_peak_after": 100,
-        "events": ([[10, 0], [10, 1]] * (ordinal - 1) + [[10, 2]])
-        if ordinal
-        else [[10, 0], [10, 1]] * 4,
+        "events": ("+a-a" * (ordinal - 1) + "!a") if ordinal else "+a-a" * 4,
     }
 
 
@@ -143,7 +141,7 @@ def protocol_rows(index: int | None) -> list[dict[str, Any]]:
                     "resident": 16 * callers,
                     "heap_peak": 10 * callers,
                     "charged_peak": 30 * callers,
-                    "events": ([[10, 0]] * callers + [[10, 1]] * callers) * 4,
+                    "events": ("+a" * callers + "-a" * callers) * 4,
                 }
             )
     rows.append(

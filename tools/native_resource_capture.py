@@ -9,6 +9,7 @@ import hashlib
 import io
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -114,7 +115,7 @@ def retained_bodies(directory: Path) -> dict[str, bytes]:
     return bodies
 
 
-EVENT_FIELDS = 2
+EVENT_TOKEN_BYTES = 17
 WHOLE_KEYS = frozenset(
     [
         "whole_method",
@@ -164,18 +165,19 @@ def trace(row: dict[str, Any], callers: int = 1) -> int:
     """Validate every original event and its full refund, with the native logical bound."""
     events = row["events"]
     require(
-        isinstance(events, list) and 0 < len(events) <= callers * 8192,
+        isinstance(events, str) and 0 < len(events) <= callers * 8192 * EVENT_TOKEN_BYTES,
         "Resource event sequence is empty or exceeds its native bound",
     )
-    live = peak = attempts = 0
-    for event in events:
-        require(isinstance(event, list) and len(event) == EVENT_FIELDS, "Invalid resource event")
-        size, kind = map(number, event)
-        require(kind in (0, 1, 2), "Unknown resource event kind")
+    live = peak = attempts = cursor = 0
+    for count, event in enumerate(re.finditer(r"([+!\-])(0|[1-9a-f][0-9a-f]{0,15})", events), 1):
+        require(event.start() == cursor and count <= callers * 8192, "Invalid resource event")
+        cursor = event.end()
+        size, kind = int(event[2], 16), "+-!".index(event[1])
         attempts += int(kind != 1)
         live += size if kind == 0 else -size if kind == 1 else 0
         require(live >= 0, "Resource event prefix is not owned")
         peak = max(peak, live)
+    require(cursor == len(events), "Invalid resource event encoding")
     require(
         live == 0 and peak == row.get("observed_peak", row.get("heap_peak")),
         "Resource event refund/peak differs",
@@ -270,4 +272,4 @@ def visibility(row: dict[str, Any]) -> None:
             "Visibility allocation is incomplete",
         )
     else:
-        require(row["events"] == [], "Excluded visibility has heap events")
+        require(row["events"] == "", "Excluded visibility has heap events")
