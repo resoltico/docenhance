@@ -300,7 +300,14 @@ class WorkflowIntegrityTests(unittest.TestCase):
     def test_job_conditions_and_aggregate_results(self) -> None:
         """Skipped/optional work, detached dependencies and echoed results must fail."""
         for old, new, diagnostic in (
-            ("  native:\n", "  native:\n    if: false\n", "Required job"),
+            (
+                (
+                    "  native:\n    if: github.event_name != 'workflow_dispatch' || "
+                    "!inputs.tooling_diagnostic\n"
+                ),
+                "  native:\n    if: false\n",
+                "Required job",
+            ),
             ("  sanitize:\n", "  sanitize:\n    continue-on-error: true\n", "Required job"),
             (
                 "[structural, native, fuzz, sanitize]",

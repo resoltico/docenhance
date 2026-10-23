@@ -27,7 +27,7 @@ Notable changes to this project are documented in this file. The format is based
 
 - Windows native CI checks resource observers in Release and Debug within the selected Visual Studio shell and retains bounded CRT/provider/linker evidence. Debug builds only the two resource executable closures after their private dependencies are configured.
 
-- Bound fuzz evidence enumeration, file counts and compressed archives; stop engines after saved findings while retaining failure evidence. PR targets now run for 15 seconds instead of 60 (75% less requested engine time), and scheduled weekly targets for 300 seconds instead of 1,800 (83.3% less), reducing stochastic exploration time while preserving both engines, every harness and regression replay. Cooperative engine disk thresholds are not filesystem quotas.
+- Bound fuzz evidence enumeration, file counts, compressed archives and finding-replay logs; deduplicate findings before replay and refuse foreign reparse owners. Reject mismatched LLVM before acquiring or rebuilding AFL++. Manual three-OS tooling diagnostics avoid product rebuilds and cannot satisfy the required quality gate. Stop engines after saved findings while retaining failure evidence. PR targets now run for 15 seconds instead of 60 (75% less requested engine time), and scheduled weekly targets for 300 seconds instead of 1,800 (83.3% less), reducing stochastic exploration time while preserving both engines, every harness and regression replay. Cooperative engine disk thresholds are not filesystem quotas.
 
 - Keep only Intel LLVM analysis tools, their matching builtin headers and verified receipts in the tool cache; discard temporary compiler build products and image-owned download caches.
 

@@ -467,3 +467,11 @@ contents compressed by a different Python/zlib runtime may produce different byt
 refused; cross-runtime byte reproducibility is not established. GitHub transport binds github.com
 for every operation, including host-qualified upload repositories, and excludes ambient host/repo
 routing overrides from child processes.
+
+For Python tooling portability changes, manually dispatch the existing Quality gates workflow with
+`tooling_diagnostic=true` on the exact committed branch. It runs the strict isolated tooling
+runner on Linux, macOS ARM64 and Windows, including real small
+compiler controls and the selected Windows developer environment. It builds no product targets or
+native dependencies and runs no fuzz campaigns. Required PR/main gates remain complete. The
+aggregate intentionally fails when the required native/fuzz/sanitizer jobs are omitted: inspect the
+three tooling job results as diagnostics, never as product or release qualification.

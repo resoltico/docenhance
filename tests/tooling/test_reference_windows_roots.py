@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -65,6 +66,7 @@ class ReferenceWindowsRootsTests(unittest.TestCase):
         """The private fact is produced by the configured compiler, with no user override."""
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
+            (directory / "compiler-id.txt").write_text("GNU")
             with (
                 patch("check_reference_suite.shutil.which", return_value="cmake"),
                 patch("check_reference_suite.subprocess.run") as run,
@@ -113,3 +115,90 @@ class ReferenceWindowsRootsTests(unittest.TestCase):
             self.assertRaisesRegex(ArchitectureError, "native/package"),
         ):
             closure.observe_headers("", ROOT, ROOT / "tests/reference.cpp", [ROOT])
+
+    def test_selected_clang_resource_query_adds_only_the_observed_include_owner(self) -> None:
+        """Both Clang driver families expose their own resource directory once, with a clock."""
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            resource = base / "selected/lib/clang/20"
+            (resource / "include").mkdir(parents=True)
+            for identity in ("Clang", "AppleClang"):
+                directory = base / identity
+                directory.mkdir()
+                (directory / "compiler-id.txt").write_text(identity)
+                roots = directory / "toolchain-roots.txt"
+                roots.write_text("existing-observed-root")
+                replies = [
+                    subprocess.CompletedProcess([], 0, "", ""),
+                    subprocess.CompletedProcess([], 0, str(resource) + "\n", ""),
+                ]
+                with (
+                    self.subTest(identity=identity),
+                    patch("check_reference_suite.shutil.which", return_value="cmake"),
+                    patch("check_reference_suite.subprocess.run", side_effect=replies) as run,
+                ):
+                    suite.generate_build_facts(directory, "selected-clang++", "4.4")
+                self.assertEqual(run.call_count, 2)
+                self.assertEqual(run.call_args.args[0], ["selected-clang++", "-print-resource-dir"])
+                self.assertEqual(run.call_args.kwargs["timeout"], 15)
+                self.assertTrue(run.call_args.kwargs["check"])
+                self.assertEqual(
+                    roots.read_text(),
+                    "existing-observed-root;" + str(resource.resolve() / "include"),
+                )
+
+    def test_malformed_missing_or_broad_clang_resource_cannot_append_roots(self) -> None:
+        """Only a real narrow resource directory returned by this driver can add authority."""
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            broad = base / "broad"
+            (broad / "include").mkdir(parents=True)
+            values = (
+                "",
+                "relative\n",
+                str(broad) + "\n",
+                str(base / "missing") + "\n",
+                "/a\n/b\n",
+                "/a;/b\n",
+            )
+            for index, value in enumerate(values):
+                directory = base / str(index)
+                directory.mkdir()
+                (directory / "compiler-id.txt").write_text("Clang")
+                roots = directory / "toolchain-roots.txt"
+                roots.write_text("unchanged")
+                replies = [
+                    subprocess.CompletedProcess([], 0, "", ""),
+                    subprocess.CompletedProcess([], 0, value, ""),
+                ]
+                with (
+                    self.subTest(value=value),
+                    patch("check_reference_suite.shutil.which", return_value="cmake"),
+                    patch("check_reference_suite.subprocess.run", side_effect=replies),
+                    self.assertRaisesRegex(RuntimeError, "selected Clang resource"),
+                ):
+                    suite.generate_build_facts(directory, "selected-clang++", "4.4")
+                self.assertEqual(roots.read_text(), "unchanged")
+
+    def test_clang_query_failure_or_timeout_has_no_ambient_fallback(self) -> None:
+        """The exact compiler observation error survives without granting any new roots."""
+        errors = (
+            subprocess.CalledProcessError(1, ["selected-clang++", "-print-resource-dir"]),
+            subprocess.TimeoutExpired(["selected-clang++", "-print-resource-dir"], 15),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            for index, error in enumerate(errors):
+                directory = base / str(index)
+                directory.mkdir()
+                (directory / "compiler-id.txt").write_text("Clang")
+                roots = directory / "toolchain-roots.txt"
+                roots.write_text("unchanged")
+                with (
+                    self.subTest(error=type(error)),
+                    patch("check_reference_suite.shutil.which", return_value="cmake"),
+                    patch("check_reference_suite.subprocess.run", side_effect=[None, error]),
+                    self.assertRaises(type(error)),
+                ):
+                    suite.generate_build_facts(directory, "selected-clang++", "4.4")
+                self.assertEqual(roots.read_text(), "unchanged")

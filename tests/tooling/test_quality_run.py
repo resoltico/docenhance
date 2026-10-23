@@ -7,6 +7,8 @@ from __future__ import annotations
 import copy
 import json
 import unittest
+from pathlib import PurePosixPath, PureWindowsPath
+from unittest.mock import patch
 
 import tools_path
 
@@ -73,19 +75,26 @@ class QualityRunTests(unittest.TestCase):
 
     def test_finished_abstention_accounts_every_original_and_planned_slot(self) -> None:
         """Finished abstention accounts every original and planned slot."""
-        value = factual_run()
-        validate_run(value)
-        self.assertEqual(value["report"]["decision"], "abstain")
-        self.assertEqual(len(value["intended"]["invocations"]), 18)
-        self.assertEqual(len(value["events"]), 42)
-        self.assertEqual(value["terminal"]["accounted_roles"], 6)
-        self.assertTrue(
-            all(
-                item["count"] == EXPECTED_PAGE_COUNT for item in value["report"]["classes"].values()
-            )
-        )
-        self.assertFalse(validator("quality_run").is_valid(value["report"]))
-        self.assertFalse(validator("quality_run").is_valid(value | {"protocol_version": 2}))
+        for path_type in (PurePosixPath, PureWindowsPath):
+            with (
+                self.subTest(path_type=path_type),
+                patch("quality_accounting_fixture.Path", path_type),
+                patch("quality_protocol.Path", path_type),
+            ):
+                value = factual_run()
+                validate_run(value)
+                self.assertEqual(value["report"]["decision"], "abstain")
+                self.assertEqual(len(value["intended"]["invocations"]), 18)
+                self.assertEqual(len(value["events"]), 42)
+                self.assertEqual(value["terminal"]["accounted_roles"], 6)
+                self.assertTrue(
+                    all(
+                        item["count"] == EXPECTED_PAGE_COUNT
+                        for item in value["report"]["classes"].values()
+                    )
+                )
+                self.assertFalse(validator("quality_run").is_valid(value["report"]))
+                self.assertFalse(validator("quality_run").is_valid(value | {"protocol_version": 2}))
 
     def test_outer_only_flip_and_old_hash_cannot_admit_v3(self) -> None:
         """Outer only flip and old hash cannot admit v3."""

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -49,6 +50,17 @@ def fetch(pin: dict[str, str], target: Path) -> None:
     run("git", "checkout", "--detach", pin["object"], cwd=target)
 
 
+def validate_llvm_config(executable: str, major: str) -> None:
+    """Refuse an ambient toolchain mismatch before fetching or replacing the AFL++ tree."""
+    output = subprocess.run(
+        [executable, "--version"], capture_output=True, text=True, check=True, timeout=10
+    ).stdout.strip()
+    version = re.fullmatch(r"([0-9]+)\.[0-9]+(?:\.[0-9]+)?(?:[-+A-Za-z][0-9A-Za-z._+-]*)?", output)
+    if version is None or version[1] != major:
+        msg = f"llvm-config {major}.x is required; found {executable}: {output[:200]!r}"
+        raise InstallError(msg)
+
+
 def main() -> int:
     """Fetch, verify and build AFL++."""
     tools = json.loads((ROOT / "deps/tools.json").read_text(encoding="utf-8"))
@@ -60,6 +72,7 @@ def main() -> int:
     if make is None or llvm_config is None:
         msg = f"make and llvm-config {major} are required (tools/install_llvm.py --fuzzing)"
         raise InstallError(msg)
+    validate_llvm_config(llvm_config, major)
     fetch(pin, target)
     jobs = str(available_jobs())
     build = [make, "-j", jobs, "source-only", f"LLVM_CONFIG={llvm_config}", "NO_NYX=1"]

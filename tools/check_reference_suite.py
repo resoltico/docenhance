@@ -118,6 +118,26 @@ def generate_build_facts(directory: Path, compiler: str, minimum: str) -> Path:
         ],
         check=True,
     )
+    identity = (directory / "compiler-id.txt").read_text(encoding="utf-8")
+    if identity in {"Clang", "AppleClang"}:
+        observed = subprocess.run(
+            [compiler, "-print-resource-dir"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=15,
+        )
+        lines = observed.stdout.splitlines()
+        if len(lines) != 1 or ";" in lines[0] or not Path(lines[0]).is_absolute():
+            message = "Reference selected Clang resource directory is not one absolute path"
+            raise RuntimeError(message)
+        resource = Path(lines[0]).resolve()
+        include = resource / "include"
+        if not include.is_dir() or system_roots([str(include)]) != [resource]:
+            message = "Reference selected Clang resource include owner is unavailable or unowned"
+            raise RuntimeError(message)
+        with (directory / "toolchain-roots.txt").open("a", encoding="utf-8") as stream:
+            stream.write(";" + str(include))
     return generated
 
 

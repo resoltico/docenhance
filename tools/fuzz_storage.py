@@ -22,7 +22,7 @@ def entry_bytes(path: Path, *, directory: bool) -> int:
     except FileNotFoundError:
         return 0  # An engine may remove or rename a queue item during the scan.
     valid = stat.S_ISDIR(state.st_mode) if directory else stat.S_ISREG(state.st_mode)
-    if not valid:
+    if not valid or getattr(state, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT:
         message = f"Unsafe fuzz work entry: {path}"
         raise FuzzError(message)
     return getattr(state, "st_blocks", (state.st_size + 511) // 512) * 512
@@ -95,6 +95,29 @@ def check_disk(work: Path, directory: Path) -> None:
         raise FuzzError(message)
 
 
+def scratch_inventory(candidates: list[Path]) -> dict[Path, tuple[int, int, int]]:
+    """Validate each scratch owner before descending, and all owners before deleting any."""
+    identities = {}
+    pending = list(candidates)
+    while pending:
+        path = pending.pop()
+        state = path.lstat()
+        if (
+            not (
+                stat.S_ISDIR(state.st_mode)
+                or (path not in candidates and stat.S_ISREG(state.st_mode))
+            )
+            or getattr(state, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        ):
+            msg = f"Scratch entry is not a regular file or directory: {path}"
+            raise FuzzError(msg)
+        identities[path] = (state.st_dev, state.st_ino, state.st_mode)
+        if stat.S_ISDIR(state.st_mode):
+            with os.scandir(path) as children:
+                pending.extend(Path(child.path) for child in children)
+    return identities
+
+
 def remove_successful_scratch(directory: Path, engine: str) -> list[str]:
     """Remove joined, completed runs' disposable inputs; validate all paths before deleting any."""
     candidates = [directory / "corpus"]
@@ -102,25 +125,23 @@ def remove_successful_scratch(directory: Path, engine: str) -> list[str]:
     if engine == "afl":
         ancestors.extend([directory / "afl", directory / "afl/default"])
     for ancestor in ancestors:
-        if not stat.S_ISDIR(ancestor.lstat().st_mode):
+        state = ancestor.lstat()
+        if (
+            not stat.S_ISDIR(state.st_mode)
+            or getattr(state, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        ):
             msg = f"Scratch ancestor is not a regular directory: {ancestor}"
             raise FuzzError(msg)
     queue = directory / "afl/default/queue"
     if engine == "afl" and (queue.exists() or queue.is_symlink()):
         candidates.append(queue)
-    nodes = [path for candidate in candidates for path in [candidate, *candidate.rglob("*")]]
-    identities = {}
-    for path in nodes:
+    identities = scratch_inventory(candidates)
+    for path in sorted(identities, key=lambda path: len(path.parts), reverse=True):
         state = path.lstat()
-        if not (
-            stat.S_ISDIR(state.st_mode) or (path not in candidates and stat.S_ISREG(state.st_mode))
+        if (
+            identities[path] != (state.st_dev, state.st_ino, state.st_mode)
+            or getattr(state, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
         ):
-            msg = f"Scratch entry is not a regular file or directory: {path}"
-            raise FuzzError(msg)
-        identities[path] = (state.st_dev, state.st_ino, state.st_mode)
-    for path in sorted(nodes, key=lambda path: len(path.parts), reverse=True):
-        state = path.lstat()
-        if identities[path] != (state.st_dev, state.st_ino, state.st_mode):
             msg = f"Scratch entry changed before removal: {path}"
             raise FuzzError(msg)
         if stat.S_ISDIR(state.st_mode):

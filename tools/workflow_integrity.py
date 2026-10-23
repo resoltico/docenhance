@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 import yaml
 
 from ci_contract import (
+    FULL_QUALITY_CONDITION,
     NATIVE_DIAGNOSTIC_FUZZ_CONDITION,
     NATIVE_RUNNERS,
     SANITIZERS,
@@ -41,13 +42,11 @@ def required_step(
     job: dict[str, Any], command: str, condition: str | None = None
 ) -> dict[str, Any]:
     """A required command occupies a complete step, with only its reviewed route condition."""
-    candidates: list[dict[str, Any]] = [
-        step for step in job.get("steps", []) if step.get("run", "").strip() == command
-    ]
+    candidates = [step for step in job.get("steps", []) if step.get("run", "").strip() == command]
     if len(candidates) != 1:
         msg = f"Required executable step missing or duplicated: {command}"
         raise ValueError(msg)
-    step = candidates[0]
+    step: dict[str, Any] = candidates[0]
     if step.get("if") != condition or step.get("continue-on-error", "false") != "false":
         msg = f"Required executable step is conditional or optional: {command}"
         raise ValueError(msg)
@@ -57,9 +56,9 @@ def required_step(
     return step
 
 
-def sanitizer_job(document: dict[str, Any], major: str) -> None:
+def sanitizer_job(document: dict[str, Any], major: str, condition: str | None = None) -> None:
     """Both whole-suite sanitizer modes use actual pinned build-step environment."""
-    job = required_job(document, "sanitize")
+    job = required_job(document, "sanitize", condition=condition)
     require_strategy(job, {"preset": list(SANITIZERS)})
     required_step(job, "python tools/install_build_tools.py")
     required_step(job, "python tools/install_llvm.py --fuzzing")
@@ -145,7 +144,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
         raise ValueError(msg)
     require_workflow_coverage(document)
     require_native_diagnostic_input(document)
-    structural = required_job(document, "structural")
+    structural = required_job(document, "structural", condition=FULL_QUALITY_CONDITION)
     for command in (
         SOURCE_GATE,
         "python tools/install_build_tools.py",
@@ -158,7 +157,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
         ),
     ):
         required_step(structural, command)
-    native = required_job(document, "native")
+    native = required_job(document, "native", condition=FULL_QUALITY_CONDITION)
     require_strategy(
         native,
         {"include": [{"platform": name, "os": runner} for name, runner in NATIVE_RUNNERS.items()]},
@@ -189,7 +188,7 @@ def quality_workflow(document: dict[str, Any], major: str) -> None:
     require_native_diagnostics(native, "release", "platform", native_build)
     require_windows_resource_proof(native, native_build)
     fuzz_job(document, major, weekly=False)
-    sanitizer_job(document, major)
+    sanitizer_job(document, major, FULL_QUALITY_CONDITION)
     aggregate_job(document)
 
 

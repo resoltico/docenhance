@@ -75,7 +75,7 @@ def aggregate_job(document: dict[str, Any]) -> None:
     """The always-running aggregate refuses every non-success result from every required job."""
     names = set(JOB_TITLES) - {"gate"}
     gate = document["jobs"]["gate"]
-    if set(document["jobs"]) != names | {"gate"} or set(gate.get("needs", [])) != names:
+    if set(document["jobs"]) != names | {"gate", "tooling"} or set(gate.get("needs", [])) != names:
         msg = "Aggregate must depend on every required quality job"
         raise ValueError(msg)
     if gate.get("if") != "always()" or gate.get("continue-on-error", "false") != "false":

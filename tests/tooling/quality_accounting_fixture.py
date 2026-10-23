@@ -169,8 +169,8 @@ def factual_slots(role_index: int, frozen: list[str]) -> list[dict[str, Any]]:
                 "argv": argv,
                 "planned_directory": directory,
                 "planned_target": planned_target,
-                "planned_stdout": str(Path(directory) / "stdout"),
-                "planned_stderr": str(Path(directory) / "stderr"),
+                "planned_stdout": directory + "/stdout",
+                "planned_stderr": directory + "/stderr",
             }
         )
     return result

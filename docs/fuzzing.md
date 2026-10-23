@@ -126,6 +126,10 @@ the engine and exact source commit; absent or incomplete campaigns are explicitl
 than receiving synthetic empty directories. Missing required upload bytes fail CI. Saved crash
 inputs are replayed once under the already instrumented binary with a bounded watchdog and
 captured diagnostics, without making a failed campaign green if a crash is nonreproducible.
+Replay admits at most 32 distinct target/input identities and deduplicates before launching a
+child. Each replay drains output while retaining at most 32 KiB of startup/final bytes plus a small
+omitted-byte marker; the 10-second watchdog never authorizes an unbounded temporary log.
+These diagnostic allowances preserve short failure context, not a proven minimum for every failure.
 The original inputs and engine evidence remain preserved separately from the diagnostic replay.
 An archive manifest is a provenance and completeness assertion, not independent proof
 of program correctness; the strict coordinator and per-target execution reports remain

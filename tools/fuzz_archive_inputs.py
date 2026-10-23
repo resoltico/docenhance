@@ -98,7 +98,10 @@ def source_entries(build: Path) -> list[Entry]:
             continue
         for path in _walk_entries(root):
             observed = path.lstat()
-            if not (stat.S_ISREG(observed.st_mode) or stat.S_ISDIR(observed.st_mode)):
+            if (
+                not (stat.S_ISREG(observed.st_mode) or stat.S_ISDIR(observed.st_mode))
+                or getattr(observed, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+            ):
                 message = f"Unsafe fuzz evidence entry: {path}"
                 raise ValueError(message)
             size += observed.st_size if stat.S_ISREG(observed.st_mode) else 0
@@ -115,7 +118,11 @@ def source_entries(build: Path) -> list[Entry]:
 def _check_directory(path: Path, observed: os.stat_result) -> None:
     """Refuse a queued directory whose actual identity or stamp changed before descendants."""
     current = path.lstat()
-    if not stat.S_ISDIR(current.st_mode) or stamp(current) != stamp(observed):
+    if (
+        not stat.S_ISDIR(current.st_mode)
+        or getattr(current, "st_file_attributes", 0) & stat.FILE_ATTRIBUTE_REPARSE_POINT
+        or stamp(current) != stamp(observed)
+    ):
         message = "Fuzz evidence directory changed during inventory"
         raise ValueError(message)
 

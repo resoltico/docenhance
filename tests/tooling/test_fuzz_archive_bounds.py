@@ -6,12 +6,14 @@ from __future__ import annotations
 
 import json
 import os
+import stat
 import tarfile
 import tempfile
 import unittest
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, BinaryIO
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, BinaryIO, cast
 from unittest.mock import Mock, patch
 
 from tools_path import ROOT
@@ -21,7 +23,7 @@ from fuzz_archive_inputs import metadata as read_metadata
 from package_fuzz_evidence import _add_entry, archive_evidence, describe
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Callable, Iterator
 
 
 class FuzzArchiveBoundsTests(unittest.TestCase):
@@ -276,3 +278,46 @@ class FuzzArchiveBoundsTests(unittest.TestCase):
             self.assertEqual(output.read_bytes(), b"previous archive")
             self.assertEqual(finding.read_bytes(), b"originalgrowth sentinel")
             self.assertFalse(list(build.glob(".archive.tar.gz-*")))
+
+
+class FuzzArchiveReparseTests(unittest.TestCase):
+    """An ordinary Windows directory mode cannot admit junction-owned archive payloads."""
+
+    def test_reparse_sources_refuse_before_description_or_archive_replacement(self) -> None:
+        """Actual-like complete stat metadata changes only the reparse ownership attribute."""
+        for name in ("fuzz-work", "fuzz-work/campaign", "fuzz-work/campaign/finding"):
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temporary:
+                build = Path(temporary)
+                finding = build / "fuzz-work/campaign/finding"
+                finding.parent.mkdir(parents=True)
+                finding.write_bytes(b"foreign payload must remain")
+                selected = build / name
+                actual_lstat = Path.lstat
+                observed = actual_lstat(selected)
+                fields = {
+                    key: getattr(observed, key) for key in dir(observed) if key.startswith("st_")
+                }
+                fields["st_file_attributes"] = stat.FILE_ATTRIBUTE_REPARSE_POINT
+                reparse = cast("os.stat_result", SimpleNamespace(**fields))
+                output = build / "archive.tar.gz"
+                output.write_bytes(b"previous archive")
+
+                def inspect(
+                    path: Path,
+                    *,
+                    owner: Path = selected,
+                    replacement: os.stat_result = reparse,
+                    probe: Callable[[Path], os.stat_result] = actual_lstat,
+                ) -> os.stat_result:
+                    return replacement if path == owner else probe(path)
+
+                with (
+                    patch.object(Path, "lstat", side_effect=inspect, autospec=True),
+                    patch("package_fuzz_evidence.describe") as describe,
+                    self.assertRaisesRegex(ValueError, "Unsafe fuzz evidence entry"),
+                ):
+                    archive_evidence(build, "afl", "a" * 40, output)
+                describe.assert_not_called()
+                self.assertEqual(finding.read_bytes(), b"foreign payload must remain")
+                self.assertEqual(output.read_bytes(), b"previous archive")
+                self.assertFalse(list(build.glob(".archive.tar.gz-*")))
