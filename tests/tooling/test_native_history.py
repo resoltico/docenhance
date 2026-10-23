@@ -84,10 +84,22 @@ class NativeHistoryTests(unittest.TestCase):
         """Even zero-byte hardlinks consume individual traversed entry capacity."""
         with tempfile.TemporaryDirectory() as temporary:
             build = Path(temporary)
-            raw = build / "native-prior/ctest.xml"
-            self.sparse(raw, 0)
-            for index in range(native_history.HISTORY_ENTRIES):
-                os.link(raw, raw.with_name(str(index)))
+            aliases_per_inode = 512
+            groups = native_history.HISTORY_ENTRIES // aliases_per_inode
+            for group in range(groups):
+                raw = build / "native-prior" / f"group-{group}"
+                self.sparse(raw, 0)
+                for index in range(aliases_per_inode):
+                    os.link(raw, raw.with_name(f"{group}-{index}"))
+                self.assertEqual(raw.stat().st_nlink, aliases_per_inode + 1)
+                if group == 0:
+                    healthy = self.history(build)
+                    healthy.admit()
+                    self.assertEqual(healthy.peak_bytes, 0)
+                    self.assertEqual(healthy.peak_entries, aliases_per_inode + 3)
+            self.assertGreater(
+                len(list((build / "native-prior").iterdir())), native_history.HISTORY_ENTRIES
+            )
             with self.assertRaisesRegex(ValueError, "4096"):
                 self.history(build).admit()
 

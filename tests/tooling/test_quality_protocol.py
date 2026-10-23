@@ -7,7 +7,7 @@ from __future__ import annotations
 import copy
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from unittest.mock import patch
 
 from jsonschema import Draft202012Validator, ValidationError
@@ -23,10 +23,12 @@ from quality_fidelity import fidelity
 from quality_inputs import FrozenEvidence
 from quality_json import frozen_digest, read_json
 from quality_plan import validate_plan
+from quality_protocol import validate_work_index
 from quality_replay import replay
 from quality_report import report as factual_report
 from quality_run import QualityRun
 from quality_schema import validator
+from quality_work import invocation_index
 
 
 class QualityProtocolTests(unittest.TestCase):
@@ -65,6 +67,36 @@ class QualityProtocolTests(unittest.TestCase):
                 )
             digest_report = report.pop("report_sha256")
             self.assertEqual(frozen_digest(report), digest_report)
+
+    def test_planned_streams_preserve_exact_wire_spelling_on_both_path_models(self) -> None:
+        """Native path formatting cannot rewrite frozen slash-delimited capture identities."""
+        plan = healthy_plan()
+        slots = invocation_index(plan)
+        slots[0]["planned_directory"] = "qualité/墨"
+        for stream in ("stdout", "stderr"):
+            slots[0]["planned_" + stream] = "qualité/墨/" + stream
+        for path_type in (PurePosixPath, PureWindowsPath):
+            with self.subTest(path_type=path_type), patch("quality_protocol.Path", path_type):
+                validate_work_index(plan, slots)
+                for stream in ("stdout", "stderr"):
+                    key = "planned_" + stream
+                    original = slots[0][key]
+                    for wrong in (
+                        original.replace("/", "\\"),
+                        original + "/extra",
+                        "../foreign/" + stream,
+                        "/outside/" + stream,
+                        "X:" + original,
+                        original.replace("/" + stream, "/./" + stream),
+                        original.upper(),
+                    ):
+                        changed = copy.deepcopy(slots)
+                        changed[0][key] = wrong
+                        with (
+                            self.subTest(stream=stream, wrong=wrong),
+                            self.assertRaisesRegex(ValueError, "Planned stream escaped"),
+                        ):
+                            validate_work_index(plan, changed)
 
     def test_protocol_changes_cannot_be_hidden_by_corpus_identity(self) -> None:
         """Options, source, comparator, build, assets, panel and assignment share one freeze."""

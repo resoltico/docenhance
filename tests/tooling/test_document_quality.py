@@ -10,7 +10,7 @@ import io
 import sys
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import Mock, patch
@@ -238,7 +238,10 @@ class DocumentQualityTests(unittest.TestCase):
 
     def test_report_publication_cannot_overwrite_source_or_prior_evidence(self) -> None:
         """Actual CLI/writer publishes an abstention once and preserves a colliding file."""
-        with tempfile.TemporaryDirectory() as temporary:
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch("quality_protocol.Path", PureWindowsPath),
+        ):
             root = Path(temporary).resolve()
             plan, executable = disk_plan(root)
             manifest, output = root / "manifest.json", root / "quality-run.json"

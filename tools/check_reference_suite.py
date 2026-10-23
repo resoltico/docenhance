@@ -88,7 +88,8 @@ def generate_build_facts(directory: Path, compiler: str, minimum: str) -> Path:
         'configure_file("${DE_REFERENCE_TEMPLATE}" "${DE_REFERENCE_OUTPUT}" @ONLY)\n'
         'file(WRITE "${DE_REFERENCE_ROOTS}" "${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES};'
         '${CMAKE_OSX_SYSROOT};${CMAKE_SYSROOT}")\n'
-        'file(WRITE "${DE_REFERENCE_COMPILER_ID}" "${CMAKE_CXX_COMPILER_ID}")\n',
+        'file(WRITE "${DE_REFERENCE_COMPILER_ID}" "${CMAKE_CXX_COMPILER_ID}")\n'
+        'file(WRITE "${DE_REFERENCE_SIMULATE_ID}" "${CMAKE_CXX_SIMULATE_ID}")\n',
         encoding="utf-8",
     )
     cmake = shutil.which("cmake")
@@ -113,6 +114,7 @@ def generate_build_facts(directory: Path, compiler: str, minimum: str) -> Path:
             f"-DDE_REFERENCE_ENVIRONMENT:FILEPATH={ROOT / 'cmake/BuildEnvironment.cmake'}",
             f"-DDE_REFERENCE_ROOTS:FILEPATH={directory / 'toolchain-roots.txt'}",
             f"-DDE_REFERENCE_COMPILER_ID:FILEPATH={directory / 'compiler-id.txt'}",
+            f"-DDE_REFERENCE_SIMULATE_ID:FILEPATH={directory / 'compiler-simulate-id.txt'}",
         ],
         check=True,
     )
@@ -141,7 +143,13 @@ def build_reference(
         str(directory / "generated"),
     ]
     roots_file = directory / "toolchain-roots.txt"
-    roots = system_roots(roots_file.read_text().split(";")) if roots_file.is_file() else []
+    simulate_file = directory / "compiler-simulate-id.txt"
+    simulate_id = simulate_file.read_text(encoding="utf-8") if simulate_file.is_file() else ""
+    roots = (
+        system_roots(roots_file.read_text().split(";"), simulate_id=simulate_id)
+        if roots_file.is_file()
+        else []
+    )
     roots += [ROOT / "include", ROOT / "tests/support", directory / "generated"]
     roots += [ROOT / "src" / layer for layer in REFERENCE_LAYERS]
 

@@ -10,6 +10,7 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from tools_path import prepare_tool_imports
@@ -59,10 +60,18 @@ class NativeHistoryIdentityTests(unittest.TestCase):
             owner.mkdir()
             report = owner / "report"
             report.write_bytes(b"payload")
-            zero = os.stat_result([stat.S_IFREG, 0, 1, 1, 0, 0, 7, 0, 0, 0])
+            observed = report.lstat()
+            zero = SimpleNamespace(
+                **{
+                    name: getattr(observed, name)
+                    for name in dir(observed)
+                    if name.startswith("st_")
+                }
+            )
+            zero.st_ino = 0
             actual_lstat = Path.lstat
 
-            def observe(path: Path) -> os.stat_result:
+            def observe(path: Path) -> os.stat_result | SimpleNamespace:
                 return zero if path == report else actual_lstat(path)
 
             with (

@@ -105,10 +105,10 @@ def windows_system_roots() -> list[Path]:
     return []
 
 
-def system_roots(paths: list[str]) -> list[Path]:
+def system_roots(paths: list[str], *, simulate_id: str = "") -> list[Path]:
     """Narrow real CMake implicit paths to compiler, C++ library, OS and selected SDK roots."""
-    roots = []
     windows = windows_system_roots()
+    roots = list(windows) if sys.platform == "win32" and simulate_id == "MSVC" else []
     for name in paths:
         path = Path(name).resolve()
         spelling = path.as_posix()

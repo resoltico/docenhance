@@ -168,7 +168,7 @@ def validate_work_index(plan: dict[str, Any], slots: list[dict[str, Any]]) -> No
             )
             directories.append(Path(directory))
         for stream in ("stdout", "stderr"):
-            expected_path = None if directory is None else str(Path(directory) / stream)
+            expected_path = None if directory is None else directory + "/" + stream
             require(
                 slot["planned_" + stream] == expected_path,
                 "Planned stream escaped its capture owner",
