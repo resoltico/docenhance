@@ -177,8 +177,11 @@ value retains entering Y. Continuous output transports interpreted original RGB 
 Binary output classifies every pixel, including protected photometric destinations. Encode and compare
 final expected samples without rerunning the solver or double-counting D02 observations.
 
-The TV penalty can smooth isolated marks along with noise. With nonzero blend, dark mark centers
-can become lighter even while flat-region variance decreases.
+The TV penalty can smooth isolated marks along with noise; its objective can favor replacing an
+isolated dark sample with the surrounding level. For a weaker application, use
+`--denoise tvl1 --denoise-blend 0.25`: the fitted solve stays unchanged and one quarter of its
+correction is applied in perceptual luminance. Use a protection mask for
+pixels whose entering luminance must remain exact.
 
 Cancellation is explicit execution control: observe once per iteration and at bounded intervals
 inside transfers, gradient/projection, adjoint/proximal, objective and reconstruction passes.

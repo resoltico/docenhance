@@ -47,19 +47,65 @@ class ArchitectureExecutionTests(unittest.TestCase):
             self.assertTrue(any(path.endswith("second.hpp") for _, path in preprocess))
             self.assertFalse(any(path.endswith("inactive.hpp") for _, path in preprocess))
 
+    def test_path_patterns_preserve_literal_sets_without_repeating_common_prefix(self) -> None:
+        """Escaping, exact spelling and prefix-related names survive smaller path predicates."""
+        manifest = architecture.load_manifest()
+        beginning = 'cxxThrowExpr(isExpansionInFileMatching("'
+        ending = '"))'
+        sets: tuple[set[str], ...] = (
+            set(),
+            {"/one.[scope]$.cpp"},
+            {"/different/a.cpp", "Z:/other/b.cpp"},
+            {"/shared/a", "/shared/ab"},
+            {"/shared $[scope]/a.cpp", "/shared $[scope]/b.cpp"},
+            {"/re\u0301/あ.cpp", "/re\u0301/い.cpp"},
+            {r"C:\root\(scope)\a.cpp", r"C:\root\(scope)\b.cpp"},
+        )
+        for paths in sets:
+            with self.subTest(paths=paths):
+                matcher = architecture_api.matchers(manifest, {"image": paths})[0][1]
+                self.assertTrue(matcher.startswith(beginning) and matcher.endswith(ending))
+                expression = matcher[len(beginning) : -len(ending)]
+                original = "^(" + "|".join(re.escape(path) for path in sorted(paths)) + ")$"
+                if len(paths) <= 1:
+                    self.assertEqual(expression, original)
+                candidates = paths | {
+                    "",
+                    "/shared/a.cpp",
+                    "/shared/aXcpp",
+                    "/shared/a-foreign",
+                    "/ré/あ.cpp",
+                    "C:/root/(scope)/a.cpp",
+                    *(path + "-foreign" for path in paths),
+                }
+                for spelling in candidates:
+                    self.assertEqual(
+                        bool(re.fullmatch(expression, spelling)),
+                        bool(re.fullmatch(original, spelling)),
+                        spelling,
+                    )
+                if paths == {"/shared $[scope]/a.cpp", "/shared $[scope]/b.cpp"}:
+                    self.assertLess(len(expression), len(original))
+
     def test_grouped_matches_preserve_every_rule_and_overlap(self) -> None:
         """Compare exact rule counts against individually traversed predicates on real Clang."""
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory(prefix="architecture $[scope]-") as directory:
             root = Path(directory)
             entry = compiler_probe(
                 root,
                 root / "src/image/probe.cpp",
-                "#include <cstdlib>\nnamespace unrelated { void probe() { "
+                '#include "probe.cpp.hpp"\n#include <cstdlib>\n'
+                "namespace unrelated { void probe() { "
                 "auto terminate=&std::exit; (void)terminate; "
                 "try { throw 1; } catch(...) { auto*p=new int(1); delete p; } } }\n",
             )
+            header = Path(entry["file"] + ".hpp")
+            header.write_text(
+                "#pragma once\nnamespace unrelated_header { inline void probe() { throw 2; } }\n"
+            )
             rules = architecture_api.matchers(
-                architecture.load_manifest(), {"image": {entry["file"]}}
+                architecture.load_manifest(),
+                {"image": {entry["file"], header.resolve().as_posix()}},
             )
             rules.append(("overlapping throw restriction", rules[0][1]))
             query = architecture_api.find_clang_query()
@@ -89,6 +135,7 @@ class ArchitectureExecutionTests(unittest.TestCase):
                         len(re.findall(r'"rule_\d+" binds here', reports[0])), count, rule
                     )
             self.assertTrue(any("overlapping throw restriction" in report for report in found))
+            self.assertTrue(any(header.name in report for report in found))
             compiler_probe(root, Path(entry["file"]), "namespace broken { invalid syntax }\n")
             with self.assertRaises(architecture.ArchitectureError):
                 architecture_api.api_violations(query, root, entry, rules)

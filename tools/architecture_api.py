@@ -25,7 +25,13 @@ def matchers(manifest: Manifest, files: dict[str, set[str]]) -> list[tuple[str, 
     """The abstract-syntax-tree rules to evaluate on a translation unit, as (rule, matcher)."""
 
     def location(paths: set[str]) -> str:
-        return '"^(' + "|".join(re.escape(path) for path in sorted(paths)) + ')$"'
+        ordered = sorted(paths)
+        prefix = os.path.commonprefix(ordered) if len(ordered) > 1 else ""
+        # Prefix-related names must not introduce a new empty suffix alternative.
+        if prefix in paths:
+            prefix = prefix[:-1]
+        suffixes = (re.escape(path[len(prefix) :]) for path in ordered)
+        return '"^' + re.escape(prefix) + "(" + "|".join(suffixes) + ')$"'
 
     all_files = set().union(*files.values())
     rules = [
