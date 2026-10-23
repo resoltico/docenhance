@@ -87,7 +87,8 @@ de_library(de_record LAYER record
           "${DE_INCLUDE}/record/wire_type.hpp" "${DE_INCLUDE}/record/schema.hpp"
   LINKS de_core de_image de_methods PUBLIC_LINKS nlohmann_json::nlohmann_json)
 de_library(de_report LAYER report
-  SOURCES report/response_schema.cpp report/response.cpp report/warnings.cpp report/help.cpp report/help.hpp report/restoration.cpp report/restoration.hpp report/render.cpp report/continuous.cpp report/continuous.hpp report/illumination.cpp report/denoising.cpp report/sharpening.cpp report/sharpening.hpp report/contrast.cpp report/contrast.hpp report/denoising.hpp report/illumination.hpp HEADERS "${DE_INCLUDE}/report/response.hpp" "${DE_INCLUDE}/report/render.hpp" "${DE_INCLUDE}/report/warnings.hpp"
+  SOURCES report/response_schema.cpp report/response.cpp report/warnings.cpp report/help.cpp report/help.hpp report/render.cpp report/summary.cpp report/summary.hpp
+  HEADERS "${DE_INCLUDE}/report/response.hpp" "${DE_INCLUDE}/report/render.hpp" "${DE_INCLUDE}/report/warnings.hpp"
   LINKS de_app de_core de_image de_methods PUBLIC_LINKS de_record)
 target_include_directories(de_report PRIVATE "${PROJECT_BINARY_DIR}/generated")
 de_library(de_cli LAYER cli

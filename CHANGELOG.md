@@ -6,6 +6,8 @@ Notable changes to this project are documented in this file. The format is based
 
 ### Changed
 
+- **Breaking (human summaries):** completed method summaries now use the record field names and include their observed values through one shared renderer. Update text readers or consume version-15 JSON. Publication guidance, warning codes and explanations remain available; absent stages make no completion claim.
+
 - **Breaking (document-quality evidence):** quality plans and completed runs now require protocol 3 and the `docenhance-quality-v3` contract inside the hashed protocol. Consumers must use the closed `quality_run` container and freeze a new protocol/preregistration receipt; protocol-2 artifacts, bare reports and version-only rewrites are refused without a compatibility reader or migration. Historical evidence remains unchanged. The protocol does not establish rights clearance or natural-document improvement without independent review.
 
 - **Breaking (borrowed-image APIs and documentation):** replace the retired `image::Continuous`, `RowSource`/`PlaneRows` and callback-row vocabulary with admitted `methods::Plan`, checked plane views, materialized `codec::PngImage` and exclusive `color::InterpretationReader` leases. Method and format guides now live under `docs/methods/` and `docs/formats/`; pipeline/geometry and record agreement have dedicated `docs/pipeline.md` and `docs/record.md` homes. Update documentation links; there are no compatibility guide redirects. Shared effects, cancellation and resource guarantees live in architecture, and verification ownership lives in quality.

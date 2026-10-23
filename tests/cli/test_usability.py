@@ -320,7 +320,14 @@ def warning_cases(exe: Path, root: Path, gray: Path) -> None:
             ("W_SHARPENING:" in result.stdout) == (amount != "0"), "warning honors amount identity"
         )
         if amount != "0":
-            for token in ("faint marks", "below zero=", "above one="):
+            facts = json.loads((root / ("sharp-" + amount) / "run.json").read_bytes())["execution"][
+                "sharpening"
+            ]
+            for token in (
+                "faint marks",
+                f"clipped_low_samples: {facts['clipped_low_samples']}",
+                f"clipped_high_samples: {facts['clipped_high_samples']}",
+            ):
                 expect(token in result.stdout, f"sharpening explanation omitted {token}")
     result = invoke(
         exe,

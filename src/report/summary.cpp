@@ -1,31 +1,54 @@
 // SPDX-FileCopyrightText: 2026 Ervins Strauhmanis
 // SPDX-License-Identifier: MPL-2.0
-#include "continuous.hpp"
+#include "summary.hpp"
 
-#include "contrast.hpp"
-#include "denoising.hpp"
 #include "docenhance/app/process.hpp"
-#include "docenhance/core/fields.hpp"
 #include "docenhance/core/result.hpp"
 #include "docenhance/image/output.hpp"
 #include "docenhance/image/raster.hpp"
-#include "docenhance/methods/binary_facts.hpp"
 #include "docenhance/methods/stage_reports.hpp"
 #include "docenhance/record/codec.hpp"
+#include "docenhance/record/json.hpp"
 #include "docenhance/record/record.hpp"
 #include "docenhance/record/scalar.hpp"
 #include "docenhance/report/warnings.hpp"
-#include "illumination.hpp"
-#include "restoration.hpp"
-#include "sharpening.hpp"
 
+#include <cstddef>
 #include <expected>
 #include <string>
-#include <type_traits>
+#include <tuple>
 #include <utility>
 #include <variant>
+#include <vector>
 namespace docenhance::report {
 namespace {
+void append_report(std::string& text, const record::Json& report) {
+    struct Frame {
+        record::Json::const_iterator next;
+        record::Json::const_iterator end;
+        std::size_t indentation;
+    };
+    std::vector<Frame> stack{{.next = report.cbegin(), .end = report.cend(), .indentation = 2}};
+    while (!stack.empty()) {
+        auto& frame = stack.back();
+        if (frame.next == frame.end) {
+            stack.pop_back();
+            continue;
+        }
+        const auto item = frame.next++;
+        const auto indentation = frame.indentation;
+        const auto& value = item.value();
+        text.append(indentation, ' ');
+        text += item.key() + ':';
+        if (value.is_object() && !value.empty()) {
+            text += '\n';
+            stack.push_back(
+                {.next = value.cbegin(), .end = value.cend(), .indentation = indentation + 2});
+        } else {
+            text += value.is_null() ? " not reported\n" : " " + value.dump() + "\n";
+        }
+    }
+}
 core::Result<std::string> interpretation_text(const record::RunRecord& value) {
     const auto& facts = value.execution.interpretation;
     auto alpha =
@@ -73,54 +96,24 @@ core::Result<std::string> warnings_text(const RunWarnings& warnings) {
     return text;
 }
 core::Result<std::string> completed_text(const methods::StageReports& facts) {
-    auto illumination = illumination_text(facts.illumination);
-    if (!illumination) {
-        return std::unexpected(std::move(illumination.error()));
-    }
-    auto denoising = denoising_text(facts.denoising);
-    if (!denoising) {
-        return std::unexpected(std::move(denoising.error()));
-    }
-    auto restoration = restoration_text(facts.restoration);
-    if (!restoration) {
-        return std::unexpected(std::move(restoration.error()));
-    }
-    auto contrast = contrast_text(facts.contrast);
-    if (!contrast) {
-        return std::unexpected(std::move(contrast.error()));
-    }
-    auto sharpening = sharpening_text(facts.sharpening);
-    if (!sharpening) {
-        return std::unexpected(std::move(sharpening.error()));
-    }
-    std::string text = *illumination + *denoising + *restoration + *contrast + *sharpening;
-    if (facts.binarization) {
-        auto encoded = record::Codec::encode(*facts.binarization);
-        if (!encoded) {
-            return std::unexpected(std::move(encoded.error()));
-        }
-        text += std::visit(
-            [&](const auto& actual) {
-                using Facts = std::decay_t<decltype(actual)>;
-                std::string classification =
-                    "Binarization " + std::string(core::WireTag<Facts>::value) + ": " +
-                    encoded->at("disposition").get<std::string>() + " (" +
-                    encoded->at("reason").get<std::string>() +
-                    "); black=" + std::to_string(actual.black_samples) +
-                    "; white=" + std::to_string(actual.white_samples) + "\n";
-                if constexpr (std::is_same_v<Facts, methods::OtsuFacts>) {
-                    classification +=
-                        "Otsu: threshold bin=" + std::to_string(actual.threshold_bin) +
-                        "; single-bin fallback=" + encoded->at("single_bin_fallback").dump() + "\n";
-                }
-                return classification;
-            },
-            *facts.binarization);
-    }
     if (!methods::validate(facts)) {
         return core::failure(core::ErrorCode::invariant, "Invalid completed stage facts");
     }
-    // An absent slot may be disabled or unstarted; it is never given a completion claim.
+    auto encoded = record::Codec::encode<methods::StageReports>(facts);
+    if (!encoded) {
+        return std::unexpected(std::move(encoded.error()));
+    }
+    std::string text;
+    const auto append = [&](const auto& field) {
+        const auto& value = encoded->at(std::string{field.key});
+        // An absent slot may be disabled or unstarted; neither is a completion claim.
+        if (!value.is_null()) {
+            text += std::string{field.key} + ":\n";
+            append_report(text, value);
+        }
+    };
+    std::apply([&](auto... field) { (append(field), ...); },
+               core::Fields<methods::StageReports>::list);
     return text.empty() ? "Completed stage facts: none reported\n"
                         : "Completed stage facts:\n" + text;
 }
@@ -129,7 +122,7 @@ core::Result<std::string> diagnostics_text(const app::Diagnostics& diagnostics) 
            "; memory limit=" + std::to_string(diagnostics.memory_limit_mib) +
            " MiB; charged peak=" + std::to_string(diagnostics.charged_peak_bytes) + " bytes\n";
 }
-core::Result<std::string> continuous_text(const app::Published& value) {
+core::Result<std::string> published_text(const app::Published& value) {
     const auto& interpretation = value.record.execution.interpretation;
     std::string text = "Wrote verified PNG: " + value.output + "\n";
     text += std::to_string(interpretation.output.depth.bits()) + " bits; " +

@@ -135,7 +135,7 @@ def stopping_and_precision(exe: Path, root: Path) -> None:
             *options,
         ],
     )
-    dual_text = text.split("dual update=", 1)[1].splitlines()[0].split(";", 1)[0]
+    dual_text = text.split("dual_update: ", 1)[1].splitlines()[0]
     expect(float(dual_text) == detail["dual_update"], "text preserves small measured residuals")
     faint = Fixture(8, 4, tuple((30000 + i % 2,) for i in range(32)), depth=16)
     baseline, _ = run(exe, root, faint, [])

@@ -167,6 +167,11 @@ inspect destination and staging entries. Neither state authorizes a blind retry.
 explain color assumptions/overrides, irreversible alpha/precision changes, TV-L1 stopping and
 sharpening excursions while retaining the machine codes and observed values.
 
+Human method summaries use the record field names and show completed stages in pipeline order.
+Nested observations retain their values, including zero and false; unavailable optional observations
+read `not reported`. An absent stage makes no completion claim. Automated consumers use the
+versioned JSON response.
+
 JSON goes only to stdout and text errors only to stderr. Rendering and unformatted delivery occur
 once, followed by an explicit flush of the selected stream. An explicit rendering refusal is checked
 before either stream is touched and returns exit 5 without a second outcome, response or render attempt.

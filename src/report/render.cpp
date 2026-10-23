@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MPL-2.0
 #include "docenhance/report/render.hpp"
 
-#include "continuous.hpp"
 #include "docenhance/app/dispatch.hpp"
 #include "docenhance/app/process.hpp"
 #include "docenhance/app/verify.hpp"
@@ -11,6 +10,7 @@
 #include "docenhance/report/response.hpp"
 #include "docenhance/report/warnings.hpp"
 #include "help.hpp"
+#include "summary.hpp"
 
 #include <expected>
 #include <string>
@@ -102,7 +102,7 @@ core::Result<Output> text_form(const app::Outcome& outcome) {
             } else if constexpr (std::is_same_v<Value, app::Methods>) {
                 return Output{.out = methods_text(payload.capabilities.methods), .err = {}};
             } else if constexpr (std::is_same_v<Value, app::Published>) {
-                auto text = continuous_text(payload);
+                auto text = published_text(payload);
                 if (!text) {
                     return std::unexpected(std::move(text.error()));
                 }
