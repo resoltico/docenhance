@@ -17,7 +17,8 @@
 #include <string>
 #include <type_traits>
 #ifdef _WIN32
-#include <windows.h>
+#include <errhandlingapi.h>
+#include <winerror.h>
 #endif
 namespace docenhance::tests::fft_allocation_trace {
 namespace {

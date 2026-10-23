@@ -163,10 +163,12 @@ TEST_CASE("String schemas state lexical calendar and character byte distinctions
     CHECK(properties["instant"]["minLength"] == 20);
     CHECK(properties["instant"]["maxLength"] == 20);
     CHECK(properties["instant"]["format"] == "date-time");
-    CHECK(properties["instant"]["pattern"] == core::instant_pattern);
+    REQUIRE(properties["instant"]["pattern"].is_string());
+    CHECK(properties["instant"]["pattern"].get_ref<const std::string&>() == core::instant_pattern);
     CHECK(properties["path"]["minLength"] == 1);
     CHECK(properties["path"]["maxLength"] == 128);
-    CHECK(properties["path"]["pattern"] == core::bundle_path_pattern);
+    REQUIRE(properties["path"]["pattern"].is_string());
+    CHECK(properties["path"]["pattern"].get_ref<const std::string&>() == core::bundle_path_pattern);
     CHECK(properties["literal"]["const"] == "agreement");
     const auto empty = record::Schema::of<WireEmptyLiteral>();
     REQUIRE(empty);

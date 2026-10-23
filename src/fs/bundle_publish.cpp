@@ -132,8 +132,11 @@ PublishResult<std::string> publish_bundle(const std::string& output_directory,
 #ifdef _WIN32
         if (admitted.has_root_name() && !admitted.has_root_directory()) {
             return std::unexpected(PublishFailure{
-                .error = {.code = core::ErrorCode::argument,
-                          .message = "Drive-relative publication paths are unsupported"},
+                .error =
+                    {
+                        .code = core::ErrorCode::argument,
+                        .message = "Drive-relative publication paths are unsupported",
+                    },
                 .publication = core::Publication::not_started,
             });
         }

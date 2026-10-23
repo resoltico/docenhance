@@ -6,6 +6,7 @@
 #include "docenhance/record/schema.hpp"
 #include "docenhance/report/response.hpp"
 
+#include <cstdio>
 #include <exception>
 #include <iostream>
 #include <set>
@@ -87,10 +88,11 @@ int main() {
         std::cout.flush();
         return std::cout ? 0 : 1;
     } catch (const std::exception& error) {
-        std::cerr << error.what() << '\n';
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputc('\n', stderr));
         return 1;
     } catch (...) {
-        std::cerr << "Native schema emission failed\n";
+        static_cast<void>(std::fputs("Native schema emission failed\n", stderr));
         return 1;
     }
 }

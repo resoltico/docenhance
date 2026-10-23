@@ -5,13 +5,13 @@
 #include "fft_allocation_gate.hpp"
 #include "fft_allocation_trace.hpp"
 
+#include <cerrno>
 #include <utility>
 #endif
 
 #include <algorithm>
 #include <array>
 #include <atomic>
-#include <cerrno>
 #include <cstddef>
 #include <cstdlib>
 #include <mutex>

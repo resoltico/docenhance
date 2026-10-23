@@ -11,6 +11,7 @@
 #include "schema_example.hpp"
 #include "string_schema_examples.hpp"
 
+#include <cstdio>
 #include <exception>
 #include <expected>
 #include <iostream>
@@ -199,10 +200,11 @@ int main() {
         std::cout << examples->dump() << '\n';
         return std::cout ? 0 : 1;
     } catch (const std::exception& error) {
-        std::cerr << error.what() << '\n';
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputc('\n', stderr));
         return 1;
     } catch (...) {
-        std::cerr << "Unknown descriptor schema failure\n";
+        static_cast<void>(std::fputs("Unknown descriptor schema failure\n", stderr));
         return 1;
     }
 }

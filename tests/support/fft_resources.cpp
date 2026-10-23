@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <exception>
 #include <iostream>
 #include <memory>
@@ -322,11 +323,13 @@ int main() {
                    : 1;
     } catch (const std::exception& error) {
         allocation::observing.store(false);
-        std::cerr << "FFT resource probe exception: " << error.what() << "\n";
+        static_cast<void>(std::fputs("FFT resource probe exception: ", stderr));
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputc('\n', stderr));
         return 1;
     } catch (...) {
         allocation::observing.store(false);
-        std::cerr << "FFT resource probe unknown exception\n";
+        static_cast<void>(std::fputs("FFT resource probe unknown exception\n", stderr));
         return 1;
     }
 }

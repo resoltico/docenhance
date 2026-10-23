@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <exception>
 #include <iomanip>
 #include <iostream>
@@ -79,16 +80,19 @@ int main(int argc, char* const* const argv) {
     if (argc != 2 ||
         std::string_view{std::span{argv, static_cast<std::size_t>(argc)}.subspan(1, 1).front()} !=
             "--r5-full") {
-        std::cerr << "An explicitly authorized --r5-full invocation is required\n";
+        static_cast<void>(
+            std::fputs("An explicitly authorized --r5-full invocation is required\n", stderr));
         return 2;
     }
     try {
         return verify_r5() ? 0 : 1;
     } catch (const std::exception& error) {
-        std::cerr << "R5 numerical verification exception: " << error.what() << "\n";
+        static_cast<void>(std::fputs("R5 numerical verification exception: ", stderr));
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputc('\n', stderr));
         return 1;
     } catch (...) {
-        std::cerr << "R5 numerical verification unknown exception\n";
+        static_cast<void>(std::fputs("R5 numerical verification unknown exception\n", stderr));
         return 1;
     }
 }

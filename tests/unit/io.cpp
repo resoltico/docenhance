@@ -65,12 +65,13 @@ class PriorBundleWrites {
             return false;
         }
         try {
-            std::error_code first_error;
-            std::error_code second_error;
-            const auto first = std::filesystem::file_size(stage / "result.png", first_error);
-            const auto second =
-                std::filesystem::file_size(stage / "assets" / "protect-mask.png", second_error);
-            observed = observed || (!first_error && !second_error && first == 5 && second == 4);
+            std::ifstream first{stage / "result.png", std::ios::binary};
+            std::ifstream second{stage / "assets" / "protect-mask.png", std::ios::binary};
+            first.seekg(0, std::ios::end);
+            second.seekg(0, std::ios::end);
+            observed =
+                observed || (first.good() && second.good() && first.tellg() == std::streampos{5} &&
+                             second.tellg() == std::streampos{4});
         } catch (...) {
             observation_failed = true;
         }

@@ -6,8 +6,10 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <exception>
 #include <fstream>
+#include <ios>
 #include <iostream>
 #include <span>
 #include <string>
@@ -16,8 +18,9 @@
 namespace {
 std::vector<std::uint8_t> read_seed(const char* const path) {
     using docenhance::fuzz::require;
-    std::ifstream input{path, std::ios::binary | std::ios::ate};
-    require(input.is_open(), "liveness tracked seed opens");
+    std::ifstream input{path, std::ios::binary};
+    input.seekg(0, std::ios::end);
+    require(input.is_open() && input.good(), "liveness tracked seed opens");
     const std::streamoff size = input.tellg();
     require(size > 0 && size <= 6252, "liveness seed stays in finite envelope domain");
     input.seekg(0);
@@ -69,9 +72,10 @@ int main(int argc, char** const argv) {
     try {
         return liveness_run({argv, static_cast<std::size_t>(argc)});
     } catch (const std::exception& error) {
-        std::cerr << error.what() << '\n';
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputc('\n', stderr));
     } catch (...) {
-        std::cerr << "Non-standard liveness control failure\n";
+        static_cast<void>(std::fputs("Non-standard liveness control failure\n", stderr));
     }
     return 1;
 }

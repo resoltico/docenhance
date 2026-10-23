@@ -79,7 +79,7 @@ void check_no_correction_output(const pipeline::Rendering& baseline,
                                 const pipeline::Rendering& filtered, unsigned mode) {
     CHECK(baseline.output.decoded_and_compared);
     CHECK(filtered.output.decoded_and_compared);
-    CHECK(filtered.output.shape.depth.bits() == (mode == 0 ? 8 : mode == 1 ? 16 : 1));
+    CHECK(filtered.output.shape.depth.bits() == (mode == 0 ? 8U : mode == 1 ? 16U : 1U));
 }
 void check_no_correction_binary(const pipeline::Rendering& filtered) {
     REQUIRE(filtered.stages.binarization.has_value());

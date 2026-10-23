@@ -175,7 +175,11 @@ class File {
         if (!opened()) {
             return !close_failed_;
         }
+#ifdef _WIN32
+        auto* const consumed = handle_;
+#else
         const auto consumed = handle_;
+#endif
         handle_ =
             invalid_handle(); // The effect is uncertain on failure: never retry this identity.
 #ifdef _WIN32
@@ -253,9 +257,12 @@ class File {
                 static_cast<wchar_t>(std::span{name}.subspan(i, 1).front());
         }
         const DWORD permissions =
-            GENERIC_READ | DELETE | (access == Access::read_write ? GENERIC_WRITE : 0);
+            static_cast<DWORD>(GENERIC_READ) | static_cast<DWORD>(DELETE) |
+            (access == Access::read_write ? static_cast<DWORD>(GENERIC_WRITE) : DWORD{0});
         handle_ = CreateFileW(wide.data(), permissions, 0, nullptr, CREATE_NEW,
-                              FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+                              static_cast<DWORD>(FILE_ATTRIBUTE_TEMPORARY) |
+                                  static_cast<DWORD>(FILE_FLAG_DELETE_ON_CLOSE),
+                              nullptr);
         return opened();
 #else
         constexpr unsigned creation =

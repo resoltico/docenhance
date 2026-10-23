@@ -193,6 +193,9 @@ TEST_CASE(
     CHECK(diagnostics.memory_limit_mib == 64);
     CHECK(diagnostics.charged_peak_bytes <= control.value().memory_limit());
     CHECK(!std::filesystem::exists(output));
-    CHECK(std::filesystem::file_size(input) == requested_bytes);
+    std::ifstream retained{input, std::ios::binary};
+    REQUIRE(retained.good());
+    retained.seekg(0, std::ios::end);
+    CHECK(retained.tellg() == std::streampos{static_cast<std::streamoff>(requested_bytes)});
 }
 } // namespace docenhance::tests

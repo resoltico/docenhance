@@ -102,7 +102,7 @@ pipeline::Rendering illuminate(core::Budget& budget, bool morphological, unsigne
     auto rendered = pipeline::render(std::move(input), plan, budget, scheduler);
     REQUIRE(rendered);
     REQUIRE(rendered->output.decoded_and_compared);
-    // NOLINTNEXTLINE(bugprone-use-after-move)
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!input.ready());
     return std::move(*rendered);
 }

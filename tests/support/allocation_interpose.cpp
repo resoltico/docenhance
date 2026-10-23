@@ -53,8 +53,11 @@ extern "C" void __wrap_free(void* const pointer) noexcept {
 #include <mutex>
 
 #ifdef _WIN32
-#include <corecrt_malloc.h>
+#ifdef _DEBUG
 #include <crtdbg.h>
+#else
+#include <corecrt_malloc.h>
+#endif
 #include <new.h>
 #include <type_traits>
 #endif
@@ -106,7 +109,7 @@ static_assert(std::is_same_v<decltype(&original_allocate), decltype(&_malloc_bas
 static_assert(std::is_same_v<decltype(&original_release), decltype(&_free_base)>);
 #endif
 std::atomic<unsigned> native_handler_visits{0};
-int reject_native_new(std::size_t) noexcept {
+int reject_native_new(std::size_t /*size*/) noexcept {
     native_handler_visits.fetch_add(1);
     return 0;
 }
@@ -119,6 +122,8 @@ struct NativeAllocationPolicy {
     }
     NativeAllocationPolicy(const NativeAllocationPolicy&) = delete;
     NativeAllocationPolicy& operator=(const NativeAllocationPolicy&) = delete;
+    NativeAllocationPolicy(NativeAllocationPolicy&&) = delete;
+    NativeAllocationPolicy& operator=(NativeAllocationPolicy&&) = delete;
     int mode;
     decltype(_set_new_handler(nullptr)) handler;
 };
@@ -311,11 +316,11 @@ bool c_contract_cases() {
 
 #if defined(_WIN32) && defined(DE_ALLOCATION_C_OBSERVATION)
 extern "C" void* __cdecl
-malloc(std::size_t bytes) noexcept(noexcept(std::declval<decltype(&std::malloc)>()(bytes))) {
-    return docenhance::tests::allocation_observer::c_allocate(bytes);
+malloc(std::size_t size) noexcept(noexcept(std::declval<decltype(&std::malloc)>()(size))) {
+    return docenhance::tests::allocation_observer::c_allocate(size);
 }
 extern "C" void __cdecl
-free(void* pointer) noexcept(noexcept(std::declval<decltype(&std::free)>()(pointer))) {
-    docenhance::tests::allocation_observer::c_release(pointer);
+free(void* block) noexcept(noexcept(std::declval<decltype(&std::free)>()(block))) {
+    docenhance::tests::allocation_observer::c_release(block);
 }
 #endif

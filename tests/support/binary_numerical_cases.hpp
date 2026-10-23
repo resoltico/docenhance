@@ -113,9 +113,9 @@ inline void binary_otsu_collision_cases() {
     for (const auto count : {1000U, 10000U}) {
         BinaryFixture fixture{(2 * count) + 2, 1};
         const auto row = fixture.codes.view().row(0);
-        std::ranges::fill(row.first(count), 0);
+        std::ranges::fill(row.first(count), std::uint16_t{0});
         row.subspan(count, 1).front() = 21845;
-        std::ranges::fill(row.subspan(count + 1), 43690);
+        std::ranges::fill(row.subspan(count + 1), std::uint16_t{43690});
         binary_otsu_case(fixture);
         require(fixture.out.view().row(0).subspan(count, 1).front() == (count == 10000 ? 1 : 0),
                 "actual global maximum then earliest relative tolerance distinguishes near ties");

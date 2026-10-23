@@ -128,7 +128,7 @@ TEST_CASE("Restoration kernel path identity survives request moves", "[app][rest
     auto second = std::move(*another);
     second = std::move(moved);
     CHECK(second.ready());
-    // NOLINTNEXTLINE(bugprone-use-after-move)
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!moved.ready());
     REQUIRE(second.psf_path());
     const auto& second_path = second.psf_path();

@@ -61,7 +61,7 @@ TEST_CASE("Eager binary rendering compares actual PNG1 and records only complete
         auto input = render_input(budget, render_fixture());
         auto rendered = pipeline::render(std::move(input), plan, budget, scheduler);
         REQUIRE(rendered);
-        // NOLINTNEXTLINE(bugprone-use-after-move)
+        // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
         CHECK(!input.ready());
         CHECK(rendered->output.decoded_and_compared);
         CHECK(rendered->output.shape.depth.bits() == 1);
@@ -97,7 +97,7 @@ TEST_CASE("Acquired empty input remains codec input while moved input precedes p
     auto empty = render_input(budget, {});
     REQUIRE(empty.ready());
     auto acquired = std::move(empty);
-    // NOLINTNEXTLINE(bugprone-use-after-move)
+    // NOLINTNEXTLINE(bugprone-use-after-move,clang-analyzer-cplusplus.Move)
     CHECK(!empty.ready());
     const CheckpointStop stop{core::Checkpoint::processing, 0};
     const exec::Scheduler stopped{exec::Concurrency::resolve(1, 1, 0, 0).value(),

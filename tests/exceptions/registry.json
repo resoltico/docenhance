@@ -1044,20 +1044,8 @@
       "explanation": "This exact test-only raw C-ABI provider-forwarding statement pairs the selected ordinary malloc branch with its actual matching free, including the calibrated null-release case. The observer's release reservation preserves pointer identity, quarantines uncertain effects, records confirmation only after the provider returns, and never retries an uncertain free. No smart owner can replace this ABI callback without changing the observed family/lifetime. This exception is local to this statement and does not qualify guessed Windows/static-CRT routes; native execution and release/refund controls remain required.",
       "occurrences": 1
     },
-    "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@0bf8dcf95a252cb2ce7d08d5bfa40b6f9bc2376514a27f1c9c67d2de50f53dfa": {
-      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
-      "occurrences": 1
-    },
-    "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@24dcc608c5dbafa7defe451213063acc2ee1c9c83a2014dac6b8726057ec7d9a": {
-      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
-      "occurrences": 1
-    },
     "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@e2b5217e78828b6f271eb48bdbf4cb880319b51bee6e3ee94b385efac353ac94": {
       "explanation": "This exact negative render call deliberately consumes an Input already marked unready by a previous move. Its custom move transfers only empty/reset resources and keeps the private consumed marker false; render checks that readiness before the pending cancellation checkpoint, codecs and numeric stages. The test requires E_ARGUMENT and zero stop visits, independently checking that an acquired empty-but-identified Input instead reaches E_INPUT. No moved storage is dereferenced or recovered into successful work.",
-      "occurrences": 1
-    },
-    "tests/unit/illumination_rows.cpp:clang-tidy/bugprone-use-after-move@f46dc01146aa65c0f1997d0d7bd0c139c0a9fddacb3dd838d8f9d65c4fbc966d": {
-      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
       "occurrences": 1
     },
     "fuzz/render.cpp:clang-tidy/bugprone-use-after-move@a9ff12a09ec3c18c4db49c2bf9032b1c6b484e223e68082c5b2267c88a2c6ed4": {
@@ -1066,10 +1054,6 @@
     },
     "fuzz/render.cpp:clang-tidy/clang-analyzer-cplusplus.Move@a9ff12a09ec3c18c4db49c2bf9032b1c6b484e223e68082c5b2267c88a2c6ed4": {
       "explanation": "When the parsed moved flag is set, the prior valid optional emplacement owns all encoded snapshots and marks this Input consumed. This exact later render call deliberately moves that already-consumed Input again to require E_ARGUMENT before the pending same-token cancellation checkpoint, while the other owner remains ready and all charges refund. Input custom moves and private consumed marker define this empty/unready state; rendering checks readiness before stop/codec/numeric work. This is one real negative lifetime/refusal call, not arbitrary use of moved storage. The initial valid other.emplace move receives no suppression.",
-      "occurrences": 1
-    },
-    "tests/unit/restoration_admission.cpp:clang-tidy/bugprone-use-after-move@43c399157bd9499ac65a576d425300326a61915af3c9db67ef4a9970bff2eb8c": {
-      "explanation": "ProcessRequest custom move assignment exchanges owned input/output strings and mask/PSF paths to their empty states. This exact post-move ready() predicate checks those defined empty members and must return false, while the destination retains the exact kernel path. It does not borrow moved path data, reopen a file, execute processing or restore readiness; the scope is only the moved-state contract assertion.",
       "occurrences": 1
     },
     "tests/unit/illumination.cpp:clang-tidy/bugprone-use-after-move@2698d29bb2c1f9be3f2b663e196f9c9f4fee1ef73bf1c137b256154dbb8e2ffd": {
@@ -1186,6 +1170,38 @@
     },
     "tests/support/allocation_interpose.cpp:clang-tidy/readability-identifier-naming@e5cfa2f7444d51778f8e3252c7f2b952f1091d31a08f49f74c9e9c4ae30c8a62": {
       "explanation": "This exact test-only Linux C-linkage declaration __real_free uses the symbol spelling required by the existing GNU ld --wrap=malloc/--wrap=free link contract. The __wrap_ entry forwards the unchanged size/pointer to the actual observer; the __real_ entry reaches the original matching native provider through GNU ld. Renaming these ABI identifiers to ordinary C++ naming would break wrapping/provider resolution. The exception is confined to this one declaration and its reserved-name/style rules; it does not permit other reserved identifiers, allocator substitution, a synthetic provider, changed families, hidden aliases or relaxed observation/calibration guards. Other platform branches and all resource/errno/refund/error controls remain unchanged. Actual Linux compile/link and native calibration remain required.",
+      "occurrences": 1
+    },
+    "tests/unit/render.cpp:clang-tidy/clang-analyzer-cplusplus.Move@6501dae409006ca8d4049ad4733d53fd1a6814adb217a29e323ecf3d258de0d6": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@6501dae409006ca8d4049ad4733d53fd1a6814adb217a29e323ecf3d258de0d6": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/render.cpp:clang-tidy/clang-analyzer-cplusplus.Move@d2f8b0a02a931553eca4a7a5ef8c4020639d9105f5a5c8334e31538ddb1bfda7": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/render.cpp:clang-tidy/bugprone-use-after-move@d2f8b0a02a931553eca4a7a5ef8c4020639d9105f5a5c8334e31538ddb1bfda7": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/illumination_rows.cpp:clang-tidy/clang-analyzer-cplusplus.Move@a5138279b9d9ee9495b156267cc44687d959989ea3bdf32b362717af6a8801b8": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/illumination_rows.cpp:clang-tidy/bugprone-use-after-move@a5138279b9d9ee9495b156267cc44687d959989ea3bdf32b362717af6a8801b8": {
+      "explanation": "Input custom moves transfer the exact encoded owners, reset identities and explicitly set the source private consumed marker false. This exact post-move ready() assertion observes that defined unready state; it never accesses moved payload data. The same case requires a real completed/compared output or retains the acquired empty destination, preserving actual ownership/refund behavior. The exception covers only this readiness predicate, not arbitrary moved-object use.",
+      "occurrences": 1
+    },
+    "tests/unit/restoration_admission.cpp:clang-tidy/clang-analyzer-cplusplus.Move@62ee502b50ddf13398cdcf2fefa97ea60162bb8d3658d4b526f899a821ebb3f7": {
+      "explanation": "ProcessRequest custom move assignment exchanges owned input/output strings and mask/PSF paths to their empty states. This exact post-move ready() predicate checks those defined empty members and must return false, while the destination retains the exact kernel path. It does not borrow moved path data, reopen a file, execute processing or restore readiness; the scope is only the moved-state contract assertion.",
+      "occurrences": 1
+    },
+    "tests/unit/restoration_admission.cpp:clang-tidy/bugprone-use-after-move@62ee502b50ddf13398cdcf2fefa97ea60162bb8d3658d4b526f899a821ebb3f7": {
+      "explanation": "ProcessRequest custom move assignment exchanges owned input/output strings and mask/PSF paths to their empty states. This exact post-move ready() predicate checks those defined empty members and must return false, while the destination retains the exact kernel path. It does not borrow moved path data, reopen a file, execute processing or restore readiness; the scope is only the moved-state contract assertion.",
       "occurrences": 1
     }
   }

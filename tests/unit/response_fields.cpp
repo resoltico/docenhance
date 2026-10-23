@@ -109,7 +109,8 @@ TEST_CASE("Current discovery responses derive complete catalog values from actua
     const auto encoded = wire(outcome);
     REQUIRE(record::Codec::decode<app::WireResponse>(encoded));
     CHECK(encoded["schema_version"] == app::response_schema_version);
-    CHECK(encoded["version"] == core::build_facts().version);
+    REQUIRE(encoded["version"].is_string());
+    CHECK(encoded["version"].get_ref<const std::string&>() == core::build_facts().version);
     CHECK(encoded["methods"].size() == methods::implemented_methods().size());
     auto changed = encoded;
     changed["methods"][0]["id"] = "unimplemented";
