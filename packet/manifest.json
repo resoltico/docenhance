@@ -1,0 +1,21 @@
+{
+  "kind": "DEBUG_SUBSCOPE_ONLY",
+  "source_commits": {
+    "current": "91e148fc5392ce82c83166249a41642192d3a7d5"
+  },
+  "permanent_parent_tree": "896cfc76bf73a6d9981c07418e013abacf64b101",
+  "payload_sha256": {
+    "preflight.py": "780ca8df773d0bf7c03cc4db6c8363d645c561209305107f0201a5d31b7ce561",
+    "source-manifest.json": "9c5db8c98d8cbf58db59e9b9be41918ae0f3b6d7944d8122782c3207f0881a7a"
+  },
+  "workflow_sha256": "d4ef0f9d8990f2e77ec0385829727fb3ac21d26ce35987d44862a1929be15c4b",
+  "qualification": "Only actualDebugtworesourceEXEs/18fixedcases/privateCRT/deps/audit; noRelease/productCLI/fullplatform/fullcampaign proof.",
+  "original_debug_deadline_seconds": 2820,
+  "parallel": 2,
+  "source_manifest_sha256": "9c5db8c98d8cbf58db59e9b9be41918ae0f3b6d7944d8122782c3207f0881a7a",
+  "technical_source_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-windows-debug-resource-preflight-efficiency-peer-03/review-efficiency.json",
+    "bytes": 7025,
+    "sha256": "9e8dd8097caaace54e530c96a11e89ce0c437c25d1e9f350dd58c42fbb07eb8e"
+  }
+}
