@@ -1,0 +1,43 @@
+{
+  "kind": "ORIGINAL196_INSTRUMENTED_TWO_CASE_PHASE_DIAGNOSTIC",
+  "source_commits": {
+    "current": "a12a0fdd5ba5a508c8d604685546d34f6e0f876d"
+  },
+  "payload_sha256": {
+    "diagnose.py": "d6a3eb1d4311c51dee47b8175b992a8e961ecc8382d6a44c7360732918132fa2",
+    "overlay/tests/support/allocation_calibration.hpp": "d7c53db18becc5f6a1f328f49dfe48959579096dd954fb3cf299141c8dfdbe7b",
+    "overlay/tests/support/allocation_observer.cpp": "7378322bfe200dd1e56ee76b9bed6540cd3207dda41570bb8793e0f34be00605",
+    "overlay/tests/support/allocation_observer.hpp": "3ca8fb16a0f60f6e488990e621d164af56e177103298004aacf553bbe206333f",
+    "overlay/tests/support/fft_resources.cpp": "78248c751c636b4288879c587e681cf1d8d61acc4fa33bd41151230a9d8f31bf",
+    "overlay/tests/support/restoration_resource_observation.hpp": "761d807a728bcb662b2c7f2e08c6966a88495db4324cbe2d027fea9809a3170a",
+    "overlay.json": "9562a7d716368698c463050ef5e534c26a6cab4830b4d271058e54d35f3be2bc",
+    "prior-microprofile.json": "a61da870b6462570ebcf4c1bc9bf5b5ff0f7866c3549a976734c4dd3f18370dd",
+    "source-manifest.json": "cece18a1a40cc70f8e5421b62172734b24ff5394227f0ecace404bda057fcf74",
+    "support.py": "08b666829bc6fbfebccaf9280580e748d467de69db9b08cccba48e7d702a2214"
+  },
+  "workflow_sha256": "b26d6d2e5debe4cb159c695f496761495b96ad763432355796e893ff8dfded27",
+  "qualification": "NONE. Original196 LINEARscans/numerics/assertions/DebugCRT/iterator2 with declaredlogging/timing ONLY; exactlytwoformerlytimedoutcases/90s, other16unrun. No repeatedmicrobenchmark, candidateimplementation, R17, full18 orcurrent196qualification.",
+  "caps": {
+    "work_seconds": 2820,
+    "microbenchmark_invocations": 0,
+    "resource_case_timeout": 90,
+    "resource_cases": 2,
+    "parallel": 2,
+    "raw_per_file_MiB": 64,
+    "gzip_per_file_MiB": 2,
+    "run_reserve_MiB": 136,
+    "history_MiB": 384,
+    "sampled_build_stop_MiB": 2048
+  },
+  "overlay_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-observer-msvc-diagnostic-ci-terminal-196-03/checkpoint-efficiency-overlay.json",
+    "bytes": 7916,
+    "sha256": "8f547c63fb3b18c62332f15ace22bf693752c78f40c187c1cad7871f1a1fc74a"
+  },
+  "closed_prior_actual_review": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-github-observer-diagnostic-23093d1-01/retained-original-artifacts-disk-01/review-disk.json",
+    "bytes": 17852,
+    "sha256": "1b896ec20c1711b6149966a6544c81d9d895c56d37d890d5aa01109dcca59318"
+  },
+  "clock_source_audit": "Before CMake, selected cl/VC-owner-coupled MSVC chrono/xtime declarations/provider identities and bounded native-clock source bodies; no compiler invocation."
+}
