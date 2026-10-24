@@ -148,14 +148,11 @@ void* allocate_bytes(std::size_t bytes) {
     if (!registered) {
 #ifdef DE_ALLOCATION_C_OBSERVATION
         std::abort(); // An incomplete observer ledger cannot certify native resource bounds.
-#endif
-#ifdef DE_ALLOCATION_C_OBSERVATION
-        original_release(pointer);
 #else
         // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)
         std::free(pointer);
-#endif
         throw std::bad_alloc{};
+#endif
     }
 #endif
     return pointer;
