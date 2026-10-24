@@ -284,7 +284,8 @@ bool native_error_precedence(bool inverse) {
     }
     allocation::observing.store(false);
     allocation::failure_at.store(0);
-    const bool clean = resource && allocation::allocation_attempts.load() == 3 &&
+    // Error transport can allocate after the one-shot refusal at attempt three.
+    const bool clean = resource && allocation::allocation_attempts.load() >= 3 &&
                        native_entries.load() == 1 && late_stop_visits.load() == 0 &&
                        allocation::live.load() == 0 && fixture.budget.used() == held &&
                        std::ranges::equal(source, before) &&

@@ -137,6 +137,7 @@ file(WRITE "${{PROJECT_BINARY_DIR}}/selected.txt" "${{selected}}")
                     source.mkdir(parents=True)
                     header = source / "pocketfft_hdronly.h"
                     header.write_text(content)
+                    upstream_bytes = header.read_bytes()
                     (source / "LICENSE.md").write_text(
                         "Test constructor fixture, not an FFT provider.\n"
                     )
@@ -160,7 +161,7 @@ file(WRITE "${{PROJECT_BINARY_DIR}}/selected.txt" "${{selected}}")
                     result = subprocess.run(
                         command, capture_output=True, text=True, check=False, timeout=15
                     )
-                    self.assertEqual(header.read_text(), content)
+                    self.assertEqual(header.read_bytes(), upstream_bytes)
                     if refusal:
                         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
                         self.assertIn(refusal, result.stdout + result.stderr)
@@ -179,9 +180,9 @@ file(WRITE "${{PROJECT_BINARY_DIR}}/selected.txt" "${{selected}}")
                     self.assertEqual(install.returncode, 0, install.stdout + install.stderr)
                     owned = build / "owned-source/pocketfft_hdronly.h"
                     installed = prefix / "include/pocketfft/pocketfft_hdronly.h"
-                    self.assertEqual(owned.read_text(), expected)
+                    self.assertEqual(owned.read_bytes(), expected.encode())
                     self.assertEqual(installed.read_bytes(), owned.read_bytes())
-                    self.assertEqual(header.read_text(), original)
+                    self.assertEqual(header.read_bytes(), upstream_bytes)
 
     def test_installed_pocketfft_header_has_independent_identity(self) -> None:
         """Changed upstream or two agreeing private copies cannot replace reviewed bytes."""

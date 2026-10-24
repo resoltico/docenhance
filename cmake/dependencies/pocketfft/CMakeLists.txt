@@ -41,7 +41,7 @@ de_replace_pocketfft_constructor(
   "arr_info(shape_t shape_, stride_t stride_)\n      : shp(std::move(shape_)), str(std::move(stride_)) {}"
   "arr_info(const shape_t &shape_, const stride_t &stride_)\n      : shp(shape_), str(stride_) {}")
 set(de_owned "${CMAKE_CURRENT_BINARY_DIR}/owned-source/pocketfft_hdronly.h")
-file(WRITE "${de_owned}" "${de_header}")
+file(CONFIGURE OUTPUT "${de_owned}" CONTENT "${de_header}" @ONLY NEWLINE_STYLE LF)
 file(SHA256 "${de_owned}" de_patched_sha256)
 if(NOT de_patched_sha256 STREQUAL DOCENHANCE_POCKETFFT_PATCHED_HEADER_SHA256)
   message(FATAL_ERROR "pocketfft derived header differs from the reviewed output")
