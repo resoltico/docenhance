@@ -1,0 +1,211 @@
+{
+  "status": "HISTORICAL_CLOSED_MICROPROFILE_NO_REMEASUREMENT",
+  "run": 40057755140,
+  "capsule": "23093d17ea1c20bdd4e66318cba8627c0a34552c",
+  "zip": {
+    "bytes": 580932,
+    "sha256": "3e4098e7f14e93848ff612a607813b28b0b214744ea0bbf9f357f1ad04c1e69c"
+  },
+  "member": {
+    "name": "observer-diagnostic-evidence/results.json",
+    "bytes": 16240,
+    "sha256": "38d130735cbac79e2ffa09107fe7df583fd0d357712bdecca1c4bcaedd09583a"
+  },
+  "rows": {
+    "original": [
+      {
+        "diagnostic": true,
+        "MSC_VER": 1951,
+        "iterator_debug_level": 2,
+        "capacity": 2048
+      },
+      {
+        "kind": "lookup",
+        "case": "empty-span",
+        "operations": 64,
+        "nanoseconds": 1100,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "null-empty",
+        "operations": 64,
+        "nanoseconds": 147700,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "unknown-empty",
+        "operations": 64,
+        "nanoseconds": 193100,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "first",
+        "operations": 64,
+        "nanoseconds": 1200,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "last",
+        "operations": 64,
+        "nanoseconds": 166600,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "unknown-full",
+        "operations": 64,
+        "nanoseconds": 166400,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "retired-first-live-last",
+        "operations": 64,
+        "nanoseconds": 166700,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "retired-only",
+        "operations": 64,
+        "nanoseconds": 166800,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "all-null-first",
+        "operations": 64,
+        "nanoseconds": 15500,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "all-full",
+        "operations": 64,
+        "nanoseconds": 139600,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "last-free",
+        "operations": 64,
+        "nanoseconds": 140000,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "first-free-before-last",
+        "operations": 64,
+        "nanoseconds": 54600,
+        "valid": 1
+      },
+      {
+        "complete": true,
+        "valid": 1,
+        "checksum": 1229376
+      }
+    ],
+    "candidate": [
+      {
+        "diagnostic": true,
+        "MSC_VER": 1951,
+        "iterator_debug_level": 2,
+        "capacity": 2048
+      },
+      {
+        "kind": "lookup",
+        "case": "empty-span",
+        "operations": 64,
+        "nanoseconds": 7500,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "null-empty",
+        "operations": 64,
+        "nanoseconds": 2000,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "unknown-empty",
+        "operations": 64,
+        "nanoseconds": 855800,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "first",
+        "operations": 64,
+        "nanoseconds": 7700,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "last",
+        "operations": 64,
+        "nanoseconds": 855900,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "unknown-full",
+        "operations": 64,
+        "nanoseconds": 890600,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "retired-first-live-last",
+        "operations": 64,
+        "nanoseconds": 856700,
+        "valid": 1
+      },
+      {
+        "kind": "lookup",
+        "case": "retired-only",
+        "operations": 64,
+        "nanoseconds": 884500,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "all-null-first",
+        "operations": 64,
+        "nanoseconds": 25200,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "all-full",
+        "operations": 64,
+        "nanoseconds": 896300,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "last-free",
+        "operations": 64,
+        "nanoseconds": 932600,
+        "valid": 1
+      },
+      {
+        "kind": "reservation",
+        "case": "first-free-before-last",
+        "operations": 64,
+        "nanoseconds": 350200,
+        "valid": 1
+      },
+      {
+        "complete": true,
+        "valid": 1,
+        "checksum": 1229376
+      }
+    ]
+  },
+  "disposition": "Ranges candidate REJECTED: nonnull scans slower on this named host. Early-null-only difference not established as90s cause. No repeated benchmark in successor; not R17/wholecase performance."
+}
