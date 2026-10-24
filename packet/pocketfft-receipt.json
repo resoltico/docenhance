@@ -1,0 +1,26 @@
+{
+  "dependency": {
+    "name": "pocketfft",
+    "version": "c90e55b3d529f8efa40ed01a20de22405f45fc65",
+    "transport": "git",
+    "repository": "https://github.com/mreineck/pocketfft.git",
+    "ref": "c90e55b3d529f8efa40ed01a20de22405f45fc65",
+    "object": "c90e55b3d529f8efa40ed01a20de22405f45fc65",
+    "object_type": "commit",
+    "license": "BSD-3-Clause",
+    "license_files": [
+      "LICENSE.md",
+      "pocketfft_hdronly.h"
+    ],
+    "verification_url": "https://api.github.com/repos/mreineck/pocketfft/git/commits/c90e55b3d529f8efa40ed01a20de22405f45fc65",
+    "scope": "runtime-candidate"
+  },
+  "resolved_commit": "c90e55b3d529f8efa40ed01a20de22405f45fc65",
+  "files": {
+    "LICENSE.md": "a85ca13fdf90160b64a0698215868c13b74d835ad0a4e2ba44713b8c5058a056",
+    "README.md": "8cc22f76219e16098798a35e9e8059ff9e11e0a7d947b5637242df1217841a2c",
+    "meson.build": "f1aa634fe5b571eb4ef1ab38070179f0322dcfbfe2051ea839772b32450f8c4a",
+    "pocketfft_demo.cc": "56291a7870f36774ccd2cb573415ca25a0a28d6587b7247003715670f633ed28",
+    "pocketfft_hdronly.h": "3e9a05318d8e3b1446bda1c4617e6a103cdd23599ae0a776a92a6e8800e92fdc"
+  }
+}
