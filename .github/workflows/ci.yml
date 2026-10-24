@@ -1,450 +1,59 @@
-name: Quality gates
+name: Original196 two-case phase diagnostic (not qualification)
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
-    inputs:
-      diagnostic:
-        description: Select one diagnostic scope; only none runs all qualification gates
-        type: choice
-        required: false
-        default: none
-        options: [none, native, tooling, intel, paired_capability]
 permissions:
   contents: read
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: constructor-diagnostic-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
-  structural:
-    if: github.event_name != 'workflow_dispatch' || inputs.diagnostic == 'none' || inputs.diagnostic == 'native'
-    name: Structural and reference gates
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.12'
-      - name: Give compiler checks and builds the runner's cores
-        shell: python
-        run: |
-          import os
-          import sys
-          sys.path.insert(0, "tools")
-          from parallel import available_jobs
-          cores = available_jobs()
-          print(f"The runner reports {cores} logical cores")
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
-              environment.write(f"DE_BUILD_JOBS={cores}\n")
-      - run: python tools/install_build_tools.py
-      - run: python tools/install_build_tools.py --lint
-      - run: python tools/install_llvm.py --compiler
-      - run: python tools/check_all.py
-      - run: python tools/check_reference_suite.py --compiler g++ --jobs "$DE_BUILD_JOBS"
-      - run: python tools/check_reference_suite.py --compiler clang++-23 --sanitize --jobs "$DE_BUILD_JOBS"
-  native:
-    if: github.event_name != 'workflow_dispatch' || inputs.diagnostic == 'none' || inputs.diagnostic == 'native' || inputs.diagnostic == 'intel'
-    name: Native / ${{ matrix.platform }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include: ${{ fromJSON(github.event_name == 'workflow_dispatch' && inputs.diagnostic == 'intel' && '[{"platform":"macos-x86_64","os":"macos-26-intel"}]' || '[{"platform":"linux-x86_64","os":"ubuntu-24.04"},{"platform":"linux-arm64","os":"ubuntu-24.04-arm"},{"platform":"macos-arm64","os":"macos-26"},{"platform":"macos-x86_64","os":"macos-26-intel"},{"platform":"macos-15-arm64","os":"macos-15"},{"platform":"macos-15-x86_64","os":"macos-15-intel"},{"platform":"windows-x86_64","os":"windows-2025-vs2026"}]') }}
-    runs-on: ${{ matrix.os }}
-    # The hosted Intel macOS runner builds the pinned LLVM 23 analysis tools from source.
-    # Leave enough room for the subsequent native validation on a cache miss.
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-      - name: Normalize Windows checkout
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          git config --local core.autocrlf false
-          git reset --hard
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.12'
-      - name: Assert actual native runner OS and CPU
-        run: python tools/check_runtime_platform.py --platform ${{ matrix.platform }}
-      - name: Select declared minimum-runner Xcode
-        if: startsWith(matrix.platform, 'macos-15-')
-        run: python tools/select_xcode.py
-      - name: Identify Intel LLVM build environment
-        id: intel-llvm-environment
-        if: endsWith(matrix.platform, 'x86_64') && runner.os == 'macOS'
-        shell: python
-        run: |
-          import hashlib
-          import json
-          import os
-          import platform
-          identity = {
-              "host_os_version": platform.mac_ver()[0],
-              "developer_directory": os.environ.get("DEVELOPER_DIR", "system-default"),
-          }
-          digest = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"identity={digest}\n")
-      - name: Restore pinned Intel LLVM tools
-        id: intel-llvm-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        if: endsWith(matrix.platform, 'x86_64') && runner.os == 'macOS'
-        with:
-          path: ~/.cache/docenhance/llvm
-          # A generation never receives a partial post-cancellation cache entry.
-          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ steps.intel-llvm-environment.outputs.identity }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py', 'tools/llvm_cache.py') }}
-      - run: python tools/install_build_tools.py
-      - run: python tools/install_llvm.py
-      - name: Save verified Intel LLVM tools
-        if: endsWith(matrix.platform, 'x86_64') && runner.os == 'macOS' && steps.intel-llvm-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.cache/docenhance/llvm
-          key: llvm-source-${{ matrix.os }}-${{ runner.arch }}-${{ steps.intel-llvm-environment.outputs.identity }}-${{ hashFiles('deps/tools.json', 'tools/install_llvm.py', 'tools/llvm_cache.py') }}
-      - name: Restore locked dependency sources
-        id: dependency-source-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .cache/deps/archives
-            .cache/deps/sources
-            .cache/deps/receipts
-          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
-      - run: cmake -P cmake/AcquireDependencies.cmake
-      - name: Save verified dependency sources
-        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .cache/deps/archives
-            .cache/deps/sources
-            .cache/deps/receipts
-          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
-      # A hosted runner has cores the default of two workers leaves idle. Each job states how many
-      # it has, and that one count bounds every external build and the architecture check.
-      - name: Give the native builds the runner's cores
-        shell: python
-        run: |
-          import os
-          import sys
-          sys.path.insert(0, "tools")
-          from parallel import available_jobs
-          cores = available_jobs()
-          print(f"The runner reports {cores} logical cores")
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
-              environment.write(f"DE_BUILD_JOBS={cores}\n")
-      - name: Build, test and package
-        if: runner.os != 'Windows'
-        env:
-          DE_NATIVE_DIAGNOSTIC: ${{ github.event_name == 'workflow_dispatch' && (inputs.diagnostic == 'native' || inputs.diagnostic == 'intel') }}
-        run: cmake --workflow --preset release
-      - name: Smoke-test the package without publishing it
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          python tools/package_smoke.py --build out/release
-      - name: Build, test and package with MSVC
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          DE_NATIVE_DIAGNOSTIC: ${{ github.event_name == 'workflow_dispatch' && (inputs.diagnostic == 'native' || inputs.diagnostic == 'intel') }}
-        run: ./tools/ci_windows.ps1
-      - name: Retain complete native diagnostics
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: native-${{ matrix.platform }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            out/release/app/native-*/ctest-output*.gz*
-            out/release/app/native-*/ctest.xml.gz*
-            out/release/app/native-*/native-*.json
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
-      - name: Retain Windows CRT resource proof
-        if: always() && runner.os == 'Windows'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: windows-resource-proof-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            out/windows-resource-proof/snapshot.json
-            out/windows-resource-proof/proof.json
-            out/windows-resource-proof/preflight.json
-            out/windows-resource-proof/release-preflight/ctest-output*.gz*
-            out/windows-resource-proof/release-preflight/ctest.xml.gz*
-            out/windows-resource-proof/release-preflight/native-*.json
-            out/windows-resource-proof/release/*.map.gz*
-            out/windows-resource-proof/debug/*.map.gz*
-            out/windows-resource-proof/debug/ctest-output*.gz*
-            out/windows-resource-proof/debug/ctest.xml.gz*
-            out/windows-resource-proof/debug/native-*.json
-            out/windows-resource-proof/debug-configure.log
-            out/windows-resource-proof/debug-dependencies.log
-            out/windows-resource-proof/debug-targets.log
-            out/windows-resource-proof/debug-tests.log
-            out/windows-resource-proof/release-de_fft_resources-directives.log
-            out/windows-resource-proof/release-de_restoration_resources-directives.log
-            out/windows-resource-proof/debug-de_fft_resources-directives.log
-            out/windows-resource-proof/debug-de_restoration_resources-directives.log
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
-  fuzz:
-    if: github.event_name != 'workflow_dispatch' || inputs.diagnostic == 'none'
-    name: Strict fuzzing / ${{ matrix.engine }} (ASan + UBSan)
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - engine: libfuzzer
-            preset: fuzz
-            cc: clang-23
-            cxx: clang++-23
-          - engine: afl
-            preset: fuzz-afl
-            cc: afl-clang-fast
-            cxx: afl-clang-fast++
-    runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.12'
-      - name: Give compiler checks and builds the runner's cores
-        shell: python
-        run: |
-          import os
-          import sys
-          sys.path.insert(0, "tools")
-          from parallel import available_jobs
-          cores = available_jobs()
-          print(f"The runner reports {cores} logical cores")
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
-              environment.write(f"DE_BUILD_JOBS={cores}\n")
-      - run: python tools/install_build_tools.py
-      - run: python tools/run_fuzz_campaign.py --plan --seconds 15 --jobs 4 --job-budget 2400
-      - run: python tools/install_llvm.py --fuzzing
-      - name: Build pinned AFL++
-        if: matrix.engine == 'afl'
-        run: |
-          python tools/install_aflplusplus.py
-          echo core | sudo tee /proc/sys/kernel/core_pattern
-      - name: Restore locked dependency sources
-        id: dependency-source-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .cache/deps/archives
-            .cache/deps/sources
-            .cache/deps/receipts
-          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
-      - run: |
-          python tools/deps.py fetch
-      - name: Save verified dependency sources
-        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .cache/deps/archives
-            .cache/deps/sources
-            .cache/deps/receipts
-          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
-      # Public Ubuntu runners provide four cores and 16 GB; local campaigns still default to two.
-      - name: Build every target
-        env:
-          CC: ${{ matrix.cc }}
-          CXX: ${{ matrix.cxx }}
-        run: |
-          cmake --preset ${{ matrix.preset }} -DDE_FUZZ_SECONDS=15 -DDE_FUZZ_JOBS=4
-          cmake --build --preset ${{ matrix.preset }}
-      - name: Fuzz every target (15 s each)
-        run: ctest --preset ${{ matrix.preset }} --output-on-failure
-      - name: Replay saved findings for diagnosis
-        if: always()
-        run: python tools/triage_fuzz_findings.py --build out/${{ matrix.preset }}/app --engine ${{ matrix.engine }}
-      - name: Package complete campaign or explicit setup-failure diagnostics
-        if: always()
-        run: python tools/package_fuzz_evidence.py --build out/${{ matrix.preset }}/app --engine ${{ matrix.engine }} --commit ${{ github.sha }} --output out/${{ matrix.preset }}/fuzz-evidence.tar.gz
-      - name: Upload fuzz evidence
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: fuzz-${{ matrix.engine }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: out/${{ matrix.preset }}/fuzz-evidence.tar.gz
-          if-no-files-found: error
-          retention-days: 7
-  sanitize:
-    if: github.event_name != 'workflow_dispatch' || inputs.diagnostic == 'none' || inputs.diagnostic == 'native'
-    name: Sanitized / ${{ matrix.preset }}
-    strategy:
-      fail-fast: false
-      matrix:
-        preset: [sanitize, tsan]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 180
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: '3.12'
-      - run: python tools/install_build_tools.py
-      - run: python tools/install_llvm.py --fuzzing
-      - name: Restore locked dependency sources
-        id: dependency-source-cache
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .cache/deps/archives
-            .cache/deps/sources
-            .cache/deps/receipts
-          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
-      - run: cmake -P cmake/AcquireDependencies.cmake
-      - name: Save verified dependency sources
-        if: steps.dependency-source-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .cache/deps/archives
-            .cache/deps/sources
-            .cache/deps/receipts
-          key: deps-source-${{ runner.os }}-${{ hashFiles('deps/lock.json', 'tools/deps.py', 'tools/dep_acquire.py', 'tools/dep_verify.py', 'tools/cache_lock.py', 'cmake/AcquireDependencies.cmake') }}
-      - name: Give the sanitized builds the runner's cores
-        shell: python
-        run: |
-          import os
-          import sys
-          sys.path.insert(0, "tools")
-          from parallel import available_jobs
-          cores = available_jobs()
-          print(f"The runner reports {cores} logical cores")
-          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as environment:
-              environment.write(f"DE_BUILD_JOBS={cores}\n")
-      - name: Build and test every suite with the selected sanitizer
-        env:
-          CC: clang-23
-          CXX: clang++-23
-        run: cmake --workflow --preset ${{ matrix.preset }}
-      - name: Retain complete native diagnostics
-        if: always()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        with:
-          name: native-${{ matrix.preset }}-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            out/${{ matrix.preset }}/app/native-*/ctest-output*.gz*
-            out/${{ matrix.preset }}/app/native-*/ctest.xml.gz*
-            out/${{ matrix.preset }}/app/native-*/native-*.json
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 7
-  tooling:
-    name: Tooling diagnostics / ${{ matrix.os }} (not qualification)
-    if: github.event_name == 'workflow_dispatch' && inputs.diagnostic == 'tooling'
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-24.04
-          - macos-26
-          - windows-2025-vs2026
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+  debug-configure:
+    if: github.event_name == 'workflow_dispatch'
+    name: Finite MSVC derived-constructor and CLIENT delete controls (not qualification)
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
           ref: ${{ github.sha }}
-      - name: Normalize Windows checkout
-        if: runner.os == 'Windows'
+          path: capsule
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: a12a0fdd5ba5a508c8d604685546d34f6e0f876d
+          path: source
+      - name: Normalize actual SUT Windows checkout
         shell: pwsh
-        run: |-
+        working-directory: source
+        run: |
           git config --local core.autocrlf false
           git reset --hard
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
         with:
           python-version: '3.12'
-      - run: python tools/install_build_tools.py
-      - run: python tools/install_build_tools.py --lint
-      - name: Install pinned Linux compiler and analysis tools
-        if: runner.os == 'Linux'
-        run: python tools/install_llvm.py --compiler
-      - name: Install pinned native analysis tools
-        if: runner.os != 'Linux'
-        run: python tools/install_llvm.py
-      - name: Execute complete tooling suites
-        if: runner.os != 'Windows'
-        run: python tools/run_tooling_tests.py --jobs 2
-      - name: Execute complete tooling suites in the selected MSVC environment
-        if: runner.os == 'Windows'
+      - name: Select actual MSVC and run one finite constructor probe
         shell: pwsh
+        env:
+          DE_BUILD_JOBS: '2'
         run: |
           $ErrorActionPreference = 'Stop'
           $vswhere = Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'
-          $installation = & $vswhere -latest -products * `
-              -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
-              -property installationPath
+          $installation = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
           if (-not $installation) { throw 'A current Visual Studio C++ toolchain is required' }
           $devshell = Join-Path $installation 'Common7\Tools\Launch-VsDevShell.ps1'
           & $devshell -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
-          if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
-              throw 'MSVC developer environment was not activated'
-          }
-          python tools/run_tooling_tests.py --jobs 2
+          if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) { throw 'MSVC developer environment was not activated' }
+          python capsule/packet/diagnose.py --source source --output constructor-evidence
           exit $LASTEXITCODE
-  paired_capability:
-    name: Paired performance capability / macos-15-intel (not qualification)
-    if: github.event_name == 'workflow_dispatch' && inputs.diagnostic == 'paired_capability'
-    runs-on: macos-15-intel
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-        with:
-          persist-credentials: false
-          ref: ${{ github.sha }}
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
-        with:
-          python-version: '3.12'
-      - name: Observe host capability without builds or timing
-        run: python tools/check_performance_host.py --output "${{ runner.temp }}/paired-capability"
-      - name: Retain complete capability observations
+      - name: Retain only bounded original preflight logs and identity receipts
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
-          name: paired-capability-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/paired-capability
+          name: constructor-diagnostic-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            constructor-evidence/*.json
+            constructor-evidence/*.log
           if-no-files-found: error
-          compression-level: 6
+          compression-level: 0
           retention-days: 7
-  gate:
-    name: Required quality gate
-    if: always()
-    needs: [structural, native, fuzz, sanitize]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-    steps:
-      - name: Require every build and test job
-        shell: bash
-        env:
-          STRUCTURAL_RESULT: ${{ needs.structural.result }}
-          NATIVE_RESULT: ${{ needs.native.result }}
-          FUZZ_RESULT: ${{ needs.fuzz.result }}
-          SANITIZE_RESULT: ${{ needs.sanitize.result }}
-        run: |
-          test "$STRUCTURAL_RESULT" = success
-          test "$NATIVE_RESULT" = success
-          test "$FUZZ_RESULT" = success
-          test "$SANITIZE_RESULT" = success

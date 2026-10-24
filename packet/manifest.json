@@ -1,0 +1,28 @@
+{
+  "kind": "FINITE_ACTUAL_MSVC_DERIVED_CONSTRUCTORS_AND_CLIENT_DELETE",
+  "source_commits": {
+    "current": "a12a0fdd5ba5a508c8d604685546d34f6e0f876d"
+  },
+  "payload_sha256": {
+    "diagnose.py": "462534f6439eba28bd97fb831ba537950cc0eabf9cfd1aefa022bff12f14127b",
+    "pocketfft-receipt.json": "acba10a208380c8d4051b278399ce709bb785b9c24a59b33f41ff9f842aa7249",
+    "probe.cpp": "349cbd787ae73aca7496cb6a0393d2ab8a471f8c26aa8860854f29a8c523f186",
+    "source-manifest.json": "cece18a1a40cc70f8e5421b62172734b24ff5394227f0ecace404bda057fcf74",
+    "support.py": "08b666829bc6fbfebccaf9280580e748d467de69db9b08cccba48e7d702a2214",
+    "vendor/LICENSE.md": "a85ca13fdf90160b64a0698215868c13b74d835ad0a4e2ba44713b8c5058a056",
+    "vendor/pocketfft_hdronly.h": "e02d2489cd80ae5676f0b7742ee1923283adffc7bc9c06f1b95b830a523f03ae"
+  },
+  "workflow_sha256": "5bac1448f2cd6e7216c726b597ec5775e4937b1222d0c603921c105d1e9ad6b6",
+  "caps": {
+    "compiler_and_all_children_total_seconds": 20,
+    "case_seconds": 2,
+    "compile_calls": 1,
+    "healthy_children": 1,
+    "fail1_children": 8,
+    "CLIENT_children": 2,
+    "controller_seconds": 90,
+    "log_bytes_per_child": 65536,
+    "sampled_owner_bytes": 134217728
+  },
+  "scope": "No dependency/native/resource/product build/SUT/campaign. Source196 headers plus EXACTderivedvendor e02d; original3constructorsreversal to3e9a proven. ReallegalCLIENT_BLOCKnew/ordinarydelete NORMALnegative/UNKNOWNpositive, activeordinarynewcounteraroundallocation+release, no syntheticprovider. Staged197source remainsseparate."
+}
