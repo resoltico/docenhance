@@ -137,7 +137,9 @@ class PipelineResourceTests(unittest.TestCase):
             foreign.write_bytes(b"outside")
             link = owned / "redirect"
             link.symlink_to(foreign)
-            with self.assertRaisesRegex(ValueError, "redirected or special"):
+            with self.assertRaisesRegex(
+                ValueError, r"^Measured scratch contains a redirected(?: or special)? entry$"
+            ):
                 measurement.disk_bytes(owned)
             link.unlink()
             (owned / "large").write_bytes(b"x" * 65)
