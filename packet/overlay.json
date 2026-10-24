@@ -1,0 +1,27 @@
+{
+  "tests/support/allocation_calibration.hpp": {
+    "before_sha256": "3fb6d2d88cd46e03ed496f54dc1e1817e713026bc84022900f3f790f6ad130ae",
+    "diagnostic_sha256": "c6e5f1b4410ed345130bd9b8604f10ceee2b839a640f61a7dfe7b621d58b6783",
+    "kind": "Original196 linearledger/Result lifetime+ONLY declared steady_ns/fatalcause/livequiescence markers; noqualification"
+  },
+  "tests/support/allocation_observer.cpp": {
+    "before_sha256": "9eae2a7e53aea04629f79f6650910e96713062797edc1aa1f8b336605a8914d0",
+    "diagnostic_sha256": "194abd08801f81cf7e2f1ac03822fca9439076d30a6a5784f092a0b7de3feb11",
+    "kind": "Original196 linearledger/Result lifetime+ONLY declared steady_ns/fatalcause/livequiescence markers; noqualification"
+  },
+  "tests/support/allocation_observer.hpp": {
+    "before_sha256": "7a3602a537fafcd60b4622888bc95084d7414f421302488d466154d361a76f1e",
+    "diagnostic_sha256": "a536fec187e7988c38523987787333a5106b8a105b51c25b5263a173bb4badf5",
+    "kind": "Original196 linearledger/Result lifetime+ONLY declared steady_ns/fatalcause/livequiescence markers; noqualification"
+  },
+  "tests/support/fft_resources.cpp": {
+    "before_sha256": "b3f226a10932b624f43e207c9ab887347e83c0014abc2461df745875ac7059c3",
+    "diagnostic_sha256": "a4f8b7aba06f6626e2601269e5cddf74bf7046b40637311ccae6f0fb611ba0bb",
+    "kind": "Original196 linearledger/Result lifetime+ONLY declared steady_ns/fatalcause/livequiescence markers; noqualification"
+  },
+  "tests/support/restoration_resource_observation.hpp": {
+    "before_sha256": "a6ecb8f72eee01609364c8efc3c47a72c464c36e39440179515c8ab7fe72ce48",
+    "diagnostic_sha256": "761d807a728bcb662b2c7f2e08c6966a88495db4324cbe2d027fea9809a3170a",
+    "kind": "Original196 linearledger/Result lifetime+ONLY declared steady_ns/fatalcause/livequiescence markers; noqualification"
+  }
+}
