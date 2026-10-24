@@ -1,0 +1,28 @@
+{
+  "kind": "WINDOWS_CANONICAL_DERIVED_HEADER_BYTES_AND_ACTUAL_FAILED_COUNTER",
+  "source_commits": {
+    "current": "e42589c6e14bea5d347bbf856fa1b8dd6f55edee"
+  },
+  "payload_sha256": {
+    "candidate/CMakeLists.txt": "e29337ff9199ab6534367b52ec903432f89fee3012c98ea39f1e5e40ca3f489e",
+    "counter.cpp": "04e0964da2bea2edcc64fa900009e35d7db4ed3c4c06b66ddeb05145287ce2d6",
+    "diagnose.py": "0e5715b926d6928ec091dd2d360508cda409f5804e579ef90516cdd2c0848639",
+    "original/CMakeLists.txt": "344300d14aac202e824056822fb24be7ff2e971acbd7fa6c28834dfcc2a8b512",
+    "pocketfft-receipt.json": "acba10a208380c8d4051b278399ce709bb785b9c24a59b33f41ff9f842aa7249",
+    "source-manifest.json": "69f1af7f7284e25fa02f08b9737f7deb611729981ac6e6f84849a256ee49edac",
+    "support.py": "08b666829bc6fbfebccaf9280580e748d467de69db9b08cccba48e7d702a2214",
+    "vendor/LICENSE.md": "a85ca13fdf90160b64a0698215868c13b74d835ad0a4e2ba44713b8c5058a056",
+    "vendor/pocketfft_hdronly.h": "3e9a05318d8e3b1446bda1c4617e6a103cdd23599ae0a776a92a6e8800e92fdc"
+  },
+  "workflow_sha256": "4a38014908133602342d08c0c024b71d6aab1944220224af6ee4c4e4e3da0ece",
+  "caps": {
+    "aggregate_command_seconds": 20,
+    "controller_seconds": 90,
+    "CMake_configure_seconds": 5,
+    "counter_compile_seconds": 10,
+    "counter_run_seconds": 2,
+    "log_bytes_per_command": 65536,
+    "sampled_owner_bytes": 134217728
+  },
+  "scope": "ActualpinnedWindowsCMake oldWRITEnegative/newexplicitLFpositive expectede02d nohashrelax, capturesactualgeneratedbytes. ONEstandaloneMSVC original199fft::failed(resource) post-one-shotfail3counter, no product/dependency/resourcebuild/SUT/campaign. Rootlive200sourceisnotinputorqualification."
+}
