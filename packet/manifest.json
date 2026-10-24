@@ -1,0 +1,37 @@
+{
+  "kind": "DEBUG_SUBSCOPE_ONLY",
+  "source_commits": {
+    "current": "a12a0fdd5ba5a508c8d604685546d34f6e0f876d"
+  },
+  "permanent_parent_tree": "344c89fff1c4a45f894350d92bc3e14da0ded094",
+  "payload_sha256": {
+    "preflight.py": "08b666829bc6fbfebccaf9280580e748d467de69db9b08cccba48e7d702a2214",
+    "source-manifest.json": "cece18a1a40cc70f8e5421b62172734b24ff5394227f0ecace404bda057fcf74"
+  },
+  "workflow_sha256": "c63341a5fb1eafcdcaac8d5fe5f18859add8ff15db7a82ceb1089dcecffcab2e",
+  "qualification": "Only actualDebugtworesourceEXEs/18fixedcases/privateCRT/deps/audit; noRelease/productCLI/fullplatform/fullcampaign proof.",
+  "original_debug_deadline_seconds": 2820,
+  "parallel": 2,
+  "source_manifest_sha256": "cece18a1a40cc70f8e5421b62172734b24ff5394227f0ecace404bda057fcf74",
+  "prior_controller_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-windows-debug-resource-preflight-efficiency-peer-03/review-efficiency.json",
+    "bytes": 7025,
+    "sha256": "9e8dd8097caaace54e530c96a11e89ce0c437c25d1e9f350dd58c42fbb07eb8e"
+  },
+  "controller_correction": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-windows-debug-resource-preflight-ci-terminal-04/checkpoint-ci-terminal.json",
+    "bytes": 2533,
+    "sha256": "8527af5a9292edaa95e177a6d564d63ec315a22de4aa94fb33b4eb584e3fbc75"
+  },
+  "reused_controller_render_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-windows-debug-rendered-efficiency-peer-04/review-efficiency.json",
+    "bytes": 4074,
+    "sha256": "d8543b65d45d755b3770eb20264624c44dbc213744874fed5e2d4ba2840dca7c"
+  },
+  "native_source_branch_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-allocation-observer-branch-efficiency-peer-194-01/review-efficiency.json",
+    "bytes": 3137,
+    "sha256": "8a208a93667f04ffd46f24b423fed601af21d7458302f0ed937ddac0fec30113"
+  },
+  "configuration_rebinding_scope": "Actual source196 qualified by normal195 and sourcebranchpeer; helper and workflowcode identical04 except actualSUTpin/source manifest. No new technical approval roundtrip per parent handoff."
+}
