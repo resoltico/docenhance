@@ -8,13 +8,15 @@ import hashlib
 import io
 import json
 import os
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tools_path import prepare_tool_imports
+from tools_path import ROOT, prepare_tool_imports
 
 import audit_build
 import cache_lock
@@ -28,6 +30,72 @@ prepare_tool_imports()
 
 class DependencyIntegrityTests(unittest.TestCase):
     """Challenge the authoritative artifact rather than comparing two mutable local copies."""
+
+    def test_windows_zlib_names_resolve_only_configuration_private_libraries(self) -> None:
+        """Real CMake imports Debug zsd and Release zs without adopting a foreign archive."""
+        cmake = shutil.which("cmake")
+        self.assertIsNotNone(cmake)
+        source = (ROOT / "cmake/Dependencies.cmake").read_text(encoding="utf-8")
+        marker = "function(de_import_static target)"
+        self.assertEqual(source.count(marker), 1)
+        helper = (
+            marker + source.split(marker, 1)[1].split("endfunction()", 1)[0] + "endfunction()\n"
+        )
+        self.assertEqual(source.count("\nif(WIN32)\n"), 1)
+        names = "if(WIN32)\n" + source.split("\nif(WIN32)\n", 1)[1].split("\nendif()", 1)[0]
+        names += "\nendif()\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary).resolve()
+            foreign = root / "foreign"
+            (foreign / "lib").mkdir(parents=True)
+            (foreign / "lib/zsd.lib").write_bytes(b"foreign archive fixture")
+            for name, libraries, selected, override in (
+                ("debug", ("zsd.lib",), "zsd.lib", False),
+                ("release", ("zs.lib",), "zs.lib", False),
+                ("debug-first", ("zs.lib", "zsd.lib"), "zsd.lib", False),
+                ("ambient-only", (), None, False),
+                ("foreign-override", (), None, True),
+            ):
+                with self.subTest(name=name):
+                    project = root / name
+                    prefix = project / "prefix"
+                    (prefix / "lib").mkdir(parents=True)
+                    (prefix / "include").mkdir()
+                    (prefix / "include/zlib.h").write_text("// owned header\n")
+                    for library in libraries:
+                        (prefix / "lib" / library).write_bytes(b"owned archive fixture")
+                    (project / "CMakeLists.txt").write_text(
+                        "cmake_minimum_required(VERSION 4.4)\nproject(Probe LANGUAGES NONE)\n"
+                        'set(WIN32 TRUE)\nset(CMAKE_FIND_LIBRARY_PREFIXES "")\n'
+                        'set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")\n'
+                        f'set(DE_DEPENDENCY_PREFIX "{prefix.as_posix()}")\n'
+                        f'include("{(ROOT / "cmake/DependencyPaths.cmake").as_posix()}")\n'
+                        + helper
+                        + names
+                        + "de_import_static(DE::zlib NAMES ${de_zlib_names} HEADER zlib.h)\n"
+                        "get_target_property(actual DE::zlib IMPORTED_LOCATION)\n"
+                        'file(WRITE "${CMAKE_BINARY_DIR}/selected.txt" "${actual}")\n',
+                        encoding="utf-8",
+                    )
+                    build = project / "build"
+                    command = [str(cmake), "-G", "Ninja", "-S", str(project), "-B", str(build)]
+                    command.append(f"-DCMAKE_PREFIX_PATH={foreign.as_posix()}")
+                    build_type = "Release" if name == "release" else "Debug"
+                    command.append(f"-DCMAKE_BUILD_TYPE={build_type}")
+                    if override:
+                        command.append(f"-Dde_library={foreign.as_posix()}/lib/zsd.lib")
+                    result = subprocess.run(
+                        command, capture_output=True, text=True, check=False, timeout=15
+                    )
+                    if selected is None:
+                        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertFalse((build / "selected.txt").exists())
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertEqual(
+                            (build / "selected.txt").read_text(),
+                            (prefix / "lib" / selected).as_posix(),
+                        )
 
     def archive(self, cache: Path) -> dep_verify.Dependency:
         """One real source archive, extracted and inventoried through production code."""

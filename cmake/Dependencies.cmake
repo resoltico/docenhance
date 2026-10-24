@@ -34,7 +34,7 @@ function(de_import_static target)
 endfunction()
 if(WIN32)
   # Use configuration-specific names before generic ones, in a configuration-private prefix.
-  set(de_zlib_names zs zlibstaticd zlibstatic zlibstat zd z)
+  set(de_zlib_names zsd zs zlibstaticd zlibstatic zlibstat zd z)
   set(de_jpeg_names jpeg-staticd jpeg-static jpeg)
   set(de_png_names libpng16_staticd libpng16_static png16_static png16d png16 png)
   set(de_tiff_names tiffd tiff)
