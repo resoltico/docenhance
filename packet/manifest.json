@@ -1,0 +1,32 @@
+{
+  "kind": "DEBUG_SUBSCOPE_ONLY",
+  "source_commits": {
+    "current": "bd6449135efc629dc79d22ffca48fa3a5c732b52"
+  },
+  "permanent_parent_tree": "97c2187b89df4595d36a7c5288cb92720a84e9d1",
+  "payload_sha256": {
+    "preflight.py": "08b666829bc6fbfebccaf9280580e748d467de69db9b08cccba48e7d702a2214",
+    "source-manifest.json": "35d4b662ac80f29711562e37bebfdc6118f085c2b1b6c131d100c7188a44ecbe"
+  },
+  "workflow_sha256": "7388c19862a61f2009e6607747afb2b9d757f52f41eff5d815f340de60404974",
+  "qualification": "Only actualDebugtworesourceEXEs/18fixedcases/privateCRT/deps/audit; noRelease/productCLI/fullplatform/fullcampaign proof.",
+  "original_debug_deadline_seconds": 2820,
+  "parallel": 2,
+  "source_manifest_sha256": "35d4b662ac80f29711562e37bebfdc6118f085c2b1b6c131d100c7188a44ecbe",
+  "prior_controller_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-windows-debug-resource-preflight-efficiency-peer-03/review-efficiency.json",
+    "bytes": 7025,
+    "sha256": "9e8dd8097caaace54e530c96a11e89ce0c437c25d1e9f350dd58c42fbb07eb8e"
+  },
+  "controller_correction": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-windows-debug-resource-preflight-ci-terminal-04/checkpoint-ci-terminal.json",
+    "bytes": 2533,
+    "sha256": "8527af5a9292edaa95e177a6d564d63ec315a22de4aa94fb33b4eb584e3fbc75"
+  },
+  "reused_controller_render_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-windows-debug-rendered-efficiency-peer-04/review-efficiency.json",
+    "bytes": 4074,
+    "sha256": "d8543b65d45d755b3770eb20264624c44dbc213744874fed5e2d4ba2840dca7c"
+  },
+  "configuration_rebinding_scope": "Actual clean/pushed source203, normal202 full582z1native/packagePASS333.729566084s and literal825PASS148.746s. Controller byteexact reviewed04/05/06. Only actualsourcehead/tree/source manifest/receiptbindings replace historical196. Full18Debug strictjournal fit is unearned until this one execution; noRelease/CLI/fullWindowsclaim."
+}
