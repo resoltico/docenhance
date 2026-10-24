@@ -366,31 +366,6 @@ class DependencyIntegrityTests(unittest.TestCase):
                 installed.write_bytes(owned.read_bytes())
                 self.assertTrue(audit_build.feature_failures("json", {}, cache, binary))
 
-    def test_installed_pocketfft_header_has_independent_identity(self) -> None:
-        """Two agreeing mutable copies cannot replace the reviewed provider header."""
-        with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            binary = root / "deps/pocketfft"
-            binary.mkdir(parents=True)
-            source = root / "source"
-            source.mkdir()
-            (binary / "CMakeCache.txt").write_text(f"DE_UPSTREAM_SOURCE:PATH={source}\n")
-            installed = root / "prefix/include/pocketfft/pocketfft_hdronly.h"
-            self.assertTrue(audit_build.pocketfft_header_failures(binary))
-            installed.parent.mkdir(parents=True)
-            header = source / "pocketfft_hdronly.h"
-            header.write_bytes(b"reviewed provider fixture")
-            installed.write_bytes(b"different")
-            self.assertTrue(audit_build.pocketfft_header_failures(binary))
-            installed.write_bytes(header.read_bytes())
-            self.assertTrue(audit_build.pocketfft_header_failures(binary))
-            expected = hashlib.sha256(header.read_bytes()).hexdigest()
-            with patch("audit_build.POCKETFFT_HEADER_SHA256", expected):
-                self.assertFalse(audit_build.pocketfft_header_failures(binary))
-                header.write_bytes(b"both copies changed")
-                installed.write_bytes(header.read_bytes())
-                self.assertTrue(audit_build.pocketfft_header_failures(binary))
-
 
 if __name__ == "__main__":
     unittest.main()

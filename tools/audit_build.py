@@ -21,7 +21,11 @@ FALSE = {"0", "OFF", "FALSE", "NO", "N", "IGNORE", "NOTFOUND", ""}
 TIFF_COMPLETE_ZIP_SHA256 = "551b35ed562b1ebbb5e4577afc5fc57d195667b1294b6a31123fac0ec2810275"
 TIFF_CHARGED_JPEG_SHA256 = "c51749f755cf1fe0fcca8bfd02be1dedeaa5c8affceac22c89b43cd6acd741b7"
 JSON_BOUNDED_HEADER_SHA256 = "f504f6fa07b84e3e264a1f7757f15da1502bb539285c90e908c1cabab47b572e"
-POCKETFFT_HEADER_SHA256 = "3e9a05318d8e3b1446bda1c4617e6a103cdd23599ae0a776a92a6e8800e92fdc"
+POCKETFFT_UPSTREAM_HEADER_SHA256 = (
+    "3e9a05318d8e3b1446bda1c4617e6a103cdd23599ae0a776a92a6e8800e92fdc"
+)
+
+POCKETFFT_HEADER_SHA256 = "e02d2489cd80ae5676f0b7742ee1923283adffc7bc9c06f1b95b830a523f03ae"
 
 
 def cache_values(text: str) -> dict[str, str]:
@@ -46,11 +50,14 @@ def pocketfft_header_failures(binary: Path) -> list[str]:
     if not path.is_file():
         return ["pocketfft: missing configured source identity"]
     source = Path(read_cache(path).get("DE_UPSTREAM_SOURCE", "")) / "pocketfft_hdronly.h"
+    owned = binary / "owned-source/pocketfft_hdronly.h"
     installed = binary.parents[1] / "prefix/include/pocketfft/pocketfft_hdronly.h"
-    if not source.is_file() or not installed.is_file():
+    if not source.is_file() or not owned.is_file() or not installed.is_file():
         return ["pocketfft: missing reviewed or installed header"]
-    if source.read_bytes() != installed.read_bytes():
-        return ["pocketfft: installed header differs from the verified source"]
+    if hashlib.sha256(source.read_bytes()).hexdigest() != POCKETFFT_UPSTREAM_HEADER_SHA256:
+        return ["pocketfft: upstream header differs from the independently reviewed source digest"]
+    if owned.read_bytes() != installed.read_bytes():
+        return ["pocketfft: installed header differs from the reviewed private copy"]
     if hashlib.sha256(installed.read_bytes()).hexdigest() != POCKETFFT_HEADER_SHA256:
         return ["pocketfft: header differs from the independently reviewed output digest"]
     return []

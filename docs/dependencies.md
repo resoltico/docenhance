@@ -44,6 +44,13 @@ unused gzip-file translation units. Its upstream recipe identity is reviewed bef
 the native audit checks actual compiler work to reject reintroduction. Upstream source bytes and
 licenses remain intact. This private prefix is not a general-purpose zlib SDK.
 
+The PocketFFT build derives a hash-bound private header from the unchanged locked source. Its
+empty factor vectors use fallible count constructors, and its shape/stride owners copy directly
+instead of moving through Debug iterator proxies. This keeps allocation failures inside the FFT
+exception boundary with native Debug iterators enabled; it changes no transform arithmetic, plan
+cache or threading policy. The import and independent build audit check the reviewed derived bytes.
+Actual native failure/refund controls remain required on each platform.
+
 The JSON build uses a checked private copy of the locked single header. Its recursive destruction
 avoids an allocating traversal stack inside noexcept cleanup; production DOM inputs are admitted
 at depth <=16, while record/response builders have fixed typed shapes. The source cache and upstream

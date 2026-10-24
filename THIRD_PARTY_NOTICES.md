@@ -14,5 +14,7 @@ The private libtiff build modifies `tif_jpeg.c` for per-handle charged JPEG cont
 `tif_zip.c` to require completed Deflate striles, including checksum trailers. Original libtiff source notices remain intact; the adapter
 header and build recipe are project-owned. Native packages retain libtiff's original license.
 
-The pocketfft header is installed unchanged. Native-package license inventories retain both its
-repository license and complete header so the inline upstream attributions remain present.
+The private pocketfft header uses fallible empty factor-vector construction and direct shape/stride
+copies so Debug iterator proxy allocation failures can cross the native exception boundary. Original
+notices remain intact. Native-package license inventories retain both the repository license and
+complete upstream header so the inline attributions remain present.

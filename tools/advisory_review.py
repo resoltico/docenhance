@@ -14,7 +14,7 @@ from typing import Any
 # Stream-only zlib excludes gzip-file APIs; classic JPEG decoding excludes TurboJPEG.
 # Actual native audits independently verify those exclusions. Changed feature bytes invalidate
 # these reviews; this source binding is not a declaration of vulnerability-free dependencies.
-FEATURE_DIGEST = "36a33fd8b2b0e73b9eaf4a8450a35b43dc1d26cf2d4285c69ebbbc4c82cdc0e3"
+FEATURE_DIGEST = "10a961ab675348546719eb39587adf6642ff16b9f3a3002b3fafa759d9ad095a"
 
 
 def reviewed(dependency: dict[str, Any], advisory: dict[str, Any], features: bytes) -> bool:

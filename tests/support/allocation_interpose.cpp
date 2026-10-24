@@ -54,6 +54,7 @@ extern "C" void __wrap_free(void* const pointer) noexcept {
 #ifdef _WIN32
 #ifdef _DEBUG
 #include <crtdbg.h>
+#include <memory>
 #else
 #include <corecrt_malloc.h>
 #endif
@@ -185,6 +186,20 @@ bool cpp_zero_case() {
     return allocated && normalized && allocation_attempts.load() == 1 &&
            c_allocation_attempts.load() == 0 && live.load() == 0 && peak.load() == 0;
 }
+#if defined(_WIN32) && defined(_DEBUG)
+bool external_cpp_case() {
+    begin_c_case();
+    std::unique_ptr<std::byte> pointer{new (_CLIENT_BLOCK, __FILE__, __LINE__) std::byte{}};
+    const bool native_tag = _CrtReportBlockType(pointer.get()) == _CLIENT_BLOCK;
+    const bool untracked = allocation_attempts.load() == 0 && c_allocation_attempts.load() == 0 &&
+                           live.load() == 0 && peak.load() == 0;
+    pointer.reset();
+    observing.store(false);
+    return native_tag && untracked && allocation_attempts.load() == 0 &&
+           c_allocation_attempts.load() == 0 && live.load() == 0 && peak.load() == 0 &&
+           observation_valid();
+}
+#endif
 bool uncertain_release_case(bool recorded, std::size_t bytes, bool null_pointer) {
     std::byte identity{};
     std::array<detail::ObservedAllocation, 1> slots{};
@@ -294,6 +309,9 @@ bool c_contract_cases() {
         passed = passed && _query_new_mode() == 1 && zero_c_case() && null_release_case() &&
                  cpp_zero_case() && refused_c_case(0) && refused_c_case(137) &&
                  native_handler_visits.load() == 0;
+#ifdef _DEBUG
+        passed = passed && external_cpp_case() && native_handler_visits.load() == 0;
+#endif
     }
     const bool handler_restored = _set_new_handler(previous_handler) == previous_handler;
     const bool mode_restored = _set_new_mode(previous_mode) == previous_mode;

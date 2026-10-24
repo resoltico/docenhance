@@ -13,6 +13,9 @@
 #include <atomic>
 #include <cstddef>
 #include <cstdlib>
+#if defined(_WIN32) && defined(_DEBUG)
+#include <crtdbg.h>
+#endif
 #include <mutex>
 #include <new>
 #include <span>
@@ -180,8 +183,10 @@ void release_external(void* const pointer) noexcept {
     return;
 #endif
 #endif
-    // Unobserved ordinary CRT allocations retain the CRT's original malloc/free storage layout.
-#ifdef DE_ALLOCATION_C_OBSERVATION
+    // Unknown C++ allocations retain the selected runtime's ordinary delete block policy.
+#if defined(_WIN32) && defined(_DEBUG)
+    _free_dbg(pointer, _UNKNOWN_BLOCK);
+#elifdef DE_ALLOCATION_C_OBSERVATION
     original_release(pointer);
 #else
     // NOLINTNEXTLINE(cppcoreguidelines-owning-memory,cppcoreguidelines-no-malloc)

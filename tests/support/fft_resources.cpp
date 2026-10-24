@@ -66,9 +66,15 @@ NativeObservation observe(NativeFixture& fixture, fft::Axis axis, bool inverse, 
     allocation::failure_at.store(fail);
     const fft::Transform transform{fixture.real.view().as_const(), fixture.real.view(),
                                    fixture.spectrum, fixture.scheduler, inverse};
+    bool success = false;
+    auto code = core::ErrorCode::invariant;
     allocation::observing.store(true);
-    const auto result = axis == fft::Axis::rows ? fft::native_rows(transform, 0, count)
-                                                : fft::native_columns(transform, 0, count);
+    {
+        const auto result = axis == fft::Axis::rows ? fft::native_rows(transform, 0, count)
+                                                    : fft::native_columns(transform, 0, count);
+        success = result.has_value();
+        code = result ? core::ErrorCode::invariant : result.error().code;
+    }
     allocation::observing.store(false);
     allocation::failure_at.store(0);
     std::cout << "{\"fail\":" << fail << ",\"count\":" << count
@@ -78,8 +84,8 @@ NativeObservation observe(NativeFixture& fixture, fft::Axis axis, bool inverse, 
     trace::write(std::cout);
     std::cout << "}\n";
     return {
-        .success = result.has_value(),
-        .code = result ? core::ErrorCode::invariant : result.error().code,
+        .success = success,
+        .code = code,
         .peak = allocation::peak.load(),
         .attempts = allocation::allocation_attempts.load(),
         .live = allocation::live.load(),
