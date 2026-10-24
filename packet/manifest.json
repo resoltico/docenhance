@@ -1,0 +1,42 @@
+{
+  "kind": "ORIGINAL196_INSTRUMENTED_TWO_CASE_PHASE_DIAGNOSTIC",
+  "source_commits": {
+    "current": "a12a0fdd5ba5a508c8d604685546d34f6e0f876d"
+  },
+  "payload_sha256": {
+    "diagnose.py": "e3818d9ae2ff5c0e48a791a6e5f46e34d67924be7df2a04c40151dfcdcc8d58d",
+    "overlay/tests/support/allocation_calibration.hpp": "d7c53db18becc5f6a1f328f49dfe48959579096dd954fb3cf299141c8dfdbe7b",
+    "overlay/tests/support/allocation_observer.cpp": "542fb4b4d9b4d9ec753633b6de9185d912ddcef1daf0fdfc043d00029cf33cdc",
+    "overlay/tests/support/allocation_observer.hpp": "5f9f1b6f609924ba1245ef995174c90d05dc5466bbc52b990b025fcf04530a5d",
+    "overlay/tests/support/fft_resources.cpp": "78248c751c636b4288879c587e681cf1d8d61acc4fa33bd41151230a9d8f31bf",
+    "overlay/tests/support/restoration_resource_observation.hpp": "761d807a728bcb662b2c7f2e08c6966a88495db4324cbe2d027fea9809a3170a",
+    "overlay.json": "148803d9d47cebb8954f0dd8dd26ed63c63dd6b4ab2ed973c5a6e9902debe820",
+    "prior-microprofile.json": "a61da870b6462570ebcf4c1bc9bf5b5ff0f7866c3549a976734c4dd3f18370dd",
+    "source-manifest.json": "cece18a1a40cc70f8e5421b62172734b24ff5394227f0ecace404bda057fcf74",
+    "support.py": "08b666829bc6fbfebccaf9280580e748d467de69db9b08cccba48e7d702a2214"
+  },
+  "workflow_sha256": "b26d6d2e5debe4cb159c695f496761495b96ad763432355796e893ff8dfded27",
+  "qualification": "NONE. Original196 LINEARscans/numerics/assertions/DebugCRT/iterator2 with declaredlogging/timing ONLY; exactlytwoformerlytimedoutcases/90s, other16unrun. No repeatedmicrobenchmark, candidateimplementation, R17, full18 orcurrent196qualification.",
+  "caps": {
+    "work_seconds": 2820,
+    "microbenchmark_invocations": 0,
+    "resource_case_timeout": 90,
+    "resource_cases": 2,
+    "parallel": 2,
+    "raw_per_file_MiB": 64,
+    "gzip_per_file_MiB": 2,
+    "run_reserve_MiB": 136,
+    "history_MiB": 384,
+    "sampled_build_stop_MiB": 2048
+  },
+  "overlay_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-observer-msvc-diagnostic-ci-terminal-196-02/checkpoint-efficiency-overlay.json",
+    "bytes": 7071,
+    "sha256": "d44aba5e1b05d536f188876c45e1201a895615e5d4faf176624db7554b96ab66"
+  },
+  "closed_prior_actual_review": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-github-observer-diagnostic-23093d1-01/retained-original-artifacts-disk-01/review-disk.json",
+    "bytes": 17852,
+    "sha256": "1b896ec20c1711b6149966a6544c81d9d895c56d37d890d5aa01109dcca59318"
+  }
+}

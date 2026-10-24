@@ -1,0 +1,27 @@
+{
+  "tests/support/allocation_calibration.hpp": {
+    "before_sha256": "3fb6d2d88cd46e03ed496f54dc1e1817e713026bc84022900f3f790f6ad130ae",
+    "diagnostic_sha256": "d7c53db18becc5f6a1f328f49dfe48959579096dd954fb3cf299141c8dfdbe7b",
+    "kind": "Original196 linearledger+ONLY allocation-free QPC timing/quiescentlogging, no qualification"
+  },
+  "tests/support/allocation_observer.cpp": {
+    "before_sha256": "9eae2a7e53aea04629f79f6650910e96713062797edc1aa1f8b336605a8914d0",
+    "diagnostic_sha256": "542fb4b4d9b4d9ec753633b6de9185d912ddcef1daf0fdfc043d00029cf33cdc",
+    "kind": "Original196 linearledger+ONLY allocation-free QPC timing/quiescentlogging, no qualification"
+  },
+  "tests/support/allocation_observer.hpp": {
+    "before_sha256": "7a3602a537fafcd60b4622888bc95084d7414f421302488d466154d361a76f1e",
+    "diagnostic_sha256": "5f9f1b6f609924ba1245ef995174c90d05dc5466bbc52b990b025fcf04530a5d",
+    "kind": "Original196 linearledger+ONLY allocation-free QPC timing/quiescentlogging, no qualification"
+  },
+  "tests/support/fft_resources.cpp": {
+    "before_sha256": "b3f226a10932b624f43e207c9ab887347e83c0014abc2461df745875ac7059c3",
+    "diagnostic_sha256": "78248c751c636b4288879c587e681cf1d8d61acc4fa33bd41151230a9d8f31bf",
+    "kind": "Original196 linearledger+ONLY allocation-free QPC timing/quiescentlogging, no qualification"
+  },
+  "tests/support/restoration_resource_observation.hpp": {
+    "before_sha256": "a6ecb8f72eee01609364c8efc3c47a72c464c36e39440179515c8ab7fe72ce48",
+    "diagnostic_sha256": "761d807a728bcb662b2c7f2e08c6966a88495db4324cbe2d027fea9809a3170a",
+    "kind": "Original196 linearledger+ONLY allocation-free QPC timing/quiescentlogging, no qualification"
+  }
+}
