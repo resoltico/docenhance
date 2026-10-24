@@ -4,9 +4,11 @@
 
 from __future__ import annotations
 
+import base64
 import gzip
 import hashlib
 import json
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,11 @@ import restoration_resource_cases as cases
 
 prepare_tool_imports()
 RESOURCE_BUILD = Path("/build")
+
+
+def event_wire(value: str) -> str:
+    """Author fixture transport with the independent standard library codec."""
+    return "z1:" + base64.b64encode(zlib.compress(value.encode("ascii"), level=1)).decode("ascii")
 
 
 def resource_executables(build: Path = RESOURCE_BUILD) -> dict[str, str]:
@@ -65,7 +72,7 @@ def visibility_rows() -> list[dict[str, Any]]:
             "core_backing_overhead_bytes": 0,
             "attempts": 0,
             "c_attempts": 0,
-            "events": "",
+            "events": event_wire(""),
         }
         for size in (16, 32, 48, 64)
     ]
@@ -98,7 +105,7 @@ def whole_row(width: int, height: int, ordinal: int) -> dict[str, Any]:
         "entering_charged": 16,
         "ledger_peak_before": 16,
         "ledger_peak_after": 100,
-        "events": ("+a-a" * (ordinal - 1) + "!a") if ordinal else "+a-a" * 4,
+        "events": event_wire(("+a-a" * (ordinal - 1) + "!a") if ordinal else "+a-a" * 4),
     }
 
 
@@ -141,7 +148,7 @@ def protocol_rows(index: int | None) -> list[dict[str, Any]]:
                     "resident": 16 * callers,
                     "heap_peak": 10 * callers,
                     "charged_peak": 30 * callers,
-                    "events": ("+a" * callers + "-a" * callers) * 4,
+                    "events": event_wire(("+a" * callers + "-a" * callers) * 4),
                 }
             )
     rows.append(

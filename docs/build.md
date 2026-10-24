@@ -424,6 +424,12 @@ or incomplete qualification retains raw evidence. Cleanup errors remain fatal an
 gzip; a successful unlink is not undone after a later failure. Prior history is never deleted
 automatically. Preserve needed evidence and inspect closed owners before disposing of them.
 
+Allocation event streams use `z1:` frames: canonical base64 over one zlib member containing every
+ordered hexadecimal event. Decode them with the producer's source revision. Each decoded frame
+retains the 8,192-event limit per caller and at most 1 MiB; seven callers can require 974,848 bytes.
+Compression runs after observation stops and every measured allocation has been refunded. The
+raw-journal and archive ceilings above also apply to these frames.
+
 Package inspection requires the independently tested application build directory (`--build`). It
 compares the relocated executable byte-for-byte, all specs/schemas and the closed file inventory,
 regenerates upstream notices/licenses/SPDX from verified locked sources, checks complete runtime

@@ -4,12 +4,14 @@
 
 from __future__ import annotations
 
+import base64
 import gzip
 import hashlib
 import io
 import json
 import os
 import re
+import zlib
 from pathlib import Path
 from typing import Any
 
@@ -161,11 +163,34 @@ def number(value: object) -> int:
     return value
 
 
+def event_text(value: object, callers: int = 1) -> str:
+    """Decode one bounded canonical-base64 zlib member; no legacy event wire is admitted."""
+    limit = min(1024**2, callers * 8192 * EVENT_TOKEN_BYTES)
+    if not isinstance(value, str) or not value.startswith("z1:"):
+        message = "Invalid event codec"
+        raise ValueError(message)
+    require(len(value) <= 3 + 4 * ((1024**2 + 1026) // 3), "Packed events exceed bound")
+    packed = base64.b64decode(value[3:], validate=True)
+    require(base64.b64encode(packed).decode("ascii") == value[3:], "Noncanonical event base64")
+    require(len(packed) <= 1024**2 + 1024, "Packed events exceed bound")
+    stream = zlib.decompressobj()
+    try:
+        raw = stream.decompress(packed, limit + 1)
+    except zlib.error as error:
+        message = "Invalid event zlib stream"
+        raise ValueError(message) from error
+    require(
+        len(raw) <= limit and stream.eof and not stream.unused_data and not stream.unconsumed_tail,
+        "Incomplete, trailing or excessive event stream",
+    )
+    return raw.decode("ascii")
+
+
 def trace(row: dict[str, Any], callers: int = 1) -> int:
     """Validate every original event and its full refund, with the native logical bound."""
-    events = row["events"]
+    events = event_text(row["events"], callers)
     require(
-        isinstance(events, str) and 0 < len(events) <= callers * 8192 * EVENT_TOKEN_BYTES,
+        0 < len(events) <= callers * 8192 * EVENT_TOKEN_BYTES,
         "Resource event sequence is empty or exceeds its native bound",
     )
     live = peak = attempts = cursor = 0
@@ -272,4 +297,4 @@ def visibility(row: dict[str, Any]) -> None:
             "Visibility allocation is incomplete",
         )
     else:
-        require(row["events"] == "", "Excluded visibility has heap events")
+        require(event_text(row["events"]) == "", "Excluded visibility has heap events")

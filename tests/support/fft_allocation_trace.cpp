@@ -3,6 +3,7 @@
 #include "fft_allocation_trace.hpp"
 
 #include "allocation_observer.hpp"
+#include "fft_trace_encoding.hpp"
 #include "fft_trace_storage.hpp"
 
 #include <array>
@@ -18,7 +19,7 @@
 #include <ostream>
 #include <span>
 #include <sstream>
-#include <string_view>
+#include <string>
 #include <system_error>
 #include <type_traits>
 #ifdef _WIN32
@@ -114,7 +115,8 @@ bool emit(std::ostream& stream) {
     if (!quiescent() || !replay_prefix()) {
         return false;
     }
-    stream << "\"";
+    std::string raw;
+    raw.reserve((prefix + tail) * 17);
     constexpr std::array markers{'+', '-', '!'};
     constexpr auto hexadecimal = 16;
     for (std::size_t index = 0; index < prefix + tail; ++index) {
@@ -136,10 +138,10 @@ bool emit(std::ostream& stream) {
             return false;
         }
         const auto size = static_cast<std::size_t>(std::distance(digits.data(), encoded.ptr));
-        stream << markers.at(event.kind) << std::string_view{digits.data(), size};
+        raw.push_back(markers.at(event.kind));
+        raw.append(digits.data(), size);
     }
-    stream << "\"";
-    return stream.good();
+    return encoding::write(stream, raw);
 }
 Kind golden_kind(std::size_t index) noexcept {
     switch (index % 3) {
@@ -198,13 +200,12 @@ bool golden_replay(std::size_t count) {
     }
     constexpr std::array markers{'+', '-', '!'};
     std::ostringstream expected;
-    expected << "\"" << std::hex;
+    expected << std::hex;
     std::uint64_t next_byte = 17;
     for (std::size_t index = 0; index < count; ++index) {
         expected << markers.at(index % markers.size()) << next_byte++;
     }
-    expected << "\"";
-    return actual.str() == expected.str();
+    return encoding::matches(actual.str(), expected.str());
 }
 bool literal_encoding() {
     if (!reset_epoch()) {
@@ -222,9 +223,7 @@ bool literal_encoding() {
         }
     }
     std::ostringstream actual;
-    const bool exact =
-        emit(actual) &&
-        actual.str() == "\"+0-0!0+ffffffffffffffff-ffffffffffffffff!ffffffffffffffff\"";
+    const bool exact = emit(actual) && actual.str() == "\"z1:eNrTNtA1UDTQTkMDuugCiugCADE2FKM=\"";
     actual << ':' << 17;
     return exact && actual.str().ends_with(":17");
 }
@@ -234,7 +233,8 @@ bool golden_case(unsigned callers, std::size_t count) {
         file.bytes_written() != prefix * sizeof(Event)) {
         return false;
     }
-    // A second epoch must exclude stale spill bytes and retain the same one-array boundary.
+    // A second epoch must exclude stale spill bytes and retain the same one-array
+    // boundary.
     return reset_epoch() && observed_feed(event_capacity) && prefix == 0 &&
            file.bytes_written() == 0 && golden_replay(event_capacity);
 }
@@ -301,8 +301,10 @@ void record(std::size_t bytes, Kind kind) noexcept {
     bool committed = false;
     {
         const storage::Errors saved;
-        committed = commit(
-            {.bytes = static_cast<std::uint64_t>(bytes), .kind = static_cast<std::uint64_t>(kind)});
+        committed = commit({
+            .bytes = static_cast<std::uint64_t>(bytes),
+            .kind = static_cast<std::uint64_t>(kind),
+        });
     }
     if (!committed) {
         std::abort();
@@ -317,8 +319,11 @@ bool check_storage_contract() {
     if (!quiescent() || active || !reset_epoch()) {
         return false;
     }
-    const bool healthy = literal_encoding() && golden_anchors() && golden_case(1, 8192) &&
-                         golden_case(2, 8193) && golden_case(2, 16384) && golden_case(7, 57344);
+    std::ostringstream empty;
+    const bool empty_exact = emit(empty) && empty.str() == "\"z1:eNoDAAAAAAE=\"";
+    const bool healthy = empty_exact && literal_encoding() && golden_anchors() &&
+                         golden_case(1, 8192) && golden_case(2, 8193) && golden_case(2, 16384) &&
+                         golden_case(7, 57344);
     const bool negative =
         healthy && cap_refusal(0) && cap_refusal(7) && invalid_refusal() && file_refusals();
     return negative && reset_epoch();
