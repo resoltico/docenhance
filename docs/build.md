@@ -144,6 +144,19 @@ The workflow expands to configure, build and test. Sources are verified at confi
 
 Projects are built serially, each with two workers by default. This deliberately avoids six upstream projects each spawning an unrestricted set of compiler processes. Set `DE_BUILD_JOBS` in the environment, or override it in a local user preset, if justified; an explicit `-DDE_BUILD_JOBS` or preset value takes precedence over the environment. The value must be 1–64. The same count bounds the architecture check, which runs one compiler process per source file and per public header and reports exactly what it would report serially, in the same order, independently of the native suite’s limit of two concurrent test processes. Cases include nested processing workers and CPU-heavy references; compiler parallelism is not a test-process capacity measurement. Changing it is not an application memory limit.
 
+## Optional pipeline resource observations
+
+`tools/measure_pipeline_resources.py` measures fixed 1024×768 fixtures in fresh processes on
+macOS or Linux. CPU time and peak RSS come from the direct child's `wait4` result; thread and
+staging/output disk peaks are sampled observations. They do not establish process-group RSS or
+instantaneous disk quotas. The helper is separate from the required native resource tests.
+
+Each command has a finite deadline and at most 1 MiB of response capture in memory. A case
+refuses sampled scratch growth beyond 32 MiB or 1,024 entries. The disk allowance covers two
+8 MiB image/record staging sets plus equal operational headroom for these fixed fixtures; it
+is not a measured minimum. Redirected or special entries and stderr output refuse measurement.
+The existing process owner stops descendants and closes output readers on success or failure.
+
 ## Generated contracts
 
 `python tools/generate_spec.py` derives CLI/method descriptors, reference pages and the CLI fuzz

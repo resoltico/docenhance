@@ -33,6 +33,8 @@ Notable changes to this project are documented in this file. The format is based
 
 - After complete test/resource validation, native runs retire only their current redundant raw JUnit while preserving the verified lossless archive. Read retained reports from `ctest.xml.gz`; earlier test/resource failures keep raw evidence. Prior history is never automatically pruned.
 
+- The optional pipeline resource helper bounds command output in memory, supervises child groups and samples a finite scratch allowance. Failed capture or cleanup refuses measurements; direct-child RSS and sampled disk/thread peaks do not establish process-group or instantaneous bounds.
+
 - Keep only Intel LLVM analysis tools, their matching builtin headers and verified receipts in the tool cache; discard temporary compiler build products and image-owned download caches.
 
 - Add a public technical document-image corpus with image-specific CC0 evidence, source and retrieval identities, separate embedded-profile and metadata licenses, and a provenance/reuse guide linked from the README. Corpus admission excludes unclear or incompatible redistribution terms; these varied inputs are not a representative held-out evaluation or evidence of natural-document improvement.
