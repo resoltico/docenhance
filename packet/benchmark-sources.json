@@ -1,0 +1,12 @@
+{
+  "original": {
+    "source_cpp_sha256": "9eae2a7e53aea04629f79f6650910e96713062797edc1aa1f8b336605a8914d0",
+    "header_sha256": "7a3602a537fafcd60b4622888bc95084d7414f421302488d466154d361a76f1e",
+    "function_body_sha256": "422b2e145151f8cc2e6a807121a43f61993701b13cd9653b8216cb7d72eb9c06"
+  },
+  "candidate": {
+    "source_cpp_sha256": "6eeb93f9600c66d8b57b28c393af56a526fc22997f835e6eb2180fee701dbf23",
+    "header_sha256": "dae921199160d8c4841b24018d0d21644ef4b82d3f1a5ff0db2f7658edf88248",
+    "function_body_sha256": "164c4b8a3a78ac0e0c7ed548457eb9ab474f62a094a23b35c5dc0248d3dc6df1"
+  }
+}

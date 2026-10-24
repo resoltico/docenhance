@@ -1,0 +1,44 @@
+{
+  "kind": "MSVC_LOOKUP_AND_ORIGINAL196_INSTRUMENTED_TWO_CASE_DIAGNOSTIC",
+  "source_commits": {
+    "current": "a12a0fdd5ba5a508c8d604685546d34f6e0f876d"
+  },
+  "payload_sha256": {
+    "benchmark-sources.json": "6644e60ade7a5139963d703acc91b799b9c42867480a1cc5191684a3c1919656",
+    "candidate/allocation_observer.hpp": "dae921199160d8c4841b24018d0d21644ef4b82d3f1a5ff0db2f7658edf88248",
+    "candidate.cpp": "8c80c88efe43c5129c14dd98285402c13eacf2ea114483650c8ef4da83e5d7a9",
+    "diagnose.py": "7dd2ea53db83bff55efc55505a495697be866b71e49fbcf325f3da79551148f7",
+    "original/allocation_observer.hpp": "7a3602a537fafcd60b4622888bc95084d7414f421302488d466154d361a76f1e",
+    "original.cpp": "a10deb943086cc7e3c7bb1002f1a5078ccf27a3a238ae759cc4e761b3fc6af1c",
+    "overlay/tests/support/allocation_calibration.hpp": "d7c53db18becc5f6a1f328f49dfe48959579096dd954fb3cf299141c8dfdbe7b",
+    "overlay/tests/support/allocation_observer.cpp": "6e11b2499fcbe8981a4a75e3f7ae61f8027b3c8f4dece4d92e56d731e9aa8f5b",
+    "overlay/tests/support/allocation_observer.hpp": "92c36626fe7edec7c3935e869cb06d9ea68a91e4bdb15f3cfb951a20085445f9",
+    "overlay/tests/support/fft_resources.cpp": "78248c751c636b4288879c587e681cf1d8d61acc4fa33bd41151230a9d8f31bf",
+    "overlay/tests/support/restoration_resource_observation.hpp": "761d807a728bcb662b2c7f2e08c6966a88495db4324cbe2d027fea9809a3170a",
+    "overlay.json": "f599e6fcbfa4695cc6bcb2e18cbcf167b2797de0bbf0570a418f5fd28fd684a7",
+    "source-manifest.json": "cece18a1a40cc70f8e5421b62172734b24ff5394227f0ecace404bda057fcf74",
+    "support.py": "08b666829bc6fbfebccaf9280580e748d467de69db9b08cccba48e7d702a2214"
+  },
+  "workflow_sha256": "27b428b8c80b0224bb7cd152406fc564a917cf1ee7d62d322d904902fe8a89a4",
+  "qualification": "NONE. Microprofile is fixed20s component cost only. Real resources use original196 LINEARscans plus explicittiming/loggingoverlay, EXACTtwoformerlytimedoutcases/original90s. No candidate/native/R17/full18case acceptance.",
+  "source_overlay": "Five declaredtest-onlyfiles; allnumericmethods/commands/CRT/iteratorpolicy/validators remainunchanged. Timerwritesonlyatomiccountersinsideobserver; stdoutflush/stderrreportsquiescent; lockwaitlabels explicit.",
+  "caps": {
+    "work_seconds": 2820,
+    "profile_total_seconds": 20,
+    "micro_operations_per_case": 64,
+    "micro_cases_per_variant": 12,
+    "resource_case_timeout": 90,
+    "resource_cases": 2,
+    "parallel": 2,
+    "raw_per_file_MiB": 64,
+    "gzip_per_file_MiB": 2,
+    "run_reserve_MiB": 136,
+    "history_MiB": 384,
+    "sampled_build_stop_MiB": 2048,
+    "micro_work_MiB": 128
+  },
+  "semantic_peer": {
+    "path": "/Users/erst/Tools/docenhance-foundation-implementation-2026-10-15/wp5-observer-lookup-equivalence-efficiency-196-01/review-efficiency.json",
+    "sha256": "271cf5530fdf4e73e95f2e6e32314a4e8ee22a80477562e298da1d327fa73d1c"
+  }
+}
